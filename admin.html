@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cabildoOS — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:       #080808;
+  --surface:  #111111;
+  --card:     #161616;
+  --border:   #222222;
+  --border2:  #2a2a2a;
+  --text:     #f0f0f0;
+  --muted:    #555555;
+  --muted2:   #888888;
+  --accent:   #F5A623;
+  --accent2:  rgba(245,166,35,0.12);
+  --green:    #22c55e;
+  --green2:   rgba(34,197,94,0.12);
+  --red:      #ef4444;
+  --red2:     rgba(239,68,68,0.12);
+  --blue:     #3b82f6;
+  --blue2:    rgba(59,130,246,0.12);
+  --yellow:   #eab308;
+  --yellow2:  rgba(234,179,8,0.12);
+  --sidebar-w: 220px;
+  --radius:   10px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo .logotype {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.sidebar-logo .logotype span {
+  color: var(--accent);
+}
+.sidebar-logo .badge {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  background: var(--card);
+  border: 1px solid var(--border2);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 0;
+  overflow-y: auto;
+}
+.nav-section {
+  padding: 16px 20px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  color: var(--muted2);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all .15s;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
+}
+.nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+.nav-item.active {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: var(--accent2);
+}
+.nav-item .icon { font-size: 14px; width: 18px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+.nav-badge.orange { background: var(--accent); color: #000; }
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}
+.sidebar-footer .dot-live {
+  display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+
+/* ── MAIN ── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.topbar-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.topbar-sub {
+  font-size: 12px;
+  color: var(--muted2);
+  margin-top: 1px;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.content {
+  padding: 28px;
+  flex: 1;
+}
+
+/* ── SECTIONS ── */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── STAT CARDS ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 8px;
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+.stat-value.accent { color: var(--accent); }
+.stat-value.green  { color: var(--green); }
+.stat-value.red    { color: var(--red); }
+.stat-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ── TABLES ── */
+.table-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.table-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.table-count {
+  font-size: 11px;
+  color: var(--muted2);
+  margin-left: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge.pending  { background: var(--yellow2); color: var(--yellow); }
+.badge.approved { background: var(--green2);  color: var(--green); }
+.badge.rejected { background: var(--red2);    color: var(--red); }
+.badge.active   { background: var(--accent2); color: var(--accent); }
+.badge.closed   { background: rgba(255,255,255,0.06); color: var(--muted2); }
+.badge.review   { background: var(--blue2);   color: var(--blue); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+}
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { background: #e09520; }
+.btn-ghost { background: transparent; color: var(--muted2); border: 1px solid var(--border2); }
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); background: rgba(255,255,255,0.04); }
+.btn-green { background: var(--green2); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+.btn-green:hover { background: rgba(34,197,94,0.2); }
+.btn-red { background: var(--red2); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.btn-red:hover { background: rgba(239,68,68,0.2); }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
+/* ── ACTION ROW ── */
+.action-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── IDENTITY CARDS ── */
+.id-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+.id-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.id-card:hover { border-color: var(--border2); }
+.id-card-img {
+  width: 100%;
+  height: 160px;
+  background: #0f0f0f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.id-anon-placeholder {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.id-anon-face {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px dashed var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin: 0 auto 8px;
+}
+.id-redacted-bar {
+  background: var(--accent);
+  color: #000;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 3px 12px;
+  border-radius: 3px;
+  margin-top: 6px;
+}
+.id-redacted-lines {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-family: monospace;
+  letter-spacing: 1px;
+}
+.id-card-body {
+  padding: 14px 16px;
+}
+.id-hash {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--muted2);
+  margin-bottom: 8px;
+}
+.id-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.id-country {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.id-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+.id-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* ── TOGGLE / SWITCH ── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-label { font-size: 13px; color: var(--text); }
+.toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.toggle {
+  position: relative;
+  width: 40px; height: 22px;
+  flex-shrink: 0;
+}
+.toggle input { display: none; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--border2);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.toggle input:checked ~ .toggle-track { background: var(--accent); }
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle input:checked ~ .toggle-track .toggle-thumb { transform: translateX(18px); }
+
+/* ── CONFIG CARD ── */
+.config-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.config-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.field {
+  margin-bottom: 14px;
+}
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 6px;
+}
+input[type=text], input[type=number], textarea, select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+}
+textarea { resize: vertical; min-height: 80px; }
+select option { background: var(--surface); }
+
+/* ── VOTACION CONTROLS ── */
+.vote-control {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.vote-pregunta {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+.vote-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.vote-timer {
+  font-family: monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+.vote-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.progress-bar {
+  height: 6px;
+  background: var(--border2);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 12px 0 4px;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width .5s;
+}
+.vote-results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+.result-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+}
+.result-box .r-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+.result-box .r-count { font-size: 26px; font-weight: 700; margin: 6px 0; }
+.result-box .r-pct   { font-size: 12px; color: var(--muted2); }
+.result-box.si .r-count { color: var(--green); }
+.result-box.no .r-count { color: var(--red); }
+.result-box.abs .r-count { color: var(--muted2); }
+
+/* ── HEMICICLO PREVIEW ── */
+.hemi-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  aspect-ratio: 16/7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+#admin-canvas { display: block; }
+
+/* ── EMPTY STATE ── */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 28px;
+  width: 520px;
+  max-width: 95vw;
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--text);
+  z-index: 999;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all .3s;
+  max-width: 320px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── MISC ── */
+.row { display: flex; gap: 16px; }
+.row > * { flex: 1; }
+.mono { font-family: monospace; font-size: 12px; color: var(--muted2); }
+.text-muted { color: var(--muted2); }
+.mt8 { margin-top: 8px; }
+.mt16 { margin-top: 16px; }
+.sep {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+.tag {
+  display: inline-block;
+  padding: 2px 7px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted2);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.chip-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logotype">cabildo<span>OS</span></div>
+    <div class="badge">Admin Panel</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">General</div>
+    <div class="nav-item active" data-section="dashboard" onclick="navTo('dashboard', this)">
+      <span class="icon">◈</span> Dashboard
+    </div>
+
+    <div class="nav-section">Contenido</div>
+    <div class="nav-item" data-section="preguntas" onclick="navTo('preguntas', this)">
+      <span class="icon">❓</span> Preguntas
+      <span class="nav-badge orange" id="badge-preguntas">3</span>
+    </div>
+
+    <div class="nav-section">Identidades</div>
+    <div class="nav-item" data-section="identidades" onclick="navTo('identidades', this)">
+      <span class="icon">🔐</span> Verificaciones
+      <span class="nav-badge" id="badge-id">0</span>
+    </div>
+
+    <div class="nav-section">Configuración</div>
+    <div class="nav-item" data-section="hemiciclo" onclick="navTo('hemiciclo', this)">
+      <span class="icon">⬛</span> Hemiciclo
+    </div>
+    <div class="nav-item" data-section="votacion" onclick="navTo('votacion', this)">
+      <span class="icon">⚡</span> Votación
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <span class="dot-live"></span>Supabase conectado
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-sub" id="topbar-sub">Resumen general del sistema</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="recargarDatos()">↻ Actualizar</button>
+      <button class="btn btn-primary btn-sm" onclick="abrirModal('nueva-pregunta')">+ Nueva pregunta</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════ DASHBOARD ══════ -->
+    <div class="section active" id="s-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Verificaciones pendientes</div>
+          <div class="stat-value red" id="stat-pending-id">—</div>
+          <div class="stat-sub">Esperan revisión humana</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Butacas asignadas</div>
+          <div class="stat-value accent" id="stat-butacas">2.847</div>
+          <div class="stat-sub">Ciudadanos verificados</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Preguntas pendientes</div>
+          <div class="stat-value" id="stat-pending-q">3</div>
+          <div class="stat-sub">Propuestas por ciudadanos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pregunta activa</div>
+          <div class="stat-value green" id="stat-active">1</div>
+          <div class="stat-sub">En votación ahora</div>
+        </div>
+      </div>
+
+      <!-- Activity reciente -->
+      <div class="row">
+        <div style="flex:2">
+          <div class="table-card">
+            <div class="table-header">
+              <span class="table-title">Actividad reciente <span class="table-count">últimas 24h</span></span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Evento</th>
+                  <th>Detalle</th>
+                  <th>Hora</th>
+                </tr>
+              </thead>
+              <tbody id="activity-log">
+                <tr><td><span class="badge active">Votación</span></td><td>Pregunta #1 superó 1.200 votos</td><td class="mono">09:14</td></tr>
+                <tr><td><span class="badge approved">Identidad</span></td><td>Butaca #2847 verificada</td><td class="mono">08:51</td></tr>
+                <tr><td><span class="badge pending">Propuesta</span></td><td>Nueva pregunta ciudadana recibida</td><td class="mono">08:30</td></tr>
+                <tr><td><span class="badge approved">Identidad</span></td><td>Butaca #2846 verificada</td><td class="mono">07:58</td></tr>
+                <tr><td><span class="badge review">Revisión</span></td><td>Solicitud de verificación rechazada</td><td class="mono">07:22</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div class="config-card">
+            <div class="config-title">Estado del sistema</div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Votación abierta</div>
+                <div class="toggle-sub">Pregunta #1 activa</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="sys-votacion" checked onchange="toggleSistema('votacion', this)">
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Modo observador</div>
+                <div class="toggle-sub">Permitir entrada sin cuenta</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="sys-observer" checked onchange="toggleSistema('observer', this)">
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Verificaciones abiertas</div>
+                <div class="toggle-sub">Nuevos usuarios pueden registrarse</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="sys-registro" checked onchange="toggleSistema('registro', this)">
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Sala de debate</div>
+                <div class="toggle-sub">Chat activo durante votación</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="sys-debate" checked onchange="toggleSistema('debate', this)">
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PREGUNTAS ══════ -->
+    <div class="section" id="s-preguntas">
+
+      <!-- Pendientes de aprobación -->
+      <div class="table-card" style="margin-bottom:20px">
+        <div class="table-header">
+          <span class="table-title">Propuestas ciudadanas <span class="table-count">pendientes de revisión</span></span>
+          <span class="badge pending">3 pendientes</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Propuesta</th>
+              <th>Categoría</th>
+              <th>Butaca</th>
+              <th>Fecha</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tb-prop-pendientes">
+            <tr>
+              <td style="max-width:360px">¿Debería garantizarse el derecho a internet como servicio público universal en Venezuela?</td>
+              <td><span class="tag">Derechos</span></td>
+              <td class="mono">#892</td>
+              <td class="mono text-muted">23 jul</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-green btn-sm" onclick="accionPregunta(this, 'aprobar')">✓ Aprobar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="accionPregunta(this, 'editar')">✎ Editar</button>
+                  <button class="btn btn-red btn-sm" onclick="accionPregunta(this, 'rechazar')">✗ Rechazar</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="max-width:360px">¿Considera necesaria la amnistía total como condición para una transición pacífica?</td>
+              <td><span class="tag">Justicia</span></td>
+              <td class="mono">#1204</td>
+              <td class="mono text-muted">22 jul</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-green btn-sm" onclick="accionPregunta(this, 'aprobar')">✓ Aprobar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="accionPregunta(this, 'editar')">✎ Editar</button>
+                  <button class="btn btn-red btn-sm" onclick="accionPregunta(this, 'rechazar')">✗ Rechazar</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="max-width:360px">¿Debería la diáspora venezolana tener representación proporcional en la AN?</td>
+              <td><span class="tag">Política</span></td>
+              <td class="mono">#533</td>
+              <td class="mono text-muted">21 jul</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-green btn-sm" onclick="accionPregunta(this, 'aprobar')">✓ Aprobar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="accionPregunta(this, 'editar')">✎ Editar</button>
+                  <button class="btn btn-red btn-sm" onclick="accionPregunta(this, 'rechazar')">✗ Rechazar</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Agenda activa -->
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">Agenda del hemiciclo <span class="table-count">aprobadas</span></span>
+          <button class="btn btn-primary btn-sm" onclick="abrirModal('nueva-pregunta')">+ Agregar</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Pregunta</th>
+              <th>Categoría</th>
+              <th>Estado</th>
+              <th>Votos</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tb-agenda">
+            <tr>
+              <td class="mono text-muted">01</td>
+              <td style="max-width:320px">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</td>
+              <td><span class="tag">Política</span></td>
+              <td><span class="badge active">● Activa</span></td>
+              <td class="mono">1.247</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-ghost btn-sm" onclick="navTo('votacion', document.querySelector('[data-section=votacion]'))">⚡ Controlar</button>
+                  <button class="btn btn-ghost btn-sm" onclick="accionPregunta(this, 'editar')">✎</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="mono text-muted">02</td>
+              <td style="max-width:320px">¿Deberían las elecciones primarias de oposición ser obligatorias y con veedores internacionales?</td>
+              <td><span class="tag">Electoral</span></td>
+              <td><span class="badge closed">Cerrada</span></td>
+              <td class="mono">2.103</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-ghost btn-sm">📊 Resultados</button>
+                  <button class="btn btn-ghost btn-sm">✎</button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="mono text-muted">03</td>
+              <td style="max-width:320px">¿Apoya la creación de un fondo soberano venezolano administrado con transparencia y auditoría ciudadana?</td>
+              <td><span class="tag">Economía</span></td>
+              <td><span class="badge pending">Pendiente</span></td>
+              <td class="mono">—</td>
+              <td>
+                <div class="action-row">
+                  <button class="btn btn-green btn-sm" onclick="activarPregunta(this)">▶ Activar</button>
+                  <button class="btn btn-ghost btn-sm">✎</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ══════ IDENTIDADES ══════ -->
+    <div class="section" id="s-identidades">
+      <div class="table-header" style="background:transparent;padding:0 0 20px;border:none">
+        <span>
+          <span class="table-title">Solicitudes de verificación</span>
+          <span class="table-count" id="id-count-label">Cargando...</span>
+        </span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="filtrarId('all')" id="f-all" style="border-color:var(--accent);color:var(--accent)">Todas</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarId('pending')" id="f-pending">Pendientes</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarId('approved')" id="f-approved">Aprobadas</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarId('rejected')" id="f-rejected">Rechazadas</button>
+        </div>
+      </div>
+
+      <div class="id-grid" id="id-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <div class="empty" id="id-empty" style="display:none">
+        <div class="empty-icon">🔐</div>
+        No hay solicitudes en esta categoría
+      </div>
+    </div>
+
+    <!-- ══════ HEMICICLO ══════ -->
+    <div class="section" id="s-hemiciclo">
+      <div class="row">
+        <div style="flex:1.5">
+          <div class="hemi-preview">
+            <canvas id="admin-canvas"></canvas>
+          </div>
+          <div class="config-card">
+            <div class="config-title">Vista previa</div>
+            <div class="row">
+              <div class="field">
+                <div class="field-label">Total de butacas</div>
+                <input type="number" id="hemi-total" value="2847" min="5" max="50000" onchange="actualizarPreviewHemi()">
+              </div>
+              <div class="field">
+                <div class="field-label">Radio interior (px)</div>
+                <input type="number" id="hemi-rin" value="320" min="100" max="800" onchange="actualizarPreviewHemi()">
+              </div>
+              <div class="field">
+                <div class="field-label">Paso entre filas (px)</div>
+                <input type="number" id="hemi-step" value="50" min="20" max="120" onchange="actualizarPreviewHemi()">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="aplicarConfigHemi()">Aplicar al hemiciclo público</button>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div class="config-card">
+            <div class="config-title">Configuración visual</div>
+            <div class="field">
+              <div class="field-label">Nombre del hemiciclo</div>
+              <input type="text" value="Hemiciclo Libre Venezolano">
+            </div>
+            <div class="field">
+              <div class="field-label">Descripción pública</div>
+              <textarea>Espacio de participación democrática de la diáspora venezolana.</textarea>
+            </div>
+            <div class="sep"></div>
+            <div class="config-title" style="margin-top:0">Colores</div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Mostrar butacas vacías</div>
+                <div class="toggle-sub">Sillas sin asignar visibles en gris</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked>
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Animación de reveal</div>
+                <div class="toggle-sub">Luces encendiéndose en simulación</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked>
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              </label>
+            </div>
+            <div class="toggle-row">
+              <div>
+                <div class="toggle-label">Contador público</div>
+                <div class="toggle-sub">Mostrar total de ciudadanos en la UI</div>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked>
+                <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ VOTACION ══════ -->
+    <div class="section" id="s-votacion">
+
+      <div class="vote-control">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <span class="badge active">● Votación activa</span>
+          <span class="mono text-muted">Pregunta 1 de 3</span>
+        </div>
+        <div class="vote-pregunta">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</div>
+
+        <div class="vote-status-bar">
+          <span class="vote-timer" id="vote-timer-admin">48:00:00</span>
+          <span class="badge active">En curso</span>
+          <span class="text-muted" style="font-size:12px">· Cierre automático en 48h</span>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted2);margin-bottom:4px">
+          Participación: <strong style="color:var(--text)" id="vt-pct">43.8%</strong>
+          (<span id="vt-count">1.247</span> de <span id="vt-total">2.847</span> ciudadanos)
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="vt-bar" style="width:43.8%"></div></div>
+
+        <div class="vote-results" id="vr-boxes">
+          <div class="result-box si">
+            <div class="r-label">SÍ</div>
+            <div class="r-count" id="vr-si">763</div>
+            <div class="r-pct" id="vr-si-pct">61.2%</div>
+          </div>
+          <div class="result-box no">
+            <div class="r-label">NO</div>
+            <div class="r-count" id="vr-no">374</div>
+            <div class="r-pct" id="vr-no-pct">30.0%</div>
+          </div>
+          <div class="result-box abs">
+            <div class="r-label">ABS</div>
+            <div class="r-count" id="vr-abs">110</div>
+            <div class="r-pct" id="vr-abs-pct">8.8%</div>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:10px">
+          ⚠ Resultados parciales en fase commit — los votos en texto plano no son visibles hasta la fase reveal.
+        </p>
+      </div>
+
+      <div class="row">
+        <div class="config-card" style="flex:1">
+          <div class="config-title">Controles de votación</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-red" onclick="ctrlVotacion('cerrar')">⏹ Cerrar votación ahora</button>
+            <button class="btn btn-primary" onclick="ctrlVotacion('reveal')">🔓 Iniciar fase Reveal</button>
+            <button class="btn btn-ghost" onclick="ctrlVotacion('siguiente')">→ Activar siguiente pregunta</button>
+            <div class="sep"></div>
+            <button class="btn btn-ghost" onclick="ctrlVotacion('simular')">⚡ Simular votos (demo)</button>
+            <button class="btn btn-ghost" onclick="ctrlVotacion('reset')">↺ Resetear votación</button>
+          </div>
+        </div>
+        <div class="config-card" style="flex:1">
+          <div class="config-title">Configurar nueva votación</div>
+          <div class="field">
+            <div class="field-label">Duración</div>
+            <select>
+              <option>24 horas</option>
+              <option selected>48 horas</option>
+              <option>72 horas</option>
+              <option>7 días</option>
+              <option>Indefinido</option>
+            </select>
+          </div>
+          <div class="field">
+            <div class="field-label">Quórum mínimo</div>
+            <input type="number" value="30" min="0" max="100"> <span style="font-size:11px;color:var(--muted)">% de participación</span>
+          </div>
+          <div class="toggle-row" style="padding:8px 0">
+            <div>
+              <div class="toggle-label">VaV obligatorio</div>
+              <div class="toggle-sub">Requiere commit-reveal para contar</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" checked>
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            </label>
+          </div>
+          <div class="toggle-row" style="padding:8px 0">
+            <div>
+              <div class="toggle-label">Debate habilitado</div>
+              <div class="toggle-sub">Sala de chat activa durante votación</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" checked>
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de votaciones históricas -->
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">Historial de votaciones</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Pregunta</th><th>SÍ</th><th>NO</th><th>ABS</th><th>Participación</th><th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">01</td>
+              <td>¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</td>
+              <td class="mono" style="color:var(--green)">61%</td>
+              <td class="mono" style="color:var(--red)">30%</td>
+              <td class="mono text-muted">9%</td>
+              <td class="mono">1.247 / 2.847</td>
+              <td><span class="badge active">● Activa</span></td>
+            </tr>
+            <tr>
+              <td class="mono">02</td>
+              <td>¿Deberían las elecciones primarias de oposición ser obligatorias...?</td>
+              <td class="mono" style="color:var(--green)">74%</td>
+              <td class="mono" style="color:var(--red)">18%</td>
+              <td class="mono text-muted">8%</td>
+              <td class="mono">2.103 / 2.847</td>
+              <td><span class="badge closed">Cerrada</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ══ MODAL NUEVA PREGUNTA ══ -->
+<div class="modal-overlay" id="modal-nueva-pregunta">
+  <div class="modal">
+    <div class="modal-title">Nueva pregunta para el hemiciclo</div>
+    <div class="field">
+      <div class="field-label">Texto de la pregunta</div>
+      <textarea id="np-texto" placeholder="¿Debería Venezuela...?" rows="3"></textarea>
+    </div>
+    <div class="row">
+      <div class="field">
+        <div class="field-label">Categoría</div>
+        <select id="np-cat">
+          <option>Política</option>
+          <option>Economía</option>
+          <option>Derechos</option>
+          <option>Social</option>
+          <option>Internacional</option>
+          <option>Justicia</option>
+          <option>Electoral</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Estado inicial</div>
+        <select id="np-estado">
+          <option value="revision">En revisión</option>
+          <option value="activa">Activa directamente</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('nueva-pregunta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="crearPregunta()">Crear pregunta</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Supabase ──
+const { createClient } = window.supabase
+const sb = createClient(
+  'https://ayxscmxmnoguktfgveud.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
+)
+
+// ── NAV ──
+const SECTION_META = {
+  dashboard:   { title: 'Dashboard',            sub: 'Resumen general del sistema' },
+  preguntas:   { title: 'Preguntas',            sub: 'Gestión de propuestas y agenda' },
+  identidades: { title: 'Verificaciones',       sub: 'Revisión de identidades anónimas' },
+  hemiciclo:   { title: 'Hemiciclo',            sub: 'Configuración visual del recinto' },
+  votacion:    { title: 'Votación',             sub: 'Control y monitoreo de votaciones' },
+}
+
+function navTo(id, el) {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  if (el) el.classList.add('active')
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'))
+  const s = document.getElementById('s-' + id)
+  if (s) s.classList.add('active')
+  const meta = SECTION_META[id] || {}
+  document.getElementById('topbar-title').textContent = meta.title || id
+  document.getElementById('topbar-sub').textContent   = meta.sub   || ''
+  if (id === 'hemiciclo') setTimeout(drawAdminHemi, 50)
+  if (id === 'identidades') cargarIdentidades()
+  if (id === 'dashboard') cargarStats()
+}
+
+// ── TOAST ──
+function toast(msg, duration = 3000) {
+  const el = document.getElementById('toast')
+  el.textContent = msg
+  el.classList.add('show')
+  setTimeout(() => el.classList.remove('show'), duration)
+}
+
+// ── MODAL ──
+function abrirModal(id) {
+  document.getElementById('modal-' + id).classList.add('show')
+}
+function cerrarModal(id) {
+  document.getElementById('modal-' + id).classList.remove('show')
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show') })
+})
+
+// ── SUPABASE: cargar datos ──
+async function cargarStats() {
+  try {
+    // Pendientes de verificación
+    const { count: pendCount } = await sb
+      .from('verification_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    document.getElementById('stat-pending-id').textContent = pendCount ?? '—'
+    document.getElementById('badge-id').textContent = pendCount ?? 0
+
+    // Butacas asignadas
+    const { count: butacas } = await sb
+      .from('identities')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'approved')
+    if (butacas !== null) {
+      document.getElementById('stat-butacas').textContent = butacas.toLocaleString('es-VE')
+    }
+  } catch (e) {
+    console.warn('Supabase no disponible, usando datos demo:', e.message)
+  }
+}
+
+async function cargarIdentidades() {
+  const grid  = document.getElementById('id-grid')
+  const empty = document.getElementById('id-empty')
+  const label = document.getElementById('id-count-label')
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span></div>'
+
+  try {
+    const { data, error } = await sb
+      .from('verification_requests')
+      .select('id, identity_hash, status, created_at, anon_image_path')
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) throw error
+
+    const items = data || []
+    label.textContent = `${items.length} solicitudes encontradas`
+    if (items.length === 0) {
+      grid.innerHTML = ''
+      empty.style.display = 'block'
+      return
+    }
+    empty.style.display = 'none'
+    grid.innerHTML = items.map(r => renderIdCard(r)).join('')
+  } catch (e) {
+    // Demo fallback
+    label.textContent = 'Modo demo (sin conexión real)'
+    grid.innerHTML = DEMO_IDS.map(r => renderIdCard(r)).join('')
+    empty.style.display = 'none'
+  }
+}
+
+// Demo data para identidades
+const DEMO_IDS = [
+  { id: 'demo-1', identity_hash: 'a3f2c891b4d2e7f0a1b3c5d8e9f2a4b6c7d8e9f0', status: 'pending',  created_at: new Date(Date.now()-3600000).toISOString(),  anon_image_path: null },
+  { id: 'demo-2', identity_hash: '7b1e3f2a9c4d5e6f8a2b3c4d5e6f7a8b9c0d1e2f', status: 'pending',  created_at: new Date(Date.now()-7200000).toISOString(),  anon_image_path: null },
+  { id: 'demo-3', identity_hash: 'c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0', status: 'approved', created_at: new Date(Date.now()-86400000).toISOString(), anon_image_path: null },
+  { id: 'demo-4', identity_hash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b', status: 'rejected', created_at: new Date(Date.now()-172800000).toISOString(), anon_image_path: null },
+]
+
+function renderIdCard(r) {
+  const hash = r.identity_hash || ''
+  const hashShort = hash.slice(0,8).toUpperCase() + '…' + hash.slice(-4).toUpperCase()
+  const ago = tiempoRelativo(r.created_at)
+  const statusBadge = {
+    pending:      '<span class="badge pending">Pendiente</span>',
+    under_review: '<span class="badge review">En revisión</span>',
+    approved:     '<span class="badge approved">✓ Aprobada</span>',
+    rejected:     '<span class="badge rejected">✗ Rechazada</span>',
+  }[r.status] || ''
+
+  const actions = r.status === 'pending' || r.status === 'under_review' ? `
+    <div class="id-actions">
+      <button class="btn btn-green btn-sm" onclick="aprobarId('${r.id}','${hash}',this)">✓ Aprobar</button>
+      <button class="btn btn-red btn-sm"   onclick="rechazarId('${r.id}',this)">✗ Rechazar</button>
+    </div>` : `<div style="font-size:11px;color:var(--muted)">Sin acciones disponibles</div>`
+
+  return `
+  <div class="id-card" id="id-card-${r.id}">
+    <div class="id-card-img">
+      <div class="id-anon-placeholder">
+        <div class="id-anon-face">🙂</div>
+        <div class="id-redacted-bar">Nº DOCUMENTO: ##########</div>
+        <div class="id-redacted-lines">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">Imagen anonimizada por IA</div>
+      </div>
+    </div>
+    <div class="id-card-body">
+      <div class="id-hash">${hashShort}</div>
+      <div class="id-meta">
+        ${statusBadge}
+        <span class="id-time">${ago}</span>
+      </div>
+      ${actions}
+    </div>
+  </div>`
+}
+
+function tiempoRelativo(iso) {
+  if (!iso) return '—'
+  const diff = Date.now() - new Date(iso).getTime()
+  const min  = Math.floor(diff / 60000)
+  const h    = Math.floor(min / 60)
+  const d    = Math.floor(h / 24)
+  if (d > 0)  return `hace ${d}d`
+  if (h > 0)  return `hace ${h}h`
+  if (min > 0)return `hace ${min}min`
+  return 'ahora'
+}
+
+// ── Filtro de identidades ──
+let filtroId = 'all'
+function filtrarId(f) {
+  filtroId = f
+  document.querySelectorAll('[id^="f-"]').forEach(b => {
+    b.style.borderColor = ''
+    b.style.color = ''
+  })
+  const btn = document.getElementById('f-' + f)
+  if (btn) { btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)' }
+  cargarIdentidades()
+}
+
+// ── ACCIONES DE IDENTIDAD ──
+async function aprobarId(requestId, hash, btn) {
+  btn.disabled = true
+  btn.textContent = '...'
+  try {
+    const seat = await aprobarEnSupabase(hash)
+    document.getElementById('id-card-' + requestId)
+      .querySelector('.id-actions').innerHTML =
+      `<span class="badge approved" style="width:100%;justify-content:center">✓ Butaca #${seat} asignada</span>`
+    toast(`Butaca #${seat} asignada — identidad aprobada`)
+    cargarStats()
+  } catch (e) {
+    // Demo mode
+    btn.disabled = false
+    btn.textContent = '✓ Aprobar'
+    document.getElementById('id-card-' + requestId)
+      .querySelector('.id-actions').innerHTML =
+      `<span class="badge approved" style="width:100%;justify-content:center">✓ Aprobada (demo)</span>`
+    toast('Aprobado en modo demo')
+  }
+}
+
+async function rechazarId(requestId, btn) {
+  btn.disabled = true
+  try {
+    await sb.from('verification_requests')
+      .update({ status: 'rejected' })
+      .eq('id', requestId)
+  } catch (e) { /* demo */ }
+  document.getElementById('id-card-' + requestId)
+    .querySelector('.id-actions').innerHTML =
+    `<span class="badge rejected" style="width:100%;justify-content:center">✗ Rechazada</span>`
+  toast('Solicitud rechazada')
+}
+
+async function aprobarEnSupabase(hash) {
+  const { data, error } = await sb.rpc('assign_next_seat', { p_identity_hash: hash })
+  if (error) throw error
+  return data
+}
+
+// ── ACCIONES DE PREGUNTAS ──
+function accionPregunta(btn, accion) {
+  const row = btn.closest('tr')
+  if (accion === 'aprobar') {
+    row.querySelector('td:nth-child(4)').innerHTML = '<span class="badge approved">✓ Aprobada</span>'
+    row.querySelector('.action-row').innerHTML =
+      '<button class="btn btn-green btn-sm" onclick="activarPregunta(this)">▶ Activar</button>' +
+      '<button class="btn btn-ghost btn-sm">✎</button>'
+    toast('Pregunta aprobada y agregada a la agenda')
+    actualizarBadgePreguntas(-1)
+  } else if (accion === 'rechazar') {
+    row.style.opacity = '.4'
+    row.querySelector('.action-row').innerHTML = '<span class="badge rejected">Rechazada</span>'
+    toast('Propuesta rechazada')
+    actualizarBadgePreguntas(-1)
+  } else if (accion === 'editar') {
+    const texto = row.querySelector('td:first-child')?.textContent?.trim()
+    document.getElementById('np-texto').value = texto || ''
+    abrirModal('nueva-pregunta')
+  }
+}
+
+function activarPregunta(btn) {
+  const row = btn.closest('tr')
+  row.querySelector('td:nth-child(4)').innerHTML = '<span class="badge active">● Activa</span>'
+  btn.parentElement.innerHTML =
+    '<button class="btn btn-ghost btn-sm" onclick="navTo(\'votacion\', document.querySelector(\'[data-section=votacion]\'))">⚡ Controlar</button>' +
+    '<button class="btn btn-ghost btn-sm">✎</button>'
+  toast('Pregunta activada — votación abierta')
+}
+
+function actualizarBadgePreguntas(delta) {
+  const b = document.getElementById('badge-preguntas')
+  const n = Math.max(0, (parseInt(b.textContent) || 0) + delta)
+  b.textContent = n
+  if (n === 0) b.style.display = 'none'
+}
+
+// ── CONTROLES DE VOTACION ──
+function ctrlVotacion(accion) {
+  const msgs = {
+    cerrar:    'Votación cerrada — comenzá la fase Reveal cuando estés listo',
+    reveal:    'Fase Reveal iniciada — los ciudadanos pueden revelar sus nonces',
+    siguiente: 'Siguiente pregunta activada',
+    simular:   'Simulando 500 votos...',
+    reset:     'Votación reseteada',
+  }
+  toast(msgs[accion] || accion)
+  if (accion === 'simular') simularVotos()
+}
+
+function simularVotos() {
+  let count = parseInt(document.getElementById('vt-count').textContent.replace('.',''))
+  const total = 2847
+  const add = Math.floor(Math.random() * 300) + 100
+  count = Math.min(total, count + add)
+  const pct = (count / total * 100).toFixed(1)
+  const si  = Math.round(count * 0.612)
+  const no  = Math.round(count * 0.30)
+  const abs = count - si - no
+  document.getElementById('vt-count').textContent = count.toLocaleString('es-VE')
+  document.getElementById('vt-pct').textContent   = pct + '%'
+  document.getElementById('vt-bar').style.width   = pct + '%'
+  document.getElementById('vr-si').textContent  = si
+  document.getElementById('vr-no').textContent  = no
+  document.getElementById('vr-abs').textContent = abs
+  document.getElementById('vr-si-pct').textContent  = (si/count*100).toFixed(1) + '%'
+  document.getElementById('vr-no-pct').textContent  = (no/count*100).toFixed(1) + '%'
+  document.getElementById('vr-abs-pct').textContent = (abs/count*100).toFixed(1) + '%'
+}
+
+// ── TOGGLE SISTEMA ──
+function toggleSistema(key, el) {
+  const state = el.checked ? 'activado' : 'desactivado'
+  const labels = { votacion: 'Votación', observer: 'Modo observador', registro: 'Registros', debate: 'Debate' }
+  toast(`${labels[key] || key} ${state}`)
+}
+
+// ── NUEVA PREGUNTA ──
+function crearPregunta() {
+  const texto = document.getElementById('np-texto').value.trim()
+  const cat   = document.getElementById('np-cat').value
+  if (!texto) { toast('Escribí el texto de la pregunta'); return }
+  // Agregar a la tabla de agenda
+  const tbody = document.getElementById('tb-agenda')
+  const n = tbody.querySelectorAll('tr').length + 1
+  const tr = document.createElement('tr')
+  tr.innerHTML = `
+    <td class="mono text-muted">0${n}</td>
+    <td style="max-width:320px">${texto}</td>
+    <td><span class="tag">${cat}</span></td>
+    <td><span class="badge pending">Pendiente</span></td>
+    <td class="mono">—</td>
+    <td>
+      <div class="action-row">
+        <button class="btn btn-green btn-sm" onclick="activarPregunta(this)">▶ Activar</button>
+        <button class="btn btn-ghost btn-sm">✎</button>
+      </div>
+    </td>`
+  tbody.appendChild(tr)
+  cerrarModal('nueva-pregunta')
+  document.getElementById('np-texto').value = ''
+  toast('Pregunta creada y agregada a la agenda')
+}
+
+// ── HEMICICLO PREVIEW ──
+const PI = Math.PI
+function drawAdminHemi() {
+  const canvas = document.getElementById('admin-canvas')
+  const wrap   = canvas.parentElement
+  const W = wrap.clientWidth  || 600
+  const H = wrap.clientHeight || 260
+  canvas.width  = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, W, H)
+
+  const total  = parseInt(document.getElementById('hemi-total')?.value)  || 2847
+  const R_IN   = parseInt(document.getElementById('hemi-rin')?.value)    || 320
+  const R_STEP = parseInt(document.getElementById('hemi-step')?.value)   || 50
+  const GAP    = 18
+  const A0     = PI * 0.1
+  const SPAN   = PI * 0.8
+
+  const seats = []
+  let n = 0, row = 0
+  while (n < total) {
+    const r = R_IN + row * R_STEP
+    const fullCant = Math.floor(r * SPAN / GAP)
+    const cant = Math.min(fullCant, total - n)
+    for (let i = 0; i < cant; i++) {
+      const t = fullCant > 1 ? i / (fullCant - 1) : 0.5
+      const a = A0 + t * SPAN
+      seats.push({ x: r * Math.cos(a), y: r * Math.sin(a) })
+    }
+    n += cant
+    row++
+  }
+
+  if (seats.length === 0) return
+  const maxR = R_IN + (row - 1) * R_STEP + R_STEP
+  const scale = Math.min(W / (maxR * 2 + 40), H / (maxR + 40)) * 0.85
+  const cx = W / 2, cy = H - 20
+
+  // Background subtle grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)'
+  ctx.lineWidth = 1
+  for (let rr = R_IN; rr <= maxR + R_STEP; rr += R_STEP) {
+    ctx.beginPath()
+    ctx.arc(0, 0, rr, 0, PI * 2)
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.scale(scale, -scale)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.scale(scale, -scale)
+
+  seats.forEach((s, i) => {
+    const pct = i / (seats.length - 1)
+    // Color based on simulated vote
+    let color
+    if (i % 10 < 6)      color = '#22c55e'  // SI
+    else if (i % 10 < 9) color = '#ef4444'  // NO
+    else                  color = '#555'     // ABS / vacío
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, 5, 0, PI * 2)
+    ctx.fillStyle = color + 'cc'
+    ctx.fill()
+  })
+  ctx.restore()
+}
+
+function actualizarPreviewHemi() {
+  drawAdminHemi()
+}
+
+function aplicarConfigHemi() {
+  toast('Configuración aplicada al hemiciclo público')
+}
+
+// ── RELOAD ──
+function recargarDatos() {
+  cargarStats()
+  const secActiva = document.querySelector('.section.active')?.id?.replace('s-','')
+  if (secActiva === 'identidades') cargarIdentidades()
+  toast('Datos actualizados')
+}
+
+// ── TIMER admin ──
+let adminTimerSecs = 48 * 3600
+function tickAdminTimer() {
+  adminTimerSecs = Math.max(0, adminTimerSecs - 1)
+  const h  = String(Math.floor(adminTimerSecs / 3600)).padStart(2,'0')
+  const m  = String(Math.floor((adminTimerSecs % 3600) / 60)).padStart(2,'0')
+  const s  = String(adminTimerSecs % 60).padStart(2,'0')
+  const el = document.getElementById('vote-timer-admin')
+  if (el) el.textContent = `${h}:${m}:${s}`
+}
+setInterval(tickAdminTimer, 1000)
+
+// ── INIT ──
+cargarStats()
+</script>
+</body>
+</html>
