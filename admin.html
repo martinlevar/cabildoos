@@ -1438,6 +1438,15 @@ select option { background: var(--surface); }
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- FULLSCREEN IMAGE VIEWER -->
+<div id="img-fullscreen" onclick="cerrarFullscreen()" style="
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.95);
+  align-items:center;justify-content:center;cursor:zoom-out;flex-direction:column;gap:16px">
+  <img id="img-fullscreen-src" src="" style="max-width:95vw;max-height:88vh;object-fit:contain;border-radius:8px;box-shadow:0 0 60px rgba(0,0,0,.8)">
+  <p style="color:rgba(255,255,255,.5);font-size:12px">Clic en cualquier lugar para cerrar · ESC para cerrar</p>
+</div>
+
 <script>
 // ── Supabase ──
 const { createClient } = window.supabase
@@ -1684,7 +1693,9 @@ function renderIdCard(r) {
   <div class="id-card" id="id-card-${r.id}">
     <div class="id-card-img">
       ${hasImg ? `<img id="img-${r.id}" data-path="${r.anon_image_path}"
-           style="width:100%;height:100%;object-fit:cover;display:none;" alt="Imagen anonimizada">` : ''}
+           style="width:100%;height:100%;object-fit:cover;display:none;cursor:zoom-in;"
+           alt="Imagen anonimizada" title="Clic para ver en pantalla completa"
+           onclick="event.stopPropagation();abrirFullscreen(this.src)">` : ''}
       <div class="id-anon-placeholder" id="ph-${r.id}">
         <div class="id-anon-face">${hasImg ? '⏳' : '🙂'}</div>
         <div class="id-redacted-bar">Nº DOCUMENTO: ##########</div>
@@ -2013,6 +2024,21 @@ function actualizarPreviewHemi() {
 function aplicarConfigHemi() {
   toast('Configuración aplicada al hemiciclo público')
 }
+
+// ── FULLSCREEN IMAGE VIEWER ──
+function abrirFullscreen(src) {
+  if (!src) return
+  const overlay = document.getElementById('img-fullscreen')
+  document.getElementById('img-fullscreen-src').src = src
+  overlay.style.display = 'flex'
+  document.addEventListener('keydown', _fsKeyHandler)
+}
+function cerrarFullscreen() {
+  document.getElementById('img-fullscreen').style.display = 'none'
+  document.getElementById('img-fullscreen-src').src = ''
+  document.removeEventListener('keydown', _fsKeyHandler)
+}
+function _fsKeyHandler(e) { if (e.key === 'Escape') cerrarFullscreen() }
 
 // ── RELOAD ──
 function recargarDatos() {

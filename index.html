@@ -3279,27 +3279,20 @@ async function vpIniciarProceso() {
     fallas.push('No se pudo leer el documento (foto borrosa o con reflejos)')
   }
 
-  // ── PASO 2: Comparar datos ingresados vs OCR ──
+  // ── PASO 2: Comparar datos ingresados vs OCR — los TRES deben coincidir ──
   activarFilaProceso('vpc-r2')
   const match = vpCompararDatos(ocrTexto, nombreUsuario, numDocUsuario, fechaUsuario)
-  if (!match.numDoc) fallas.push(`Número de documento no encontrado en el documento. Ingresaste: ${numDocUsuario}`)
-  if (!match.nombre) fallas.push(`Nombre "${nombreUsuario}" no coincide con el texto del documento`)
+
+  if (!match.numDoc) fallas.push(`Número ${numDocUsuario} no encontrado en el documento`)
+  if (!match.nombre) fallas.push(`Nombre "${nombreUsuario}" no coincide con el documento`)
   if (!match.fecha)  fallas.push(`Fecha de nacimiento ${fechaUsuario} no encontrada en el documento`)
 
-  if (fallas.length === 0 || (match.numDoc && (match.nombre || match.fecha))) {
-    completarFilaProceso('vpc-r2', `Nº doc ✓  · Nombre ${match.nombre ? '✓' : '~'}  · Fecha ${match.fecha ? '✓' : '~'}`)
-    // Limpiar fallas menores si el número coincide y al menos nombre o fecha también
-    fallas = fallas.filter(f => !f.includes('Nombre') && !f.includes('Fecha'))
-    if (!match.numDoc) {
-      // Número no coincide → falla dura, no continuar
-      completarFilaProceso('vpc-r2', `Número de documento no coincide`, true)
-    }
-  } else {
-    completarFilaProceso('vpc-r2', `${fallas.length} dato(s) no coinciden`, true)
-  }
+  const todoCorrecto = match.numDoc && match.nombre && match.fecha
 
-  // Si número no coincide → parar
-  if (!match.numDoc && ocrTexto.length > 20) {
+  if (todoCorrecto) {
+    completarFilaProceso('vpc-r2', 'Número ✓ · Nombre ✓ · Fecha de nacimiento ✓')
+  } else {
+    completarFilaProceso('vpc-r2', `${fallas.length} dato(s) no coinciden — proceso detenido`, true)
     await vpMostrarFallo(fallas)
     return
   }
