@@ -3169,11 +3169,22 @@ function crearIdentidad() { abrirVerificacion() }
 
 function abrirVerificacion() {
   vpCurrentStep = 1
-  vpUploaded.pasaporte = vpUploaded.selfie = vpUploaded.perfil = false
-  document.querySelectorAll('.vpu-zone').forEach(z => z.classList.remove('uploaded'))
-  document.querySelectorAll('.vp-proc-row').forEach(r => r.classList.remove('active','done'))
-  document.getElementById('vp-alias').value = ''
-  document.getElementById('vp-pais').value  = ''
+  vpUploaded['doc-frente'] = vpUploaded['selfie-doc'] = false
+  vpAnonBlob = null
+  document.querySelectorAll('.vpu-zone').forEach(z => {
+    z.classList.remove('uploaded')
+    const thumb = z.querySelector('.vpu-thumb')
+    if (thumb) thumb.remove()
+  })
+  document.querySelectorAll('.vp-proc-row').forEach(r => {
+    r.classList.remove('active','done')
+    r.querySelector('.vp-proc-icon').textContent = '◌'
+    r.querySelector('.vp-proc-sub').textContent = ''
+  })
+  const campos = ['vp-nombre','vp-num-doc','vp-fecha-nac']
+  campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
+  const selects = ['vp-tipo-doc','vp-pais']
+  selects.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
   document.getElementById('vp-btn-s1').disabled = true
   document.getElementById('vp-btn-s2').disabled = true
   vpShowStep(1)
