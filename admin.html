@@ -1624,11 +1624,13 @@ async function cargarIdentidades() {
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)"><span class="spinner"></span></div>'
 
   try {
-    const { data, error } = await sb
+    let query = sb
       .from('verification_requests')
       .select('id, identity_hash, status, created_at, anon_image_path')
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(100)
+    if (filtroId !== 'all') query = query.eq('status', filtroId)
+    const { data, error } = await query
 
     if (error) throw error
 
@@ -1641,10 +1643,11 @@ async function cargarIdentidades() {
     }
     empty.style.display = 'none'
     grid.innerHTML = items.map(r => renderIdCard(r)).join('')
+    cargarImagenesCards()
   } catch (e) {
-    // Demo fallback
-    label.textContent = 'Modo demo (sin conexión real)'
-    grid.innerHTML = DEMO_IDS.map(r => renderIdCard(r)).join('')
+    console.error('Error cargando identidades:', e)
+    label.textContent = `Error: ${e.message || 'sin conexión'}`
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">No se pudieron cargar las solicitudes</div>'
     empty.style.display = 'none'
   }
 }
@@ -1674,14 +1677,23 @@ function renderIdCard(r) {
       <button class="btn btn-red btn-sm"   onclick="rechazarId('${r.id}',this)">✗ Rechazar</button>
     </div>` : `<div style="font-size:11px;color:var(--muted)">Sin acciones disponibles</div>`
 
+  // Imagen: signed URL si hay path, placeholder si no
+  const imgHtml = r.anon_image_path
+    ? `<img src="" data-path="${r.anon_image_path}"
+           style="width:100%;height:100%;object-fit:cover;" alt="Imagen anonimizada"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    : ''
+  const placeholderStyle = r.anon_image_path ? 'display:none' : ''
+
   return `
   <div class="id-card" id="id-card-${r.id}">
     <div class="id-card-img">
-      <div class="id-anon-placeholder">
+      ${imgHtml}
+      <div class="id-anon-placeholder" style="${placeholderStyle}">
         <div class="id-anon-face">🙂</div>
         <div class="id-redacted-bar">Nº DOCUMENTO: ##########</div>
         <div class="id-redacted-lines">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">Imagen anonimizada por IA</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">Sin imagen</div>
       </div>
     </div>
     <div class="id-card-body">
@@ -1693,6 +1705,21 @@ function renderIdCard(r) {
       ${actions}
     </div>
   </div>`
+}
+
+// Carga las signed URLs para las imágenes de las cards
+async function cargarImagenesCards() {
+  const imgs = document.querySelectorAll('.id-card-img img[data-path]')
+  for (const img of imgs) {
+    const path = img.getAttribute('data-path')
+    if (!path) continue
+    try {
+      const { data } = await sb.storage
+        .from('anon-verification')
+        .createSignedUrl(path, 3600)  // válida 1 hora
+      if (data?.signedUrl) img.src = data.signedUrl
+    } catch { /* imagen no cargable */ }
+  }
 }
 
 function tiempoRelativo(iso) {
@@ -1722,43 +1749,74 @@ function filtrarId(f) {
 
 // ── ACCIONES DE IDENTIDAD ──
 async function aprobarId(requestId, hash, btn) {
+  if (!confirm('¿Confirmar aprobación de esta identidad?')) return
   btn.disabled = true
-  btn.textContent = '...'
+  btn.textContent = 'Procesando...'
   try {
-    const seat = await aprobarEnSupabase(hash)
+    // 1. Asignar butaca y marcar identidad como aprobada
+    const { data: seat, error: rpcErr } = await sb.rpc('assign_next_seat', { p_identity_hash: hash })
+    if (rpcErr) throw rpcErr
+
+    // 2. Actualizar estado de la solicitud
+    const { error: updErr } = await sb
+      .from('verification_requests')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+      .eq('id', requestId)
+    if (updErr) throw updErr
+
+    // 3. Registrar decisión del validador
+    const { data: { user } } = await sb.auth.getUser()
+    await sb.from('validator_decisions').insert({
+      verification_request_id: requestId,
+      validator_id: user?.id,
+      decision: 'approved',
+      note: `Butaca #${seat} asignada`
+    })
+
     document.getElementById('id-card-' + requestId)
       .querySelector('.id-actions').innerHTML =
       `<span class="badge approved" style="width:100%;justify-content:center">✓ Butaca #${seat} asignada</span>`
-    toast(`Butaca #${seat} asignada — identidad aprobada`)
+    toast(`✓ Butaca #${seat} asignada — identidad aprobada`)
     cargarStats()
   } catch (e) {
-    // Demo mode
+    console.error('Error aprobando:', e)
     btn.disabled = false
     btn.textContent = '✓ Aprobar'
-    document.getElementById('id-card-' + requestId)
-      .querySelector('.id-actions').innerHTML =
-      `<span class="badge approved" style="width:100%;justify-content:center">✓ Aprobada (demo)</span>`
-    toast('Aprobado en modo demo')
+    toast('Error al aprobar: ' + (e.message || 'intente de nuevo'))
   }
 }
 
 async function rechazarId(requestId, btn) {
+  const motivo = prompt('Motivo del rechazo (opcional):')
+  if (motivo === null) return  // canceló el diálogo
   btn.disabled = true
+  btn.textContent = 'Rechazando...'
   try {
-    await sb.from('verification_requests')
-      .update({ status: 'rejected' })
+    const { error: updErr } = await sb
+      .from('verification_requests')
+      .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
       .eq('id', requestId)
-  } catch (e) { /* demo */ }
-  document.getElementById('id-card-' + requestId)
-    .querySelector('.id-actions').innerHTML =
-    `<span class="badge rejected" style="width:100%;justify-content:center">✗ Rechazada</span>`
-  toast('Solicitud rechazada')
-}
+    if (updErr) throw updErr
 
-async function aprobarEnSupabase(hash) {
-  const { data, error } = await sb.rpc('assign_next_seat', { p_identity_hash: hash })
-  if (error) throw error
-  return data
+    const { data: { user } } = await sb.auth.getUser()
+    await sb.from('validator_decisions').insert({
+      verification_request_id: requestId,
+      validator_id: user?.id,
+      decision: 'rejected',
+      note: motivo || null
+    })
+
+    document.getElementById('id-card-' + requestId)
+      .querySelector('.id-actions').innerHTML =
+      `<span class="badge rejected" style="width:100%;justify-content:center">✗ Rechazada</span>`
+    toast('Solicitud rechazada')
+    cargarStats()
+  } catch (e) {
+    console.error('Error rechazando:', e)
+    btn.disabled = false
+    btn.textContent = '✗ Rechazar'
+    toast('Error al rechazar: ' + (e.message || 'intente de nuevo'))
+  }
 }
 
 // ── ACCIONES DE PREGUNTAS ──

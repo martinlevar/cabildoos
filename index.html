@@ -1845,7 +1845,6 @@ body.on-landing #social-footer.visible { display:flex; }
         </div>
       </div>
       <p class="vp-eta">Tiempo estimado: <b>menos de 24 hs</b></p>
-      <button class="vp-btn-demo" onclick="vpSimularAprobacion()">▶ Simular aprobación del validador (demo)</button>
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cerrar — te avisamos cuando esté listo</button>
     </div>
 
@@ -3262,43 +3261,7 @@ async function vpIniciarProceso() {
   vpShowStep('4a')
 }
 
-async function vpSimularAprobacion() {
-  const btn = document.querySelector('.vp-btn-demo')
-  if (btn) { btn.textContent = 'Procesando...'; btn.disabled = true }
-
-  try {
-    let seatNum
-    if (window._vpSession?.hash) {
-      // Llamada real a Supabase
-      seatNum = await aprobarEnSupabase(window._vpSession.hash)
-    } else {
-      // Fallback demo: simular delay
-      await new Promise(r => setTimeout(r, 1800))
-      seatNum = TOTAL_SEATS + 1
-    }
-    window._vpSession = window._vpSession || {}
-    window._vpSession.seatNum = seatNum
-    document.getElementById('vp-seat-num').textContent =
-      Number(seatNum).toLocaleString('es-VE').replace(',','.')
-    // Mostrar hash abreviado en pantalla de aprobado
-    if (window._vpSession.hash) {
-      const h = window._vpSession.hash
-      const hashShort = h.slice(0,8).toUpperCase() + '…' + h.slice(-4).toUpperCase()
-      const hashEl = document.getElementById('vp-hash-display')
-      if (hashEl) hashEl.textContent = hashShort
-    }
-    vpShowStep(6)
-  } catch (err) {
-    console.error('Error asignando butaca:', err)
-    // Fallback: igualmente avanzamos
-    const seatNum = TOTAL_SEATS + 1
-    document.getElementById('vp-seat-num').textContent =
-      Number(seatNum).toLocaleString('es-VE').replace(',','.')
-    vpShowStep(6)
-  } finally {
-    if (btn) { btn.textContent = 'Simular Aprobación'; btn.disabled = false }
-  }
-}
+// vpSimularAprobacion eliminado — la aprobación ocurre desde el panel de validadores
 
 function vpFinalizar() {
   cerrarVerificacion()
