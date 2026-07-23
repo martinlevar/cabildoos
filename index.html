@@ -2053,8 +2053,8 @@ async function extraerTextoCompleto(file) {
   } finally { URL.revokeObjectURL(url) }
 }
 
-// ── Comparación de datos: OCR vs. datos ingresados ──
-function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac) {
+/// ── Comparación de datos: OCR vs. datos ingresados ──
+function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac, pais) {
   const ocr = ocrTexto.toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')  // quitar acentos
     .replace(/[^a-z0-9\n]/g, ' ').replace(/\s+/g, ' ')
@@ -2108,7 +2108,31 @@ function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac) {
       (tieneDia && tieneAnio)
   }
 
-  return { numDoc: numMatch, nombre: nombreMatch, fecha: fechaMatch }
+  // 4. Nacionalidad / país — buscar en OCR
+  let nacionalidadMatch = true  // permisivo por defecto si no hay país
+  if (pais) {
+    // Mapa de país seleccionado → palabras clave que aparecen en documentos
+    const PAISES = {
+      'Argentina':  ['argentina', 'argentino', 'argentina'],
+      'Venezuela':  ['venezuela', 'venezolano', 'bolivariana'],
+      'Colombia':   ['colombia', 'colombiano', 'colombiana'],
+      'Chile':      ['chile', 'chileno', 'chilena'],
+      'Peru':       ['peru', 'peruano', 'peruana'],
+      'Mexico':     ['mexico', 'mexicano', 'mexicana', 'estados unidos mexicanos'],
+      'Ecuador':    ['ecuador', 'ecuatoriano', 'ecuatoriana'],
+      'Bolivia':    ['bolivia', 'boliviano', 'boliviana'],
+      'Uruguay':    ['uruguay', 'uruguayo', 'uruguaya'],
+      'Paraguay':   ['paraguay', 'paraguayo', 'paraguaya'],
+      'Brasil':     ['brasil', 'brazil', 'brasileiro', 'brasileira'],
+      'España':     ['espana', 'espanol', 'espanola', 'reino de espana'],
+      'USA':        ['united states', 'usa', 'america'],
+    }
+    const claves = PAISES[pais] || [pais.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')]
+    const ocr3 = ocrTexto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    nacionalidadMatch = claves.some(c => ocr3.includes(c))
+  }
+
+  return { numDoc: numMatch, nombre: nombreMatch, fecha: fechaMatch, nacionalidad: nacionalidadMatch }
 }
 
 // ── Detección facial en selfie (solo un archivo ahora) ──
@@ -2141,9 +2165,9 @@ function completarFilaProceso(id, subtexto, isWarn = false) {
 }
 
 // ── Genera imagen compuesta para validadores ──
-// IZQUIERDA: selfie sosteniendo el doc (cara del ciudadano visible)
-// DERECHA: foto del documento con solo la foto del rostro visible, datos bloqueados
-// El validador puede comparar ambas caras sin ver nombre, DNI ni fecha
+// IZQUIERDA: selfie con zona inferior pixelada (cara del ciudadano visible, documento oculto)
+// DERECHA: solo la foto del rostro extraída del documento (sin ningún dato legible)
+// El validador verifica que la persona es real y sostiene un documento — nada más
 function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
   return new Promise((resolve, reject) => {
     if (!selfieDocFile) return reject(new Error('Sin imagen de selfie'))
@@ -2159,10 +2183,10 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
 
     Promise.all([cargarImg(selfieDocFile), cargarImg(docFrenteFile)])
       .then(([selfieImg, docImg]) => {
-        // Canvas apaisado: selfie izquierda + documento derecha
         const OUT_H = 900
-        const OUT_W = docImg ? 1600 : 800
+        const OUT_W = 1600
         const PAD   = 20
+        const HEADER_H = 34
 
         const canvas = document.createElement('canvas')
         canvas.width = OUT_W; canvas.height = OUT_H
@@ -2171,98 +2195,132 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
         ctx.fillStyle = '#0d0d0d'
         ctx.fillRect(0, 0, OUT_W, OUT_H)
 
-        // ── PANEL IZQUIERDO: Selfie completa (cara visible) ──
-        const selfieAreaW = docImg ? OUT_W / 2 - PAD * 1.5 : OUT_W - PAD * 2
-        const selfieAreaH = OUT_H - PAD * 4 - 36
+        // ── PANEL IZQUIERDO: Selfie con zona del documento pixelada ──
+        const selfieAreaW = OUT_W / 2 - PAD * 1.5
+        const selfieAreaH = OUT_H - PAD * 3 - HEADER_H
         const selfieR = selfieImg.naturalWidth / selfieImg.naturalHeight
         let sW = selfieAreaW, sH = sW / selfieR
         if (sH > selfieAreaH) { sH = selfieAreaH; sW = sH * selfieR }
         const sX = PAD + (selfieAreaW - sW) / 2
-        const sY = PAD + 36 + (selfieAreaH - sH) / 2
+        const sY = PAD + HEADER_H + (selfieAreaH - sH) / 2
+
+        // Dibujar selfie completa
+        ctx.imageSmoothingEnabled = true
         ctx.drawImage(selfieImg, sX, sY, sW, sH)
 
+        // Pixelar la mitad inferior de la selfie (donde sostiene el documento)
+        // La cara del ciudadano queda en la parte superior visible
+        const pixZoneY = sY + sH * 0.52  // empieza en el 52% de la imagen
+        const pixZoneH = sH - sH * 0.52
+        const PIX = Math.max(16, Math.floor(sW / 20))
+        const tmpS = document.createElement('canvas')
+        tmpS.width  = Math.ceil(sW / PIX)
+        tmpS.height = Math.ceil(pixZoneH / PIX)
+        const tmpSCtx = tmpS.getContext('2d')
+        tmpSCtx.imageSmoothingEnabled = false
+        // Recortar solo la zona inferior de la selfie
+        const srcY = (pixZoneY - sY) / sH * selfieImg.naturalHeight
+        const srcH = pixZoneH / sH * selfieImg.naturalHeight
+        tmpSCtx.drawImage(selfieImg,
+          0, srcY, selfieImg.naturalWidth, srcH,
+          0, 0, tmpS.width, tmpS.height)
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(tmpS, 0, 0, tmpS.width, tmpS.height, sX, pixZoneY, sW, pixZoneH)
+        ctx.imageSmoothingEnabled = true
+
+        // Overlay oscuro sobre zona pixelada
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'
+        ctx.fillRect(sX, pixZoneY, sW, pixZoneH)
+
+        // Etiqueta sobre zona bloqueada
+        ctx.fillStyle = 'rgba(239,68,68,0.9)'
+        const lblY = pixZoneY + pixZoneH * 0.35
+        ctx.fillRect(sX, lblY, sW, 24)
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 11px sans-serif'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('DOCUMENTO BLOQUEADO', sX + sW / 2, lblY + 12)
+
         // Header panel izquierdo
-        ctx.fillStyle = 'rgba(34,197,94,0.85)'
-        ctx.fillRect(PAD, PAD, selfieAreaW, 30)
+        ctx.fillStyle = 'rgba(34,197,94,0.9)'
+        ctx.fillRect(PAD, PAD, selfieAreaW, HEADER_H)
         ctx.fillStyle = '#000'
         ctx.font = 'bold 13px sans-serif'
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText('✓ SELFIE — ROSTRO DEL CIUDADANO', PAD + selfieAreaW / 2, PAD + 15)
+        ctx.fillText('✓ SELFIE — ROSTRO DEL CIUDADANO', PAD + selfieAreaW / 2, PAD + HEADER_H / 2)
+
+        // ── PANEL DERECHO: Solo la foto del rostro del documento ──
+        const docAreaX = OUT_W / 2 + PAD / 2
+        const docAreaW = OUT_W / 2 - PAD * 1.5
+        const docAreaH = OUT_H - PAD * 3 - HEADER_H
 
         if (docImg) {
-          // ── PANEL DERECHO: Documento con datos bloqueados ──
-          const docAreaX = OUT_W / 2 + PAD / 2
-          const docAreaW = OUT_W / 2 - PAD * 1.5
-          const docAreaH = OUT_H - PAD * 4 - 36
+          // El documento tiene la foto en el tercio izquierdo (~33%)
+          // Extraemos solo esa franja y la mostramos grande
+          const faceRatio = 0.36  // fracción del documento que contiene la foto del rostro
+          const srcFaceW = Math.floor(docImg.naturalWidth * faceRatio)
+          const srcFaceH = docImg.naturalHeight
 
-          // Dibujar el documento entero pixelado primero
-          const docR = docImg.naturalWidth / docImg.naturalHeight
-          let dW = docAreaW, dH = dW / docR
-          if (dH > docAreaH) { dH = docAreaH; dW = dH * docR }
-          const dX = docAreaX + (docAreaW - dW) / 2
-          const dY = PAD + 36 + (docAreaH - dH) / 2
+          // Crear canvas temporal con solo la zona de la cara
+          const faceC = document.createElement('canvas')
+          faceC.width  = srcFaceW
+          faceC.height = srcFaceH
+          const faceCtx = faceC.getContext('2d')
+          faceCtx.imageSmoothingEnabled = true
+          faceCtx.drawImage(docImg, 0, 0, srcFaceW, srcFaceH, 0, 0, srcFaceW, srcFaceH)
 
-          // Pixelado del documento completo
-          const pixSize = Math.max(14, Math.floor(dW / 25))
-          const tmpC = document.createElement('canvas')
-          tmpC.width = Math.ceil(dW / pixSize); tmpC.height = Math.ceil(dH / pixSize)
-          const tmpCtx = tmpC.getContext('2d')
-          tmpCtx.imageSmoothingEnabled = false
-          tmpCtx.drawImage(docImg, 0, 0, docImg.naturalWidth, docImg.naturalHeight, 0, 0, tmpC.width, tmpC.height)
-          ctx.imageSmoothingEnabled = false
-          ctx.drawImage(tmpC, 0, 0, tmpC.width, tmpC.height, dX, dY, dW, dH)
-          ctx.imageSmoothingEnabled = true
+          // Escalar para mostrar dentro del panel derecho con padding
+          const innerPad = 40
+          const maxW = docAreaW - innerPad * 2
+          const maxH = docAreaH - innerPad * 2
+          const faceR = srcFaceW / srcFaceH
+          let fW = maxW, fH = fW / faceR
+          if (fH > maxH) { fH = maxH; fW = fH * faceR }
+          const fX = docAreaX + (docAreaW - fW) / 2
+          const fY = PAD + HEADER_H + (docAreaH - fH) / 2
 
-          // Overlay rojo sobre zona de texto (derecha del doc, ~65% del ancho)
-          const fotoW = dW * 0.33   // la foto del doc ocupa ~33% izquierda
-          const textoX = dX + fotoW
-          const textoW = dW - fotoW
-          ctx.fillStyle = 'rgba(180,0,0,0.45)'
-          ctx.fillRect(textoX, dY, textoW, dH)
-
-          // Etiqueta sobre zona bloqueada
-          ctx.fillStyle = 'rgba(239,68,68,0.95)'
-          ctx.fillRect(textoX, dY + dH * 0.42, textoW, 28)
-          ctx.fillStyle = '#fff'
-          ctx.font = 'bold 12px sans-serif'
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-          ctx.fillText('DNI · FECHA BLOQUEADOS', textoX + textoW / 2, dY + dH * 0.42 + 14)
-
-          // Desbloquear la zona de la foto del documento (izquierda ~33%)
+          // Borde redondeado + sombra
           ctx.save()
-          ctx.beginPath()
-          ctx.rect(dX, dY, fotoW, dH)
-          ctx.clip()
-          ctx.imageSmoothingEnabled = true
-          ctx.drawImage(docImg, 0, 0, docImg.naturalWidth, docImg.naturalHeight, dX, dY, dW, dH)
+          ctx.shadowColor = 'rgba(34,197,94,0.4)'
+          ctx.shadowBlur  = 24
+          ctx.strokeStyle = '#22c55e'
+          ctx.lineWidth   = 4
+          ctx.strokeRect(fX - 2, fY - 2, fW + 4, fH + 4)
           ctx.restore()
 
-          // Borde verde alrededor de la foto del doc
-          ctx.strokeStyle = '#22c55e'
-          ctx.lineWidth = 3
-          ctx.strokeRect(dX, dY, fotoW, dH)
+          ctx.imageSmoothingEnabled = true
+          ctx.drawImage(faceC, 0, 0, srcFaceW, srcFaceH, fX, fY, fW, fH)
 
-          // Header panel derecho
-          ctx.fillStyle = 'rgba(34,197,94,0.85)'
-          ctx.fillRect(docAreaX, PAD, docAreaW, 30)
-          ctx.fillStyle = '#000'
-          ctx.font = 'bold 13px sans-serif'
+        } else {
+          // Sin imagen de documento: mostrar placeholder
+          ctx.fillStyle = 'rgba(255,255,255,0.08)'
+          ctx.fillRect(docAreaX + PAD, PAD + HEADER_H + PAD, docAreaW - PAD * 2, docAreaH - PAD * 2)
+          ctx.fillStyle = 'rgba(255,255,255,0.3)'
+          ctx.font = '14px sans-serif'
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-          ctx.fillText('FOTO DEL DOCUMENTO ✓ · DATOS BLOQUEADOS 🔒', docAreaX + docAreaW / 2, PAD + 15)
-
-          // Divisor vertical
-          ctx.strokeStyle = 'rgba(255,255,255,0.15)'
-          ctx.lineWidth = 1
-          ctx.beginPath()
-          ctx.moveTo(OUT_W / 2, PAD); ctx.lineTo(OUT_W / 2, OUT_H - PAD)
-          ctx.stroke()
+          ctx.fillText('Sin imagen de documento', docAreaX + docAreaW / 2, PAD + HEADER_H + docAreaH / 2)
         }
 
+        // Header panel derecho
+        ctx.fillStyle = 'rgba(34,197,94,0.9)'
+        ctx.fillRect(docAreaX, PAD, docAreaW, HEADER_H)
+        ctx.fillStyle = '#000'
+        ctx.font = 'bold 13px sans-serif'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('ROSTRO EN DOCUMENTO ✓ · DATOS OCULTOS 🔒', docAreaX + docAreaW / 2, PAD + HEADER_H / 2)
+
+        // Divisor vertical
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(OUT_W / 2, PAD); ctx.lineTo(OUT_W / 2, OUT_H - PAD)
+        ctx.stroke()
+
         // Pie de página
-        ctx.fillStyle = 'rgba(255,255,255,0.3)'
+        ctx.fillStyle = 'rgba(255,255,255,0.25)'
         ctx.font = '11px sans-serif'
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
-        ctx.fillText('CabildoOS · Imagen para validación humana · Generada localmente · Datos personales no transmitidos', OUT_W / 2, OUT_H - 6)
+        ctx.fillText('CabildoOS · Validación humana · Sin datos personales transmitidos', OUT_W / 2, OUT_H - 6)
 
         canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.93)
       })
@@ -3363,18 +3421,19 @@ async function vpIniciarProceso() {
     fallas.push('No se pudo leer el documento (foto borrosa o con reflejos)')
   }
 
-  // ── PASO 2: Comparar datos ingresados vs OCR — los TRES deben coincidir ──
+  // ── PASO 2: Comparar datos ingresados vs OCR — TODOS deben coincidir ──
   activarFilaProceso('vpc-r2')
-  const match = vpCompararDatos(ocrTexto, nombreUsuario, numDocUsuario, fechaUsuario)
+  const match = vpCompararDatos(ocrTexto, nombreUsuario, numDocUsuario, fechaUsuario, country)
 
-  if (!match.numDoc) fallas.push(`Número ${numDocUsuario} no encontrado en el documento`)
-  if (!match.nombre) fallas.push(`Nombre "${nombreUsuario}" no coincide con el documento`)
-  if (!match.fecha)  fallas.push(`Fecha de nacimiento ${fechaUsuario} no encontrada en el documento`)
+  if (!match.numDoc)       fallas.push(`Número ${numDocUsuario} no encontrado en el documento`)
+  if (!match.nombre)       fallas.push(`Nombre "${nombreUsuario}" no coincide con el documento`)
+  if (!match.fecha)        fallas.push(`Fecha de nacimiento ${fechaUsuario} no encontrada en el documento`)
+  if (!match.nacionalidad) fallas.push(`País "${country}" no coincide con la nacionalidad del documento`)
 
-  const todoCorrecto = match.numDoc && match.nombre && match.fecha
+  const todoCorrecto = match.numDoc && match.nombre && match.fecha && match.nacionalidad
 
   if (todoCorrecto) {
-    completarFilaProceso('vpc-r2', 'Número ✓ · Nombre ✓ · Fecha de nacimiento ✓')
+    completarFilaProceso('vpc-r2', 'Número ✓ · Nombre ✓ · Fecha ✓ · Nacionalidad ✓')
   } else {
     completarFilaProceso('vpc-r2', `${fallas.length} dato(s) no coinciden — proceso detenido`, true)
     await vpMostrarFallo(fallas)
