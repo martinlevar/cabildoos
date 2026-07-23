@@ -1,0 +1,3848 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cabildoOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:     #f5f5f6;
+  --dark:   #1d1d1d;
+  --navy:   #1a1f3c;
+  --orange: #f76a1e;
+  --mid:    #8a8a8a;
+  --border: rgba(0,0,0,.08);
+  --white:  #ffffff;
+  --green:  #3ecf8e;
+  --red:    #f04545;
+}
+html, body {
+  width:100%; height:100%;
+  font-family: 'Manrope', sans-serif;
+  background: var(--bg);
+  color: var(--dark);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ── SCREENS ── */
+.screen {
+  position: fixed; inset:0;
+  display: flex; flex-direction: column;
+  opacity:0; pointer-events:none;
+  transition: opacity .3s ease;
+}
+.screen.active { opacity:1; pointer-events:all; }
+
+/* ── NAV ── */
+.nav {
+  flex-shrink: 0;
+  height: 58px;
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(245,245,246,.92);
+  backdrop-filter: blur(14px);
+  position: relative; z-index: 50;
+}
+.nav-logo { font-size:17px; font-weight:800; letter-spacing:-.4px; cursor:pointer; }
+.nav-center { display:flex; justify-content:center; align-items:center; }
+.nav-right   { display:flex; justify-content:flex-end; align-items:center; }
+
+.dots-icon { cursor:pointer; padding:8px; border-radius:8px; transition: background .15s; }
+.dots-icon:hover { background: rgba(0,0,0,.06); }
+
+.nav-butaca {
+  width:34px; height:34px; border-radius:50%;
+  border: 2px solid var(--orange);
+  background: rgba(247,106,30,.1);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:var(--orange);
+  cursor:pointer;
+  animation: nav-pulse 2.5s ease-in-out infinite;
+}
+@keyframes nav-pulse {
+  0%,100%{ box-shadow:0 0 0 0 rgba(247,106,30,.4); }
+  60%    { box-shadow:0 0 0 7px rgba(247,106,30,0); }
+}
+
+/* ── LANDING ── */
+#landing .body {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  position:relative;
+}
+/* Subtle radial bg */
+#landing .body::before {
+  content:'';
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 20%, rgba(255,255,255,.9) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(29,29,29,.04) 0%, transparent 70%);
+  pointer-events:none;
+}
+.id-circle {
+  width:118px; height:118px; border-radius:50%;
+  border: 1.5px solid rgba(0,0,0,.14);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; position:relative; overflow:hidden;
+  transition: border-color .3s;
+}
+.id-circle::after {
+  content:'';
+  position:absolute; inset:0; border-radius:50%;
+  background: var(--orange);
+  transform:scale(0); transition:transform .4s cubic-bezier(.4,0,.2,1);
+}
+.id-circle:hover::after { transform:scale(1); }
+.id-circle:hover .ic-plus { color:#fff; }
+.ic-plus {
+  font-size:30px; font-weight:300; color:var(--dark);
+  position:relative; z-index:1; transition:color .25s;
+  line-height:1; margin-top:-2px;
+}
+.id-label { margin-top:18px; font-size:16px; font-weight:500; }
+.avatar-wrap { display:flex; flex-direction:column; align-items:center; display:none; }
+.av-circle {
+  width:118px; height:118px; border-radius:50%;
+  background:var(--navy);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:transform .2s;
+}
+.av-circle:hover { transform:scale(1.04); }
+.av-num { font-size:28px; font-weight:800; color:rgba(255,255,255,.9); }
+
+/* ── OBSERVER BANNER ── */
+#observer-banner {
+  display:none; flex-shrink:0;
+  background:rgba(29,29,29,.88); backdrop-filter:blur(10px);
+  padding:9px 24px; align-items:center; gap:12px; z-index:10;
+}
+#observer-banner.show { display:flex; }
+.ob-dot {
+  width:7px; height:7px; border-radius:50%; background:var(--mid); flex-shrink:0;
+}
+.ob-text { font-size:12px; color:rgba(255,255,255,.6); font-weight:500; flex:1; }
+.ob-text b { color:rgba(255,255,255,.9); font-weight:700; }
+.ob-cta {
+  padding:6px 14px; border-radius:20px;
+  background:var(--orange); color:#fff; border:none;
+  font-family:'Manrope',sans-serif; font-size:11px; font-weight:700;
+  cursor:pointer; transition:background .15s; white-space:nowrap; flex-shrink:0;
+}
+.ob-cta:hover { background:#d45510; }
+
+/* ── CONGRESS ── */
+#congress { overflow:hidden; }
+#congress .body {
+  flex:1; display:flex; flex-direction:column; overflow:hidden; position:relative;
+}
+/* Bg gradients */
+#congress .body::before {
+  content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 55% 45% at 15% 10%, rgba(255,255,255,.85) 0%, transparent 65%),
+    radial-gradient(ellipse 35% 40% at 85% 90%, rgba(29,31,60,.05) 0%, transparent 60%);
+}
+
+/* Question header */
+.q-header {
+  flex-shrink:0;
+  display:flex; align-items:center; gap:14px;
+  padding: 16px 28px;
+  position:relative; z-index:5;
+}
+.q-label { font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
+.q-num   { font-weight:500; color:rgba(138,138,138,.7); letter-spacing:0; }
+.q-text  { font-size:18px; font-weight:500; color:var(--dark); line-height:1.35; letter-spacing:-.2px; }
+/* Nav arrows */
+.q-nav-col {
+  display:flex; flex-direction:column; gap:4px; flex-shrink:0;
+}
+.q-nav-btn {
+  width:28px; height:28px; border-radius:7px;
+  border:1.5px solid var(--border); background:#fff;
+  font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--mid); transition:all .15s; line-height:1;
+}
+.q-nav-btn:hover { border-color:var(--dark); color:var(--dark); background:#f8f8f8; }
+/* Question body */
+.q-body { flex:1; min-width:0; }
+/* Debate button — sits between question and timer */
+.debate-btn {
+  display:flex; align-items:center; gap:7px;
+  padding:8px 14px; border-radius:20px;
+  background:#fff; border:1.5px solid var(--border);
+  font-family:'Manrope',sans-serif; font-size:11px; font-weight:700; color:var(--mid);
+  cursor:pointer; transition:all .2s; white-space:nowrap; flex-shrink:0;
+}
+.debate-btn:hover { border-color:var(--navy); color:var(--navy); }
+.debate-btn.live { border-color:var(--green); color:#1a7a52; background:rgba(62,207,142,.07); }
+.debate-btn.live .debate-dot { background:var(--green); animation:pulse-dot 1.4s ease-in-out infinite; }
+.debate-dot { width:6px; height:6px; border-radius:50%; background:var(--mid); flex-shrink:0; }
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.75)} }
+/* Timer — right side, more compact */
+.q-timer { flex-shrink:0; text-align:right; }
+.t-display { font-size:26px; font-weight:700; letter-spacing:-.4px; font-variant-numeric:tabular-nums; }
+
+/* ── DEBATE PANEL ── */
+#debate-panel {
+  position:fixed; right:-420px; top:58px; bottom:0;
+  width:380px; background:#fff;
+  border-left:1px solid var(--border);
+  display:flex; flex-direction:column;
+  z-index:200; transition:right .32s cubic-bezier(.4,0,.2,1);
+  box-shadow:-8px 0 32px rgba(0,0,0,.07);
+}
+#debate-panel.open { right:0; }
+.dp-header {
+  flex-shrink:0; padding:16px 20px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.dp-header-left { flex:1; min-width:0; }
+.dp-title { font-size:14px; font-weight:800; color:var(--dark); }
+.dp-subtitle {
+  font-size:11px; color:var(--mid); margin-top:1px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.dp-live-badge {
+  display:flex; align-items:center; gap:5px;
+  font-size:10px; font-weight:700; color:#1a7a52;
+  background:rgba(62,207,142,.12); padding:3px 8px; border-radius:20px; flex-shrink:0;
+}
+.dp-close {
+  width:28px; height:28px; border-radius:50%;
+  border:none; background:rgba(0,0,0,.06); cursor:pointer;
+  font-size:16px; color:var(--mid); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; transition:background .15s;
+}
+.dp-close:hover { background:rgba(0,0,0,.12); }
+.dp-messages { flex:1; overflow-y:auto; padding:16px 16px 8px; display:flex; flex-direction:column; gap:12px; }
+.dp-msg { display:flex; flex-direction:column; gap:3px; }
+.dp-msg-head { display:flex; align-items:center; gap:6px; }
+.dp-msg-seat { font-size:10px; font-weight:800; color:var(--orange); }
+.dp-msg-time { font-size:10px; color:var(--mid); }
+.dp-msg-text {
+  font-size:13px; color:var(--dark); line-height:1.5;
+  background:#f5f5f6; border-radius:0 12px 12px 12px;
+  padding:8px 12px; display:inline-block; max-width:90%;
+}
+.dp-msg.mine .dp-msg-text {
+  background:var(--navy); color:#fff;
+  border-radius:12px 0 12px 12px; margin-left:auto;
+}
+.dp-msg.mine .dp-msg-head { flex-direction:row-reverse; }
+.dp-msg.mine .dp-msg-seat { color:rgba(255,255,255,.6); }
+.dp-msg-divider {
+  text-align:center; font-size:10px; font-weight:700;
+  letter-spacing:.08em; color:var(--mid); padding:4px 0;
+}
+.dp-input-row {
+  flex-shrink:0; padding:12px 16px;
+  border-top:1px solid var(--border);
+  display:flex; gap:8px; align-items:center;
+}
+.dp-input {
+  flex:1; padding:10px 14px; border-radius:20px;
+  border:1.5px solid var(--border); outline:none;
+  font-family:'Manrope',sans-serif; font-size:13px; color:var(--dark);
+  transition:border-color .15s; background:#fafafa;
+}
+.dp-input:focus { border-color:var(--navy); background:#fff; }
+.dp-send {
+  width:36px; height:36px; border-radius:50%;
+  background:var(--navy); border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background .15s;
+}
+.dp-send:hover { background:#2a3060; }
+.dp-inactive-note {
+  text-align:center; padding:16px; font-size:12px; color:var(--mid);
+  background:rgba(0,0,0,.03); margin:8px 16px; border-radius:10px;
+}
+
+/* ── BLOQUE MATCH (en Mi Perfil) ── */
+.mp-bloque-wrap {
+  margin-top:4px; border-radius:16px; overflow:hidden;
+  border:1.5px solid rgba(29,31,60,.12);
+  background:linear-gradient(135deg,rgba(26,31,60,.03) 0%,rgba(26,31,60,.07) 100%);
+}
+.mp-bloque-top {
+  padding:14px 16px 10px;
+  display:flex; align-items:center; gap:10px;
+}
+.mp-bloque-badge {
+  font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--navy); background:rgba(26,31,60,.1); padding:3px 8px; border-radius:20px;
+}
+.mp-bloque-title { font-size:14px; font-weight:800; color:var(--navy); flex:1; }
+.mp-bloque-sub   { font-size:12px; color:var(--mid); padding:0 16px 12px; line-height:1.5; }
+.mp-bloque-list  { padding:0 12px 4px; display:flex; flex-direction:column; gap:6px; }
+.mp-bloque-row {
+  display:flex; align-items:center; gap:10px;
+  background:#fff; border-radius:10px; padding:10px 12px;
+}
+.mp-bloque-av {
+  width:32px; height:32px; border-radius:50%;
+  background:var(--navy); display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:#fff; flex-shrink:0;
+}
+.mp-bloque-info { flex:1; }
+.mp-bloque-seat { font-size:12px; font-weight:700; color:var(--dark); }
+.mp-bloque-pct  { font-size:10px; color:var(--mid); margin-top:1px; }
+.mp-bloque-match-pct {
+  font-size:12px; font-weight:800; color:var(--green);
+  background:rgba(62,207,142,.12); padding:2px 8px; border-radius:10px;
+}
+.mp-bloque-cta {
+  display:block; width:calc(100% - 24px); margin:8px 12px 12px;
+  padding:10px; border-radius:10px;
+  background:var(--navy); color:#fff; border:none;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:background .15s; text-align:center;
+}
+.mp-bloque-cta:hover { background:#2a3060; }
+
+/* Canvas area */
+.canvas-area {
+  flex:1; position:relative; overflow:hidden; z-index:1;
+  cursor:grab;
+}
+.canvas-area.dragging { cursor:grabbing; }
+#hemiciclo { position:absolute; inset:0; width:100%; height:100%; }
+
+/* Overlay controls */
+.map-controls {
+  position:absolute; bottom:20px; left:50%;
+  transform:translateX(-50%);
+  display:flex; align-items:center; gap:10px;
+  z-index:10; pointer-events:all;
+}
+.map-btn {
+  background: rgba(255,255,255,.9);
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius:10px; padding:7px 14px;
+  font-family:'Manrope',sans-serif;
+  font-size:12px; font-weight:600; color:var(--dark);
+  cursor:pointer; backdrop-filter:blur(8px);
+  transition:all .15s; white-space:nowrap;
+}
+.map-btn:hover { background:rgba(255,255,255,1); border-color:rgba(0,0,0,.18); }
+.map-btn.orange { background:var(--orange); color:#fff; border-color:transparent; }
+.map-btn.orange:hover { background:#d45510; }
+.citizen-count {
+  background:rgba(29,29,29,.82); color:rgba(255,255,255,.7);
+  border-radius:10px; padding:7px 14px;
+  font-size:12px; font-weight:500;
+  backdrop-filter:blur(8px);
+  pointer-events:all;
+  cursor:pointer; transition:background .15s;
+}
+.citizen-count:hover { background:rgba(29,29,29,.95); }
+.citizen-count b { color:#fff; }
+
+/* ── HEMI CONFIG PANEL ── */
+#hemi-config-panel {
+  position:fixed; right:-360px; top:58px; bottom:0;
+  width:320px; background:#fff;
+  border-left:1px solid var(--border);
+  display:flex; flex-direction:column;
+  z-index:200; transition:right .32s cubic-bezier(.4,0,.2,1);
+  box-shadow:-8px 0 32px rgba(0,0,0,.08);
+}
+#hemi-config-panel.open { right:0; }
+.hcp-header {
+  padding:20px 24px 16px;
+  border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.hcp-title { font-size:15px; font-weight:700; color:var(--dark); }
+.hcp-close {
+  width:28px; height:28px; border-radius:50%;
+  border:none; background:rgba(0,0,0,.06);
+  font-size:16px; color:var(--mid); cursor:pointer; line-height:28px; text-align:center;
+  transition:background .15s;
+}
+.hcp-close:hover { background:rgba(0,0,0,.12); }
+.hcp-body { flex:1; padding:24px; overflow-y:auto; display:flex; flex-direction:column; gap:24px; }
+.hcp-count-display {
+  text-align:center; padding:20px;
+  background:var(--bg); border-radius:16px;
+}
+.hcp-count-big {
+  font-size:52px; font-weight:800; color:var(--dark);
+  letter-spacing:-2px; line-height:1; font-variant-numeric:tabular-nums;
+}
+.hcp-count-label { font-size:12px; color:var(--mid); font-weight:500; margin-top:6px; }
+.hcp-section-lbl {
+  font-size:11px; font-weight:700; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--mid); margin-bottom:10px;
+}
+.hcp-presets {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px;
+}
+.hcp-preset {
+  padding:10px 12px; border-radius:10px;
+  border:1.5px solid var(--border);
+  background:#fff; cursor:pointer; text-align:left;
+  transition:all .15s; font-family:'Manrope',sans-serif;
+}
+.hcp-preset:hover { border-color:var(--orange); background:rgba(247,106,30,.04); }
+.hcp-preset.active { border-color:var(--orange); background:rgba(247,106,30,.08); }
+.hcp-preset-n { font-size:16px; font-weight:800; color:var(--dark); }
+.hcp-preset-lbl { font-size:10px; color:var(--mid); font-weight:500; margin-top:2px; }
+.hcp-slider-wrap { display:flex; flex-direction:column; gap:10px; }
+.hcp-slider {
+  width:100%; -webkit-appearance:none; appearance:none;
+  height:4px; border-radius:99px;
+  background: linear-gradient(to right, var(--orange) 0%, var(--orange) var(--pct, 57%), #e0e0e0 var(--pct, 57%));
+  outline:none; cursor:pointer;
+}
+.hcp-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+  background:var(--orange); border:3px solid #fff;
+  box-shadow:0 2px 8px rgba(247,106,30,.4); cursor:pointer;
+}
+.hcp-slider-labels {
+  display:flex; justify-content:space-between;
+  font-size:10px; color:var(--mid); font-weight:500;
+}
+.hcp-manual { display:flex; gap:8px; align-items:center; }
+.hcp-manual input {
+  flex:1; padding:10px 12px; border-radius:10px;
+  border:1.5px solid var(--border); font-family:'Manrope',sans-serif;
+  font-size:15px; font-weight:700; color:var(--dark); outline:none;
+  transition:border-color .15s;
+}
+.hcp-manual input:focus { border-color:var(--orange); }
+.hcp-apply {
+  padding:10px 18px; border-radius:10px;
+  background:var(--orange); color:#fff;
+  border:none; font-family:'Manrope',sans-serif;
+  font-size:13px; font-weight:700; cursor:pointer;
+  transition:background .15s; white-space:nowrap;
+}
+.hcp-apply:hover { background:#d45510; }
+.hcp-info {
+  padding:14px; border-radius:12px;
+  background:rgba(247,106,30,.06);
+  border:1px solid rgba(247,106,30,.15);
+  font-size:11.5px; color:var(--dark); line-height:1.6;
+}
+.hcp-info b { color:var(--orange); }
+
+/* ── SIMULATION OVERLAY ── */
+#sim-overlay {
+  position:fixed; inset:0; z-index:500;
+  background:#1d1d1d;
+  display:flex; flex-direction:column;
+  opacity:0; pointer-events:none;
+  transition:opacity .4s ease;
+}
+#sim-overlay.open { opacity:1; pointer-events:all; }
+
+#sim-top-bar {
+  flex-shrink:0; height:52px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px;
+  background:rgba(255,255,255,.04);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+#sim-status {
+  font-size:13px; font-weight:600; color:rgba(255,255,255,.7);
+  font-variant-numeric:tabular-nums;
+}
+#sim-cancel {
+  padding:7px 16px; border-radius:8px;
+  border:1px solid rgba(255,255,255,.15);
+  background:transparent; color:rgba(255,255,255,.5);
+  font-family:'Manrope',sans-serif;
+  font-size:12px; font-weight:600; cursor:pointer;
+  transition:all .15s;
+}
+#sim-cancel:hover { border-color:rgba(255,255,255,.4); color:#fff; }
+
+#sim-canvas {
+  flex:1; width:100%; display:block;
+}
+
+/* Winner banner */
+#sim-winner-banner {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(10,10,10,.82);
+  backdrop-filter:blur(16px);
+  opacity:0; pointer-events:none;
+  transition:opacity .5s ease;
+}
+#sim-winner-banner.show { opacity:1; pointer-events:all; }
+#sim-winner-inner {
+  background:#fff;
+  border-radius:24px;
+  padding:40px 48px;
+  max-width:520px; width:calc(100% - 40px);
+  text-align:center;
+  transform:translateY(20px) scale(.96);
+  transition:transform .5s cubic-bezier(.34,1.4,.64,1);
+}
+#sim-winner-banner.show #sim-winner-inner {
+  transform:translateY(0) scale(1);
+}
+.sw-label {
+  font-size:10px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--mid); margin-bottom:12px;
+}
+.sw-question {
+  font-size:17px; font-weight:600; color:var(--dark);
+  line-height:1.35; margin-bottom:28px;
+}
+.sw-bars { display:flex; flex-direction:column; gap:12px; margin-bottom:28px; }
+.sw-bar-row { display:flex; align-items:center; gap:12px; }
+.sw-bar-lbl { font-size:13px; font-weight:800; width:28px; text-align:right; }
+.sw-bar-lbl.si { color:var(--green); }
+.sw-bar-lbl.no { color:var(--red); }
+.sw-bar-track {
+  flex:1; height:12px; background:#f0f0f0; border-radius:99px; overflow:hidden;
+}
+.sw-bar-fill {
+  height:100%; border-radius:99px; width:0%;
+  transition:width 1.4s cubic-bezier(.4,0,.2,1);
+}
+.sw-bar-fill.si { background:var(--green); }
+.sw-bar-fill.no { background:var(--red); }
+.sw-bar-num { font-size:12px; font-weight:700; color:var(--mid); width:50px; text-align:left; }
+#sw-winner-line {
+  font-size:22px; font-weight:800; color:var(--dark);
+  margin-bottom:28px; min-height:30px;
+  animation:none;
+}
+#sw-winner-line.show { animation:pop-in .5s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes pop-in {
+  from { transform:scale(.7); opacity:0; }
+  to   { transform:scale(1);  opacity:1; }
+}
+.sw-close {
+  padding:12px 28px; border-radius:12px; border:none;
+  background:var(--dark); color:#fff;
+  font-family:'Manrope',sans-serif; font-size:14px; font-weight:600;
+  cursor:pointer; transition:background .2s;
+}
+.sw-close:hover { background:#000; }
+
+/* ── CITIZENS LIST PANEL ── */
+#citizens-panel {
+  position:fixed; inset:0; z-index:400;
+  display:flex; flex-direction:column;
+  background:var(--bg);
+  opacity:0; pointer-events:none;
+  transform:translateY(100%);
+  transition:opacity .3s ease, transform .38s cubic-bezier(.4,0,.2,1);
+}
+#citizens-panel.open {
+  opacity:1; pointer-events:all;
+  transform:translateY(0);
+}
+.cl-header {
+  flex-shrink:0;
+  display:flex; align-items:center;
+  padding:20px 28px;
+  border-bottom:1px solid var(--border);
+  background:rgba(245,245,246,.95);
+  backdrop-filter:blur(12px);
+  gap:12px;
+}
+.cl-title { font-size:18px; font-weight:700; }
+.cl-sub   { font-size:13px; color:var(--mid); margin-left:2px; }
+.cl-close {
+  margin-left:auto;
+  padding:8px 18px; border-radius:10px;
+  border:1.5px solid var(--border);
+  background:var(--white); cursor:pointer;
+  font-family:'Manrope',sans-serif;
+  font-size:13px; font-weight:600; color:var(--dark);
+  transition:all .15s;
+}
+.cl-close:hover { background:var(--dark); color:#fff; border-color:var(--dark); }
+.cl-body {
+  flex:1; overflow-y:auto; padding:16px 28px;
+}
+.cl-body::-webkit-scrollbar { width:4px; }
+.cl-body::-webkit-scrollbar-track { background:transparent; }
+.cl-body::-webkit-scrollbar-thumb { background:rgba(0,0,0,.12); border-radius:4px; }
+.cl-list { display:flex; flex-direction:column; gap:2px; max-width:720px; margin:0 auto; }
+.cl-item {
+  display:flex; align-items:center; gap:14px;
+  padding:12px 14px; border-radius:14px;
+  transition:background .15s; cursor:default;
+}
+.cl-item:hover { background:var(--white); }
+.cl-av {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#fff;
+}
+.cl-info { flex:1; min-width:0; }
+.cl-name {
+  font-size:13px; font-weight:700; color:var(--dark);
+  display:flex; align-items:center; gap:8px;
+}
+.cl-badge-sm {
+  font-size:9px; font-weight:600; padding:1px 6px; border-radius:20px; flex-shrink:0;
+}
+.cl-badge-sm.anon { background:rgba(0,0,0,.06); color:#999; }
+.cl-badge-sm.pub  { background:rgba(62,207,142,.12); color:#178a5b; }
+.cl-phrase { font-size:11.5px; color:var(--mid); font-style:italic; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cl-meta   { font-size:10.5px; color:#bbb; margin-top:2px; }
+.cl-num    { font-size:12px; font-weight:700; color:var(--mid); width:50px; text-align:right; flex-shrink:0; }
+.cl-follow-sm {
+  padding:6px 14px; border-radius:8px;
+  border:1.5px solid var(--border);
+  background:transparent; cursor:pointer;
+  font-family:'Manrope',sans-serif;
+  font-size:11px; font-weight:700; color:var(--dark);
+  flex-shrink:0; transition:all .15s; white-space:nowrap;
+}
+.cl-follow-sm:hover { background:var(--dark); color:#fff; border-color:var(--dark); }
+.cl-follow-sm.following { background:rgba(62,207,142,.12); color:#178a5b; border-color:rgba(62,207,142,.3); }
+.cl-me {
+  border:1.5px solid rgba(247,106,30,.3);
+  background:rgba(247,106,30,.04);
+}
+.cl-me .cl-av { border:2px solid var(--orange); }
+.cl-divider {
+  font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--mid); padding:16px 14px 6px; opacity:.6;
+}
+
+/* ── PROFILE CARD ── */
+#profile-card {
+  position:fixed; z-index:200;
+  width:264px;
+  background:var(--white);
+  border-radius:16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06),
+              0 8px 24px rgba(0,0,0,.1),
+              0 24px 48px rgba(0,0,0,.08);
+  padding:18px;
+  opacity:0; pointer-events:none;
+  transition:opacity .15s, transform .15s;
+  transform:translateY(4px);
+}
+#profile-card.visible {
+  opacity:1; pointer-events:all;
+  transform:translateY(0);
+}
+.pc-top { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+.pc-avatar {
+  width:44px; height:44px; border-radius:50%;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; color:#fff;
+  text-transform:uppercase;
+}
+.pc-name { font-size:14px; font-weight:700; color:var(--dark); margin-bottom:2px; }
+.pc-butaca { font-size:11px; color:var(--mid); margin-bottom:4px; }
+.pc-anon-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:10px; font-weight:600;
+  padding:2px 8px; border-radius:20px;
+  letter-spacing:.04em;
+}
+.pc-anon-badge.anon { background:rgba(0,0,0,.06); color:#888; }
+.pc-anon-badge.pub  { background:rgba(62,207,142,.12); color:#178a5b; }
+.pc-anon-badge::before { content:'●'; font-size:7px; }
+
+.pc-phrase {
+  font-size:12.5px; color:var(--mid); font-style:italic;
+  line-height:1.55; margin-bottom:12px;
+  border-left:2px solid rgba(0,0,0,.08); padding-left:10px;
+}
+.pc-votes {
+  font-size:11px; color:var(--mid); margin-bottom:14px;
+  display:flex; align-items:center; gap:6px;
+}
+.pc-votes b { color:var(--dark); }
+.pc-actions { display:flex; gap:8px; }
+.pc-follow {
+  flex:1; padding:9px; border-radius:10px;
+  border:1.5px solid var(--border);
+  background:transparent; cursor:pointer;
+  font-family:'Manrope',sans-serif;
+  font-size:12px; font-weight:700; color:var(--dark);
+  transition:all .2s;
+}
+.pc-follow:hover { background:var(--dark); color:#fff; border-color:var(--dark); }
+.pc-follow.following { background:rgba(62,207,142,.12); color:#178a5b; border-color:rgba(62,207,142,.3); }
+.pc-follow.following:hover { background:rgba(240,69,69,.1); color:#c41e1e; border-color:rgba(240,69,69,.2); }
+.pc-follow.pc-follow:hover { }
+.pc-follow.disabled { opacity:.35; cursor:default; pointer-events:none; }
+.pc-vote-btn {
+  padding:9px 14px; border-radius:10px;
+  border:none; background:var(--orange); color:#fff;
+  font-family:'Manrope',sans-serif;
+  font-size:12px; font-weight:700; cursor:pointer;
+  transition:background .2s;
+}
+.pc-vote-btn:hover { background:#d45510; }
+
+/* ── MODAL ── */
+.modal-bd {
+  position:fixed; inset:0; z-index:300;
+  background:rgba(245,245,246,.75);
+  backdrop-filter:blur(14px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .3s;
+}
+.modal-bd.open { opacity:1; pointer-events:all; }
+.modal {
+  width:100%; max-width:510px; margin:16px;
+  border-radius:20px; overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.06),0 16px 48px rgba(0,0,0,.14);
+  transform:translateY(20px) scale(.98);
+  transition:transform .35s cubic-bezier(.34,1.4,.64,1);
+}
+.modal-bd.open .modal { transform:translateY(0) scale(1); }
+.modal-head { background:var(--dark); padding:22px 26px; }
+.modal-tag { font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--orange); margin-bottom:9px; }
+.modal-title { font-size:19px; font-weight:700; color:#fff; line-height:1.3; letter-spacing:-.2px; margin-bottom:5px; }
+.modal-sub { font-size:13px; color:rgba(255,255,255,.38); }
+.modal-body { background:var(--white); padding:22px 26px; }
+.phase { display:none; }
+.phase.active { display:block; }
+.ph-hint { font-size:13px; color:var(--mid); margin-bottom:18px; line-height:1.6; }
+.vote-row { display:flex; gap:10px; margin-bottom:11px; }
+.v-btn {
+  flex:1; padding:19px 12px; border:none; border-radius:14px;
+  font-family:'Manrope',sans-serif;
+  font-size:19px; font-weight:800; cursor:pointer; transition:all .2s;
+}
+.v-btn.si { background:rgba(62,207,142,.11); color:#178a5b; }
+.v-btn.si:hover { background:var(--green); color:#fff; transform:translateY(-2px); box-shadow:0 8px 24px rgba(62,207,142,.3); }
+.v-btn.no { background:rgba(240,69,69,.09); color:#c41e1e; }
+.v-btn.no:hover { background:var(--red); color:#fff; transform:translateY(-2px); box-shadow:0 8px 24px rgba(240,69,69,.3); }
+.v-small { font-size:11px; color:#c8c8c8; text-align:center; }
+.conf-txt { font-size:14px; color:var(--mid); margin-bottom:14px; line-height:1.6; }
+.conf-txt strong { color:var(--dark); font-size:16px; }
+.vav-block {
+  background:var(--bg); border-radius:12px; padding:13px 15px; margin-bottom:18px;
+  font-family:monospace; font-size:11px; color:#777; line-height:1.85;
+}
+.vav-block b { font-family:'Manrope',sans-serif; font-size:12px; color:var(--dark); display:block; margin-bottom:3px; }
+.two-btns { display:flex; gap:8px; }
+.btn-back,.btn-ok {
+  flex:1; padding:13px; border-radius:12px; border:none;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all .2s;
+}
+.btn-back { background:var(--bg); color:var(--dark); }
+.btn-back:hover { background:#eaeaeb; }
+.btn-ok { background:var(--dark); color:#fff; }
+.btn-ok:hover { background:#111; }
+.commit-row { display:flex; align-items:center; gap:12px; margin-bottom:13px; }
+.commit-ic {
+  width:40px; height:40px; border-radius:50%;
+  background:rgba(247,106,30,.1);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; flex-shrink:0;
+}
+.commit-t { font-weight:700; font-size:15px; }
+.commit-s { font-size:12px; color:var(--mid); margin-top:2px; }
+.commit-info { background:var(--bg); border-radius:12px; padding:13px 15px; margin-bottom:18px; font-size:12px; color:var(--mid); line-height:1.7; }
+.btn-full {
+  width:100%; padding:13px; border:none; border-radius:12px;
+  background:var(--dark); color:#fff;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; cursor:pointer;
+}
+.btn-full:hover { background:#111; }
+.modal-foot {
+  background:var(--bg); border-top:1px solid var(--border);
+  padding:11px 18px; display:flex; align-items:center;
+}
+.vav-lbl { font-size:10px; color:#bbb; }
+.vav-lbl b { color:#999; }
+.btn-cancel {
+  margin-left:auto;
+  background:none; border:none;
+  font-family:'Manrope',sans-serif;
+  font-size:12px; font-weight:600; color:#bbb;
+  cursor:pointer; padding:4px 10px; border-radius:8px;
+  transition:all .15s;
+}
+.btn-cancel:hover { color:var(--dark); background:rgba(0,0,0,.05); }
+.modal-x {
+  background:none; border:none;
+  font-size:20px; color:#ccc; cursor:pointer;
+  width:26px; height:26px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+  transition:all .15s; margin-left:6px;
+}
+.modal-x:hover { background:rgba(0,0,0,.06); color:var(--dark); }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; top:72px; right:20px;
+  transform:translateX(12px);
+  background:var(--dark); color:#fff;
+  padding:11px 18px; border-radius:10px;
+  font-size:13px; font-weight:500; z-index:1000;
+  opacity:0; pointer-events:none; white-space:nowrap;
+  transition:opacity .28s, transform .28s;
+}
+.toast.show { opacity:1; transform:translateX(0); }
+
+/* ── ZOOM HINT ── */
+.zoom-hint {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%, -50%);
+  text-align:center; pointer-events:none;
+  opacity:0; animation:zhint 4s 1.2s ease both;
+}
+@keyframes zhint {
+  0%  { opacity:0; }
+  20% { opacity:1; }
+  80% { opacity:1; }
+  100%{ opacity:0; }
+}
+.zoom-hint p { font-size:13px; color:rgba(0,0,0,.35); font-weight:500; }
+
+/* ── LANDING DUAL BUTTONS ── */
+.av-actions { display:flex; gap:20px; align-items:flex-start; }
+.av-seat-btn, .av-propose-btn {
+  width:108px; height:108px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:transform .2s, box-shadow .2s;
+}
+.av-seat-btn {
+  background:var(--navy);
+  box-shadow:0 4px 24px rgba(29,31,60,.18);
+}
+.av-seat-btn:hover { transform:scale(1.04); box-shadow:0 8px 32px rgba(29,31,60,.26); }
+.av-seat-inner { display:flex; align-items:baseline; gap:1px; }
+.av-seat-hash { font-size:17px; font-weight:700; color:rgba(255,255,255,.55); }
+.av-seat-num  { font-size:38px; font-weight:800; color:#fff; line-height:1; }
+
+.av-propose-btn {
+  background:rgba(247,106,30,.1);
+  border:2px solid rgba(247,106,30,.3);
+  box-shadow:0 4px 24px rgba(247,106,30,.1);
+}
+.av-propose-btn:hover { transform:scale(1.04); background:var(--orange); border-color:var(--orange); box-shadow:0 8px 32px rgba(247,106,30,.28); }
+.av-propose-btn:hover .av-plus { color:#fff; }
+.av-plus { font-size:36px; font-weight:300; color:var(--orange); line-height:1; transition:color .2s; }
+.av-label-seat { font-size:13px; font-weight:500; color:var(--dark); text-align:center; margin-top:10px; }
+.av-label-prop { font-size:13px; font-weight:500; color:var(--mid);  text-align:center; margin-top:10px; }
+
+/* ── MI PERFIL MODAL ── */
+#mi-perfil-overlay {
+  position:fixed; inset:0; z-index:900;
+  background:rgba(29,29,29,.42); backdrop-filter:blur(5px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#mi-perfil-overlay.open { opacity:1; pointer-events:all; }
+#mi-perfil-panel {
+  background:#fff; border-radius:22px;
+  width:360px; padding:28px 28px 24px;
+  box-shadow:0 24px 64px rgba(0,0,0,.18);
+  transform:translateY(14px);
+  transition:transform .26s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+#mi-perfil-overlay.open #mi-perfil-panel { transform:translateY(0); }
+.mp-close {
+  position:absolute; top:14px; right:16px;
+  background:none; border:none; font-size:22px; color:var(--mid);
+  cursor:pointer; padding:4px; line-height:1;
+}
+.mp-close:hover { color:var(--dark); }
+.mp-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+.mp-avatar {
+  width:52px; height:52px; border-radius:50%;
+  background:var(--navy); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.mp-avatar-text { font-size:17px; font-weight:800; color:#fff; }
+.mp-info-seat { font-size:11px; color:var(--mid); font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin-bottom:3px; }
+.mp-info-name { font-size:16px; font-weight:700; color:var(--dark); }
+.mp-phrase { font-size:13px; color:var(--mid); line-height:1.55; font-style:italic; margin-bottom:18px; }
+
+.mp-toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--bg); border-radius:12px;
+  padding:12px 14px; margin-bottom:20px; gap:12px;
+}
+.mp-toggle-lbl { font-size:13px; font-weight:700; color:var(--dark); }
+.mp-toggle-sub { font-size:11px; color:var(--mid); margin-top:2px; }
+.tog-sw {
+  width:40px; height:22px; border-radius:11px;
+  background:#ddd; border:none; cursor:pointer;
+  position:relative; flex-shrink:0; transition:background .2s;
+}
+.tog-sw.on { background:var(--green); }
+.tog-sw::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:16px; height:16px; border-radius:50%;
+  background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.2);
+  transition:left .2s;
+}
+.tog-sw.on::after { left:21px; }
+
+.mp-sec { font-size:11px; font-weight:700; color:var(--mid); letter-spacing:.06em; text-transform:uppercase; margin-bottom:8px; }
+.mp-total { font-size:12px; color:var(--mid); margin-bottom:12px; }
+.mp-total b { color:var(--dark); font-size:14px; }
+.mp-srow { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.mp-slabel { font-size:11px; font-weight:700; width:28px; }
+.mp-slabel.si  { color:var(--green); }
+.mp-slabel.no  { color:#f04545; }
+.mp-slabel.abs { color:#bbb; }
+.mp-sbar-bg { flex:1; height:6px; border-radius:3px; background:rgba(0,0,0,.07); overflow:hidden; }
+.mp-sbar { height:100%; border-radius:3px; transition:width .55s cubic-bezier(.4,0,.2,1); }
+.mp-sbar.si  { background:var(--green); }
+.mp-sbar.no  { background:#f04545; }
+.mp-sbar.abs { background:#bbb; }
+.mp-spct { font-size:11px; font-weight:600; color:var(--mid); width:28px; text-align:right; }
+.mp-cta {
+  display:block; width:100%; margin-top:20px; padding:13px;
+  background:var(--navy); color:#fff; border:none; border-radius:12px;
+  font-family:inherit; font-size:14px; font-weight:700;
+  cursor:pointer; transition:opacity .15s; text-align:center;
+}
+.mp-cta:hover { opacity:.88; }
+
+/* ── PROPONER PREGUNTA MODAL ── */
+#propuesta-overlay {
+  position:fixed; inset:0; z-index:900;
+  background:rgba(29,29,29,.42); backdrop-filter:blur(5px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#propuesta-overlay.open { opacity:1; pointer-events:all; }
+#propuesta-panel {
+  background:#fff; border-radius:22px;
+  width:420px; padding:28px 28px 24px;
+  box-shadow:0 24px 64px rgba(0,0,0,.18);
+  transform:translateY(14px);
+  transition:transform .26s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+#propuesta-overlay.open #propuesta-panel { transform:translateY(0); }
+.pp-title { font-size:18px; font-weight:700; color:var(--dark); margin-bottom:4px; }
+.pp-sub   { font-size:13px; color:var(--mid); margin-bottom:20px; line-height:1.45; }
+.pp-area {
+  width:100%; box-sizing:border-box;
+  border:1.5px solid rgba(0,0,0,.11); border-radius:12px;
+  padding:14px 14px 10px; background:var(--bg);
+  font-family:inherit; font-size:14px; line-height:1.55; color:var(--dark);
+  resize:none; min-height:110px; outline:none;
+  transition:border-color .2s, background .2s;
+}
+.pp-area:focus { border-color:var(--orange); background:#fff; }
+.pp-char { text-align:right; font-size:11px; color:var(--mid); margin:5px 0 18px; }
+.pp-cat-lbl { font-size:11px; font-weight:700; color:var(--mid); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }
+.pp-cats  { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+.pp-cat {
+  padding:5px 13px; border-radius:20px;
+  border:1.5px solid rgba(0,0,0,.11);
+  font-family:inherit; font-size:12px; font-weight:600; color:var(--mid);
+  background:none; cursor:pointer; transition:all .15s;
+}
+.pp-cat:hover { border-color:var(--orange); color:var(--orange); }
+.pp-cat.sel { border-color:var(--orange); color:var(--orange); background:rgba(247,106,30,.08); }
+.pp-note {
+  background:rgba(247,106,30,.07);
+  border-left:3px solid var(--orange);
+  border-radius:0 10px 10px 0;
+  padding:11px 14px; margin-bottom:20px;
+  font-size:12px; color:var(--mid); line-height:1.55;
+}
+.pp-note b { color:var(--orange); }
+.pp-footer { display:flex; gap:10px; }
+.pp-btn-cancel {
+  flex:1; padding:12px; background:none;
+  border:1.5px solid rgba(0,0,0,.12); border-radius:12px;
+  font-family:inherit; font-size:14px; font-weight:600; color:var(--mid);
+  cursor:pointer; transition:all .15s;
+}
+.pp-btn-cancel:hover { border-color:var(--dark); color:var(--dark); }
+.pp-btn-send {
+  flex:2; padding:12px;
+  background:var(--orange); color:#fff; border:none; border-radius:12px;
+  font-family:inherit; font-size:14px; font-weight:700;
+  cursor:pointer; transition:opacity .15s;
+}
+.pp-btn-send:hover { opacity:.88; }
+.pp-btn-send:disabled { opacity:.35; cursor:not-allowed; }
+
+/* ══════════════════════════════════════════════════════════════
+   VERIFY IDENTITY OVERLAY
+══════════════════════════════════════════════════════════════ */
+#verify-overlay {
+  position:fixed; inset:0; z-index:800;
+  background:rgba(10,10,10,.72);
+  backdrop-filter:blur(18px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity .35s ease;
+}
+#verify-overlay.open { opacity:1; pointer-events:all; }
+
+#verify-panel {
+  background:#fff; border-radius:24px;
+  width:min(480px, calc(100vw - 32px));
+  max-height:92vh; overflow-y:auto;
+  padding:36px 36px 32px;
+  position:relative;
+  box-shadow:0 32px 80px rgba(0,0,0,.22), 0 8px 24px rgba(0,0,0,.1);
+  transition:transform .35s cubic-bezier(.34,1.4,.64,1);
+  transform:translateY(24px);
+}
+#verify-overlay.open #verify-panel { transform:translateY(0); }
+
+.vp-close {
+  position:absolute; top:18px; right:18px;
+  width:30px; height:30px; border-radius:50%;
+  border:none; background:rgba(0,0,0,.07); cursor:pointer;
+  font-size:18px; color:var(--mid); line-height:30px; text-align:center;
+  transition:background .15s;
+}
+.vp-close:hover { background:rgba(0,0,0,.13); }
+
+/* Progress bar */
+.vp-progress {
+  display:flex; align-items:center; gap:0; margin-bottom:32px;
+}
+.vp-prog-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:#e0e0e0; flex-shrink:0;
+  transition:background .3s, transform .3s;
+}
+.vp-prog-dot.done { background:var(--green); }
+.vp-prog-dot.active { background:var(--orange); transform:scale(1.4); }
+.vp-prog-line { flex:1; height:2px; background:#e8e8e8; }
+.vp-prog-line.done { background:var(--green); }
+
+/* Steps */
+.vp-step { display:none; animation:vpFadeIn .3s ease; }
+.vp-step.active { display:block; }
+@keyframes vpFadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+.vp-step-icon {
+  width:56px; height:56px; border-radius:16px;
+  background:rgba(247,106,30,.1);
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; margin-bottom:20px;
+}
+.vp-title { font-size:22px; font-weight:800; color:var(--dark); letter-spacing:-.4px; margin-bottom:8px; }
+.vp-sub   { font-size:13px; color:var(--mid); line-height:1.55; margin-bottom:24px; }
+
+/* Form fields */
+.vp-field { margin-bottom:16px; }
+.vp-label { display:block; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
+.vp-input {
+  width:100%; padding:12px 14px; border-radius:12px;
+  border:1.5px solid var(--border); outline:none;
+  font-family:'Manrope',sans-serif; font-size:14px; color:var(--dark);
+  background:#fff; transition:border-color .15s;
+  -webkit-appearance:none; appearance:none;
+}
+.vp-input:focus { border-color:var(--orange); }
+
+/* Buttons */
+.vp-btn-main {
+  width:100%; padding:14px; border-radius:12px;
+  background:var(--orange); color:#fff; border:none;
+  font-family:'Manrope',sans-serif; font-size:14px; font-weight:700;
+  cursor:pointer; margin-top:8px; transition:background .15s;
+}
+.vp-btn-main:hover { background:#d45510; }
+.vp-btn-main:disabled { background:#d0d0d0; cursor:not-allowed; }
+.vp-btn-link {
+  width:100%; padding:10px; border-radius:12px;
+  background:none; border:none; color:var(--mid);
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:500;
+  cursor:pointer; margin-top:4px; transition:color .15s;
+}
+.vp-btn-link:hover { color:var(--dark); }
+.vp-btn-demo {
+  width:100%; padding:11px; border-radius:12px;
+  background:rgba(29,29,29,.06); border:1.5px dashed rgba(0,0,0,.18);
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:600; color:var(--mid);
+  cursor:pointer; margin-top:12px; transition:all .15s;
+}
+.vp-btn-demo:hover { border-color:var(--orange); color:var(--orange); background:rgba(247,106,30,.04); }
+
+/* Upload zones */
+.vp-uploads { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.vpu-zone {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 16px; border-radius:12px;
+  border:1.5px dashed rgba(0,0,0,.14);
+  cursor:pointer; transition:all .18s; position:relative;
+  background:#fafafa;
+}
+.vpu-zone:hover { border-color:var(--orange); background:rgba(247,106,30,.04); }
+.vpu-zone.uploaded { border-color:var(--green); border-style:solid; background:rgba(62,207,142,.05); }
+.vpu-emoji { font-size:22px; flex-shrink:0; }
+.vpu-texts { flex:1; }
+.vpu-name { font-size:13px; font-weight:700; color:var(--dark); }
+.vpu-hint { font-size:11px; color:var(--mid); margin-top:1px; }
+.vpu-check {
+  width:22px; height:22px; border-radius:50%;
+  background:var(--green); color:#fff;
+  font-size:12px; font-weight:700;
+  display:none; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.vpu-zone.uploaded .vpu-check { display:flex; }
+.vp-privacy-note {
+  font-size:11px; color:var(--mid); text-align:center; margin-bottom:16px;
+  padding:8px 12px; background:rgba(0,0,0,.04); border-radius:8px;
+}
+
+/* Processing steps */
+.vp-proc-wrap { padding:8px 0; }
+.vp-proc-row {
+  display:flex; align-items:center; gap:14px;
+  padding:12px 0; border-bottom:1px solid #f0f0f0;
+  opacity:.35; transition:opacity .3s;
+}
+.vp-proc-row:last-child { border-bottom:none; }
+.vp-proc-row.active { opacity:1; }
+.vp-proc-row.done { opacity:1; }
+.vp-proc-icon {
+  width:28px; height:28px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; border:2px solid #e0e0e0; color:#c0c0c0;
+  transition:all .3s;
+}
+.vp-proc-row.active .vp-proc-icon {
+  border-color:var(--orange); color:var(--orange);
+  animation:vpSpin .8s linear infinite;
+}
+.vp-proc-row.done .vp-proc-icon {
+  background:var(--green); border-color:var(--green); color:#fff;
+}
+@keyframes vpSpin { to{transform:rotate(360deg)} }
+.vp-proc-text { font-size:13px; font-weight:600; color:var(--dark); }
+.vp-proc-sub  { font-size:11px; color:var(--mid); margin-top:2px; }
+
+/* Result states */
+.vp-result-badge {
+  width:64px; height:64px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px; font-weight:800; margin-bottom:20px;
+}
+.vp-result-badge.match  { background:rgba(62,207,142,.15); color:var(--green); }
+.vp-result-badge.nomatch{ background:rgba(240,69,69,.12); color:var(--red); }
+
+/* Anonymized preview */
+.vp-anon-box {
+  background:#1d1d1d; border-radius:16px; padding:20px;
+  margin-bottom:20px; position:relative; overflow:hidden;
+}
+.vp-anon-label {
+  font-size:10px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:14px;
+}
+.vp-anon-inner {
+  display:flex; gap:16px; align-items:center;
+}
+.vp-anon-face {
+  width:60px; height:60px; border-radius:50%;
+  background:linear-gradient(135deg,#555,#333);
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  font-size:28px; border:2px solid rgba(255,255,255,.12);
+}
+.vp-anon-data { flex:1; }
+.vp-anon-row {
+  height:10px; border-radius:4px; margin-bottom:8px;
+}
+.vp-anon-row.blur { background:rgba(255,255,255,.12); }
+.vp-anon-row.num  {
+  background:var(--orange); display:flex; align-items:center; padding:0 8px;
+  height:18px;
+}
+.vp-anon-num-txt { font-size:10px; font-weight:700; color:#fff; letter-spacing:.1em; }
+.vp-anon-doc {
+  width:90px; height:54px; border-radius:6px;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  flex-shrink:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:4px;
+}
+.vp-anon-doc-line { height:6px; border-radius:3px; background:rgba(255,255,255,.12); }
+.vp-anon-caption {
+  font-size:10px; color:rgba(255,255,255,.4); text-align:center; margin-top:12px;
+}
+
+/* Pending / waiting */
+.vp-pending-anim {
+  width:64px; height:64px; margin-bottom:20px; position:relative;
+}
+.vp-pending-ring {
+  width:64px; height:64px; border-radius:50%;
+  border:3px solid rgba(247,106,30,.2);
+  border-top-color:var(--orange);
+  animation:vpSpin 1.2s linear infinite;
+}
+.vp-val-box {
+  background:#f5f5f6; border-radius:14px; padding:16px 18px; margin-bottom:20px;
+}
+.vp-val-lbl { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); margin-bottom:12px; }
+.vp-val-rows { display:flex; flex-direction:column; gap:6px; }
+.vp-val-row { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; }
+.vp-val-row.ok  { color:var(--green); }
+.vp-val-row.red { color:var(--red); }
+.vp-eta { font-size:13px; color:var(--mid); margin-bottom:4px; text-align:center; }
+
+/* Approved / seat */
+.vp-approved-wrap { text-align:center; margin-bottom:20px; }
+.vp-approved-ring {
+  width:80px; height:80px; border-radius:50%; margin:0 auto 12px;
+  background:rgba(62,207,142,.12);
+  display:flex; align-items:center; justify-content:center;
+  font-size:36px; color:var(--green);
+  animation:vpPop .5s cubic-bezier(.34,1.8,.64,1);
+}
+@keyframes vpPop { from{transform:scale(0)} to{transform:scale(1)} }
+.vp-seat-badge {
+  display:inline-flex; align-items:baseline; gap:2px;
+  background:var(--dark); border-radius:16px;
+  padding:10px 24px; margin-bottom:8px;
+}
+.vpb-hash { font-size:18px; font-weight:800; color:rgba(255,255,255,.5); }
+.vpb-num  { font-size:42px; font-weight:800; color:#fff; letter-spacing:-1px; }
+.vp-seat-sub { font-size:12px; color:var(--mid); margin-bottom:24px; }
+
+/* ── SPLASH SCREEN ── */
+#splash {
+  position:fixed; inset:0; z-index:9999;
+  background:var(--bg);
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:32px;
+  transition:opacity .65s ease, filter .65s ease;
+}
+#splash.out { opacity:0; filter:blur(12px); pointer-events:none; }
+#splash-canvas { display:block; }
+#splash-wordmark {
+  font-family:'Space Grotesk','Manrope',sans-serif;
+  font-size:44px; font-weight:600; color:var(--dark);
+  letter-spacing:-.03em;
+  opacity:0; transform:translateY(10px);
+  transition:opacity .5s ease, transform .5s ease;
+}
+#splash-wordmark.show { opacity:1; transform:translateY(0); }
+
+/* ── FLOATING SOCIAL FOOTER ── */
+#social-footer {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+  z-index:600; display:none; flex-direction:column; align-items:center; gap:12px;
+  pointer-events:none;
+}
+/* Only show on landing */
+body.on-landing #social-footer.visible { display:flex; }
+
+/* Floating panel above pill */
+.sf-float-panel {
+  width:min(440px, calc(100vw - 40px));
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(20px) saturate(1.8);
+  -webkit-backdrop-filter:blur(20px) saturate(1.8);
+  border:1px solid rgba(255,255,255,.95);
+  border-radius:20px;
+  box-shadow:0 20px 60px rgba(0,0,0,.13), 0 4px 16px rgba(0,0,0,.06);
+  max-height:0; overflow:hidden;
+  pointer-events:all;
+  transition:max-height .32s cubic-bezier(.4,0,.2,1), opacity .22s;
+  opacity:0;
+}
+.sf-float-panel.open { max-height:380px; overflow-y:auto; opacity:1; }
+.sf-panel-inner { padding:20px 20px 16px; }
+
+/* Separated individual pill tabs */
+.sf-tabs-row { display:flex; gap:10px; pointer-events:all; }
+.sf-tab {
+  display:flex; align-items:center; gap:7px;
+  padding:10px 18px; border-radius:30px;
+  border:none; cursor:pointer;
+  font-family:inherit; font-size:12px; font-weight:700; color:var(--mid);
+  background:rgba(255,255,255,.88);
+  backdrop-filter:blur(16px) saturate(1.5);
+  -webkit-backdrop-filter:blur(16px) saturate(1.5);
+  box-shadow:0 4px 20px rgba(0,0,0,.1), 0 1px 4px rgba(0,0,0,.06);
+  border:1px solid rgba(255,255,255,.9);
+  transition:all .18s; white-space:nowrap;
+}
+.sf-tab:hover:not(.active) { color:var(--dark); box-shadow:0 6px 24px rgba(0,0,0,.13); transform:translateY(-1px); }
+.sf-tab.active { background:var(--orange); color:#fff; border-color:var(--orange); box-shadow:0 6px 24px rgba(247,106,30,.32); }
+.sf-tab-icon { font-size:14px; }
+
+/* Proposals list */
+.prop-card {
+  background:var(--bg); border-radius:14px;
+  padding:14px 16px 12px; margin-bottom:12px;
+}
+.prop-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.prop-q { font-size:13px; font-weight:600; color:var(--dark); line-height:1.45; flex:1; }
+.prop-status {
+  flex-shrink:0; font-size:10px; font-weight:700;
+  padding:3px 8px; border-radius:20px; letter-spacing:.03em;
+}
+.prop-status.revision { background:rgba(247,106,30,.12); color:var(--orange); }
+.prop-status.activa   { background:rgba(62,207,142,.14); color:#1a7a52; }
+.prop-status.pleno    { background:rgba(29,31,60,.1); color:var(--navy); }
+
+.prop-poll { margin-bottom:10px; }
+.prop-poll-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.prop-poll-lbl { font-size:11px; font-weight:700; width:24px; }
+.prop-poll-lbl.si  { color:var(--green); }
+.prop-poll-lbl.no  { color:var(--red); }
+.prop-poll-bar-bg  { flex:1; height:5px; border-radius:3px; background:rgba(0,0,0,.08); overflow:hidden; }
+.prop-poll-bar     { height:100%; border-radius:3px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+.prop-poll-bar.si  { background:var(--green); }
+.prop-poll-bar.no  { background:var(--red); }
+.prop-poll-pct     { font-size:11px; font-weight:600; color:var(--mid); width:32px; text-align:right; }
+.prop-poll-total   { font-size:11px; color:var(--mid); }
+
+.prop-share {
+  display:flex; align-items:center; gap:6px;
+  background:none; border:1.5px solid var(--border);
+  border-radius:8px; padding:6px 10px;
+  font-family:inherit; font-size:11px; font-weight:600; color:var(--mid);
+  cursor:pointer; transition:all .15s; width:100%;
+}
+.prop-share:hover { border-color:var(--orange); color:var(--orange); }
+
+/* Social list (seguidores/seguidos) */
+.sf-empty { text-align:center; padding:24px 0; color:var(--mid); font-size:13px; }
+.sf-social-row {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 0; border-bottom:1px solid var(--border);
+}
+.sf-social-row:last-child { border-bottom:none; }
+.sf-soc-av {
+  width:36px; height:36px; border-radius:50%;
+  background:var(--navy); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; color:#fff;
+}
+.sf-soc-name { font-size:13px; font-weight:600; color:var(--dark); }
+.sf-soc-sub  { font-size:11px; color:var(--mid); margin-top:1px; }
+.sf-soc-btn {
+  margin-left:auto; padding:5px 12px;
+  border:1.5px solid var(--border); border-radius:20px;
+  font-family:inherit; font-size:11px; font-weight:600; color:var(--mid);
+  background:none; cursor:pointer; flex-shrink:0; transition:all .15s;
+}
+.sf-soc-btn:hover { border-color:var(--orange); color:var(--orange); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ SPLASH ══════════════ -->
+<div id="splash">
+  <canvas id="splash-canvas"></canvas>
+  <p id="splash-wordmark">cabildoOS</p>
+</div>
+
+<!-- ══════════════ LANDING ══════════════ -->
+<div class="screen active" id="landing">
+  <nav class="nav">
+    <span class="nav-logo">cabildoOS</span>
+    <div class="nav-center">
+      <div class="dots-icon" onclick="entrarComoObservador()" title="Ver el congreso">
+        <svg width="20" height="20" viewBox="0 0 611.48 611.63" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="305.77" cy="305.84" rx="72.76" ry="72.78" fill="#1d1d1d"/>
+          <ellipse cx="305.77" cy="538.8"  rx="72.76" ry="72.78" fill="#1d1d1d"/>
+          <ellipse cx="538.67" cy="538.8"  rx="72.76" ry="72.78" fill="#1d1d1d"/>
+          <ellipse cx="305.72" cy="72.78"  rx="72.76" ry="72.78" fill="#1d1d1d"/>
+          <ellipse cx="538.71" cy="72.78"  rx="72.76" ry="72.78" fill="#1d1d1d"/>
+          <ellipse cx="72.76"  cy="305.8"  rx="72.76" ry="72.78" fill="#1d1d1d"/>
+          <ellipse cx="72.76"  cy="538.85" rx="72.76" ry="72.78" fill="#1d1d1d"/>
+          <ellipse cx="72.86"  cy="72.88"  rx="72.78" ry="72.8"  fill="#1d1d1d"/>
+          <ellipse cx="538.7"  cy="305.82" rx="72.65" ry="72.67" fill="#f76a1e"/>
+        </svg>
+      </div>
+    </div>
+    <div class="nav-right"></div>
+  </nav>
+  <div class="body">
+    <div id="st-noident" style="display:flex;flex-direction:column;align-items:center">
+      <div class="id-circle" onclick="crearIdentidad()">
+        <span class="ic-plus">+</span>
+      </div>
+      <p class="id-label">Crear identidad</p>
+    </div>
+    <div class="avatar-wrap" id="st-ident">
+      <div class="av-actions">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div class="av-seat-btn" onclick="abrirMiPerfil()" title="Ver mi perfil">
+            <div class="av-seat-inner">
+              <span class="av-seat-hash">#</span><span class="av-seat-num">7</span>
+            </div>
+          </div>
+          <p class="av-label-seat">Mi butaca</p>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div class="av-propose-btn" onclick="abrirPropuesta()" title="Proponer pregunta">
+            <span class="av-plus">+</span>
+          </div>
+          <p class="av-label-prop">Proponer</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CONGRESS ══════════════ -->
+<div class="screen" id="congress">
+  <nav class="nav">
+    <span class="nav-logo" onclick="volverALanding()">cabildoOS</span>
+    <div class="nav-center">
+      <div class="nav-butaca" title="Tu butaca #7" onclick="abrirMiPerfil()" style="font-size:11px;gap:0;width:38px">#7</div>
+    </div>
+    <div class="nav-right"></div>
+  </nav>
+  <div id="observer-banner">
+    <div class="ob-dot"></div>
+    <p class="ob-text"><b>Modo observador</b> — Podés explorar el hemiciclo pero no votar</p>
+    <button class="ob-cta" onclick="volverALanding();setTimeout(abrirVerificacion,200)">Crear mi butaca →</button>
+  </div>
+  <div class="body">
+    <div class="q-header">
+      <!-- Nav arrows -->
+      <div class="q-nav-col">
+        <button class="q-nav-btn" onclick="prevPregunta()" title="Pregunta anterior">↑</button>
+        <button class="q-nav-btn" onclick="nextPregunta()" title="Siguiente pregunta">↓</button>
+      </div>
+      <!-- Question text -->
+      <div class="q-body">
+        <p class="q-label">Propuesta <span class="q-num" id="q-num">1 / 3</span></p>
+        <p class="q-text" id="q-text" onclick="abrirModal()" style="cursor:pointer" title="Clic para votar">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</p>
+      </div>
+      <!-- Debate — between question and timer -->
+      <button class="debate-btn live" id="debate-btn" onclick="toggleDebate()">
+        <span class="debate-dot"></span>Debate
+      </button>
+      <!-- Timer -->
+      <div class="q-timer">
+        <p class="q-label" style="text-align:right">Tiempo activo</p>
+        <div class="t-display" id="timer">48:00:00</div>
+      </div>
+    </div>
+    <div class="canvas-area" id="canvas-area">
+      <canvas id="hemiciclo"></canvas>
+      <div class="zoom-hint">
+        <p>Usá la rueda del mouse para explorar<br>el hemiciclo completo</p>
+      </div>
+      <div class="map-controls" id="map-controls">
+        <button class="map-btn orange" onclick="resetCamera()">↵ Mi butaca</button>
+        <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">2.847</b> ciudadanos</div>
+        <button class="map-btn" onclick="zoomOut()">Ver todo</button>
+        <button class="map-btn" onclick="iniciarSimulacion()" style="border-color:rgba(247,106,30,.4);color:var(--orange)">⚡ Simular votación</button>
+        <button class="map-btn" onclick="abrirHemiConfig()" id="btn-hemi-config" style="border-color:rgba(0,0,0,.15)">◈ Hemiciclo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ DEBATE PANEL ══════════════ -->
+<div id="debate-panel">
+  <div class="dp-header">
+    <div class="dp-header-left">
+      <p class="dp-title">Sala de debate</p>
+      <p class="dp-subtitle" id="dp-subtitle">¿Debería Venezuela convocar a una Asamblea Nacional...?</p>
+    </div>
+    <div class="dp-live-badge"><span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo</div>
+    <button class="dp-close" onclick="cerrarDebate()">×</button>
+  </div>
+  <div class="dp-messages" id="dp-messages">
+    <div class="dp-msg-divider">— Sala abierta al comenzar la sesión —</div>
+    <div class="dp-msg">
+      <div class="dp-msg-head"><span class="dp-msg-seat">#341</span><span class="dp-msg-time">hace 47 min</span></div>
+      <span class="dp-msg-text">Esta pregunta es fundamental. Sin una constituyente libre no hay salida institucional real.</span>
+    </div>
+    <div class="dp-msg">
+      <div class="dp-msg-head"><span class="dp-msg-seat">#892</span><span class="dp-msg-time">hace 43 min</span></div>
+      <span class="dp-msg-text">Depende de quién la convoca. Una constituyente sin condiciones previas puede ser peor que lo que tenemos.</span>
+    </div>
+    <div class="dp-msg">
+      <div class="dp-msg-head"><span class="dp-msg-seat">#1204</span><span class="dp-msg-time">hace 38 min</span></div>
+      <span class="dp-msg-text">¿Cómo garantizamos que sea libre si el árbitro es el mismo régimen?</span>
+    </div>
+    <div class="dp-msg">
+      <div class="dp-msg-head"><span class="dp-msg-seat">#67</span><span class="dp-msg-time">hace 31 min</span></div>
+      <span class="dp-msg-text">Exactamente. La pregunta debería incluir condiciones mínimas. Así planteada es demasiado abierta.</span>
+    </div>
+    <div class="dp-msg">
+      <div class="dp-msg-head"><span class="dp-msg-seat">#2190</span><span class="dp-msg-time">hace 22 min</span></div>
+      <span class="dp-msg-text">Voté SÍ porque creo que el proceso puede ser presionado desde abajo. No hay cambio sin riesgo.</span>
+    </div>
+    <div class="dp-msg">
+      <div class="dp-msg-head"><span class="dp-msg-seat">#533</span><span class="dp-msg-time">hace 14 min</span></div>
+      <span class="dp-msg-text">La diáspora no tiene representación real hoy. Cualquier proceso que la incluya ya es un avance.</span>
+    </div>
+    <div class="dp-msg">
+      <div class="dp-msg-head"><span class="dp-msg-seat">#1788</span><span class="dp-msg-time">hace 6 min</span></div>
+      <span class="dp-msg-text">Abstenerse también es una postura legítima. Que quede registrado que no es apatía, es desconfianza fundada.</span>
+    </div>
+  </div>
+  <div class="dp-input-row">
+    <input class="dp-input" id="dp-input" placeholder="Escribí tu argumento..." maxlength="280" onkeydown="if(event.key==='Enter')dpEnviar()">
+    <button class="dp-send" onclick="dpEnviar()" title="Enviar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════ MI PERFIL ══════════════ -->
+<div id="mi-perfil-overlay" onclick="if(event.target===this)cerrarMiPerfil()">
+  <div id="mi-perfil-panel">
+    <button class="mp-close" onclick="cerrarMiPerfil()">×</button>
+    <div class="mp-header">
+      <div class="mp-avatar">
+        <span class="mp-avatar-text">#7</span>
+      </div>
+      <div>
+        <p class="mp-info-seat">Tu butaca</p>
+        <p class="mp-info-name">Ciudadano Verificado</p>
+      </div>
+    </div>
+    <p class="mp-phrase">"Mi butaca en el hemiciclo libre de Venezuela."</p>
+
+    <div class="mp-toggle-row">
+      <div>
+        <p class="mp-toggle-lbl">Perfil público</p>
+        <p class="mp-toggle-sub" id="mp-toggle-sub">Tu identidad está oculta (anónimo)</p>
+      </div>
+      <button class="tog-sw" id="mp-toggle" onclick="togglePerfilPublico()"></button>
+    </div>
+
+    <p class="mp-sec">Mis votaciones</p>
+    <p class="mp-total"><b>23</b> participaciones en el hemiciclo</p>
+    <div class="mp-srow">
+      <span class="mp-slabel si">SÍ</span>
+      <div class="mp-sbar-bg"><div class="mp-sbar si" id="mp-bar-si" style="width:0%"></div></div>
+      <span class="mp-spct">61%</span>
+    </div>
+    <div class="mp-srow">
+      <span class="mp-slabel no">NO</span>
+      <div class="mp-sbar-bg"><div class="mp-sbar no" id="mp-bar-no" style="width:0%"></div></div>
+      <span class="mp-spct">30%</span>
+    </div>
+    <div class="mp-srow">
+      <span class="mp-slabel abs">Abs</span>
+      <div class="mp-sbar-bg"><div class="mp-sbar abs" id="mp-bar-abs" style="width:0%"></div></div>
+      <span class="mp-spct">9%</span>
+    </div>
+
+    <!-- Bloque match — se muestra cuando SI > 10 votos -->
+    <div class="mp-bloque-wrap" id="mp-bloque-wrap">
+      <div class="mp-bloque-top">
+        <span class="mp-bloque-badge">🔗 Afinidad detectada</span>
+        <p class="mp-bloque-title">Bloque potencial</p>
+      </div>
+      <p class="mp-bloque-sub">Votaste SÍ en más de 10 preguntas. Hay ciudadanos con patrones similares — podrían coordinar postura antes de llegar al pleno.</p>
+      <div class="mp-bloque-list">
+        <div class="mp-bloque-row">
+          <div class="mp-bloque-av" style="background:#1a1f3c">M</div>
+          <div class="mp-bloque-info">
+            <p class="mp-bloque-seat">Butaca #341</p>
+            <p class="mp-bloque-pct">SÍ en 18 de 23 preguntas</p>
+          </div>
+          <span class="mp-bloque-match-pct">94%</span>
+        </div>
+        <div class="mp-bloque-row">
+          <div class="mp-bloque-av" style="background:#2d3561">A</div>
+          <div class="mp-bloque-info">
+            <p class="mp-bloque-seat">Butaca #1204</p>
+            <p class="mp-bloque-pct">SÍ en 15 de 21 preguntas</p>
+          </div>
+          <span class="mp-bloque-match-pct">88%</span>
+        </div>
+        <div class="mp-bloque-row">
+          <div class="mp-bloque-av" style="background:#4a4e69">S</div>
+          <div class="mp-bloque-info">
+            <p class="mp-bloque-seat">Butaca #2190</p>
+            <p class="mp-bloque-pct">SÍ en 14 de 22 preguntas</p>
+          </div>
+          <span class="mp-bloque-match-pct">82%</span>
+        </div>
+      </div>
+      <button class="mp-bloque-cta" onclick="showToast('Invitación enviada al bloque')">Unirse al bloque →</button>
+    </div>
+
+    <button class="mp-cta" onclick="cerrarMiPerfil();irACongreso()">Ir al hemiciclo →</button>
+  </div>
+</div>
+
+<!-- ══════════════ PROPONER PREGUNTA ══════════════ -->
+<div id="propuesta-overlay" onclick="if(event.target===this)cerrarPropuesta()">
+  <div id="propuesta-panel">
+    <button class="mp-close" onclick="cerrarPropuesta()">×</button>
+    <p class="pp-title">Proponer pregunta</p>
+    <p class="pp-sub">Tu propuesta llega al comité del hemiciclo. Tus seguidores también podrán responderla como micro-encuesta antes de que llegue al pleno.</p>
+
+    <textarea class="pp-area" id="pp-text" placeholder="¿Debería Venezuela...?" maxlength="280" oninput="actualizarPropuesta()"></textarea>
+    <p class="pp-char"><span id="pp-char-n">0</span> / 280</p>
+
+    <p class="pp-cat-lbl">Categoría</p>
+    <div class="pp-cats">
+      <button class="pp-cat" onclick="selCat(this)">Política</button>
+      <button class="pp-cat" onclick="selCat(this)">Economía</button>
+      <button class="pp-cat" onclick="selCat(this)">Derechos</button>
+      <button class="pp-cat" onclick="selCat(this)">Social</button>
+      <button class="pp-cat" onclick="selCat(this)">Internacional</button>
+      <button class="pp-cat" onclick="selCat(this)">Justicia</button>
+    </div>
+
+    <div class="pp-note">
+      <b>Micro-encuesta para tus seguidores:</b> quienes te siguen podrán votar esta pregunta en su perfil, generando señal antes de llegar al pleno.
+    </div>
+
+    <div class="pp-footer">
+      <button class="pp-btn-cancel" onclick="cerrarPropuesta()">Cancelar</button>
+      <button class="pp-btn-send" id="pp-submit" onclick="enviarPropuesta()" disabled>Proponer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PROFILE CARD ══════════════ -->
+<div id="profile-card">
+  <div class="pc-top">
+    <div class="pc-avatar" id="pc-avatar"></div>
+    <div>
+      <p class="pc-name"   id="pc-name"></p>
+      <p class="pc-butaca" id="pc-butaca"></p>
+      <span class="pc-anon-badge" id="pc-badge"></span>
+    </div>
+  </div>
+  <p class="pc-phrase"  id="pc-phrase"></p>
+  <p class="pc-votes">  <b id="pc-votes-n"></b>&nbsp;votaciones participadas</p>
+  <div class="pc-actions">
+    <button class="pc-follow" id="pc-follow-btn" onclick="toggleFollow()"></button>
+    <button class="pc-vote-btn" onclick="abrirModal(); hideCard()">Votar</button>
+  </div>
+</div>
+
+<!-- ══════════════ MODAL ══════════════ -->
+<div class="modal-bd" id="modal-bd" onclick="checkBdClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <p class="modal-tag">Votación Activa — Sistema VaV</p>
+      <p class="modal-title">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</p>
+      <p class="modal-sub">Tu voto será anónimo y criptográficamente verificable</p>
+    </div>
+    <div class="modal-body">
+      <div class="phase active" id="ph1">
+        <p class="ph-hint">Elegí tu voto. Se sellará con el algoritmo VaV — solo el hash viaja al servidor, nunca tu voto en texto plano.</p>
+        <div class="vote-row">
+          <button class="v-btn si" onclick="elegir('si')">SÍ</button>
+          <button class="v-btn no" onclick="elegir('no')">NO</button>
+        </div>
+        <p class="v-small">El voto es irrevocable una vez confirmado</p>
+      </div>
+      <div class="phase" id="ph2">
+        <p class="conf-txt">Vas a votar <strong id="elec-lbl">SÍ</strong>. ¿Confirmás?</p>
+        <div class="vav-block">
+          <b>Sistema VaV — Commit</b>
+          SHA-256("<span id="voto-txt">si</span>" + ":" + nonce_secreto)<br>
+          → Solo el hash se envía al servidor<br>
+          → El nonce queda guardado en tu dispositivo
+        </div>
+        <div class="two-btns">
+          <button class="btn-back" onclick="showPh(1)">← Volver</button>
+          <button class="btn-ok"   onclick="confirmarVoto()">Confirmar y sellar</button>
+        </div>
+      </div>
+      <div class="phase" id="ph3">
+        <div class="commit-row">
+          <div class="commit-ic">✓</div>
+          <div>
+            <p class="commit-t">Sobre sellado</p>
+            <p class="commit-s">Hash comprometido. Tu voto existe.</p>
+          </div>
+        </div>
+        <div class="commit-info">
+          Cuando el admin cierre la votación, volvé a revelar tu nonce. Sin él, el voto no se cuenta.<br><br>
+          <strong>Usá el mismo dispositivo.</strong> Te avisamos antes del cierre.
+        </div>
+        <button class="btn-full" onclick="cerrarModal()">Entendido — volver al congreso</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="vav-lbl">● Sistema <b>VaV</b> — Votos Anónimos Verificables</span>
+      <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="modal-x" onclick="cerrarModal()">×</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ VERIFY IDENTITY OVERLAY ══════════════ -->
+<div id="verify-overlay" onclick="if(event.target===this)cerrarVerificacion()">
+  <div id="verify-panel">
+    <button class="vp-close" onclick="cerrarVerificacion()">×</button>
+
+    <!-- Progress indicator -->
+    <div class="vp-progress" id="vp-progress">
+      <div class="vp-prog-dot active" data-s="1"></div>
+      <div class="vp-prog-line"></div>
+      <div class="vp-prog-dot" data-s="2"></div>
+      <div class="vp-prog-line"></div>
+      <div class="vp-prog-dot" data-s="3"></div>
+      <div class="vp-prog-line"></div>
+      <div class="vp-prog-dot" data-s="4"></div>
+    </div>
+
+    <!-- ── PASO 1: Datos básicos ── -->
+    <div class="vp-step active" id="vp-s1">
+      <div class="vp-step-icon">🔐</div>
+      <p class="vp-title">Crear tu butaca</p>
+      <p class="vp-sub">Tu identidad se verifica sin que el servidor vea tus datos reales. Todo el procesamiento ocurre en tu dispositivo.</p>
+      <div class="vp-field">
+        <label class="vp-label">¿Cómo querés que te llamen?</label>
+        <input class="vp-input" id="vp-alias" placeholder="Tu nombre o alias público" maxlength="40" oninput="vpCheckStep1()">
+      </div>
+      <div class="vp-field">
+        <label class="vp-label">País de residencia</label>
+        <select class="vp-input" id="vp-pais" onchange="vpCheckStep1()">
+          <option value="">Seleccioná tu país...</option>
+          <option>Argentina</option><option>Chile</option><option>Colombia</option>
+          <option>España</option><option>Estados Unidos</option><option>México</option>
+          <option>Perú</option><option>Uruguay</option><option>Venezuela</option><option>Otro</option>
+        </select>
+      </div>
+      <button class="vp-btn-main" id="vp-btn-s1" onclick="vpGoStep(2)" disabled>Continuar →</button>
+      <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
+    </div>
+
+    <!-- ── PASO 2: Subir fotos ── -->
+    <div class="vp-step" id="vp-s2">
+      <div class="vp-step-icon">📋</div>
+      <p class="vp-title">Documentación</p>
+      <p class="vp-sub">Subí las tres imágenes. Se procesan localmente — nunca llegan al servidor en este estado.</p>
+      <div class="vp-uploads">
+        <div class="vpu-zone" id="vpu-pasaporte" onclick="document.getElementById('f-pasaporte').click()">
+          <input type="file" id="f-pasaporte" accept="image/*" hidden onchange="vpPreview(this,'pasaporte')">
+          <span class="vpu-emoji">📄</span>
+          <div class="vpu-texts">
+            <p class="vpu-name">Foto del pasaporte</p>
+            <p class="vpu-hint">Página abierta con los datos visibles</p>
+          </div>
+          <div class="vpu-check">✓</div>
+        </div>
+        <div class="vpu-zone" id="vpu-selfie" onclick="document.getElementById('f-selfie').click()">
+          <input type="file" id="f-selfie" accept="image/*" hidden onchange="vpPreview(this,'selfie')">
+          <span class="vpu-emoji">🤳</span>
+          <div class="vpu-texts">
+            <p class="vpu-name">Selfie sosteniendo el pasaporte</p>
+            <p class="vpu-hint">Rostro y documento visibles juntos</p>
+          </div>
+          <div class="vpu-check">✓</div>
+        </div>
+        <div class="vpu-zone" id="vpu-perfil" onclick="document.getElementById('f-perfil').click()">
+          <input type="file" id="f-perfil" accept="image/*" hidden onchange="vpPreview(this,'perfil')">
+          <span class="vpu-emoji">🙂</span>
+          <div class="vpu-texts">
+            <p class="vpu-name">Foto de perfil</p>
+            <p class="vpu-hint">Rostro claro, sin filtros ni lentes</p>
+          </div>
+          <div class="vpu-check">✓</div>
+        </div>
+      </div>
+      <p class="vp-privacy-note">🔒 Procesamiento 100% local — nada sube hasta verificar</p>
+      <button class="vp-btn-main" id="vp-btn-s2" onclick="vpIniciarProceso()" disabled>Verificar identidad</button>
+      <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver</button>
+    </div>
+
+    <!-- ── PASO 3: Procesando ── -->
+    <div class="vp-step" id="vp-s3">
+      <div class="vp-step-icon" style="background:rgba(29,29,29,.07)">⚙️</div>
+      <p class="vp-title">Procesando en tu dispositivo</p>
+      <p class="vp-sub">La IA verifica tu documento y anonimiza la imagen antes de enviar.</p>
+      <div class="vp-proc-wrap" id="vp-proc-wrap">
+        <div class="vp-proc-row" id="vpc-r1">
+          <div class="vp-proc-icon">◌</div>
+          <div><p class="vp-proc-text">Leyendo datos del pasaporte</p><p class="vp-proc-sub">OCR sobre imagen local</p></div>
+        </div>
+        <div class="vp-proc-row" id="vpc-r2">
+          <div class="vp-proc-icon">◌</div>
+          <div><p class="vp-proc-text">Verificando coincidencia de datos</p><p class="vp-proc-sub">Match número ↔ selfie</p></div>
+        </div>
+        <div class="vp-proc-row" id="vpc-r3">
+          <div class="vp-proc-icon">◌</div>
+          <div><p class="vp-proc-text">Anonimizando imagen de selfie</p><p class="vp-proc-sub">Redactando número y datos personales</p></div>
+        </div>
+        <div class="vp-proc-row" id="vpc-r4">
+          <div class="vp-proc-icon">◌</div>
+          <div><p class="vp-proc-text">Preparando envío cifrado</p><p class="vp-proc-sub">Solo imagen anonimizada + hash</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PASO 4a: Match ✓ ── -->
+    <div class="vp-step" id="vp-s4a">
+      <div class="vp-result-badge match">✓</div>
+      <p class="vp-title">Identidad verificada</p>
+      <p class="vp-sub">Los datos coinciden. Tu imagen fue anonimizada. Esto es lo único que verá el validador humano:</p>
+      <div class="vp-anon-box">
+        <p class="vp-anon-label">Vista del validador humano</p>
+        <div class="vp-anon-inner">
+          <div class="vp-anon-face">🙂</div>
+          <div class="vp-anon-data">
+            <div class="vp-anon-row num"><span class="vp-anon-num-txt">Nº DOCUMENTO: ##########</span></div>
+            <div class="vp-anon-row blur" style="width:80%"></div>
+            <div class="vp-anon-row blur" style="width:60%"></div>
+            <div class="vp-anon-row blur" style="width:70%"></div>
+          </div>
+          <div class="vp-anon-doc">
+            <div class="vp-anon-doc-line" style="width:70px"></div>
+            <div class="vp-anon-doc-line" style="width:50px;background:rgba(247,106,30,.4)"></div>
+            <div class="vp-anon-doc-line" style="width:60px"></div>
+          </div>
+        </div>
+        <p class="vp-anon-caption">Rostro visible · Número reemplazado · Datos personales redactados</p>
+      </div>
+      <button class="vp-btn-main" onclick="vpGoStep(5)">Enviar para revisión humana →</button>
+    </div>
+
+    <!-- ── PASO 4b: No match ✗ ── -->
+    <div class="vp-step" id="vp-s4b">
+      <div class="vp-result-badge nomatch">✗</div>
+      <p class="vp-title">No pudimos verificar</p>
+      <p class="vp-sub">Los datos no coinciden con el pasaporte fotografiado. Nada fue enviado al servidor.</p>
+      <div class="vp-val-box">
+        <p class="vp-val-lbl">Posibles causas</p>
+        <div class="vp-val-rows">
+          <div class="vp-val-row red">✗ El número no es legible en la foto</div>
+          <div class="vp-val-row red">✗ Los datos ingresados no coinciden</div>
+          <div class="vp-val-row red">✗ La foto del pasaporte está cortada</div>
+        </div>
+      </div>
+      <button class="vp-btn-main" onclick="vpGoStep(2)">Reintentar con nuevas fotos</button>
+      <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
+    </div>
+
+    <!-- ── PASO 5: Validación humana ── -->
+    <div class="vp-step" id="vp-s5">
+      <div class="vp-pending-anim"><div class="vp-pending-ring"></div></div>
+      <p class="vp-title">En revisión</p>
+      <p class="vp-sub">Un validador humano verificará tu solicitud en las próximas horas. En ningún momento verá tus datos reales.</p>
+      <div class="vp-val-box">
+        <p class="vp-val-lbl">El validador confirma</p>
+        <div class="vp-val-rows">
+          <div class="vp-val-row ok">✓ Que es una persona real</div>
+          <div class="vp-val-row ok">✓ Que sostiene un documento físico</div>
+          <div class="vp-val-row ok">✓ Que la imagen no es IA generada</div>
+          <div class="vp-val-row red">✗ No ve el número real del pasaporte</div>
+          <div class="vp-val-row red">✗ No ve nombre ni datos personales</div>
+        </div>
+      </div>
+      <p class="vp-eta">Tiempo estimado: <b>menos de 24 hs</b></p>
+      <button class="vp-btn-demo" onclick="vpSimularAprobacion()">▶ Simular aprobación del validador (demo)</button>
+      <button class="vp-btn-link" onclick="cerrarVerificacion()">Cerrar — te avisamos cuando esté listo</button>
+    </div>
+
+    <!-- ── PASO 6: Aprobado ── -->
+    <div class="vp-step" id="vp-s6">
+      <div class="vp-approved-wrap">
+        <div class="vp-approved-ring">✓</div>
+      </div>
+      <p class="vp-title" style="text-align:center">¡Butaca asignada!</p>
+      <p class="vp-sub" style="text-align:center">Tu identidad fue validada. Sos parte del hemiciclo venezolano.</p>
+      <div style="text-align:center;margin-bottom:8px">
+        <div class="vp-seat-badge">
+          <span class="vpb-hash">#</span><span class="vpb-num" id="vp-seat-num">2848</span>
+        </div>
+      </div>
+      <p class="vp-seat-sub" style="text-align:center">Ciudadano verificado · identidad oculta · VaV activo</p>
+      <p style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;font-family:monospace" id="vp-hash-display"></p>
+      <button class="vp-btn-main" onclick="vpFinalizar()">Ir al hemiciclo →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ HEMI CONFIG PANEL ══════════════ -->
+<div id="hemi-config-panel">
+  <div class="hcp-header">
+    <span class="hcp-title">Configurar Hemiciclo</span>
+    <button class="hcp-close" onclick="cerrarHemiConfig()">×</button>
+  </div>
+  <div class="hcp-body">
+    <div class="hcp-count-display">
+      <div class="hcp-count-big" id="hcp-count-big">2.847</div>
+      <div class="hcp-count-label">ciudadanos activos</div>
+    </div>
+
+    <div>
+      <p class="hcp-section-lbl">Escenarios</p>
+      <div class="hcp-presets" id="hcp-presets">
+        <button class="hcp-preset" data-n="20" onclick="hcpSelectPreset(this)">
+          <div class="hcp-preset-n">20</div>
+          <div class="hcp-preset-lbl">Cabildo local</div>
+        </button>
+        <button class="hcp-preset" data-n="100" onclick="hcpSelectPreset(this)">
+          <div class="hcp-preset-n">100</div>
+          <div class="hcp-preset-lbl">Municipio</div>
+        </button>
+        <button class="hcp-preset" data-n="500" onclick="hcpSelectPreset(this)">
+          <div class="hcp-preset-n">500</div>
+          <div class="hcp-preset-lbl">Regional</div>
+        </button>
+        <button class="hcp-preset" data-n="1000" onclick="hcpSelectPreset(this)">
+          <div class="hcp-preset-n">1.000</div>
+          <div class="hcp-preset-lbl">Asamblea</div>
+        </button>
+        <button class="hcp-preset active" data-n="2847" onclick="hcpSelectPreset(this)">
+          <div class="hcp-preset-n">2.847</div>
+          <div class="hcp-preset-lbl">Actual ★</div>
+        </button>
+        <button class="hcp-preset" data-n="5000" onclick="hcpSelectPreset(this)">
+          <div class="hcp-preset-n">5.000</div>
+          <div class="hcp-preset-lbl">Diáspora</div>
+        </button>
+      </div>
+    </div>
+
+    <div class="hcp-slider-wrap">
+      <p class="hcp-section-lbl">Ajuste fino</p>
+      <input type="range" class="hcp-slider" id="hcp-slider"
+        min="5" max="5000" value="2847" step="1"
+        oninput="hcpSliderMove(this)">
+      <div class="hcp-slider-labels"><span>5</span><span>5.000</span></div>
+    </div>
+
+    <div>
+      <p class="hcp-section-lbl">Número exacto</p>
+      <div class="hcp-manual">
+        <input type="number" id="hcp-input" value="2847" min="5" max="5000"
+          placeholder="ej: 2847" oninput="hcpInputMove(this)">
+        <button class="hcp-apply" onclick="hcpAplicar()">Aplicar →</button>
+      </div>
+    </div>
+
+    <div class="hcp-info">
+      El hemiciclo adapta automáticamente su <b>geometría</b> — radio interior, espaciado entre filas y densidad — para que la forma siempre sea reconocible sin importar el tamaño.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SIMULATION OVERLAY ══════════════ -->
+<div id="sim-overlay">
+  <div id="sim-top-bar">
+    <div id="sim-status">⚡ Revelando votos — <span id="sim-progress">0</span> / 2.847</div>
+    <button id="sim-cancel" onclick="terminarSimulacion()">Cancelar</button>
+  </div>
+  <canvas id="sim-canvas"></canvas>
+  <div id="sim-winner-banner">
+    <div id="sim-winner-inner">
+      <p class="sw-label">Resultado oficial</p>
+      <p class="sw-question">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</p>
+      <div class="sw-bars">
+        <div class="sw-bar-row">
+          <span class="sw-bar-lbl si">SÍ</span>
+          <div class="sw-bar-track"><div class="sw-bar-fill si" id="sw-bar-si"></div></div>
+          <span class="sw-bar-num" id="sw-num-si">0</span>
+        </div>
+        <div class="sw-bar-row">
+          <span class="sw-bar-lbl no">NO</span>
+          <div class="sw-bar-track"><div class="sw-bar-fill no" id="sw-bar-no"></div></div>
+          <span class="sw-bar-num" id="sw-num-no">0</span>
+        </div>
+      </div>
+      <div id="sw-winner-line"></div>
+      <button class="sw-close" onclick="cerrarBanner()">← Ver el recinto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CITIZENS LIST ══════════════ -->
+<div id="citizens-panel">
+  <div class="cl-header">
+    <div>
+      <span class="cl-title">Ciudadanos</span>
+      <span class="cl-sub">— 2.847 butacas en el hemiciclo</span>
+    </div>
+    <button class="cl-close" onclick="cerrarCiudadanos()">← Volver al congreso</button>
+  </div>
+  <div class="cl-body">
+    <div class="cl-list" id="cl-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  SUPABASE CLIENT
+// ══════════════════════════════════════════════════════════════
+const { createClient } = window.supabase
+const sb = createClient(
+  'https://ayxscmxmnoguktfgveud.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
+)
+
+// ── Genera hash SHA-256 real en el browser (Web Crypto API)
+// En producción: SHA256(embedding_facial + nro_pasaporte + fecha_nac + país + nonce)
+// En demo: SHA256(país + nonce + timestamp) — misma función, distintos inputs
+async function generarIdentityHash(country, nonce) {
+  const raw = `${country}:${nonce}:${Date.now()}:cabildoos`
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
+}
+
+// ── Genera nonce criptográfico aleatorio
+function generarNonce() {
+  const arr = new Uint8Array(32)
+  crypto.getRandomValues(arr)
+  return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('')
+}
+
+// ── Genera la imagen anonimizada en canvas → Blob JPEG
+// Esto representa lo que el validador humano recibirá
+function generarImagenAnonimizada(selfieFile) {
+  return new Promise(resolve => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 560; canvas.height = 360
+    const ctx = canvas.getContext('2d')
+
+    const drawAnon = () => {
+      // Fondo neutro
+      ctx.fillStyle = '#f0f0f0'
+      ctx.fillRect(0, 0, 560, 360)
+
+      // --- Lado izquierdo: rostro visible (lo que el validador confirma) ---
+      // Silueta de cabeza (visible, sin datos)
+      ctx.fillStyle = '#d0d0d0'
+      ctx.beginPath(); ctx.arc(110, 140, 70, 0, Math.PI*2); ctx.fill()
+      ctx.fillStyle = '#bbb'
+      ctx.beginPath(); ctx.ellipse(110, 290, 90, 55, 0, 0, Math.PI*2); ctx.fill()
+      // Etiqueta
+      ctx.fillStyle = '#3ecf8e'
+      ctx.fillRect(50, 224, 120, 20)
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText('ROSTRO VISIBLE ✓', 110, 238)
+
+      // --- Lado derecho: documento con datos redactados ---
+      // Marco del documento
+      ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2
+      ctx.fillStyle = '#fff'
+      ctx.beginPath(); ctx.roundRect(220, 60, 300, 200, 8); ctx.fill(); ctx.stroke()
+
+      // Número de pasaporte → REDACTADO con naranja
+      ctx.fillStyle = '#f76a1e'
+      ctx.fillRect(240, 80, 260, 22)
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'left'
+      ctx.fillText('Nº DOCUMENTO:  ##########', 248, 96)
+
+      // Líneas de datos personales → BLOQUEADAS
+      const blurs = [['NOMBRE:', 130], ['FECHA NAC:', 158], ['NACIONALIDAD:', 186], ['VENCIMIENTO:', 214]]
+      blurs.forEach(([label, y]) => {
+        ctx.fillStyle = '#e0e0e0'
+        ctx.fillRect(240, y, 260, 16)
+        ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'
+        ctx.fillText(label + ' ▓▓▓▓▓▓▓▓▓▓▓▓▓', 248, y + 12)
+      })
+
+      // Etiqueta redactado
+      ctx.fillStyle = '#f04545'
+      ctx.fillRect(240, 232, 130, 18)
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'
+      ctx.fillText('DATOS REDACTADOS', 248, 245)
+
+      // ─── Leyenda inferior ───
+      ctx.fillStyle = '#1d1d1d'
+      ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText('CabildoOS — Imagen anonimizada para validación', 280, 310)
+      ctx.fillStyle = '#8a8a8a'; ctx.font = '10px sans-serif'
+      ctx.fillText('El validador confirma identidad real. No ve datos personales.', 280, 328)
+
+      canvas.toBlob(resolve, 'image/jpeg', 0.88)
+    }
+
+    // Si hay selfie real, usarla de fondo antes de redactar
+    if (selfieFile) {
+      const img = new Image()
+      img.onload = () => { ctx.drawImage(img, 0, 0, 200, 360); drawAnon() }
+      img.onerror = drawAnon
+      img.src = URL.createObjectURL(selfieFile)
+    } else {
+      drawAnon()
+    }
+  })
+}
+
+// ── Flujo completo hacia Supabase
+// 1. Inserta identidad (solo hash + país)
+// 2. Sube imagen anonimizada a Storage
+// 3. Inserta solicitud de verificación
+async function enviarVerificacionASupabase(country, selfieFile) {
+  const nonce = generarNonce()
+  const hash  = await generarIdentityHash(country, nonce)
+
+  // 1. Crear registro de identidad
+  const { data: identity, error: idErr } = await sb
+    .from('identities')
+    .insert({ identity_hash: hash, country, status: 'pending' })
+    .select('id, identity_hash')
+    .single()
+
+  if (idErr) throw new Error('Error creando identidad: ' + idErr.message)
+
+  // 2. Generar y subir imagen anonimizada
+  const anonBlob = await generarImagenAnonimizada(selfieFile)
+  const filePath = `requests/${identity.id}/selfie_anon.jpg`
+
+  const { error: uploadErr } = await sb.storage
+    .from('anon-verification')
+    .upload(filePath, anonBlob, { contentType: 'image/jpeg', upsert: false })
+
+  if (uploadErr) throw new Error('Error subiendo imagen: ' + uploadErr.message)
+
+  // 3. Crear solicitud de verificación
+  const { data: request, error: reqErr } = await sb
+    .from('verification_requests')
+    .insert({
+      identity_hash: hash,
+      anon_image_path: filePath,
+      status: 'pending'
+    })
+    .select('id')
+    .single()
+
+  if (reqErr) throw new Error('Error creando solicitud: ' + reqErr.message)
+
+  // Guardamos en memoria para usar en pasos siguientes
+  window._vpSession = {
+    hash,
+    nonce,
+    identityId: identity.id,
+    requestId: request.id,
+    filePath
+  }
+
+  return { hash, requestId: request.id }
+}
+
+// ── Aprobar via Supabase (llama a la función SQL assign_next_seat)
+async function aprobarEnSupabase(hash) {
+  const { data, error } = await sb.rpc('assign_next_seat', { p_identity_hash: hash })
+  if (error) throw new Error('Error asignando butaca: ' + error.message)
+  return data  // número de butaca asignado
+}
+
+// ── Consultar estado de una solicitud (polling)
+async function consultarEstado(requestId) {
+  const { data } = await sb
+    .from('verification_requests')
+    .select('status')
+    .eq('id', requestId)
+    .single()
+  return data?.status
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DATA & PROFILES
+// ══════════════════════════════════════════════════════════════
+let TOTAL_SEATS = 2847
+const MY_SEAT     = 7
+
+const PHRASES = [
+  'Venezuela libre y soberana.',
+  'Por los que no pueden estar aquí.',
+  'La democracia no se negocia.',
+  'Desde el exilio, mi voto vale igual.',
+  'Madrid presente. Venezuela en el corazón.',
+  'Mi tierra merece algo mejor.',
+  'Ciudadano del mundo, venezolano del alma.',
+  'No olvidamos. No callamos. No nos rendimos.',
+  'La patria nos une a pesar de la distancia.',
+  'Cada voto cuenta. Cada voz importa.',
+  'Construyendo desde la diáspora.',
+  'Aquí desde Buenos Aires, pensando en Caracas.',
+  'La revolución de los datos ya comenzó.',
+  'Transparencia o nada.',
+  'Resisto porque creo.',
+  'Santiago de Chile. Venezolano de corazón.',
+  'Nueva York presente en el hemiciclo.',
+  'El futuro es participativo.',
+  'Joven, venezolana y comprometida.',
+  'Esto es lo más cerca que he estado del congreso.',
+]
+const NAMES = [
+  'Ana M.','Carlos R.','María J.','Luis A.','Valentina C.',
+  'Diego F.','Gabriela P.','Andrés T.','Sofía L.','Miguel Á.',
+  'Carmen V.','Jesús M.','Isabella R.','José G.','Fernanda S.',
+  'Daniel B.','Adriana O.','Pedro N.','Laura H.','Alejandro Z.',
+  'Mónica V.','Roberto C.','Patricia F.','Eduardo M.','Claudia R.',
+]
+const AVATAR_COLORS = [
+  '#1a1f3c','#2d3561','#4a4e69','#6b6f8a','#374151',
+  '#065f46','#1e40af','#6d28d9','#7c2d12','#9d174d',
+]
+
+function lcg(seed) {
+  return ((seed * 1664525 + 1013904223) & 0x7fffffff) >>> 0
+}
+function getProfile(num) {
+  if (num === MY_SEAT) return {
+    isMe: true, isAnon: false,
+    name: 'Tú', displayName: 'Tú — Butaca #7',
+    phrase: 'Mi butaca en el hemiciclo libre de Venezuela.',
+    votes: 3, color: '#f76a1e',
+    initials: '7',
+  }
+  let s = lcg(num)
+  const isAnon  = (s % 100) < 58 ; s = lcg(s)
+  const nIdx    = s % NAMES.length ; s = lcg(s)
+  const pIdx    = s % PHRASES.length ; s = lcg(s)
+  const votes   = 1 + (s % 29) ; s = lcg(s)
+  const cIdx    = s % AVATAR_COLORS.length
+  const name    = isAnon ? 'Anónimo' : NAMES[nIdx]
+  return {
+    isMe: false, isAnon,
+    name,
+    displayName: isAnon ? 'Ciudadano Anónimo' : name,
+    phrase: PHRASES[pIdx],
+    votes, color: AVATAR_COLORS[cIdx],
+    initials: isAnon ? '?' : name.slice(0,2).toUpperCase(),
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HEMICICLO GEOMETRY (world coords)
+// ══════════════════════════════════════════════════════════════
+const DOT_R  = 14        // visual dot radius — always fixed
+const GAP    = DOT_R * 3.1
+const A0 = 24 * Math.PI / 180
+const A1 = 156 * Math.PI / 180
+const SPAN = A1 - A0
+
+// Adaptive radii — recalculated via rebuildHemiciclo()
+let R_IN   = 320
+let R_STEP = 50
+
+// Computes ideal R_IN / R_STEP for any seat count
+function getAdaptiveParams(count) {
+  const firstRow = Math.max(4, Math.round(Math.pow(count, 0.35)))
+  const rIn  = Math.round(firstRow * GAP / SPAN)
+  const rStep = Math.max(28, Math.round(rIn * 0.155))
+  return { rIn, rStep }
+}
+
+// Mutable seat array + bounds (rebuilt whenever count changes)
+let SEATS = []
+let bx0, bx1, by0, by1
+let MY_SEAT_POS
+
+// Devuelve el orden de índices de posición para llenar una fila
+// de centro hacia los costados (1ro centro, 2do izq, 3ro der, ...)
+function centerOutOrder(n) {
+  if (n <= 1) return [0]
+  const order = []
+  if (n % 2 === 1) {
+    // impar: empieza en el centro exacto
+    const c = Math.floor(n / 2)
+    order.push(c)
+    for (let d = 1; d <= c; d++) { order.push(c - d); order.push(c + d) }
+  } else {
+    // par: empieza en los dos índices centrales
+    const c = n / 2
+    for (let d = 0; d < c; d++) { order.push(c - 1 - d); order.push(c + d) }
+  }
+  return order
+}
+
+function buildSeats() {
+  SEATS.length = 0
+  let n = 0, row = 0
+  while (n < TOTAL_SEATS) {
+    const r        = R_IN + row * R_STEP
+    const fullCant = Math.floor(r * SPAN / GAP)
+    const cant     = Math.min(fullCant, TOTAL_SEATS - n)
+    const order    = centerOutOrder(fullCant)  // orden centro → costados
+    for (let i = 0; i < cant; i++) {
+      const posIdx = order[i]  // índice de posición angular (0..fullCant-1)
+      const t = fullCant > 1 ? posIdx / (fullCant - 1) : 0.5
+      const a = A0 + t * SPAN
+      SEATS.push({ num: n + 1, x: r * Math.cos(a), y: r * Math.sin(a), row })
+      n++
+    }
+    row++
+  }
+  bx0=Infinity; bx1=-Infinity; by0=Infinity; by1=-Infinity
+  SEATS.forEach(s => {
+    bx0=Math.min(bx0,s.x); bx1=Math.max(bx1,s.x)
+    by0=Math.min(by0,s.y); by1=Math.max(by1,s.y)
+  })
+  MY_SEAT_POS = SEATS[Math.min(MY_SEAT, TOTAL_SEATS) - 1] || SEATS[0]
+}
+buildSeats()
+
+// ══════════════════════════════════════════════════════════════
+//  HEMICICLO CONFIG PANEL
+// ══════════════════════════════════════════════════════════════
+let hcpPendingCount = TOTAL_SEATS
+
+function rebuildHemiciclo(count) {
+  count = Math.max(5, Math.min(5000, count))
+  TOTAL_SEATS = count
+  // Geometry stays fixed — only dot count changes
+  R_IN   = 320
+  R_STEP = 50
+  buildSeats()
+  // Update UI labels
+  const fmt = count.toLocaleString('es-VE')
+  const el = document.getElementById('citizen-num')
+  if (el) el.textContent = fmt.replace(',','.')
+  const cl = document.querySelector('.cl-sub')
+  if (cl) cl.textContent = `— ${fmt.replace(',','.')} butacas en el hemiciclo`
+  // Fly to full view
+  const W = canvas.clientWidth, H = canvas.clientHeight
+  const scX = W / (bx1 - bx0 + DOT_R * 4)
+  const scY = H / (by1 - by0 + DOT_R * 4)
+  cam.ts = Math.max(0.05, Math.min(scX, scY) * 0.88)
+  cam.tx = (bx0 + bx1) / 2
+  cam.ty = (by0 + by1) / 2
+  // Update counter display in panel
+  hcpUpdateDisplay(count)
+}
+
+function hcpUpdateDisplay(count) {
+  hcpPendingCount = count
+  const big = document.getElementById('hcp-count-big')
+  if (big) big.textContent = count.toLocaleString('es-VE').replace(',','.')
+  // Slider gradient
+  const slider = document.getElementById('hcp-slider')
+  if (slider) {
+    slider.value = count
+    const pct = ((count - 5) / (5000 - 5) * 100).toFixed(1)
+    slider.style.setProperty('--pct', pct + '%')
+  }
+  // Manual input
+  const inp = document.getElementById('hcp-input')
+  if (inp) inp.value = count
+  // Presets: mark active if exact match
+  document.querySelectorAll('.hcp-preset').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.n) === count)
+  })
+}
+
+function hcpSelectPreset(btn) {
+  const n = parseInt(btn.dataset.n)
+  hcpUpdateDisplay(n)
+  rebuildHemiciclo(n)
+}
+
+function hcpSliderMove(el) {
+  const n = parseInt(el.value)
+  hcpUpdateDisplay(n)
+  rebuildHemiciclo(n)
+}
+
+function hcpInputMove(el) {
+  hcpPendingCount = parseInt(el.value) || hcpPendingCount
+  const big = document.getElementById('hcp-count-big')
+  if (big) big.textContent = (hcpPendingCount).toLocaleString('es-VE').replace(',','.')
+  document.querySelectorAll('.hcp-preset').forEach(b => b.classList.remove('active'))
+}
+
+function hcpAplicar() {
+  const inp = document.getElementById('hcp-input')
+  const n = Math.max(5, Math.min(5000, parseInt(inp.value) || TOTAL_SEATS))
+  rebuildHemiciclo(n)
+}
+
+function abrirHemiConfig() {
+  document.getElementById('hemi-config-panel').classList.add('open')
+  document.getElementById('btn-hemi-config').style.color = 'var(--orange)'
+  hcpUpdateDisplay(TOTAL_SEATS)
+}
+
+function cerrarHemiConfig() {
+  document.getElementById('hemi-config-panel').classList.remove('open')
+  document.getElementById('btn-hemi-config').style.color = ''
+}
+
+// Close panel on outside click
+document.addEventListener('click', e => {
+  const panel = document.getElementById('hemi-config-panel')
+  if (!panel.classList.contains('open')) return
+  if (e.target.closest('#hemi-config-panel')) return
+  if (e.target.closest('#btn-hemi-config')) return
+  cerrarHemiConfig()
+})
+
+// ══════════════════════════════════════════════════════════════
+//  CAMERA
+// ══════════════════════════════════════════════════════════════
+const MIN_SCALE = 0.12
+const MAX_SCALE = 14
+
+const cam = {
+  x: MY_SEAT_POS.x,
+  y: MY_SEAT_POS.y,
+  scale: 3.2,
+  tx: MY_SEAT_POS.x, // target for smooth pan
+  ty: MY_SEAT_POS.y,
+  ts: 3.2,           // target scale
+}
+
+function toScreen(wx, wy, W, H) {
+  return {
+    x: (wx - cam.x) * cam.scale + W / 2,
+    y: (wy - cam.y) * cam.scale + H / 2,
+  }
+}
+function toWorld(sx, sy, W, H) {
+  return {
+    x: (sx - W / 2) / cam.scale + cam.x,
+    y: (sy - H / 2) / cam.scale + cam.y,
+  }
+}
+
+function resetCamera() {
+  cam.tx = MY_SEAT_POS.x
+  cam.ty = MY_SEAT_POS.y
+  cam.ts = 3.2
+}
+
+function zoomOut() {
+  const W = canvas.clientWidth || canvas.width
+  const H = canvas.clientHeight || canvas.height
+  const scX = W  / (bx1 - bx0 + DOT_R * 4)
+  const scY = H  / (by1 - by0 + DOT_R * 4)
+  cam.ts = Math.max(MIN_SCALE, Math.min(scX, scY) * 0.88)
+  cam.tx = (bx0 + bx1) / 2
+  cam.ty = (by0 + by1) / 2
+}
+
+// Smooth camera lerp
+function lerpCam() {
+  const EZ = 0.1
+  cam.x += (cam.tx - cam.x) * EZ
+  cam.y += (cam.ty - cam.y) * EZ
+  cam.scale += (cam.ts - cam.scale) * EZ
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CANVAS & DRAW
+// ══════════════════════════════════════════════════════════════
+const canvas = document.getElementById('hemiciclo')
+const ctx    = canvas.getContext('2d')
+const following = new Set()
+let hoveredSeat = null
+let t0 = Date.now()
+
+function draw() {
+  lerpCam()
+  const W = canvas.width, H = canvas.height
+  const t = Date.now()
+
+  ctx.clearRect(0, 0, W, H)
+
+  // Viewport culling bounds (with margin)
+  const margin = DOT_R * cam.scale + 8
+  const vx0 = -margin, vx1 = W + margin
+  const vy0 = -margin, vy1 = H + margin
+
+  SEATS.forEach(s => {
+    const { x: sx, y: sy } = toScreen(s.x, s.y, W, H)
+    if (sx < vx0 || sx > vx1 || sy < vy0 || sy > vy1) return
+
+    const isMine    = s.num === MY_SEAT
+    const isHovered = hoveredSeat === s.num
+    const isFollow  = following.has(s.num)
+
+    // Dot radius on screen
+    let r = Math.max(1.2, DOT_R * cam.scale)
+    if (isMine) r *= (1 + ((Math.sin((t - t0) / 600) + 1) / 2) * 0.18)
+    if (isHovered) r *= 1.22
+
+    // Color
+    let fill, glow = null
+    if (isMine)        { fill = '#f76a1e'; glow = 'rgba(247,106,30,.5)'; }
+    else if (isFollow) { fill = '#1e40af'; }
+    else               { fill = '#1a1f3c'; }
+
+    // At very small scale, use opacity to create depth
+    if (cam.scale < 0.5) {
+      const alpha = 0.35 + 0.65 * (s.row % 2 === 0 ? 1 : 0.7)
+      ctx.globalAlpha = alpha
+    }
+
+    if (glow && r > 3) {
+      ctx.shadowColor = glow
+      ctx.shadowBlur  = r * 0.9
+    }
+
+    ctx.beginPath()
+    ctx.arc(sx, sy, r, 0, Math.PI * 2)
+    ctx.fillStyle = fill
+    ctx.fill()
+    ctx.shadowBlur = 0
+    ctx.globalAlpha = 1
+
+    // Follow ring
+    if (isFollow && r > 3) {
+      ctx.beginPath()
+      ctx.arc(sx, sy, r + 3, 0, Math.PI * 2)
+      ctx.strokeStyle = 'rgba(30,64,175,.35)'
+      ctx.lineWidth   = 1.5
+      ctx.stroke()
+    }
+  })
+
+  requestAnimationFrame(draw)
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CANVAS EVENTS
+// ══════════════════════════════════════════════════════════════
+const area = document.getElementById('canvas-area')
+let drag = { active: false, startX:0, startY:0, camX:0, camY:0, moved:false }
+let lastPinchDist = null
+
+function getCanvasXY(e) {
+  const rect = canvas.getBoundingClientRect()
+  const scX  = canvas.width  / rect.width
+  const scY  = canvas.height / rect.height
+  return {
+    x: (e.clientX - rect.left) * scX,
+    y: (e.clientY - rect.top)  * scY,
+  }
+}
+
+// Zoom lock flag — blocks profile cards while scrolling
+let isZooming = false
+let zoomEndTimer = null
+function setZooming() {
+  isZooming = true
+  hideCard()
+  clearTimeout(zoomEndTimer)
+  zoomEndTimer = setTimeout(() => { isZooming = false }, 350)
+}
+
+// Wheel zoom (centered on cursor)
+canvas.addEventListener('wheel', e => {
+  e.preventDefault()
+  setZooming()
+  const { x: sx, y: sy } = getCanvasXY(e)
+  const W = canvas.width, H = canvas.height
+  const wBefore = toWorld(sx, sy, W, H)
+  const factor  = e.deltaY > 0 ? 0.82 : 1 / 0.82
+  cam.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, cam.scale * factor))
+  cam.ts    = cam.scale
+  const wAfter = toWorld(sx, sy, W, H)
+  cam.x += wBefore.x - wAfter.x
+  cam.y += wBefore.y - wAfter.y
+  cam.tx = cam.x; cam.ty = cam.y
+}, { passive: false })
+
+canvas.addEventListener('mousedown', e => {
+  drag.active = true; drag.moved = false
+  drag.startX = e.clientX; drag.startY = e.clientY
+  drag.camX   = cam.x;     drag.camY   = cam.y
+  area.classList.add('dragging')
+  hideCard()
+})
+
+window.addEventListener('mousemove', e => {
+  if (drag.active) {
+    const dx = e.clientX - drag.startX
+    const dy = e.clientY - drag.startY
+    if (Math.abs(dx) + Math.abs(dy) > 3) { drag.moved = true; hideCard() }
+    cam.x  = drag.camX - dx / cam.scale
+    cam.y  = drag.camY - dy / cam.scale
+    cam.tx = cam.x; cam.ty = cam.y
+    return
+  }
+
+  // Only show profiles on the congress screen, and not while zooming
+  if (!document.getElementById('congress').classList.contains('active')) return
+  if (isZooming) return
+
+  // Block cards when hovering the footer controls
+  const ctrls = document.getElementById('map-controls')
+  if (ctrls) {
+    const r = ctrls.getBoundingClientRect()
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+      hideCard(); return
+    }
+  }
+
+  // Hover seat detection
+  const rect = canvas.getBoundingClientRect()
+  if (
+    e.clientX < rect.left || e.clientX > rect.right ||
+    e.clientY < rect.top  || e.clientY > rect.bottom
+  ) { hideCard(); return }
+
+  const { x: sx, y: sy } = getCanvasXY(e)
+  const W = canvas.width, H = canvas.height
+  const hitR = Math.max(DOT_R, DOT_R * cam.scale * 1.2)  // px on screen
+
+  let closest = null, minD = hitR + 6
+  SEATS.forEach(s => {
+    const { x: ssx, y: ssy } = toScreen(s.x, s.y, W, H)
+    const d = Math.hypot(sx - ssx, sy - ssy)
+    if (d < minD) { minD = d; closest = s }
+  })
+
+  if (closest) {
+    hoveredSeat = closest.num
+    // Only update card if not pinned (mouse on card) and seat actually changed
+    if (!cardPinned && closest.num !== cardSeat) {
+      showCard(closest, e.clientX, e.clientY)
+    }
+  } else {
+    hoveredSeat = null
+    if (!cardPinned) hideCard()
+  }
+})
+
+window.addEventListener('mouseup', e => {
+  // Click on canvas no longer opens modal — modal opens from q-text click only
+  drag.active = false
+  area.classList.remove('dragging')
+})
+
+canvas.addEventListener('mouseleave', () => { if (!cardPinned) hideCard() })
+
+// ── Canvas sizing
+function resizeCanvas() {
+  canvas.width  = area.clientWidth
+  canvas.height = area.clientHeight
+}
+window.addEventListener('resize', resizeCanvas)
+
+// ══════════════════════════════════════════════════════════════
+//  PROFILE CARD
+// ══════════════════════════════════════════════════════════════
+let cardSeat   = null
+let hideTimer  = null
+let cardPinned = false   // true while mouse is inside the card
+
+function showCard(seat, cx, cy) {
+  cardSeat = seat.num
+  const p = getProfile(seat.num)
+  const card = document.getElementById('profile-card')
+
+  // Avatar
+  const av = document.getElementById('pc-avatar')
+  av.style.background = p.color
+  av.textContent = p.initials
+
+  document.getElementById('pc-name').textContent    = p.displayName
+  document.getElementById('pc-butaca').textContent  = `Butaca #${seat.num}`
+  const badge = document.getElementById('pc-badge')
+  if (p.isAnon) { badge.textContent = 'Anónimo'; badge.className = 'pc-anon-badge anon'; }
+  else          { badge.textContent = 'Público';  badge.className = 'pc-anon-badge pub'; }
+
+  document.getElementById('pc-phrase').textContent  = `"${p.phrase}"`
+  document.getElementById('pc-votes-n').textContent = p.votes
+
+  const fbtn = document.getElementById('pc-follow-btn')
+  const hideVote = document.getElementById('profile-card').querySelector('.pc-vote-btn')
+  if (p.isMe) {
+    fbtn.textContent = 'Es tu butaca'
+    fbtn.className = 'pc-follow disabled'
+    hideVote.style.display = 'none'
+  } else if (following.has(seat.num)) {
+    fbtn.textContent = 'Siguiendo'
+    fbtn.className = 'pc-follow following'
+    hideVote.style.display = ''
+  } else {
+    fbtn.textContent = 'Seguir'
+    fbtn.className = 'pc-follow'
+    hideVote.style.display = ''
+  }
+
+  // Position card near cursor, flip if near edge
+  const W = window.innerWidth, H = window.innerHeight
+  const CW = 264, CH = 220
+  let x = cx + 18, y = cy - 60
+  if (x + CW > W - 8) x = cx - CW - 14
+  if (y + CH > H - 8) y = H - CH - 8
+  if (y < 8) y = 8
+
+  card.style.left = x + 'px'
+  card.style.top  = y + 'px'
+
+  clearTimeout(hideTimer)
+  card.classList.add('visible')
+}
+
+function hideCard() {
+  clearTimeout(hideTimer)
+  hideTimer = setTimeout(() => {
+    document.getElementById('profile-card').classList.remove('visible')
+    cardSeat = null
+    hoveredSeat = null
+  }, 260)
+}
+
+document.getElementById('profile-card').addEventListener('mouseenter', () => {
+  clearTimeout(hideTimer)
+  cardPinned = true
+})
+document.getElementById('profile-card').addEventListener('mouseleave', () => {
+  cardPinned = false
+  hideCard()
+})
+
+function toggleFollow() {
+  if (!cardSeat || cardSeat === MY_SEAT) return
+  const btn = document.getElementById('pc-follow-btn')
+  if (following.has(cardSeat)) {
+    following.delete(cardSeat)
+    btn.textContent = 'Seguir'
+    btn.className   = 'pc-follow'
+    showToast(`Dejaste de seguir la butaca #${cardSeat}`)
+  } else {
+    following.add(cardSeat)
+    btn.textContent = 'Siguiendo'
+    btn.className   = 'pc-follow following'
+    showToast(`Ahora seguís la butaca #${cardSeat}`)
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SIMULATION
+// ══════════════════════════════════════════════════════════════
+const simCanvas = document.getElementById('sim-canvas')
+const simCtx    = simCanvas.getContext('2d')
+let simCSSW = 0, simCSSH = 0
+
+const SIM = {
+  active: false,
+  results: {},
+  revealed: 0,
+  order: [],
+  revealedArr: null,
+  ivId: null,
+  totalSi: 0, totalNo: 0, totalAbs: 0,
+  camX: 0, camY: 0, camS: 1,
+}
+
+function iniciarSimulacion() {
+  hideCard()
+  // Generate random results
+  SIM.totalSi = SIM.totalNo = SIM.totalAbs = 0
+  SIM.results = {}
+  SEATS.forEach(s => {
+    const r = Math.random()
+    if (r < 0.62)      { SIM.results[s.num] = 'si';  SIM.totalSi++ }
+    else if (r < 0.85) { SIM.results[s.num] = 'no';  SIM.totalNo++ }
+    else               { SIM.results[s.num] = null;   SIM.totalAbs++ }
+  })
+  SIM.revealed = 0
+
+  // Fisher-Yates shuffle for random reveal order
+  SIM.order = Array.from({ length: TOTAL_SEATS }, (_, i) => i + 1)
+  for (let i = SIM.order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [SIM.order[i], SIM.order[j]] = [SIM.order[j], SIM.order[i]]
+  }
+  SIM.revealedArr = new Uint8Array(TOTAL_SEATS + 1)
+
+  // Camera is set up AFTER resizeSimCanvas() — use CSS dimensions
+  // (camera block intentionally left here; will be applied after resize below)
+
+  SIM.active = true
+  document.getElementById('sim-overlay').classList.add('open')
+  document.getElementById('sim-winner-banner').classList.remove('show')
+
+  // Resize first so simCSSW/H are correct before computing camera
+  resizeSimCanvas()
+
+  // Now compute camera with correct CSS dimensions
+  const padX = (bx1 - bx0) * 0.05, padY = (by1 - by0) * 0.05
+  const sc = Math.min(
+    simCSSW / (bx1 - bx0 + padX * 2),
+    simCSSH / (by1 - by0 + padY * 2)
+  ) * 0.92
+  SIM.camS = sc
+  SIM.camX = (bx0 + bx1) / 2
+  SIM.camY = (by0 + by1) / 2
+
+  // Reveal randomly ~9 per frame ≈ 5s cascade
+  const BATCH = 9
+  SIM.ivId = setInterval(() => {
+    const end = Math.min(SIM.revealed + BATCH, TOTAL_SEATS)
+    while (SIM.revealed < end) {
+      SIM.revealedArr[SIM.order[SIM.revealed]] = 1
+      SIM.revealed++
+    }
+    document.getElementById('sim-progress').textContent =
+      SIM.revealed.toLocaleString('es-AR')
+    if (SIM.revealed >= TOTAL_SEATS) {
+      clearInterval(SIM.ivId)
+      setTimeout(mostrarBannerGanador, 900)
+    }
+  }, 16)
+
+  simDraw()
+}
+
+function simToScreen(wx, wy) {
+  return {
+    x: (wx - SIM.camX) * SIM.camS + simCSSW / 2,
+    y: (wy - SIM.camY) * SIM.camS + simCSSH / 2,
+  }
+}
+
+function simDraw() {
+  if (!SIM.active) return
+  const W = simCSSW, H = simCSSH
+  const t = Date.now()
+  const dotR = Math.max(3.5, DOT_R * SIM.camS)
+
+  simCtx.clearRect(0, 0, W, H)
+  simCtx.fillStyle = '#1d1d1d'
+  simCtx.fillRect(0, 0, W + 1, H + 1)
+
+  // Pass 1: unrevealed dots — very dark, no glow
+  simCtx.shadowBlur = 0
+  SEATS.forEach(s => {
+    if (SIM.revealedArr && SIM.revealedArr[s.num]) return
+    const { x: sx, y: sy } = simToScreen(s.x, s.y)
+    if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) return
+    simCtx.beginPath()
+    simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
+    simCtx.fillStyle = '#2e2e2e'
+    simCtx.fill()
+  })
+
+  // Pass 2: abstenciones — gray, no glow
+  simCtx.shadowBlur = 0
+  SEATS.forEach(s => {
+    if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
+    if (SIM.results[s.num] !== null) return
+    const { x: sx, y: sy } = simToScreen(s.x, s.y)
+    if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) return
+    simCtx.beginPath()
+    simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
+    simCtx.fillStyle = '#4a4a4a'
+    simCtx.fill()
+  })
+
+  // Pass 3: SÍ — green pulsing glow (traffic light)
+  SEATS.forEach(s => {
+    if (!SIM.revealedArr || !SIM.revealedArr[s.num] || SIM.results[s.num] !== 'si') return
+    const { x: sx, y: sy } = simToScreen(s.x, s.y)
+    if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
+
+    const phase = (s.num * 1.7) % (Math.PI * 2)
+    const pulse = (Math.sin(t / 700 + phase) + 1) / 2   // 0..1 breathing
+
+    // Outer glow pass
+    simCtx.shadowColor = `rgba(34,230,120,${0.55 + pulse * 0.45})`
+    simCtx.shadowBlur  = dotR * (4 + pulse * 7)
+    simCtx.beginPath()
+    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.2), 0, Math.PI * 2)
+    simCtx.fillStyle = `rgb(${30 + Math.round(pulse*30)},${185 + Math.round(pulse*70)},${80 + Math.round(pulse*40)})`
+    simCtx.fill()
+    simCtx.shadowBlur = 0
+  })
+
+  // Pass 4: NO — red pulsing glow (traffic light)
+  SEATS.forEach(s => {
+    if (!SIM.revealedArr || !SIM.revealedArr[s.num] || SIM.results[s.num] !== 'no') return
+    const { x: sx, y: sy } = simToScreen(s.x, s.y)
+    if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
+
+    const phase = (s.num * 2.1) % (Math.PI * 2)
+    const pulse = (Math.sin(t / 650 + phase) + 1) / 2
+
+    simCtx.shadowColor = `rgba(240,60,60,${0.55 + pulse * 0.45})`
+    simCtx.shadowBlur  = dotR * (4 + pulse * 7)
+    simCtx.beginPath()
+    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.2), 0, Math.PI * 2)
+    simCtx.fillStyle = `rgb(${185 + Math.round(pulse*70)},${25 + Math.round(pulse*15)},${25 + Math.round(pulse*15)})`
+    simCtx.fill()
+    simCtx.shadowBlur = 0
+  })
+
+  if (SIM.active) requestAnimationFrame(simDraw)
+}
+
+function mostrarBannerGanador() {
+  const total = SIM.totalSi + SIM.totalNo + SIM.totalAbs
+  const pctSi = ((SIM.totalSi / total) * 100).toFixed(1)
+  const pctNo = ((SIM.totalNo / total) * 100).toFixed(1)
+  const ganaSi = SIM.totalSi > SIM.totalNo
+
+  document.getElementById('sw-num-si').textContent = SIM.totalSi.toLocaleString('es-AR')
+  document.getElementById('sw-num-no').textContent = SIM.totalNo.toLocaleString('es-AR')
+
+  const wl = document.getElementById('sw-winner-line')
+  wl.textContent = ganaSi
+    ? `✓ Gana el SÍ con ${pctSi}%`
+    : `✓ Gana el NO con ${pctNo}%`
+  wl.style.color = ganaSi ? '#178a5b' : '#c41e1e'
+  wl.classList.remove('show')
+
+  document.getElementById('sim-winner-banner').classList.add('show')
+
+  // Animate bars after banner appears
+  setTimeout(() => {
+    document.getElementById('sw-bar-si').style.width = pctSi + '%'
+    document.getElementById('sw-bar-no').style.width = pctNo + '%'
+  }, 80)
+  setTimeout(() => { wl.classList.add('show') }, 900)
+}
+
+function cerrarBanner() {
+  // Hide banner but stay in sim — show the glowing hemiciclo
+  document.getElementById('sim-winner-banner').classList.remove('show')
+  document.getElementById('sw-bar-si').style.width = '0%'
+  document.getElementById('sw-bar-no').style.width = '0%'
+  // Change cancel button to "back to congress"
+  const btn = document.getElementById('sim-cancel')
+  btn.textContent = '← Volver al congreso'
+  btn.onclick = terminarSimulacion
+}
+
+function terminarSimulacion() {
+  SIM.active = false
+  clearInterval(SIM.ivId)
+  document.getElementById('sim-overlay').classList.remove('open')
+  document.getElementById('sim-winner-banner').classList.remove('show')
+  document.getElementById('sw-bar-si').style.width = '0%'
+  document.getElementById('sw-bar-no').style.width = '0%'
+  // Reset cancel button text for next time
+  const btn = document.getElementById('sim-cancel')
+  btn.textContent = 'Cancelar'
+  btn.onclick = terminarSimulacion
+}
+
+function resizeSimCanvas() {
+  const dpr = window.devicePixelRatio || 1
+  simCSSW = window.innerWidth
+  simCSSH = window.innerHeight - 52  // minus top bar
+  simCanvas.width  = simCSSW * dpr
+  simCanvas.height = simCSSH * dpr
+  simCanvas.style.width  = simCSSW + 'px'
+  simCanvas.style.height = simCSSH + 'px'
+  simCtx.scale(dpr, dpr)
+}
+window.addEventListener('resize', () => {
+  if (!SIM.active) return
+  resizeSimCanvas()
+  // Recompute camera on resize so nothing shifts
+  const padX = (bx1 - bx0) * 0.05, padY = (by1 - by0) * 0.05
+  const sc = Math.min(
+    simCSSW / (bx1 - bx0 + padX * 2),
+    simCSSH / (by1 - by0 + padY * 2)
+  ) * 0.92
+  SIM.camS = sc
+})
+
+// ══════════════════════════════════════════════════════════════
+//  CITIZENS LIST
+// ══════════════════════════════════════════════════════════════
+let listRendered = false
+
+function abrirCiudadanos() {
+  hideCard()
+  if (!listRendered) renderCitizensList()
+  document.getElementById('citizens-panel').classList.add('open')
+}
+function cerrarCiudadanos() {
+  document.getElementById('citizens-panel').classList.remove('open')
+}
+
+function renderCitizensList() {
+  const list = document.getElementById('cl-list')
+  const rows = []
+
+  // My seat first
+  rows.push(`<div class="cl-divider">Tu butaca</div>`)
+  rows.push(clRow(MY_SEAT, true))
+
+  // Then a sample: first 150 citizens (skipping mine)
+  rows.push(`<div class="cl-divider">Todos los ciudadanos</div>`)
+  for (let i = 1; i <= Math.min(TOTAL_SEATS, 200); i++) {
+    if (i === MY_SEAT) continue
+    rows.push(clRow(i, false))
+  }
+  rows.push(`<div class="cl-divider" style="padding-bottom:20px;opacity:.4">— mostrando 200 de 2.847 —</div>`)
+
+  list.innerHTML = rows.join('')
+  listRendered = true
+}
+
+function clRow(num, isMe) {
+  const p = getProfile(num)
+  const badgeCls  = p.isAnon ? 'anon' : 'pub'
+  const badgeTxt  = p.isAnon ? 'Anónimo' : 'Público'
+  const followCls = following.has(num) ? 'following' : ''
+  const followTxt = num === MY_SEAT ? 'Tu butaca' : following.has(num) ? 'Siguiendo' : 'Seguir'
+  const followDis = num === MY_SEAT ? 'style="opacity:.35;pointer-events:none"' : ''
+  return `
+  <div class="cl-item ${isMe ? 'cl-me' : ''}" id="cl-row-${num}">
+    <div class="cl-av" style="background:${p.color}">${p.initials}</div>
+    <div class="cl-info">
+      <div class="cl-name">
+        ${p.displayName}
+        <span class="cl-badge-sm ${badgeCls}">${badgeTxt}</span>
+      </div>
+      <div class="cl-phrase">${p.phrase}</div>
+      <div class="cl-meta">${p.votes} votaciones</div>
+    </div>
+    <div class="cl-num">#${num}</div>
+    <button class="cl-follow-sm ${followCls}" ${followDis}
+      onclick="toggleFollowList(${num}, this)">${followTxt}</button>
+  </div>`
+}
+
+function toggleFollowList(num, btn) {
+  if (following.has(num)) {
+    following.delete(num)
+    btn.textContent = 'Seguir'
+    btn.classList.remove('following')
+    showToast(`Dejaste de seguir la butaca #${num}`)
+  } else {
+    following.add(num)
+    btn.textContent = 'Siguiendo'
+    btn.classList.add('following')
+    showToast(`Ahora seguís la butaca #${num}`)
+  }
+  // Sync with canvas profile card if open
+  if (cardSeat === num) {
+    const fbtn = document.getElementById('pc-follow-btn')
+    if (fbtn) {
+      fbtn.textContent = following.has(num) ? 'Siguiendo' : 'Seguir'
+      fbtn.className   = 'pc-follow' + (following.has(num) ? ' following' : '')
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+  document.getElementById(id).classList.add('active')
+  // Footer only floats on landing
+  document.body.classList.toggle('on-landing', id === 'landing')
+  // Collapse panel when leaving landing
+  if (id !== 'landing') {
+    sfActiveTab = null
+    document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
+    document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VERIFY IDENTITY FLOW
+// ══════════════════════════════════════════════════════════════
+let vpCurrentStep = 1
+const vpUploaded = { pasaporte: false, selfie: false, perfil: false }
+
+function crearIdentidad() { abrirVerificacion() }
+
+function abrirVerificacion() {
+  vpCurrentStep = 1
+  vpUploaded.pasaporte = vpUploaded.selfie = vpUploaded.perfil = false
+  document.querySelectorAll('.vpu-zone').forEach(z => z.classList.remove('uploaded'))
+  document.querySelectorAll('.vp-proc-row').forEach(r => r.classList.remove('active','done'))
+  document.getElementById('vp-alias').value = ''
+  document.getElementById('vp-pais').value  = ''
+  document.getElementById('vp-btn-s1').disabled = true
+  document.getElementById('vp-btn-s2').disabled = true
+  vpShowStep(1)
+  document.getElementById('verify-overlay').classList.add('open')
+}
+
+function cerrarVerificacion() {
+  document.getElementById('verify-overlay').classList.remove('open')
+}
+
+function vpShowStep(n) {
+  document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
+  const el = document.getElementById('vp-s' + n)
+  if (el) el.classList.add('active')
+  // Progress dots
+  const dots  = document.querySelectorAll('.vp-prog-dot')
+  const lines = document.querySelectorAll('.vp-prog-line')
+  const stepMap = { 1:0, 2:1, 3:2, '4a':2, '4b':2, 5:3, 6:3 }
+  const idx = stepMap[String(n)] ?? n - 1
+  dots.forEach((d,i)  => { d.classList.toggle('active', i===idx); d.classList.toggle('done', i<idx) })
+  lines.forEach((l,i) => l.classList.toggle('done', i<idx))
+  vpCurrentStep = n
+}
+
+function vpGoStep(n) { vpShowStep(n) }
+
+function vpCheckStep1() {
+  const ok = document.getElementById('vp-alias').value.trim().length > 1
+         && document.getElementById('vp-pais').value !== ''
+  document.getElementById('vp-btn-s1').disabled = !ok
+}
+
+function vpPreview(input, type) {
+  if (!input.files || !input.files[0]) return
+  vpUploaded[type] = true
+  const zone = document.getElementById('vpu-' + type)
+  zone.classList.add('uploaded')
+  // Check if all uploaded
+  const allDone = vpUploaded.pasaporte && vpUploaded.selfie && vpUploaded.perfil
+  document.getElementById('vp-btn-s2').disabled = !allDone
+}
+
+function vpIniciarProceso() {
+  vpShowStep(3)
+  const rows     = ['vpc-r1','vpc-r2','vpc-r3','vpc-r4']
+  const delays   = [0, 1400, 2600, 3600]
+  const doneTimes= [1200, 2400, 3400, 4400]
+
+  rows.forEach((id, i) => {
+    const row = document.getElementById(id)
+    setTimeout(() => { row.classList.add('active') }, delays[i])
+    setTimeout(() => {
+      row.classList.remove('active'); row.classList.add('done')
+      row.querySelector('.vp-proc-icon').textContent = '✓'
+    }, doneTimes[i])
+  })
+
+  // Tras la animación → enviar a Supabase y mostrar resultado
+  setTimeout(async () => {
+    const country   = document.getElementById('vp-pais').value || 'Venezuela'
+    const selfieInp = document.getElementById('f-selfie')
+    const selfieFile= selfieInp.files?.[0] || null
+    try {
+      const { hash, requestId } = await enviarVerificacionASupabase(country, selfieFile)
+      // Mostrar hash real en el paso de aprobación (truncado)
+      const hashShort = hash.slice(0,8).toUpperCase() + '...' + hash.slice(-4).toUpperCase()
+      const caption = document.querySelector('.vp-anon-caption')
+      if (caption) caption.textContent = `ID: ${hashShort} · Rostro visible · Número redactado · Datos personales bloqueados`
+      vpShowStep('4a')
+    } catch (err) {
+      console.error(err)
+      // Si falla Supabase igual avanzamos en demo (no bloqueamos UX)
+      vpShowStep('4a')
+    }
+  }, 5200)
+}
+
+async function vpSimularAprobacion() {
+  const btn = document.querySelector('.vp-btn-demo')
+  if (btn) { btn.textContent = 'Procesando...'; btn.disabled = true }
+
+  try {
+    let seatNum
+    if (window._vpSession?.hash) {
+      // Llamada real a Supabase
+      seatNum = await aprobarEnSupabase(window._vpSession.hash)
+    } else {
+      // Fallback demo: simular delay
+      await new Promise(r => setTimeout(r, 1800))
+      seatNum = TOTAL_SEATS + 1
+    }
+    window._vpSession = window._vpSession || {}
+    window._vpSession.seatNum = seatNum
+    document.getElementById('vp-seat-num').textContent =
+      Number(seatNum).toLocaleString('es-VE').replace(',','.')
+    // Mostrar hash abreviado en pantalla de aprobado
+    if (window._vpSession.hash) {
+      const h = window._vpSession.hash
+      const hashShort = h.slice(0,8).toUpperCase() + '…' + h.slice(-4).toUpperCase()
+      const hashEl = document.getElementById('vp-hash-display')
+      if (hashEl) hashEl.textContent = hashShort
+    }
+    vpShowStep(6)
+  } catch (err) {
+    console.error('Error asignando butaca:', err)
+    // Fallback: igualmente avanzamos
+    const seatNum = TOTAL_SEATS + 1
+    document.getElementById('vp-seat-num').textContent =
+      Number(seatNum).toLocaleString('es-VE').replace(',','.')
+    vpShowStep(6)
+  } finally {
+    if (btn) { btn.textContent = 'Simular Aprobación'; btn.disabled = false }
+  }
+}
+
+function vpFinalizar() {
+  cerrarVerificacion()
+  // Assign the seat visually
+  document.getElementById('st-noident').style.display = 'none'
+  document.getElementById('st-ident').style.display   = 'flex'
+  const seatNum = window._vpSession?.seatNum || (TOTAL_SEATS + 1)
+  // Update seat display in landing and congress nav
+  document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = seatNum)
+  document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + seatNum)
+  showToast(`Butaca #${seatNum} verificada — bienvenido al hemiciclo`)
+}
+
+let observerMode = false
+
+function entrarComoObservador() {
+  observerMode = true
+  document.getElementById('observer-banner').classList.add('show')
+  // Ocultar el botón de butaca en la nav (no tiene butaca asignada)
+  document.querySelector('#congress .nav-butaca').style.display = 'none'
+  showScreen('congress'); resizeCanvas(); resetCamera()
+}
+
+function irACongreso() {
+  const registered = document.getElementById('st-ident').style.display === 'flex'
+  if (!registered) {
+    abrirVerificacion()
+  } else {
+    observerMode = false
+    document.getElementById('observer-banner').classList.remove('show')
+    document.querySelector('#congress .nav-butaca').style.display = ''
+    showScreen('congress'); resizeCanvas(); resetCamera()
+  }
+}
+
+function volverALanding() {
+  showScreen('landing')
+  // Si vuelve desde observador, limpiar estado
+  if (observerMode) {
+    observerMode = false
+    document.getElementById('observer-banner').classList.remove('show')
+    document.querySelector('#congress .nav-butaca').style.display = ''
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MI PERFIL
+// ══════════════════════════════════════════════════════════════
+let perfilPublico = false
+
+function abrirMiPerfil() {
+  document.getElementById('mi-perfil-overlay').classList.add('open')
+  checkBloqueMatch()
+  setTimeout(() => {
+    document.getElementById('mp-bar-si').style.width  = '61%'
+    document.getElementById('mp-bar-no').style.width  = '30%'
+    document.getElementById('mp-bar-abs').style.width = '9%'
+  }, 80)
+}
+function cerrarMiPerfil() {
+  document.getElementById('mi-perfil-overlay').classList.remove('open')
+  document.getElementById('mp-bar-si').style.width  = '0%'
+  document.getElementById('mp-bar-no').style.width  = '0%'
+  document.getElementById('mp-bar-abs').style.width = '0%'
+}
+function togglePerfilPublico() {
+  perfilPublico = !perfilPublico
+  document.getElementById('mp-toggle').classList.toggle('on', perfilPublico)
+  document.getElementById('mp-toggle-sub').textContent = perfilPublico
+    ? 'Tu perfil es visible en el hemiciclo'
+    : 'Tu identidad está oculta (anónimo)'
+  showToast(perfilPublico ? 'Perfil cambiado a público' : 'Perfil cambiado a anónimo')
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PROPONER PREGUNTA
+// ══════════════════════════════════════════════════════════════
+function abrirPropuesta() {
+  document.getElementById('propuesta-overlay').classList.add('open')
+  setTimeout(() => document.getElementById('pp-text').focus(), 200)
+}
+function cerrarPropuesta() {
+  document.getElementById('propuesta-overlay').classList.remove('open')
+}
+function actualizarPropuesta() {
+  const n = document.getElementById('pp-text').value.length
+  document.getElementById('pp-char-n').textContent = n
+  document.getElementById('pp-submit').disabled = n < 10
+}
+function selCat(btn) {
+  document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
+  btn.classList.add('sel')
+}
+function enviarPropuesta() {
+  const text = document.getElementById('pp-text').value.trim()
+  const catEl = document.querySelector('.pp-cat.sel')
+  const cat = catEl ? catEl.textContent : 'General'
+
+  const idx = proposals.length
+  proposals.push({ text, cat, si: 0, no: 0, abs: 0, status: 'En revisión' })
+
+  cerrarPropuesta()
+  document.getElementById('pp-text').value = ''
+  document.getElementById('pp-char-n').textContent = '0'
+  document.getElementById('pp-submit').disabled = true
+  document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
+
+  mostrarFooter()
+  showToast('✓ Propuesta enviada al comité')
+
+  // Simulate followers responding over next ~15s
+  setTimeout(() => simularRespuestasSeguidores(idx), 2000)
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TIMER & QUESTIONS
+// ══════════════════════════════════════════════════════════════
+const PREGUNTAS = [
+  '¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?',
+  '¿Deberían celebrarse elecciones presidenciales supervisadas por la OEA?',
+  '¿Debería levantarse el estado de excepción en los estados fronterizos?',
+]
+let qIdx = 0, secs = 48 * 3600
+
+function fmtTime(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
+}
+setInterval(() => {
+  if (document.getElementById('congress').classList.contains('active') && secs > 0) {
+    secs--; document.getElementById('timer').textContent = fmtTime(secs)
+  }
+}, 1000)
+
+function updateQDisplay() {
+  document.getElementById('q-text').textContent = PREGUNTAS[qIdx]
+  document.getElementById('q-num').textContent  = `${qIdx + 1} / ${PREGUNTAS.length}`
+  document.getElementById('dp-subtitle').textContent = PREGUNTAS[qIdx]
+  secs = 24 * 3600 * (1 + qIdx)
+  // Reset debate room when question changes
+  resetDebateRoom()
+}
+function prevPregunta() {
+  qIdx = (qIdx - 1 + PREGUNTAS.length) % PREGUNTAS.length
+  updateQDisplay()
+}
+function nextPregunta() {
+  qIdx = (qIdx + 1) % PREGUNTAS.length
+  updateQDisplay()
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DEBATE CHAT
+// ══════════════════════════════════════════════════════════════
+let debateOpen = false
+
+// Seed messages per question index (pre-loaded demo content)
+const DEBATE_SEEDS = [
+  // Q0 — already in HTML as initial messages
+  [],
+  // Q1 — elecciones OEA
+  [
+    { seat:'#112', time:'hace 50 min', text:'Sin observadores internacionales vinculantes, cualquier elección es teatro.' },
+    { seat:'#789', time:'hace 44 min', text:'La OEA tiene su propio historial. ¿Por qué no la ONU directamente?' },
+    { seat:'#2341', time:'hace 35 min', text:'Lo importante es el padrón. Con el padrón corrupto, no importa quién observe.' },
+    { seat:'#456', time:'hace 20 min', text:'Hay que votar SÍ aunque sea imperfecto. No puede ser peor que no intentarlo.' },
+  ],
+  // Q2 — estado de excepción
+  [
+    { seat:'#903', time:'hace 1h 2 min', text:'El estado de excepción lleva años siendo renovado sin debate real.' },
+    { seat:'#1567', time:'hace 55 min', text:'En la frontera la situación es distinta. Levantar sin plan puede ser peligroso.' },
+    { seat:'#234', time:'hace 40 min', text:'La cuestión humanitaria debe desvincularse de la seguridad. Son problemas distintos.' },
+    { seat:'#1890', time:'hace 28 min', text:'Exactamente. No votar SÍ o NO a todo junto. Necesitamos preguntas más específicas.' },
+  ],
+]
+
+function resetDebateRoom() {
+  const msgs = document.getElementById('dp-messages')
+  msgs.innerHTML = '<div class="dp-msg-divider">— Sala abierta al comenzar la sesión —</div>'
+  const seeds = DEBATE_SEEDS[qIdx] || []
+  seeds.forEach(m => {
+    const div = document.createElement('div')
+    div.className = 'dp-msg'
+    div.innerHTML = `<div class="dp-msg-head"><span class="dp-msg-seat">${m.seat}</span><span class="dp-msg-time">${m.time}</span></div><span class="dp-msg-text">${m.text}</span>`
+    msgs.appendChild(div)
+  })
+  if (qIdx === 0) {
+    // Restore default initial messages for q0
+    const defaults = [
+      { seat:'#341',  time:'hace 47 min', text:'Esta pregunta es fundamental. Sin una constituyente libre no hay salida institucional real.' },
+      { seat:'#892',  time:'hace 43 min', text:'Depende de quién la convoca. Una constituyente sin condiciones previas puede ser peor que lo que tenemos.' },
+      { seat:'#1204', time:'hace 38 min', text:'¿Cómo garantizamos que sea libre si el árbitro es el mismo régimen?' },
+      { seat:'#67',   time:'hace 31 min', text:'Exactamente. La pregunta debería incluir condiciones mínimas. Así planteada es demasiado abierta.' },
+      { seat:'#2190', time:'hace 22 min', text:'Voté SÍ porque creo que el proceso puede ser presionado desde abajo. No hay cambio sin riesgo.' },
+      { seat:'#533',  time:'hace 14 min', text:'La diáspora no tiene representación real hoy. Cualquier proceso que la incluya ya es un avance.' },
+      { seat:'#1788', time:'hace 6 min',  text:'Abstenerse también es una postura legítima. Que quede registrado que no es apatía, es desconfianza fundada.' },
+    ]
+    defaults.forEach(m => {
+      const div = document.createElement('div')
+      div.className = 'dp-msg'
+      div.innerHTML = `<div class="dp-msg-head"><span class="dp-msg-seat">${m.seat}</span><span class="dp-msg-time">${m.time}</span></div><span class="dp-msg-text">${m.text}</span>`
+      msgs.appendChild(div)
+    })
+  }
+  msgs.scrollTop = msgs.scrollHeight
+}
+
+function toggleDebate() {
+  debateOpen ? cerrarDebate() : abrirDebate()
+}
+function abrirDebate() {
+  document.getElementById('debate-panel').classList.add('open')
+  document.getElementById('debate-btn').classList.add('live')
+  debateOpen = true
+  setTimeout(() => {
+    const m = document.getElementById('dp-messages')
+    m.scrollTop = m.scrollHeight
+  }, 100)
+}
+function cerrarDebate() {
+  document.getElementById('debate-panel').classList.remove('open')
+  debateOpen = false
+}
+function dpEnviar() {
+  const inp = document.getElementById('dp-input')
+  const txt = inp.value.trim()
+  if (!txt) return
+  const msgs = document.getElementById('dp-messages')
+  const div = document.createElement('div')
+  div.className = 'dp-msg mine'
+  div.innerHTML = `<div class="dp-msg-head"><span class="dp-msg-seat">#7</span><span class="dp-msg-time">ahora</span></div><span class="dp-msg-text">${txt}</span>`
+  msgs.appendChild(div)
+  msgs.scrollTop = msgs.scrollHeight
+  inp.value = ''
+}
+// Close debate on outside click
+document.addEventListener('click', e => {
+  if (!debateOpen) return
+  if (e.target.closest('#debate-panel') || e.target.closest('#debate-btn')) return
+  cerrarDebate()
+})
+
+// ══════════════════════════════════════════════════════════════
+//  BLOQUE MATCH — show when SI votes > 10
+// ══════════════════════════════════════════════════════════════
+function checkBloqueMatch() {
+  // 23 participaciones, 61% SI → ~14 votos SÍ — trigger match
+  const siVotes = Math.round(23 * 0.61)   // 14
+  const wrap = document.getElementById('mp-bloque-wrap')
+  if (wrap) wrap.style.display = siVotes >= 10 ? 'block' : 'none'
+}
+// Run on first open of perfil
+document.addEventListener('DOMContentLoaded', checkBloqueMatch)
+
+// ══════════════════════════════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════════════════════════════
+function abrirModal() {
+  if (observerMode) {
+    showToast('Creá tu butaca para poder votar')
+    return
+  }
+  showPh(1)
+  document.getElementById('modal-bd').classList.add('open')
+}
+function cerrarModal() {
+  document.getElementById('modal-bd').classList.remove('open')
+  showPh(1)
+}
+function checkBdClick(e) {
+  if (e.target === document.getElementById('modal-bd')) cerrarModal()
+}
+function elegir(v) {
+  const lbl = document.getElementById('elec-lbl')
+  lbl.textContent = v.toUpperCase()
+  lbl.style.color = v === 'si' ? '#178a5b' : '#c41e1e'
+  document.getElementById('voto-txt').textContent = v
+  showPh(2)
+}
+function confirmarVoto() { showPh(3) }
+function showPh(n) {
+  document.querySelectorAll('.phase').forEach((p,i) => p.classList.toggle('active', i+1===n))
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════════
+let toastT = null
+function showToast(msg) {
+  const t = document.getElementById('toast')
+  t.textContent = msg; t.classList.add('show')
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800)
+}
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+resizeCanvas()
+draw()
+document.body.classList.add('on-landing')
+
+// ══════════════════════════════════════════════════════════════
+//  VENEZUELAN FLAG — generated via canvas for HD crispness
+// ══════════════════════════════════════════════════════════════
+;(function buildFlags() {
+  const W = 54, H = 36          // CSS pixels
+  const dpr = window.devicePixelRatio || 1
+  const sh  = H / 3             // stripe height
+
+  // 5-pointed star path at (cx,cy), outer radius ro, inner ri
+  function starPath(ctx, cx, cy, ro, ri) {
+    ctx.beginPath()
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? ro : ri
+      const a = (i * 36 - 90) * Math.PI / 180
+      const x = cx + r * Math.cos(a)
+      const y = cy + r * Math.sin(a)
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    ctx.fill()
+  }
+
+  document.querySelectorAll('[data-flag]').forEach(el => {
+    const c = document.createElement('canvas')
+    c.width  = W * dpr
+    c.height = H * dpr
+    c.style.width  = W + 'px'
+    c.style.height = H + 'px'
+    const ctx = c.getContext('2d')
+    ctx.scale(dpr, dpr)
+
+    // Three stripes
+    ctx.fillStyle = '#FCD116'; ctx.fillRect(0,    0,  W, sh)
+    ctx.fillStyle = '#003893'; ctx.fillRect(0,   sh,  W, sh)
+    ctx.fillStyle = '#CF1126'; ctx.fillRect(0, sh*2,  W, sh)
+
+    // 7 stars in a circle inside the blue stripe
+    const cx  = W / 2
+    const cy  = sh + sh / 2        // center of blue stripe
+    const arc = sh * 0.42          // radius of star arrangement
+    const ro  = sh * 0.155         // outer star radius
+    const ri  = ro * 0.4           // inner star radius
+
+    ctx.fillStyle = '#ffffff'
+    for (let i = 0; i < 7; i++) {
+      const angle = (90 + i * (360 / 7)) * Math.PI / 180
+      const sx = cx + arc * Math.cos(angle)
+      const sy = cy - arc * Math.sin(angle)  // minus: SVG y goes down
+      starPath(ctx, sx, sy, ro, ri)
+    }
+
+    el.appendChild(c)
+  })
+})()
+
+// ══════════════════════════════════════════════════════════════
+//  SPLASH — canvas, DPR-aware, same engine as vote simulation
+// ══════════════════════════════════════════════════════════════
+;(function runSplash() {
+  const canvas = document.getElementById('splash-canvas')
+  const ctx    = canvas.getContext('2d')
+  const dpr    = window.devicePixelRatio || 1
+
+  // Grid constants (CSS pixels)
+  const R    = 22          // dot radius
+  const GAP  = 74          // center-to-center spacing
+  const COLS = 4, ROWS = 4
+  const SIZE = R + (COLS - 1) * GAP + R  // 22 + 222 + 22 = 266
+
+  canvas.width        = SIZE * dpr
+  canvas.height       = SIZE * dpr
+  canvas.style.width  = SIZE + 'px'
+  canvas.style.height = SIZE + 'px'
+  ctx.scale(dpr, dpr)
+
+  // Build 4×4 dot array — orange at row=1, col=2 (matches logo)
+  const dots = []
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const isOrange = (row === 1 && col === 2)
+      dots.push({
+        x: R + col * GAP,
+        y: R + row * GAP,
+        isOrange,
+        color: isOrange ? '#f76a1e' : '#1d1d1d',
+        revealAt: Infinity,   // set below
+        scale: 0,
+        done: false,
+      })
+    }
+  }
+
+  // Elastic-out easing — same springy feel as simulation
+  function elasticOut(t) {
+    if (t <= 0) return 0
+    if (t >= 1) return 1
+    const c = (2 * Math.PI) / 3
+    return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c) + 1
+  }
+
+  // Shuffle dark dots (Fisher-Yates) for random reveal order
+  const dark   = dots.filter(d => !d.isOrange)
+  const orange = dots.find(d => d.isOrange)
+
+  for (let i = dark.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [dark[i], dark[j]] = [dark[j], dark[i]]
+  }
+
+  const STAGGER  = 50    // ms between dots
+  const DOT_DUR  = 400   // ms each pop animation
+
+  const t0 = performance.now()
+  dark.forEach((d, i)  => { d.revealAt = t0 + i * STAGGER })
+  orange.revealAt = t0 + dark.length * STAGGER + 60
+
+  let textShown = false
+  let finished  = false
+  let raf
+
+  function frame(now) {
+    ctx.clearRect(0, 0, SIZE, SIZE)
+
+    dots.forEach(d => {
+      if (now < d.revealAt) return
+
+      const elapsed = now - d.revealAt
+      const t = Math.min(elapsed / DOT_DUR, 1)
+      d.scale = elasticOut(t)
+      if (t >= 1) d.done = true
+
+      if (d.scale <= 0) return
+
+      // Orange pulsing glow — exact same technique as simDraw()
+      if (d.isOrange && d.done) {
+        const pulse = (Math.sin(now / 600) + 1) / 2
+        ctx.shadowColor = `rgba(247,106,30,${0.5 + pulse * 0.45})`
+        ctx.shadowBlur  = R * (4 + pulse * 7)
+      }
+
+      ctx.beginPath()
+      ctx.arc(d.x, d.y, R * d.scale, 0, Math.PI * 2)
+      ctx.fillStyle = d.color
+      ctx.fill()
+      ctx.shadowBlur = 0
+    })
+
+    // Trigger wordmark once orange is done
+    if (!textShown && orange.done) {
+      textShown = true
+      setTimeout(() => {
+        document.getElementById('splash-wordmark').classList.add('show')
+      }, 80)
+    }
+
+    if (!finished) raf = requestAnimationFrame(frame)
+  }
+
+  raf = requestAnimationFrame(frame)
+
+  // Fade out: hold long enough to see the full logo glowing
+  const holdMs = dark.length * STAGGER + DOT_DUR + 1100
+  setTimeout(() => {
+    finished = true
+    cancelAnimationFrame(raf)
+    document.getElementById('splash').classList.add('out')
+    setTimeout(() => {
+      document.getElementById('splash').style.display = 'none'
+    }, 700)
+  }, holdMs)
+})()
+
+// ══════════════════════════════════════════════════════════════
+//  SOCIAL FOOTER
+// ══════════════════════════════════════════════════════════════
+const proposals = []
+let sfActiveTab = null
+
+function mostrarFooter() {
+  document.getElementById('social-footer').classList.add('visible')
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', (e) => {
+  if (!sfActiveTab) return
+  if (e.target.closest('#social-footer')) return
+  sfActiveTab = null
+  document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
+})
+
+function sfSelectTab(tab) {
+  // Toggle: same tab collapses
+  if (sfActiveTab === tab) {
+    sfActiveTab = null
+    document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
+    document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
+    return
+  }
+  sfActiveTab = tab
+  document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
+  document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.toggle('open', p.dataset.tab === tab))
+
+  if (tab === 'propuestas') renderPropuestas()
+  if (tab === 'seguidores') renderSocial('seguidores')
+  if (tab === 'seguidos')   renderSocial('seguidos')
+}
+
+function renderPropuestas() {
+  const el = document.getElementById('sf-propuestas-list')
+  if (!proposals.length) {
+    el.innerHTML = '<p class="sf-empty">Todavía no tenés propuestas.</p>'
+    return
+  }
+  el.innerHTML = proposals.map((p, i) => {
+    const total = p.si + p.no + p.abs || 1
+    const psi = Math.round(p.si / total * 100)
+    const pno = Math.round(p.no / total * 100)
+    const statusClass = p.status === 'En revisión' ? 'revision' : p.status === 'Activa' ? 'activa' : 'pleno'
+    return `
+    <div class="prop-card" id="prop-card-${i}">
+      <div class="prop-card-top">
+        <p class="prop-q">${p.text}</p>
+        <span class="prop-status ${statusClass}">${p.status}</span>
+      </div>
+      <div class="prop-poll">
+        <div class="prop-poll-row">
+          <span class="prop-poll-lbl si">SÍ</span>
+          <div class="prop-poll-bar-bg"><div class="prop-poll-bar si" id="pb-si-${i}" style="width:0%"></div></div>
+          <span class="prop-poll-pct">${psi}%</span>
+        </div>
+        <div class="prop-poll-row">
+          <span class="prop-poll-lbl no">NO</span>
+          <div class="prop-poll-bar-bg"><div class="prop-poll-bar no" id="pb-no-${i}" style="width:0%"></div></div>
+          <span class="prop-poll-pct">${pno}%</span>
+        </div>
+        <p class="prop-poll-total">${p.si + p.no + p.abs} respuestas de tus seguidores</p>
+      </div>
+      <button class="prop-share" onclick="compartirPropuesta(${i})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        Compartir micro-encuesta
+      </button>
+    </div>`
+  }).join('')
+
+  // Animate bars after render
+  setTimeout(() => {
+    proposals.forEach((p, i) => {
+      const total = p.si + p.no + p.abs || 1
+      const psi = Math.round(p.si / total * 100)
+      const pno = Math.round(p.no / total * 100)
+      const bsi = document.getElementById(`pb-si-${i}`)
+      const bno = document.getElementById(`pb-no-${i}`)
+      if (bsi) bsi.style.width = psi + '%'
+      if (bno) bno.style.width = pno + '%'
+    })
+  }, 60)
+}
+
+function compartirPropuesta(i) {
+  const p = proposals[i]
+  const url = `https://cabildo.os/p/${btoa(p.text).slice(0,8)}`
+  navigator.clipboard.writeText(url).catch(() => {})
+  showToast('🔗 Link copiado al portapapeles')
+}
+
+// Mock social data
+const mockSocial = [
+  { seat: 142, phrase: 'Venezolano libre donde sea que esté.' },
+  { seat: 891, phrase: 'Democracia participativa ya.' },
+  { seat: 33,  phrase: 'Votando por el futuro.' },
+  { seat: 514, phrase: 'La diáspora también cuenta.' },
+]
+
+function renderSocial(type) {
+  const el = document.getElementById(`sf-${type}-list`)
+  const source = type === 'seguidos'
+    ? [...following].map(n => ({ seat: n, phrase: getProfile(n).phrase }))
+    : mockSocial.slice(0, 3)
+
+  if (!source.length) {
+    el.innerHTML = '<p class="sf-empty">' + (type === 'seguidos' ? 'No seguís a nadie aún.' : 'Nadie te sigue aún.') + '</p>'
+    return
+  }
+  el.innerHTML = source.map(s => {
+    const initials = '#' + s.seat
+    return `<div class="sf-social-row">
+      <div class="sf-soc-av">${initials}</div>
+      <div>
+        <p class="sf-soc-name">Butaca #${s.seat}</p>
+        <p class="sf-soc-sub">${s.phrase.slice(0, 40)}${s.phrase.length > 40 ? '…' : ''}</p>
+      </div>
+      <button class="sf-soc-btn">Ver</button>
+    </div>`
+  }).join('')
+}
+
+// Simulate follower responses arriving
+function simularRespuestasSeguidores(propIdx) {
+  const p = proposals[propIdx]
+  let tick = 0
+  const iv = setInterval(() => {
+    const r = Math.random()
+    if (r < 0.6)      p.si++
+    else if (r < 0.85) p.no++
+    else               p.abs++
+    tick++
+    if (tick >= 7) clearInterval(iv)
+    if (sfActiveTab === 'propuestas') renderPropuestas()
+  }, 1800)
+}
+</script>
+
+<!-- ══════════════ SOCIAL FOOTER (floating pill) ══════════════ -->
+<div id="social-footer">
+  <!-- Floating panels (appear above pill) -->
+  <div class="sf-float-panel" data-tab="propuestas">
+    <div class="sf-panel-inner">
+      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Mis propuestas</p>
+      <div id="sf-propuestas-list"></div>
+    </div>
+  </div>
+  <div class="sf-float-panel" data-tab="seguidores">
+    <div class="sf-panel-inner">
+      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Seguidores</p>
+      <div id="sf-seguidores-list"></div>
+    </div>
+  </div>
+  <div class="sf-float-panel" data-tab="seguidos">
+    <div class="sf-panel-inner">
+      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Seguidos</p>
+      <div id="sf-seguidos-list"></div>
+    </div>
+  </div>
+
+  <!-- Separated pill tabs -->
+  <div class="sf-tabs-row">
+    <button class="sf-tab" data-tab="propuestas" onclick="sfSelectTab('propuestas')">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0">
+        <rect x="1" y="1" width="12" height="2.5" rx="1" fill="currentColor" opacity=".5"/>
+        <rect x="1" y="5.5" width="9" height="2" rx="1" fill="currentColor"/>
+        <rect x="1" y="9.5" width="7" height="2" rx="1" fill="currentColor" opacity=".7"/>
+      </svg>
+      Mis propuestas
+    </button>
+    <button class="sf-tab" data-tab="seguidores" onclick="sfSelectTab('seguidores')">
+      <svg width="15" height="14" viewBox="0 0 15 14" fill="none" style="flex-shrink:0">
+        <circle cx="3.5" cy="7" r="1.8" fill="currentColor"/>
+        <path d="M7 4 A4.2 4.2 0 0 1 7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M9.8 2 A7 7 0 0 1 9.8 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M12.5 0.5 A9.8 9.8 0 0 1 12.5 13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".5"/>
+      </svg>
+      Seguidores
+    </button>
+    <button class="sf-tab" data-tab="seguidos" onclick="sfSelectTab('seguidos')">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0">
+        <circle cx="7" cy="7" r="2.2" fill="currentColor"/>
+        <circle cx="7" cy="1.5" r="1.2" fill="currentColor" opacity=".6"/>
+        <circle cx="7" cy="12.5" r="1.2" fill="currentColor" opacity=".6"/>
+        <circle cx="1.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/>
+        <circle cx="12.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/>
+        <circle cx="2.9" cy="2.9" r="1" fill="currentColor" opacity=".35"/>
+        <circle cx="11.1" cy="2.9" r="1" fill="currentColor" opacity=".35"/>
+        <circle cx="2.9" cy="11.1" r="1" fill="currentColor" opacity=".35"/>
+        <circle cx="11.1" cy="11.1" r="1" fill="currentColor" opacity=".35"/>
+      </svg>
+      Seguidos
+    </button>
+  </div>
+</div>
+</body>
+</html>
