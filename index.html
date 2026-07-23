@@ -2343,6 +2343,37 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
         ctx.imageSmoothingEnabled = true
         ctx.drawImage(selfieImg, sX, sY, sW, sH)
 
+        // ── Pixelar zona inferior de la selfie donde está el documento ──
+        // El rostro del ciudadano queda visible (arriba ~55%), el doc queda pixelado
+        const pixStartFrac = 0.54   // empieza a pixelar en el 54% de la altura de la selfie
+        const pixStartY = sY + sH * pixStartFrac
+        const pixH      = sH * (1 - pixStartFrac)
+        // Fuente: recortar esa franja de la selfie original
+        const srcPY  = pixStartFrac * selfieImg.naturalHeight
+        const srcPH  = selfieImg.naturalHeight - srcPY
+        const PIX_S  = Math.max(18, Math.floor(sW / 16))  // tamaño del bloque de pixelado
+        const tmpSel = document.createElement('canvas')
+        tmpSel.width  = Math.ceil(sW / PIX_S)
+        tmpSel.height = Math.ceil(pixH / PIX_S)
+        const tmpSelCtx = tmpSel.getContext('2d')
+        tmpSelCtx.imageSmoothingEnabled = false
+        tmpSelCtx.drawImage(selfieImg,
+          0, srcPY, selfieImg.naturalWidth, srcPH,
+          0, 0, tmpSel.width, tmpSel.height)
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(tmpSel, 0, 0, tmpSel.width, tmpSel.height, sX, pixStartY, sW, pixH)
+        ctx.imageSmoothingEnabled = true
+
+        // Banda translúcida encima del pixelado con aviso
+        ctx.fillStyle = 'rgba(0,0,0,0.50)'
+        ctx.fillRect(sX, pixStartY, sW, pixH)
+        ctx.fillStyle = 'rgba(239,68,68,0.88)'
+        ctx.fillRect(sX, pixStartY + pixH * 0.38, sW, 22)
+        ctx.fillStyle = '#fff'
+        ctx.font = 'bold 10px sans-serif'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('DATOS DEL DOCUMENTO OCULTOS', sX + sW / 2, pixStartY + pixH * 0.38 + 11)
+
         // Header panel izquierdo
         ctx.fillStyle = 'rgba(34,197,94,0.9)'
         ctx.fillRect(PAD, PAD, selfieAreaW, HEADER_H)
@@ -2351,21 +2382,20 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
         ctx.fillText('✓ CIUDADANO SOSTENIENDO DOCUMENTO', PAD + selfieAreaW / 2, PAD + HEADER_H / 2)
 
-        // ── PANEL DERECHO: Documento con datos pixelados, solo foto del rostro visible ──
+        // ── PANEL DERECHO: Documento — solo foto del rostro visible ──
         const docAreaX = OUT_W / 2 + PAD / 2
         const docAreaW = OUT_W / 2 - PAD * 1.5
         const docAreaH = OUT_H - PAD * 3 - HEADER_H
 
         if (docImg) {
-          // Calcular dimensiones del documento dentro del panel
           const docR = docImg.naturalWidth / docImg.naturalHeight
           let dW = docAreaW, dH = dW / docR
           if (dH > docAreaH) { dH = docAreaH; dW = dH * docR }
           const dX = docAreaX + (docAreaW - dW) / 2
           const dY = PAD + HEADER_H + (docAreaH - dH) / 2
 
-          // PASO 1: Pixelar el documento COMPLETO
-          const PIX = Math.max(14, Math.floor(dW / 22))
+          // PASO 1: pixelar TODO el documento
+          const PIX = Math.max(14, Math.floor(dW / 20))
           const tmpC = document.createElement('canvas')
           tmpC.width  = Math.ceil(dW / PIX)
           tmpC.height = Math.ceil(dH / PIX)
@@ -2376,42 +2406,40 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
           ctx.drawImage(tmpC, 0, 0, tmpC.width, tmpC.height, dX, dY, dW, dH)
           ctx.imageSmoothingEnabled = true
 
-          // Overlay rojo sobre todo el documento (datos ocultos)
-          ctx.fillStyle = 'rgba(120,0,0,0.4)'
+          ctx.fillStyle = 'rgba(100,0,0,0.38)'
           ctx.fillRect(dX, dY, dW, dH)
 
-          // PASO 2: Des-pixelar SOLO la zona de la foto del rostro
-          // DNI argentino y mayoría de docs latinoamericanos:
-          //   foto del rostro = izquierda ~35% del ancho, filas 8%–78% del alto
-          //   el número grande aparece en el renglón inferior (~78%-100%), queda oculto
+          // PASO 2: des-pixelar SOLO la foto del rostro del documento
+          // En DNI argentino y latinoamericano la foto ocupa:
+          //   izquierda: ~35% del ancho
+          //   vertical: ~18% → 82% del alto (excluye header institucional y franja inferior con número)
           const faceX = dX
-          const faceY = dY + dH * 0.08
-          const faceW = dW * 0.35
-          const faceH = dH * 0.70
+          const faceY = dY + dH * 0.18   // saltar el header "REPUBLICA ARGENTINA..."
+          const faceW = dW * 0.34
+          const faceH = dH * 0.62         // no llega al número que está abajo del todo
 
           ctx.save()
           ctx.beginPath()
           ctx.rect(faceX, faceY, faceW, faceH)
           ctx.clip()
           ctx.imageSmoothingEnabled = true
-          // Redibujar el documento original solo dentro del clip de la cara
           ctx.drawImage(docImg, 0, 0, docImg.naturalWidth, docImg.naturalHeight, dX, dY, dW, dH)
           ctx.restore()
 
-          // Borde verde alrededor de la zona de la foto
+          // Borde verde alrededor de la foto del documento
           ctx.strokeStyle = '#22c55e'
-          ctx.lineWidth = 3
+          ctx.lineWidth   = 3
           ctx.strokeRect(faceX, faceY, faceW, faceH)
 
-          // Etiqueta sobre zona bloqueada (derecha del doc)
+          // Etiqueta en zona bloqueada
           const bloqX = dX + faceW + 8
           const bloqW = dW - faceW - 16
-          ctx.fillStyle = 'rgba(239,68,68,0.9)'
-          ctx.fillRect(bloqX, dY + dH * 0.42, bloqW, 26)
+          ctx.fillStyle = 'rgba(239,68,68,0.88)'
+          ctx.fillRect(bloqX, dY + dH * 0.43, bloqW, 24)
           ctx.fillStyle = '#fff'
-          ctx.font = 'bold 11px sans-serif'
+          ctx.font = 'bold 10px sans-serif'
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-          ctx.fillText('DATOS PERSONALES OCULTOS', bloqX + bloqW / 2, dY + dH * 0.42 + 13)
+          ctx.fillText('DATOS PERSONALES OCULTOS', bloqX + bloqW / 2, dY + dH * 0.43 + 12)
 
         } else {
           ctx.fillStyle = 'rgba(255,255,255,0.08)'
