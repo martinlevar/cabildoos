@@ -2070,16 +2070,42 @@ function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac) {
   const palabrasEncontradas = palabras.filter(p => ocr.includes(p))
   const nombreMatch = palabras.length > 0 && palabrasEncontradas.length / palabras.length >= 0.6
 
-  // 3. Fecha — buscar partes de la fecha (día, mes, año en varios formatos)
+  // 3. Fecha — buscar en múltiples formatos incluyendo abreviaturas en español/inglés
   let fechaMatch = false
   if (fechaNac) {
     const [anio, mes, dia] = fechaNac.split('-')
-    const yymmdd = `${anio.slice(2)}${mes}${dia}`
+    const mesNum = parseInt(mes, 10)
+
+    // Abreviaturas de mes en español e inglés (SET/SEP para septiembre, etc.)
+    const MESES_ESP = ['','ene','feb','mar','abr','may','jun','jul','ago','set','oct','nov','dic']
+    const MESES_SEP = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+    const MESES_ENG = ['','jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
+    const mesEsp  = MESES_ESP[mesNum]  // "set" para septiembre en DNI argentino
+    const mesSep  = MESES_SEP[mesNum]  // "sep"
+    const mesEng  = MESES_ENG[mesNum]  // "sep" en inglés
+    const diaNum  = dia.replace(/^0/, '')  // sin cero inicial
+
+    // Formatos numéricos
+    const ocrNum   = ocrTexto.replace(/[^0-9]/g, '')
+    const yymmdd   = `${anio.slice(2)}${mes}${dia}`
     const ddmmyyyy = `${dia}${mes}${anio}`
     const ddmmyy   = `${dia}${mes}${anio.slice(2)}`
-    const ocrNum = ocrTexto.replace(/[^0-9]/g, '')
-    fechaMatch = ocrNum.includes(yymmdd) || ocrNum.includes(ddmmyyyy) || ocrNum.includes(ddmmyy)
-               || ocr.includes(dia.replace(/^0/,'')) && ocr.includes(anio)
+
+    // Formato texto: "12 set 1981", "12set1981", "set 1981", "12/set/1981"
+    const ocr2 = ocrTexto.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ')
+    const tieneAnio = ocr2.includes(anio)
+    const tieneDia  = ocr2.includes(` ${diaNum} `) || ocr2.includes(` ${dia} `) || ocr.startsWith(`${diaNum} `) || ocr.startsWith(`${dia} `)
+
+    const mesEnTexto = (abbr) => abbr && (ocr2.includes(abbr))
+
+    fechaMatch =
+      ocrNum.includes(yymmdd) || ocrNum.includes(ddmmyyyy) || ocrNum.includes(ddmmyy) ||
+      // texto: mes abreviado + año
+      (mesEnTexto(mesEsp) && tieneAnio) ||
+      (mesEnTexto(mesSep) && tieneAnio) ||
+      (mesEnTexto(mesEng) && tieneAnio) ||
+      // día numérico + año (fallback flexible)
+      (tieneDia && tieneAnio)
   }
 
   return { numDoc: numMatch, nombre: nombreMatch, fecha: fechaMatch }
