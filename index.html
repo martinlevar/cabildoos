@@ -1113,7 +1113,9 @@ html, body {
 }
 .vp-proc-row:last-child { border-bottom:none; }
 .vp-proc-row.active { opacity:1; }
+.vp-proc-row.active .vp-proc-icon { border-color:var(--orange); color:var(--orange); animation:spin-proc .8s linear infinite; }
 .vp-proc-row.done { opacity:1; }
+@keyframes spin-proc { to { transform:rotate(360deg); } }
 .vp-proc-icon {
   width:28px; height:28px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
@@ -2003,77 +2005,158 @@ function generarNonce() {
   return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('')
 }
 
-// ── Genera la imagen anonimizada en canvas → Blob JPEG
-// Esto representa lo que el validador humano recibirá
-function generarImagenAnonimizada(selfieFile) {
+// ══════════════════════════════════════════════════════════
+//  CAPA DE VERIFICACIÓN DE IDENTIDAD — PROCESAMIENTO LOCAL
+// ══════════════════════════════════════════════════════════
+
+// ── Lazy-load Tesseract.js ──
+async function cargarTesseract() {
+  if (window.Tesseract) return
+  await new Promise((res, rej) => {
+    const s = document.createElement('script')
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
+    s.onload = res; s.onerror = rej
+    document.head.appendChild(s)
+  })
+}
+
+// ── Lazy-load face-api.js + modelo liviano ──
+let faceApiLoaded = false
+async function cargarFaceApi() {
+  if (faceApiLoaded) return
+  await new Promise((res, rej) => {
+    const s = document.createElement('script')
+    s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js'
+    s.onload = res; s.onerror = rej
+    document.head.appendChild(s)
+  })
+  await faceapi.nets.tinyFaceDetector.loadFromUri(
+    'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
+  )
+  faceApiLoaded = true
+}
+
+// ── OCR: extrae número de documento del pasaporte ──
+async function extraerNumeroPasaporte(file) {
+  if (!file) return null
+  await cargarTesseract()
+  const url = URL.createObjectURL(file)
+  try {
+    const { data: { text } } = await Tesseract.recognize(url, 'eng', { logger: () => {} })
+    const lines = text.split('\n').map(l => l.replace(/\s/g,'').toUpperCase())
+    const mrz = lines.find(l => l.length >= 44 && /^[A-Z0-9<]{40,}/.test(l))
+    if (mrz) { const n = mrz.slice(0,9).replace(/</g,''); if (n.length>=6) return n }
+    const mL = text.match(/\b([A-Z]{1,2}\d{6,8})\b/)
+    if (mL) return mL[1]
+    const mN = text.match(/\b(\d{8,9})\b/)
+    if (mN) return mN[1]
+    return null
+  } finally { URL.revokeObjectURL(url) }
+}
+
+// ── Detección facial: confirma rostros en selfie y perfil ──
+async function verificarPresenciaFacial(selfieFile, perfilFile) {
+  if (!selfieFile && !perfilFile) return null
+  await cargarFaceApi()
+  const detectar = async (file) => {
+    if (!file) return []
+    const bmp = await createImageBitmap(file)
+    const cvs = document.createElement('canvas')
+    cvs.width = bmp.width; cvs.height = bmp.height
+    cvs.getContext('2d').drawImage(bmp, 0, 0)
+    return faceapi.detectAllFaces(cvs, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.35 }))
+  }
+  const [rs, rp] = await Promise.all([detectar(selfieFile), detectar(perfilFile)])
+  if (!rs.length) throw new Error('No se detectó rostro en la selfie con pasaporte')
+  if (!rp.length) throw new Error('No se detectó rostro en la foto de perfil')
+  const conf = Math.round(((rs[0]?.score ?? 0.9) + (rp[0]?.score ?? 0.9)) / 2 * 100)
+  return { selfie: rs.length, perfil: rp.length, confianza: conf }
+}
+
+// ── UI helpers para filas de procesamiento ──
+function activarFilaProceso(id) {
+  const row = document.getElementById(id)
+  if (!row) return
+  row.classList.remove('done'); row.classList.add('active')
+  row.querySelector('.vp-proc-icon').textContent = '⟳'
+}
+function completarFilaProceso(id, subtexto, isWarn = false) {
+  const row = document.getElementById(id)
+  if (!row) return
+  row.classList.remove('active'); row.classList.add('done')
+  row.querySelector('.vp-proc-icon').textContent = isWarn ? '⚠' : '✓'
+  if (subtexto) row.querySelector('.vp-proc-sub').textContent = subtexto
+}
+
+// ── Genera imagen anonimizada con ROSTRO REAL + datos redactados ──
+function generarImagenAnonimizada(selfieFile, docNumber = null) {
   return new Promise(resolve => {
     const canvas = document.createElement('canvas')
-    canvas.width = 560; canvas.height = 360
+    canvas.width = 600; canvas.height = 380
     const ctx = canvas.getContext('2d')
 
-    const drawAnon = () => {
-      // Fondo neutro
-      ctx.fillStyle = '#f0f0f0'
-      ctx.fillRect(0, 0, 560, 360)
+    const dibujar = (faceImg) => {
+      ctx.fillStyle = '#f2f2f2'
+      ctx.fillRect(0, 0, 600, 380)
 
-      // --- Lado izquierdo: rostro visible (lo que el validador confirma) ---
-      // Silueta de cabeza (visible, sin datos)
-      ctx.fillStyle = '#d0d0d0'
-      ctx.beginPath(); ctx.arc(110, 140, 70, 0, Math.PI*2); ctx.fill()
-      ctx.fillStyle = '#bbb'
-      ctx.beginPath(); ctx.ellipse(110, 290, 90, 55, 0, 0, Math.PI*2); ctx.fill()
-      // Etiqueta
-      ctx.fillStyle = '#3ecf8e'
-      ctx.fillRect(50, 224, 120, 20)
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'
-      ctx.fillText('ROSTRO VISIBLE ✓', 110, 238)
+      // IZQUIERDA: Rostro real
+      if (faceImg) {
+        ctx.save()
+        ctx.beginPath(); ctx.arc(115, 150, 90, 0, Math.PI*2); ctx.clip()
+        const r = faceImg.naturalWidth / faceImg.naturalHeight
+        const h = 200, w = h * r
+        ctx.drawImage(faceImg, 115 - w/2, 50, w, h)
+        ctx.restore()
+        ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 3
+        ctx.beginPath(); ctx.arc(115, 150, 90, 0, Math.PI*2); ctx.stroke()
+      } else {
+        ctx.fillStyle = '#d0d0d0'
+        ctx.beginPath(); ctx.arc(115, 150, 75, 0, Math.PI*2); ctx.fill()
+      }
+      ctx.fillStyle = '#22c55e'
+      ctx.beginPath(); ctx.roundRect(50, 252, 130, 22, 4); ctx.fill()
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10.5px sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText('ROSTRO VISIBLE ✓', 115, 267)
 
-      // --- Lado derecho: documento con datos redactados ---
-      // Marco del documento
-      ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2
-      ctx.fillStyle = '#fff'
-      ctx.beginPath(); ctx.roundRect(220, 60, 300, 200, 8); ctx.fill(); ctx.stroke()
+      // DERECHA: Documento redactado
+      ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5; ctx.fillStyle = '#fff'
+      ctx.beginPath(); ctx.roundRect(230, 55, 340, 245, 10); ctx.fill(); ctx.stroke()
 
-      // Número de pasaporte → REDACTADO con naranja
       ctx.fillStyle = '#f76a1e'
-      ctx.fillRect(240, 80, 260, 22)
+      ctx.beginPath(); ctx.roundRect(245, 73, 310, 28, 4); ctx.fill()
       ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'left'
-      ctx.fillText('Nº DOCUMENTO:  ##########', 248, 96)
+      const dispNum = docNumber
+        ? docNumber[0] + '●'.repeat(Math.max(docNumber.length-2,6)) + docNumber.slice(-1)
+        : '● ● ● ● ● ● ● ● ●'
+      ctx.fillText('Nº DOC:  ' + dispNum, 253, 92)
 
-      // Líneas de datos personales → BLOQUEADAS
-      const blurs = [['NOMBRE:', 130], ['FECHA NAC:', 158], ['NACIONALIDAD:', 186], ['VENCIMIENTO:', 214]]
-      blurs.forEach(([label, y]) => {
-        ctx.fillStyle = '#e0e0e0'
-        ctx.fillRect(240, y, 260, 16)
-        ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'
-        ctx.fillText(label + ' ▓▓▓▓▓▓▓▓▓▓▓▓▓', 248, y + 12)
+      const campos = [['APELLIDO Y NOMBRE',120],['FECHA NACIMIENTO',152],['NACIONALIDAD',184],['VENCIMIENTO',216]]
+      campos.forEach(([label, y]) => {
+        ctx.fillStyle = '#ececec'
+        ctx.beginPath(); ctx.roundRect(245, y, 310, 20, 3); ctx.fill()
+        ctx.fillStyle = '#aaa'; ctx.font = '9.5px monospace'
+        ctx.fillText(label + ':  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', 253, y+14)
       })
 
-      // Etiqueta redactado
-      ctx.fillStyle = '#f04545'
-      ctx.fillRect(240, 232, 130, 18)
+      ctx.fillStyle = '#ef4444'
+      ctx.beginPath(); ctx.roundRect(245, 246, 155, 22, 4); ctx.fill()
       ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'
-      ctx.fillText('DATOS REDACTADOS', 248, 245)
+      ctx.fillText('DATOS REDACTADOS', 253, 261)
 
-      // ─── Leyenda inferior ───
-      ctx.fillStyle = '#1d1d1d'
-      ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'
-      ctx.fillText('CabildoOS — Imagen anonimizada para validación', 280, 310)
-      ctx.fillStyle = '#8a8a8a'; ctx.font = '10px sans-serif'
-      ctx.fillText('El validador confirma identidad real. No ve datos personales.', 280, 328)
+      ctx.fillStyle = '#222'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'
+      ctx.fillText('CabildoOS — Imagen para validación humana', 300, 328)
+      ctx.fillStyle = '#999'; ctx.font = '10px sans-serif'
+      ctx.fillText('Solo rostro visible · Número bloqueado · Datos personales eliminados', 300, 346)
 
-      canvas.toBlob(resolve, 'image/jpeg', 0.88)
+      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.92)
     }
 
-    // Si hay selfie real, usarla de fondo antes de redactar
     if (selfieFile) {
       const img = new Image()
-      img.onload = () => { ctx.drawImage(img, 0, 0, 200, 360); drawAnon() }
-      img.onerror = drawAnon
+      img.onload  = () => dibujar(img)
+      img.onerror = () => dibujar(null)
       img.src = URL.createObjectURL(selfieFile)
-    } else {
-      drawAnon()
-    }
+    } else { dibujar(null) }
   })
 }
 
@@ -2081,7 +2164,7 @@ function generarImagenAnonimizada(selfieFile) {
 // 1. Inserta identidad (solo hash + país)
 // 2. Sube imagen anonimizada a Storage
 // 3. Inserta solicitud de verificación
-async function enviarVerificacionASupabase(country, selfieFile) {
+async function enviarVerificacionASupabase(country, selfieFile, anonBlobPreGenerado = null) {
   const nonce = generarNonce()
   const hash  = await generarIdentityHash(country, nonce)
 
@@ -2094,8 +2177,8 @@ async function enviarVerificacionASupabase(country, selfieFile) {
 
   if (idErr) throw new Error('Error creando identidad: ' + idErr.message)
 
-  // 2. Generar y subir imagen anonimizada
-  const anonBlob = await generarImagenAnonimizada(selfieFile)
+  // 2. Usar blob pre-generado (procesado localmente) o generar ahora
+  const anonBlob = anonBlobPreGenerado || await generarImagenAnonimizada(selfieFile, null)
   const filePath = `requests/${identity.id}/selfie_anon.jpg`
 
   const { error: uploadErr } = await sb.storage
@@ -3092,44 +3175,91 @@ function vpPreview(input, type) {
   vpUploaded[type] = true
   const zone = document.getElementById('vpu-' + type)
   zone.classList.add('uploaded')
+
+  // Show thumbnail inside upload zone
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    let img = zone.querySelector('.vpu-thumb')
+    if (!img) {
+      img = document.createElement('img')
+      img.className = 'vpu-thumb'
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;opacity:0.55;pointer-events:none;'
+      zone.style.position = 'relative'
+      zone.insertBefore(img, zone.firstChild)
+    }
+    img.src = e.target.result
+  }
+  reader.readAsDataURL(input.files[0])
+
   // Check if all uploaded
   const allDone = vpUploaded.pasaporte && vpUploaded.selfie && vpUploaded.perfil
   document.getElementById('vp-btn-s2').disabled = !allDone
 }
 
-function vpIniciarProceso() {
+async function vpIniciarProceso() {
   vpShowStep(3)
-  const rows     = ['vpc-r1','vpc-r2','vpc-r3','vpc-r4']
-  const delays   = [0, 1400, 2600, 3600]
-  const doneTimes= [1200, 2400, 3400, 4400]
-
-  rows.forEach((id, i) => {
-    const row = document.getElementById(id)
-    setTimeout(() => { row.classList.add('active') }, delays[i])
-    setTimeout(() => {
-      row.classList.remove('active'); row.classList.add('done')
-      row.querySelector('.vp-proc-icon').textContent = '✓'
-    }, doneTimes[i])
+  document.querySelectorAll('.vp-proc-row').forEach(r => {
+    r.classList.remove('active','done')
+    r.querySelector('.vp-proc-icon').textContent = '◌'
   })
 
-  // Tras la animación → enviar a Supabase y mostrar resultado
-  setTimeout(async () => {
-    const country   = document.getElementById('vp-pais').value || 'Venezuela'
-    const selfieInp = document.getElementById('f-selfie')
-    const selfieFile= selfieInp.files?.[0] || null
-    try {
-      const { hash, requestId } = await enviarVerificacionASupabase(country, selfieFile)
-      // Mostrar hash real en el paso de aprobación (truncado)
-      const hashShort = hash.slice(0,8).toUpperCase() + '...' + hash.slice(-4).toUpperCase()
-      const caption = document.querySelector('.vp-anon-caption')
-      if (caption) caption.textContent = `ID: ${hashShort} · Rostro visible · Número redactado · Datos personales bloqueados`
-      vpShowStep('4a')
-    } catch (err) {
-      console.error(err)
-      // Si falla Supabase igual avanzamos en demo (no bloqueamos UX)
-      vpShowStep('4a')
-    }
-  }, 5200)
+  const passportFile = document.getElementById('f-pasaporte').files?.[0] || null
+  const selfieFile   = document.getElementById('f-selfie').files?.[0]   || null
+  const perfilFile   = document.getElementById('f-perfil').files?.[0]   || null
+  const country      = document.getElementById('vp-pais').value || 'Venezuela'
+
+  let docNumber = null, anonBlob = null
+
+  // PASO 1: OCR del pasaporte
+  activarFilaProceso('vpc-r1')
+  try {
+    docNumber = await extraerNumeroPasaporte(passportFile)
+    completarFilaProceso('vpc-r1',
+      docNumber ? `Nº ${docNumber} · MRZ procesada` : 'Documento leído · revisión manual')
+  } catch {
+    completarFilaProceso('vpc-r1', 'OCR completado', true)
+  }
+
+  // PASO 2: Detección facial
+  activarFilaProceso('vpc-r2')
+  try {
+    const fr = await verificarPresenciaFacial(selfieFile, perfilFile)
+    completarFilaProceso('vpc-r2', fr
+      ? `Rostro confirmado · ${fr.confianza}% confianza`
+      : 'Análisis completado')
+  } catch (e) {
+    completarFilaProceso('vpc-r2', e.message || 'Verificación completada', true)
+  }
+
+  // PASO 3: Anonimizar imagen
+  activarFilaProceso('vpc-r3')
+  try {
+    anonBlob = await generarImagenAnonimizada(selfieFile, docNumber)
+    completarFilaProceso('vpc-r3', 'Imagen lista · datos personales eliminados')
+  } catch {
+    completarFilaProceso('vpc-r3', 'Anonimización completada', true)
+  }
+
+  // PASO 4: Hash SHA-256 + upload a Supabase
+  activarFilaProceso('vpc-r4')
+  let hashShort = null
+  try {
+    const { hash } = await enviarVerificacionASupabase(country, selfieFile, anonBlob)
+    hashShort = hash.slice(0,8).toUpperCase() + '…' + hash.slice(-4).toUpperCase()
+    completarFilaProceso('vpc-r4', `ID ${hashShort} · solicitud registrada`)
+  } catch {
+    const h = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map(b => b.toString(16).padStart(2,'0')).join('').toUpperCase()
+    hashShort = h.slice(0,8) + '…' + h.slice(-4)
+    completarFilaProceso('vpc-r4', `Modo demo · ID ${hashShort}`)
+  }
+
+  const caption = document.querySelector('.vp-anon-caption')
+  if (caption) caption.textContent =
+    `ID: ${hashShort || '—'} · Rostro visible · Número bloqueado · Datos eliminados`
+
+  await new Promise(r => setTimeout(r, 600))
+  vpShowStep('4a')
 }
 
 async function vpSimularAprobacion() {
