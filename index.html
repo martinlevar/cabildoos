@@ -837,6 +837,86 @@ html, body {
 .av-label-seat { font-size:13px; font-weight:500; color:var(--dark); text-align:center; margin-top:10px; }
 .av-label-prop { font-size:13px; font-weight:500; color:var(--mid);  text-align:center; margin-top:10px; }
 
+/* ── AUTH MODAL ── */
+#auth-overlay {
+  position:fixed; inset:0; z-index:950;
+  background:rgba(15,15,20,.72); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .25s;
+}
+#auth-overlay.open { opacity:1; pointer-events:all; }
+#auth-panel {
+  background:#fff; border-radius:24px;
+  width:min(400px,92vw); padding:32px 28px 28px;
+  box-shadow:0 24px 60px rgba(0,0,0,.22);
+  position:relative;
+  transform:translateY(16px); transition:transform .28s cubic-bezier(.34,1.4,.64,1);
+}
+#auth-overlay.open #auth-panel { transform:translateY(0); }
+.auth-tabs {
+  display:flex; gap:4px; background:#f4f4f6; border-radius:12px;
+  padding:4px; margin-bottom:24px;
+}
+.auth-tab {
+  flex:1; padding:9px 0; border:none; border-radius:9px;
+  background:transparent; font-size:13px; font-weight:600;
+  color:var(--mid); cursor:pointer; transition:all .18s;
+}
+.auth-tab.active {
+  background:#fff; color:var(--dark);
+  box-shadow:0 1px 4px rgba(0,0,0,.10);
+}
+.auth-sub { font-size:13px; color:var(--mid); margin-bottom:20px; line-height:1.5; }
+.auth-field { margin-bottom:14px; }
+.auth-field label { display:block; font-size:12px; font-weight:600; color:var(--mid); margin-bottom:5px; text-transform:uppercase; letter-spacing:.4px; }
+.auth-field input {
+  width:100%; padding:11px 13px; border:1.5px solid #e8e8ec;
+  border-radius:10px; font-size:14px; outline:none;
+  transition:border-color .15s;
+}
+.auth-field input:focus { border-color:var(--navy); }
+.auth-field-hint { display:block; font-size:11px; margin-top:4px; color:var(--mid); min-height:14px; }
+.auth-field-hint.ok  { color:#16a34a; }
+.auth-field-hint.err { color:#dc2626; }
+.auth-btn {
+  width:100%; margin-top:6px; padding:13px;
+  background:var(--navy); color:#fff;
+  border:none; border-radius:12px; font-size:14px; font-weight:700;
+  cursor:pointer; transition:opacity .15s;
+}
+.auth-btn:disabled { opacity:.4; cursor:not-allowed; }
+.auth-btn:not(:disabled):hover { opacity:.88; }
+.auth-msg { font-size:13px; margin-top:10px; text-align:center; min-height:18px; }
+.auth-msg.ok  { color:#16a34a; }
+.auth-msg.err { color:#dc2626; }
+
+/* Botón de cuenta en nav landing */
+#btn-auth-nav {
+  padding:7px 14px; border-radius:10px;
+  background:var(--navy); color:#fff;
+  border:none; font-size:12px; font-weight:700;
+  cursor:pointer; transition:opacity .15s;
+}
+#btn-auth-nav:hover { opacity:.85; }
+#nav-user-info {
+  display:flex; align-items:center; gap:10px;
+}
+#nav-user-alias {
+  font-size:13px; font-weight:700; color:var(--dark);
+}
+#nav-user-status {
+  font-size:11px; padding:3px 9px; border-radius:20px;
+  font-weight:600;
+}
+#nav-user-status.pending  { background:#fef9c3; color:#854d0e; }
+#nav-user-status.verified { background:#dcfce7; color:#166534; }
+#nav-user-status.none     { background:#f4f4f6; color:var(--mid); }
+#btn-logout-nav {
+  background:none; border:none; font-size:12px;
+  color:var(--mid); cursor:pointer; padding:4px 6px;
+}
+#btn-logout-nav:hover { color:var(--dark); }
+
 /* ── MI PERFIL MODAL ── */
 #mi-perfil-overlay {
   position:fixed; inset:0; z-index:900;
@@ -1370,14 +1450,23 @@ body.on-landing #social-footer.visible { display:flex; }
         </svg>
       </div>
     </div>
-    <div class="nav-right"></div>
+    <div class="nav-right">
+      <!-- Estado: no logueado -->
+      <button id="btn-auth-nav" onclick="abrirAuth()" style="display:none">Crear cuenta</button>
+      <!-- Estado: logueado -->
+      <div id="nav-user-info" style="display:none">
+        <span id="nav-user-alias"></span>
+        <span id="nav-user-status" class="none">Sin verificar</span>
+        <button id="btn-logout-nav" onclick="cerrarSesion()">Salir</button>
+      </div>
+    </div>
   </nav>
   <div class="body">
     <div id="st-noident" style="display:flex;flex-direction:column;align-items:center">
       <div class="id-circle" onclick="crearIdentidad()">
         <span class="ic-plus">+</span>
       </div>
-      <p class="id-label">Crear identidad</p>
+      <p class="id-label" id="st-noident-label">Crear cuenta</p>
     </div>
     <div class="avatar-wrap" id="st-ident">
       <div class="av-actions">
@@ -1940,6 +2029,52 @@ body.on-landing #social-footer.visible { display:flex; }
   </div>
 </div>
 
+<!-- ══════════════ AUTH MODAL (REGISTRO / LOGIN) ══════════════ -->
+<div id="auth-overlay" onclick="if(event.target===this)cerrarAuth()">
+  <div id="auth-panel">
+    <button class="vp-close" onclick="cerrarAuth()">✕</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-registro" onclick="authSetTab('registro')">Crear cuenta</button>
+      <button class="auth-tab" id="tab-login" onclick="authSetTab('login')">Iniciar sesión</button>
+    </div>
+
+    <!-- REGISTRO -->
+    <div id="auth-form-registro">
+      <p class="auth-sub">Tu alias aparecerá en el hemiciclo. El email es privado.</p>
+      <div class="auth-field">
+        <label>Alias público</label>
+        <input type="text" id="reg-alias" placeholder="ej: ciudadano_libre" oninput="authCheckRegistro()" maxlength="30" autocomplete="off">
+        <span class="auth-field-hint" id="reg-alias-hint"></span>
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="tu@email.com" oninput="authCheckRegistro()" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Contraseña</label>
+        <input type="password" id="reg-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckRegistro()" autocomplete="new-password">
+      </div>
+      <button class="auth-btn" id="reg-btn" onclick="registrarse()" disabled>Crear cuenta →</button>
+      <p class="auth-msg" id="reg-msg"></p>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="auth-form-login" style="display:none">
+      <p class="auth-sub">Ingresá con tu email y contraseña.</p>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="tu@email.com" oninput="authCheckLogin()" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="Tu contraseña" oninput="authCheckLogin()" autocomplete="current-password">
+      </div>
+      <button class="auth-btn" id="login-btn" onclick="iniciarSesion()" disabled>Entrar →</button>
+      <p class="auth-msg" id="login-msg"></p>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ SIMULATION OVERLAY ══════════════ -->
 <div id="sim-overlay">
   <div id="sim-top-bar">
@@ -2165,9 +2300,10 @@ function completarFilaProceso(id, subtexto, isWarn = false) {
 }
 
 // ── Genera imagen compuesta para validadores ──
-// IZQUIERDA: selfie con zona inferior pixelada (cara del ciudadano visible, documento oculto)
-// DERECHA: solo la foto del rostro extraída del documento (sin ningún dato legible)
-// El validador verifica que la persona es real y sostiene un documento — nada más
+// IZQUIERDA: selfie completa — a escala de selfie los datos del doc no son legibles,
+//             pero el validador ve que la persona sostiene un documento físico real
+// DERECHA: documento completo pixelado, con SOLO la zona de la foto del rostro
+//           des-pixelada (izq ~35%, excluyendo renglón inferior con número)
 function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
   return new Promise((resolve, reject) => {
     if (!selfieDocFile) return reject(new Error('Sin imagen de selfie'))
@@ -2185,7 +2321,7 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
       .then(([selfieImg, docImg]) => {
         const OUT_H = 900
         const OUT_W = 1600
-        const PAD   = 20
+        const PAD = 20
         const HEADER_H = 34
 
         const canvas = document.createElement('canvas')
@@ -2195,7 +2331,7 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
         ctx.fillStyle = '#0d0d0d'
         ctx.fillRect(0, 0, OUT_W, OUT_H)
 
-        // ── PANEL IZQUIERDO: Selfie con zona del documento pixelada ──
+        // ── PANEL IZQUIERDO: Selfie completa sin modificar ──
         const selfieAreaW = OUT_W / 2 - PAD * 1.5
         const selfieAreaH = OUT_H - PAD * 3 - HEADER_H
         const selfieR = selfieImg.naturalWidth / selfieImg.naturalHeight
@@ -2204,42 +2340,8 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
         const sX = PAD + (selfieAreaW - sW) / 2
         const sY = PAD + HEADER_H + (selfieAreaH - sH) / 2
 
-        // Dibujar selfie completa
         ctx.imageSmoothingEnabled = true
         ctx.drawImage(selfieImg, sX, sY, sW, sH)
-
-        // Pixelar la mitad inferior de la selfie (donde sostiene el documento)
-        // La cara del ciudadano queda en la parte superior visible
-        const pixZoneY = sY + sH * 0.52  // empieza en el 52% de la imagen
-        const pixZoneH = sH - sH * 0.52
-        const PIX = Math.max(16, Math.floor(sW / 20))
-        const tmpS = document.createElement('canvas')
-        tmpS.width  = Math.ceil(sW / PIX)
-        tmpS.height = Math.ceil(pixZoneH / PIX)
-        const tmpSCtx = tmpS.getContext('2d')
-        tmpSCtx.imageSmoothingEnabled = false
-        // Recortar solo la zona inferior de la selfie
-        const srcY = (pixZoneY - sY) / sH * selfieImg.naturalHeight
-        const srcH = pixZoneH / sH * selfieImg.naturalHeight
-        tmpSCtx.drawImage(selfieImg,
-          0, srcY, selfieImg.naturalWidth, srcH,
-          0, 0, tmpS.width, tmpS.height)
-        ctx.imageSmoothingEnabled = false
-        ctx.drawImage(tmpS, 0, 0, tmpS.width, tmpS.height, sX, pixZoneY, sW, pixZoneH)
-        ctx.imageSmoothingEnabled = true
-
-        // Overlay oscuro sobre zona pixelada
-        ctx.fillStyle = 'rgba(0,0,0,0.55)'
-        ctx.fillRect(sX, pixZoneY, sW, pixZoneH)
-
-        // Etiqueta sobre zona bloqueada
-        ctx.fillStyle = 'rgba(239,68,68,0.9)'
-        const lblY = pixZoneY + pixZoneH * 0.35
-        ctx.fillRect(sX, lblY, sW, 24)
-        ctx.fillStyle = '#fff'
-        ctx.font = 'bold 11px sans-serif'
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText('DOCUMENTO BLOQUEADO', sX + sW / 2, lblY + 12)
 
         // Header panel izquierdo
         ctx.fillStyle = 'rgba(34,197,94,0.9)'
@@ -2247,52 +2349,71 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
         ctx.fillStyle = '#000'
         ctx.font = 'bold 13px sans-serif'
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText('✓ SELFIE — ROSTRO DEL CIUDADANO', PAD + selfieAreaW / 2, PAD + HEADER_H / 2)
+        ctx.fillText('✓ CIUDADANO SOSTENIENDO DOCUMENTO', PAD + selfieAreaW / 2, PAD + HEADER_H / 2)
 
-        // ── PANEL DERECHO: Solo la foto del rostro del documento ──
+        // ── PANEL DERECHO: Documento con datos pixelados, solo foto del rostro visible ──
         const docAreaX = OUT_W / 2 + PAD / 2
         const docAreaW = OUT_W / 2 - PAD * 1.5
         const docAreaH = OUT_H - PAD * 3 - HEADER_H
 
         if (docImg) {
-          // El documento tiene la foto en el tercio izquierdo (~33%)
-          // Extraemos solo esa franja y la mostramos grande
-          const faceRatio = 0.36  // fracción del documento que contiene la foto del rostro
-          const srcFaceW = Math.floor(docImg.naturalWidth * faceRatio)
-          const srcFaceH = docImg.naturalHeight
+          // Calcular dimensiones del documento dentro del panel
+          const docR = docImg.naturalWidth / docImg.naturalHeight
+          let dW = docAreaW, dH = dW / docR
+          if (dH > docAreaH) { dH = docAreaH; dW = dH * docR }
+          const dX = docAreaX + (docAreaW - dW) / 2
+          const dY = PAD + HEADER_H + (docAreaH - dH) / 2
 
-          // Crear canvas temporal con solo la zona de la cara
-          const faceC = document.createElement('canvas')
-          faceC.width  = srcFaceW
-          faceC.height = srcFaceH
-          const faceCtx = faceC.getContext('2d')
-          faceCtx.imageSmoothingEnabled = true
-          faceCtx.drawImage(docImg, 0, 0, srcFaceW, srcFaceH, 0, 0, srcFaceW, srcFaceH)
+          // PASO 1: Pixelar el documento COMPLETO
+          const PIX = Math.max(14, Math.floor(dW / 22))
+          const tmpC = document.createElement('canvas')
+          tmpC.width  = Math.ceil(dW / PIX)
+          tmpC.height = Math.ceil(dH / PIX)
+          const tmpCtx = tmpC.getContext('2d')
+          tmpCtx.imageSmoothingEnabled = false
+          tmpCtx.drawImage(docImg, 0, 0, docImg.naturalWidth, docImg.naturalHeight, 0, 0, tmpC.width, tmpC.height)
+          ctx.imageSmoothingEnabled = false
+          ctx.drawImage(tmpC, 0, 0, tmpC.width, tmpC.height, dX, dY, dW, dH)
+          ctx.imageSmoothingEnabled = true
 
-          // Escalar para mostrar dentro del panel derecho con padding
-          const innerPad = 40
-          const maxW = docAreaW - innerPad * 2
-          const maxH = docAreaH - innerPad * 2
-          const faceR = srcFaceW / srcFaceH
-          let fW = maxW, fH = fW / faceR
-          if (fH > maxH) { fH = maxH; fW = fH * faceR }
-          const fX = docAreaX + (docAreaW - fW) / 2
-          const fY = PAD + HEADER_H + (docAreaH - fH) / 2
+          // Overlay rojo sobre todo el documento (datos ocultos)
+          ctx.fillStyle = 'rgba(120,0,0,0.4)'
+          ctx.fillRect(dX, dY, dW, dH)
 
-          // Borde redondeado + sombra
+          // PASO 2: Des-pixelar SOLO la zona de la foto del rostro
+          // DNI argentino y mayoría de docs latinoamericanos:
+          //   foto del rostro = izquierda ~35% del ancho, filas 8%–78% del alto
+          //   el número grande aparece en el renglón inferior (~78%-100%), queda oculto
+          const faceX = dX
+          const faceY = dY + dH * 0.08
+          const faceW = dW * 0.35
+          const faceH = dH * 0.70
+
           ctx.save()
-          ctx.shadowColor = 'rgba(34,197,94,0.4)'
-          ctx.shadowBlur  = 24
-          ctx.strokeStyle = '#22c55e'
-          ctx.lineWidth   = 4
-          ctx.strokeRect(fX - 2, fY - 2, fW + 4, fH + 4)
+          ctx.beginPath()
+          ctx.rect(faceX, faceY, faceW, faceH)
+          ctx.clip()
+          ctx.imageSmoothingEnabled = true
+          // Redibujar el documento original solo dentro del clip de la cara
+          ctx.drawImage(docImg, 0, 0, docImg.naturalWidth, docImg.naturalHeight, dX, dY, dW, dH)
           ctx.restore()
 
-          ctx.imageSmoothingEnabled = true
-          ctx.drawImage(faceC, 0, 0, srcFaceW, srcFaceH, fX, fY, fW, fH)
+          // Borde verde alrededor de la zona de la foto
+          ctx.strokeStyle = '#22c55e'
+          ctx.lineWidth = 3
+          ctx.strokeRect(faceX, faceY, faceW, faceH)
+
+          // Etiqueta sobre zona bloqueada (derecha del doc)
+          const bloqX = dX + faceW + 8
+          const bloqW = dW - faceW - 16
+          ctx.fillStyle = 'rgba(239,68,68,0.9)'
+          ctx.fillRect(bloqX, dY + dH * 0.42, bloqW, 26)
+          ctx.fillStyle = '#fff'
+          ctx.font = 'bold 11px sans-serif'
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.fillText('DATOS PERSONALES OCULTOS', bloqX + bloqW / 2, dY + dH * 0.42 + 13)
 
         } else {
-          // Sin imagen de documento: mostrar placeholder
           ctx.fillStyle = 'rgba(255,255,255,0.08)'
           ctx.fillRect(docAreaX + PAD, PAD + HEADER_H + PAD, docAreaW - PAD * 2, docAreaH - PAD * 2)
           ctx.fillStyle = 'rgba(255,255,255,0.3)'
@@ -2307,7 +2428,7 @@ function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
         ctx.fillStyle = '#000'
         ctx.font = 'bold 13px sans-serif'
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillText('ROSTRO EN DOCUMENTO ✓ · DATOS OCULTOS 🔒', docAreaX + docAreaW / 2, PAD + HEADER_H / 2)
+        ctx.fillText('FOTO DEL DOCUMENTO ✓ · DATOS OCULTOS 🔒', docAreaX + docAreaW / 2, PAD + HEADER_H / 2)
 
         // Divisor vertical
         ctx.strokeStyle = 'rgba(255,255,255,0.12)'
@@ -2364,13 +2485,14 @@ async function enviarVerificacionASupabase(country, selfieFile, anonBlobPreGener
 
   if (uploadErr) throw new Error('Error subiendo imagen: ' + uploadErr.message)
 
-  // 3. Crear solicitud de verificación
+  // 3. Crear solicitud de verificación (con user_id si está logueado)
   const { data: request, error: reqErr } = await sb
     .from('verification_requests')
     .insert({
       identity_hash: hash,
       anon_image_path: filePath,
-      status: 'pending'
+      status: 'pending',
+      user_id: _authUser?.id || null
     })
     .select('id')
     .single()
@@ -3307,7 +3429,210 @@ let vpCurrentStep = 1
 const vpUploaded = { 'doc-frente': false, 'selfie-doc': false }
 let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 
-function crearIdentidad() { abrirVerificacion() }
+// ══════════════════════════════════════════════════════════════
+//  AUTH — REGISTRO / LOGIN
+// ══════════════════════════════════════════════════════════════
+
+let _authUser = null     // usuario logueado actual
+let _authProfile = null  // perfil (alias, seat_number)
+
+// Inicializar auth al cargar
+;(async () => {
+  const { data: { session } } = await sb.auth.getSession()
+  if (session?.user) await _onLogin(session.user)
+  else _onLogout()
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN' && session?.user) await _onLogin(session.user)
+    if (event === 'SIGNED_OUT') _onLogout()
+  })
+})()
+
+async function _onLogin(user) {
+  _authUser = user
+  // Cargar perfil
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
+  _authProfile = profile
+
+  // Nav
+  document.getElementById('btn-auth-nav').style.display = 'none'
+  const navInfo = document.getElementById('nav-user-info')
+  navInfo.style.display = 'flex'
+  document.getElementById('nav-user-alias').textContent = profile?.alias || user.email?.split('@')[0]
+
+  const statusEl = document.getElementById('nav-user-status')
+  if (profile?.seat_number) {
+    statusEl.textContent = 'Butaca #' + profile.seat_number
+    statusEl.className = 'verified'
+  } else {
+    // Verificar si tiene solicitud pending
+    const { data: req } = await sb.from('verification_requests')
+      .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
+    if (req?.status === 'pending') {
+      statusEl.textContent = 'En revisión'
+      statusEl.className = 'pending'
+    } else {
+      statusEl.textContent = 'Sin verificar'
+      statusEl.className = 'none'
+    }
+  }
+
+  // Landing: si está verificado mostrar butaca, si no mostrar "Verificar identidad"
+  if (profile?.seat_number) {
+    document.getElementById('st-noident').style.display = 'none'
+    document.getElementById('st-ident').style.display   = 'flex'
+    document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = profile.seat_number)
+    document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + profile.seat_number)
+  } else {
+    document.getElementById('st-noident').style.display = 'flex'
+    document.getElementById('st-ident').style.display   = 'none'
+    const lbl = document.getElementById('st-noident-label')
+    if (lbl) lbl.textContent = 'Verificar identidad'
+  }
+}
+
+function _onLogout() {
+  _authUser = null
+  _authProfile = null
+  document.getElementById('btn-auth-nav').style.display = 'block'
+  document.getElementById('nav-user-info').style.display = 'none'
+  document.getElementById('st-noident').style.display = 'flex'
+  document.getElementById('st-ident').style.display   = 'none'
+  const lbl = document.getElementById('st-noident-label')
+  if (lbl) lbl.textContent = 'Crear cuenta'
+}
+
+// ── Abrir / cerrar modal ──
+function abrirAuth(tab = 'registro') {
+  authSetTab(tab)
+  document.getElementById('auth-overlay').classList.add('open')
+}
+function cerrarAuth() {
+  document.getElementById('auth-overlay').classList.remove('open')
+}
+function authSetTab(tab) {
+  document.getElementById('auth-form-registro').style.display = tab === 'registro' ? '' : 'none'
+  document.getElementById('auth-form-login').style.display    = tab === 'login'    ? '' : 'none'
+  document.getElementById('tab-registro').classList.toggle('active', tab === 'registro')
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login')
+}
+
+// ── Validaciones en tiempo real ──
+function authCheckRegistro() {
+  const alias = document.getElementById('reg-alias').value.trim()
+  const email = document.getElementById('reg-email').value.trim()
+  const pass  = document.getElementById('reg-pass').value
+  const hint  = document.getElementById('reg-alias-hint')
+
+  const aliasOk = /^[a-z0-9_]{3,30}$/.test(alias)
+  if (alias && !aliasOk) {
+    hint.textContent = 'Solo minúsculas, números y _ (3-30 caracteres)'
+    hint.className = 'auth-field-hint err'
+  } else if (alias && aliasOk) {
+    hint.textContent = '✓'
+    hint.className = 'auth-field-hint ok'
+  } else {
+    hint.textContent = ''
+    hint.className = 'auth-field-hint'
+  }
+
+  const ok = aliasOk && email.includes('@') && pass.length >= 8
+  document.getElementById('reg-btn').disabled = !ok
+}
+
+function authCheckLogin() {
+  const email = document.getElementById('login-email').value.trim()
+  const pass  = document.getElementById('login-pass').value
+  document.getElementById('login-btn').disabled = !(email.includes('@') && pass.length >= 6)
+}
+
+// ── Registro ──
+async function registrarse() {
+  const alias = document.getElementById('reg-alias').value.trim().toLowerCase()
+  const email = document.getElementById('reg-email').value.trim()
+  const pass  = document.getElementById('reg-pass').value
+  const btn   = document.getElementById('reg-btn')
+  const msg   = document.getElementById('reg-msg')
+
+  // Verificar alias único antes de crear
+  const { data: existing } = await sb.from('profiles').select('id').eq('alias', alias).limit(1)
+  if (existing?.length) {
+    msg.textContent = 'Ese alias ya está en uso, elegí otro.'
+    msg.className = 'auth-msg err'
+    return
+  }
+
+  btn.disabled = true
+  btn.textContent = 'Creando cuenta…'
+  msg.textContent = ''
+
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password: pass,
+    options: { data: { alias } }
+  })
+
+  if (error) {
+    msg.textContent = error.message.includes('already') ? 'Email ya registrado. ¿Querés iniciar sesión?' : error.message
+    msg.className = 'auth-msg err'
+    btn.disabled = false
+    btn.textContent = 'Crear cuenta →'
+    return
+  }
+
+  // El trigger en Supabase crea el perfil automáticamente
+  msg.textContent = '¡Cuenta creada! Revisá tu email para confirmar.'
+  msg.className = 'auth-msg ok'
+  btn.textContent = 'Crear cuenta →'
+
+  // Si auto-confirmado (sin email confirmation), cerrar y continuar
+  if (data.user && !data.user.email_confirmed_at === false) {
+    setTimeout(() => cerrarAuth(), 1500)
+  }
+}
+
+// ── Login ──
+async function iniciarSesion() {
+  const email = document.getElementById('login-email').value.trim()
+  const pass  = document.getElementById('login-pass').value
+  const btn   = document.getElementById('login-btn')
+  const msg   = document.getElementById('login-msg')
+
+  btn.disabled = true
+  btn.textContent = 'Entrando…'
+  msg.textContent = ''
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass })
+
+  if (error) {
+    msg.textContent = 'Email o contraseña incorrectos.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false
+    btn.textContent = 'Entrar →'
+    return
+  }
+
+  cerrarAuth()
+}
+
+// ── Cerrar sesión ──
+async function cerrarSesion() {
+  await sb.auth.signOut()
+}
+
+// ── crearIdentidad: requiere login primero ──
+function crearIdentidad() {
+  if (!_authUser) {
+    abrirAuth('registro')
+    return
+  }
+  if (_authProfile?.seat_number) {
+    // Ya verificado
+    abrirMiPerfil()
+    return
+  }
+  abrirVerificacion()
+}
 
 function abrirVerificacion() {
   vpCurrentStep = 1
@@ -3522,14 +3847,17 @@ async function vpEnviarVerificacion() {
 
 function vpFinalizar() {
   cerrarVerificacion()
-  // Assign the seat visually
-  document.getElementById('st-noident').style.display = 'none'
-  document.getElementById('st-ident').style.display   = 'flex'
-  const seatNum = window._vpSession?.seatNum || (TOTAL_SEATS + 1)
-  // Update seat display in landing and congress nav
-  document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = seatNum)
-  document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + seatNum)
-  showToast(`Butaca #${seatNum} verificada — bienvenido al hemiciclo`)
+  // La butaca NO se asigna aquí — solo cuando el validador humano aprueba.
+  // Mostrar estado "en revisión" en el nav
+  const statusEl = document.getElementById('nav-user-status')
+  if (statusEl) {
+    statusEl.textContent = 'En revisión'
+    statusEl.className = 'pending'
+  }
+  // El botón de landing sigue mostrando st-noident pero con texto actualizado
+  const lbl = document.getElementById('st-noident-label')
+  if (lbl) lbl.textContent = 'Verificación en revisión'
+  showToast('Solicitud enviada — te avisamos por email cuando sea aprobada')
 }
 
 let observerMode = false

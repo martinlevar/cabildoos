@@ -1635,7 +1635,7 @@ async function cargarIdentidades() {
   try {
     let query = sb
       .from('verification_requests')
-      .select('id, identity_hash, status, created_at, anon_image_path')
+      .select('id, identity_hash, status, created_at, anon_image_path, user_id, profiles(alias)')
       .order('created_at', { ascending: false })
       .limit(100)
     if (filtroId !== 'all') query = query.eq('status', filtroId)
@@ -1673,6 +1673,10 @@ function renderIdCard(r) {
   const hash = r.identity_hash || ''
   const hashShort = hash.slice(0,8).toUpperCase() + '…' + hash.slice(-4).toUpperCase()
   const ago = tiempoRelativo(r.created_at)
+  // Alias del usuario si está disponible (viene del JOIN con profiles)
+  const aliasTag = r.profiles?.alias
+    ? `<span style="font-size:11px;font-weight:700;color:var(--accent);background:rgba(247,106,30,.1);padding:2px 7px;border-radius:6px">@${r.profiles.alias}</span>`
+    : ''
   const statusBadge = {
     pending:      '<span class="badge pending">Pendiente</span>',
     under_review: '<span class="badge review">En revisión</span>',
@@ -1704,7 +1708,10 @@ function renderIdCard(r) {
       </div>
     </div>
     <div class="id-card-body">
-      <div class="id-hash">${hashShort}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+        <div class="id-hash">${hashShort}</div>
+        ${aliasTag}
+      </div>
       <div class="id-meta">
         ${statusBadge}
         <span class="id-time">${ago}</span>
