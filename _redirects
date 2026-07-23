@@ -1,1 +1,11 @@
-/*  /index.html  200
+# Ruta pública
+/                     /index.html   200
+
+# Panel admin — ruta privada ofuscada
+/panel-c4b7f2a9e1     /admin.html   200
+
+# Bloquear acceso directo a admin.html
+/admin.html           /             301
+
+# SPA fallback
+/*                    /index.html   200

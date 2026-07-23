@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>cabildoOS — Admin</title>
+<title>cabildoOS — Panel</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -656,6 +656,128 @@ select option { background: var(--surface); }
 }
 .chip-group { display: flex; gap: 6px; flex-wrap: wrap; }
 
+/* ── LOGIN SCREEN ── */
+#login-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#login-screen.hidden { display: none; }
+
+.login-box {
+  width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 16px;
+  padding: 36px 32px;
+}
+.login-logo {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.login-logo span { color: var(--accent); }
+.login-subtitle {
+  font-size: 12px;
+  color: var(--muted2);
+  margin-bottom: 28px;
+}
+.login-field { margin-bottom: 14px; }
+.login-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 6px;
+}
+.login-field input {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+}
+.login-field input:focus { border-color: var(--accent); }
+.login-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.login-btn:hover { background: #e09520; }
+.login-btn:disabled { opacity: .5; cursor: not-allowed; }
+.login-error {
+  background: var(--red2);
+  border: 1px solid rgba(239,68,68,.2);
+  color: var(--red);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  margin-bottom: 14px;
+  display: none;
+}
+.login-error.show { display: block; }
+.login-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+.role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent2);
+  border: 1px solid rgba(245,166,35,.2);
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Acceso restringido */
+.restricted-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--muted2);
+  font-size: 14px;
+}
+.restricted-overlay.show { display: flex; }
+
 @keyframes pulse {
   0%,100% { opacity: 1; }
   50% { opacity: .4; }
@@ -674,6 +796,33 @@ select option { background: var(--surface); }
 </style>
 </head>
 <body>
+
+<!-- ══ LOGIN SCREEN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">cabildo<span>OS</span></div>
+    <div class="login-subtitle">Panel de administración · acceso restringido</div>
+
+    <div class="login-error" id="login-error"></div>
+
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@email.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') hacerLogin()">
+    </div>
+    <button class="login-btn" id="login-btn" onclick="hacerLogin()">
+      Ingresar al panel
+    </button>
+    <div class="login-footer">
+      Acceso solo para personal autorizado de CabildoOS.<br>
+      Los intentos fallidos quedan registrados.
+    </div>
+  </div>
+</div>
 
 <!-- ══ SIDEBAR ══ -->
 <aside class="sidebar">
@@ -723,7 +872,12 @@ select option { background: var(--surface); }
     </div>
     <div class="topbar-actions">
       <button class="btn btn-ghost btn-sm" onclick="recargarDatos()">↻ Actualizar</button>
-      <button class="btn btn-primary btn-sm" onclick="abrirModal('nueva-pregunta')">+ Nueva pregunta</button>
+      <button class="btn btn-primary btn-sm" id="btn-nueva-preg" onclick="abrirModal('nueva-pregunta')">+ Nueva pregunta</button>
+      <div class="role-pill" id="user-pill" style="display:none">
+        <span id="user-role-icon">◈</span>
+        <span id="user-email-label">—</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" style="display:none" onclick="cerrarSesion()">Salir</button>
     </div>
   </div>
 
@@ -1231,6 +1385,99 @@ const sb = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
 )
 
+// ── RBAC: qué secciones puede ver cada rol ──
+const ROLE_ACCESS = {
+  admin:     ['dashboard','preguntas','identidades','hemiciclo','votacion'],
+  validator: ['identidades'],
+  moderator: ['preguntas','identidades'],
+}
+
+const ROLE_LABELS = {
+  admin:     { icon: '◈', label: 'Admin' },
+  validator: { icon: '🔐', label: 'Verificador' },
+  moderator: { icon: '✎', label: 'Moderador' },
+}
+
+let currentUser = null
+let currentRole = null
+
+// ── LOGIN ──
+async function hacerLogin() {
+  const email = document.getElementById('login-email').value.trim()
+  const pass  = document.getElementById('login-pass').value
+  const btn   = document.getElementById('login-btn')
+  const errEl = document.getElementById('login-error')
+
+  errEl.classList.remove('show')
+  if (!email || !pass) { mostrarError('Completá email y contraseña'); return }
+
+  btn.disabled = true
+  btn.innerHTML = '<span class="spinner"></span> Verificando...'
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass })
+    if (error) throw error
+
+    const user = data.user
+    const role = user.user_metadata?.role || null
+
+    if (!role || !ROLE_ACCESS[role]) {
+      await sb.auth.signOut()
+      throw new Error('Tu cuenta no tiene rol asignado. Contactá al administrador.')
+    }
+
+    currentUser = user
+    currentRole = role
+    iniciarPanel(user, role)
+
+  } catch (e) {
+    mostrarError(e.message || 'Error de acceso')
+    btn.disabled = false
+    btn.textContent = 'Ingresar al panel'
+  }
+}
+
+function mostrarError(msg) {
+  const el = document.getElementById('login-error')
+  el.textContent = msg
+  el.classList.add('show')
+}
+
+function iniciarPanel(user, role) {
+  // Ocultar login
+  document.getElementById('login-screen').classList.add('hidden')
+
+  // Mostrar info de usuario en topbar
+  const pill  = document.getElementById('user-pill')
+  const rl    = ROLE_LABELS[role] || { icon: '?', label: role }
+  document.getElementById('user-role-icon').textContent  = rl.icon
+  document.getElementById('user-email-label').textContent = rl.label + ' · ' + user.email.split('@')[0]
+  pill.style.display = 'inline-flex'
+  document.getElementById('btn-logout').style.display = 'inline-flex'
+
+  // Controlar visibilidad de nav items según rol
+  const allowed = ROLE_ACCESS[role] || []
+  document.querySelectorAll('.nav-item').forEach(el => {
+    const sec = el.dataset.section
+    if (sec && !allowed.includes(sec)) {
+      el.style.display = 'none'
+    }
+  })
+
+  // Ocultar "nueva pregunta" si no es admin/moderator
+  if (!['admin','moderator'].includes(role)) {
+    document.getElementById('btn-nueva-preg').style.display = 'none'
+  }
+
+  // Navegar a la primera sección permitida
+  const first = allowed[0]
+  const navEl = document.querySelector(`.nav-item[data-section="${first}"]`)
+  navTo(first, navEl)
+
+  // Cargar datos
+  if (allowed.includes('dashboard')) cargarStats()
+}
+
 // ── NAV ──
 const SECTION_META = {
   dashboard:   { title: 'Dashboard',            sub: 'Resumen general del sistema' },
@@ -1645,8 +1892,38 @@ function tickAdminTimer() {
 }
 setInterval(tickAdminTimer, 1000)
 
-// ── INIT ──
-cargarStats()
+// ── CERRAR SESIÓN ──
+async function cerrarSesion() {
+  await sb.auth.signOut()
+  currentUser = null
+  currentRole = null
+  document.getElementById('login-screen').classList.remove('hidden')
+  document.getElementById('login-pass').value = ''
+  document.getElementById('user-pill').style.display = 'none'
+  document.getElementById('btn-logout').style.display = 'none'
+  document.getElementById('btn-nueva-preg').style.display = 'inline-flex'
+  document.querySelectorAll('.nav-item').forEach(el => el.style.display = '')
+  toast('Sesión cerrada')
+}
+
+// ── INIT: verificar sesión existente ──
+;(async () => {
+  const { data: { session } } = await sb.auth.getSession()
+  if (session?.user) {
+    const user = session.user
+    const role = user.user_metadata?.role || null
+    if (role && ROLE_ACCESS[role]) {
+      currentUser = user
+      currentRole = role
+      iniciarPanel(user, role)
+      return
+    }
+  }
+  // Sin sesión válida — mostrar login
+  // (login-screen ya está visible por defecto)
+})()
+
+// Nav items necesitan data-section para RBAC — ya lo tienen
 </script>
 </body>
 </html>
