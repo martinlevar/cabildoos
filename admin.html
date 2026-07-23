@@ -1385,7 +1385,7 @@ const sb = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
 )
 
-// ── RBAC: qué secciones puede ver cada rol ──
+/// ── RBAC: qué secciones puede ver cada rol ──
 const ROLE_ACCESS = {
   admin:     ['dashboard','preguntas','identidades','hemiciclo','votacion'],
   validator: ['identidades'],
@@ -1406,24 +1406,30 @@ async function hacerLogin() {
   const email = document.getElementById('login-email').value.trim()
   const pass  = document.getElementById('login-pass').value
   const btn   = document.getElementById('login-btn')
-  const errEl = document.getElementById('login-error')
 
-  errEl.classList.remove('show')
+  document.getElementById('login-error').classList.remove('show')
   if (!email || !pass) { mostrarError('Completá email y contraseña'); return }
 
   btn.disabled = true
   btn.innerHTML = '<span class="spinner"></span> Verificando...'
 
   try {
+    // 1. Sign in
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass })
-    if (error) throw error
+    if (error) throw new Error(error.message || 'Credenciales incorrectas')
 
-    const user = data.user
-    const role = user.user_metadata?.role || null
+    // 2. getUser() para traer metadata fresca del servidor (no del JWT cacheado)
+    const { data: { user }, error: userErr } = await sb.auth.getUser()
+    if (userErr) throw new Error(userErr.message)
+
+    // 3. Leer rol — busca en user_metadata y app_metadata
+    const role = user.user_metadata?.role
+               || user.app_metadata?.role
+               || null
 
     if (!role || !ROLE_ACCESS[role]) {
       await sb.auth.signOut()
-      throw new Error('Tu cuenta no tiene rol asignado. Contactá al administrador.')
+      throw new Error('Sin rol asignado. Contactá al administrador.')
     }
 
     currentUser = user
@@ -1431,7 +1437,8 @@ async function hacerLogin() {
     iniciarPanel(user, role)
 
   } catch (e) {
-    mostrarError(e.message || 'Error de acceso')
+    const msg = typeof e === 'string' ? e : (e.message || JSON.stringify(e) || 'Error de acceso')
+    mostrarError(msg)
     btn.disabled = false
     btn.textContent = 'Ingresar al panel'
   }
@@ -1908,19 +1915,24 @@ async function cerrarSesion() {
 
 // ── INIT: verificar sesión existente ──
 ;(async () => {
-  const { data: { session } } = await sb.auth.getSession()
-  if (session?.user) {
-    const user = session.user
-    const role = user.user_metadata?.role || null
-    if (role && ROLE_ACCESS[role]) {
-      currentUser = user
-      currentRole = role
-      iniciarPanel(user, role)
-      return
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    if (session) {
+      // Traer datos frescos del servidor
+      const { data: { user } } = await sb.auth.getUser()
+      if (user) {
+        const role = user.user_metadata?.role
+                   || user.app_metadata?.role
+                   || null
+        if (role && ROLE_ACCESS[role]) {
+          currentUser = user
+          currentRole = role
+          iniciarPanel(user, role)
+          return
+        }
+      }
     }
-  }
-  // Sin sesión válida — mostrar login
-  // (login-screen ya está visible por defecto)
+  } catch (e) { /* sin sesión, mostrar login */ }
 })()
 
 // Nav items necesitan data-section para RBAC — ya lo tienen
