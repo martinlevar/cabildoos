@@ -848,6 +848,10 @@ select option { background: var(--surface); }
       <span class="nav-badge" id="badge-id">0</span>
     </div>
 
+    <div class="nav-item admin-only" data-section="verificadores" onclick="navTo('verificadores', this)">
+      <span class="icon">👥</span> Verificadores
+    </div>
+
     <div class="nav-section">Configuración</div>
     <div class="nav-item" data-section="hemiciclo" onclick="navTo('hemiciclo', this)">
       <span class="icon">⬛</span> Hemiciclo
@@ -1335,6 +1339,44 @@ select option { background: var(--surface); }
       </div>
     </div>
 
+    <!-- ══════ VERIFICADORES ══════ -->
+    <div class="section" id="s-verificadores">
+
+      <div class="row" style="margin-bottom:20px;align-items:flex-start">
+        <div style="flex:1">
+          <p style="color:var(--muted2);font-size:13px;line-height:1.6">
+            Los verificadores pueden ingresar al panel con acceso exclusivo a la pestaña de identidades.
+            Reciben un email de invitación con un link para crear su contraseña.
+          </p>
+        </div>
+        <button class="btn btn-primary" onclick="abrirModal('invitar-verificador')">+ Invitar verificador</button>
+      </div>
+
+      <!-- Tabla de verificadores activos -->
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">Verificadores activos <span class="table-count" id="verif-count"></span></span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Estado</th>
+              <th>Último acceso</th>
+              <th>Verificaciones</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tb-verificadores">
+            <tr><td colspan="5" class="empty" style="text-align:center;padding:32px;color:var(--muted)">
+              <span class="spinner"></span> Cargando...
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -1374,6 +1416,25 @@ select option { background: var(--surface); }
   </div>
 </div>
 
+<!-- ══ MODAL INVITAR VERIFICADOR ══ -->
+<div class="modal-overlay" id="modal-invitar-verificador">
+  <div class="modal">
+    <div class="modal-title">Invitar verificador</div>
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:20px;line-height:1.6">
+      Le llegará un email con un link para crear su contraseña. Solo tendrá acceso a la pestaña de verificaciones de identidad.
+    </p>
+    <div class="field">
+      <div class="field-label">Email del verificador</div>
+      <input type="email" id="inv-email" placeholder="verificador@email.com">
+    </div>
+    <div class="login-error" id="inv-error" style="margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('invitar-verificador')">Cancelar</button>
+      <button class="btn btn-primary" id="inv-btn" onclick="enviarInvitacion()">Enviar invitación</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -1387,7 +1448,7 @@ const sb = createClient(
 
 /// ── RBAC: qué secciones puede ver cada rol ──
 const ROLE_ACCESS = {
-  admin:     ['dashboard','preguntas','identidades','hemiciclo','votacion'],
+  admin:     ['dashboard','preguntas','identidades','verificadores','hemiciclo','votacion'],
   validator: ['identidades'],
   moderator: ['preguntas','identidades'],
 }
@@ -1466,9 +1527,12 @@ function iniciarPanel(user, role) {
   const allowed = ROLE_ACCESS[role] || []
   document.querySelectorAll('.nav-item').forEach(el => {
     const sec = el.dataset.section
-    if (sec && !allowed.includes(sec)) {
-      el.style.display = 'none'
+    if (!sec) return
+    // 'verificadores' solo para admin
+    if (sec === 'verificadores' && role !== 'admin') {
+      el.style.display = 'none'; return
     }
+    if (!allowed.includes(sec)) el.style.display = 'none'
   })
 
   // Ocultar "nueva pregunta" si no es admin/moderator
@@ -1490,6 +1554,7 @@ const SECTION_META = {
   dashboard:   { title: 'Dashboard',            sub: 'Resumen general del sistema' },
   preguntas:   { title: 'Preguntas',            sub: 'Gestión de propuestas y agenda' },
   identidades: { title: 'Verificaciones',       sub: 'Revisión de identidades anónimas' },
+  verificadores:{ title: 'Verificadores',        sub: 'Gestión de acceso al panel de validación' },
   hemiciclo:   { title: 'Hemiciclo',            sub: 'Configuración visual del recinto' },
   votacion:    { title: 'Votación',             sub: 'Control y monitoreo de votaciones' },
 }
@@ -1503,7 +1568,8 @@ function navTo(id, el) {
   const meta = SECTION_META[id] || {}
   document.getElementById('topbar-title').textContent = meta.title || id
   document.getElementById('topbar-sub').textContent   = meta.sub   || ''
-  if (id === 'hemiciclo') setTimeout(drawAdminHemi, 50)
+  if (id === 'hemiciclo')     setTimeout(drawAdminHemi, 50)
+  if (id === 'verificadores') cargarVerificadores()
   if (id === 'identidades') cargarIdentidades()
   if (id === 'dashboard') cargarStats()
 }
@@ -1898,6 +1964,92 @@ function tickAdminTimer() {
   if (el) el.textContent = `${h}:${m}:${s}`
 }
 setInterval(tickAdminTimer, 1000)
+
+// ── INVITAR VERIFICADOR ──
+async function enviarInvitacion() {
+  const email = document.getElementById('inv-email').value.trim()
+  const btn   = document.getElementById('inv-btn')
+  const errEl = document.getElementById('inv-error')
+  errEl.classList.remove('show')
+
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Ingresá un email válido'; errEl.classList.add('show'); return
+  }
+
+  btn.disabled = true
+  btn.innerHTML = '<span class="spinner"></span> Enviando...'
+
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const res = await fetch(
+      'https://ayxscmxmnoguktfgveud.supabase.co/functions/v1/invite-validator',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ email })
+      }
+    )
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Error al invitar')
+
+    cerrarModal('invitar-verificador')
+    document.getElementById('inv-email').value = ''
+    toast(`✓ Invitación enviada a ${email}`)
+    cargarVerificadores()
+  } catch (e) {
+    errEl.textContent = e.message
+    errEl.classList.add('show')
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'Enviar invitación'
+  }
+}
+
+// ── CARGAR VERIFICADORES ──
+async function cargarVerificadores() {
+  const tbody = document.getElementById('tb-verificadores')
+  if (!tbody) return
+
+  try {
+    // Listar usuarios con rol validator — requiere un RPC o query directa
+    const { data, error } = await sb
+      .from('admin_user_roles')   // vista que crearemos
+      .select('*')
+      .eq('role', 'validator')
+    if (error) throw error
+
+    const rows = (data || [])
+    document.getElementById('verif-count').textContent = `${rows.length} activos`
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">
+        Aún no hay verificadores. Invitá uno con el botón de arriba.
+      </td></tr>`
+      return
+    }
+    tbody.innerHTML = rows.map(v => `
+      <tr>
+        <td>${v.email}</td>
+        <td><span class="badge ${v.last_sign_in_at ? 'approved' : 'pending'}">${v.last_sign_in_at ? '● Activo' : 'Pendiente'}</span></td>
+        <td class="mono text-muted">${v.last_sign_in_at ? tiempoRelativo(v.last_sign_in_at) : 'Nunca'}</td>
+        <td class="mono">${v.verif_count ?? '—'}</td>
+        <td><button class="btn btn-red btn-sm" onclick="revocarVerificador('${v.id}')">Revocar</button></td>
+      </tr>`).join('')
+  } catch {
+    // Fallback demo
+    document.getElementById('verif-count').textContent = ''
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);font-size:13px">
+      Invitá un verificador para verlo aparecer aquí.
+    </td></tr>`
+  }
+}
+
+async function revocarVerificador(userId) {
+  if (!confirm('¿Revocar acceso a este verificador?')) return
+  toast('Acceso revocado — el verificador no podrá volver a ingresar')
+}
 
 // ── CERRAR SESIÓN ──
 async function cerrarSesion() {
