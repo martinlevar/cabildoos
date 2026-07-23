@@ -1677,23 +1677,19 @@ function renderIdCard(r) {
       <button class="btn btn-red btn-sm"   onclick="rechazarId('${r.id}',this)">✗ Rechazar</button>
     </div>` : `<div style="font-size:11px;color:var(--muted)">Sin acciones disponibles</div>`
 
-  // Imagen: signed URL si hay path, placeholder si no
-  const imgHtml = r.anon_image_path
-    ? `<img src="" data-path="${r.anon_image_path}"
-           style="width:100%;height:100%;object-fit:cover;" alt="Imagen anonimizada"
-           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-    : ''
-  const placeholderStyle = r.anon_image_path ? 'display:none' : ''
+  // Imagen: se carga vía signed URL tras el render (src vacío dispara onerror)
+  const hasImg = !!r.anon_image_path
 
   return `
   <div class="id-card" id="id-card-${r.id}">
     <div class="id-card-img">
-      ${imgHtml}
-      <div class="id-anon-placeholder" style="${placeholderStyle}">
-        <div class="id-anon-face">🙂</div>
+      ${hasImg ? `<img id="img-${r.id}" data-path="${r.anon_image_path}"
+           style="width:100%;height:100%;object-fit:cover;display:none;" alt="Imagen anonimizada">` : ''}
+      <div class="id-anon-placeholder" id="ph-${r.id}">
+        <div class="id-anon-face">${hasImg ? '⏳' : '🙂'}</div>
         <div class="id-redacted-bar">Nº DOCUMENTO: ##########</div>
         <div class="id-redacted-lines">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">Sin imagen</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">${hasImg ? 'Cargando...' : 'Sin imagen'}</div>
       </div>
     </div>
     <div class="id-card-body">
@@ -1707,18 +1703,33 @@ function renderIdCard(r) {
   </div>`
 }
 
-// Carga las signed URLs para las imágenes de las cards
+// Carga las signed URLs y muestra las imágenes cuando cargan
 async function cargarImagenesCards() {
   const imgs = document.querySelectorAll('.id-card-img img[data-path]')
   for (const img of imgs) {
     const path = img.getAttribute('data-path')
     if (!path) continue
     try {
-      const { data } = await sb.storage
+      const { data, error } = await sb.storage
         .from('anon-verification')
-        .createSignedUrl(path, 3600)  // válida 1 hora
-      if (data?.signedUrl) img.src = data.signedUrl
-    } catch { /* imagen no cargable */ }
+        .createSignedUrl(path, 3600)
+      if (error || !data?.signedUrl) continue
+
+      // Mostrar imagen cuando cargue, ocultar placeholder
+      img.onload = () => {
+        img.style.display = 'block'
+        const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
+        if (ph) ph.style.display = 'none'
+      }
+      img.onerror = () => {
+        const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
+        if (ph) {
+          ph.querySelector('.id-anon-face').textContent = '⚠'
+          ph.querySelector('div:last-child').textContent = 'Error al cargar'
+        }
+      }
+      img.src = data.signedUrl
+    } catch { /* sin imagen */ }
   }
 }
 
