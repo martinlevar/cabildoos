@@ -2114,87 +2114,145 @@ function completarFilaProceso(id, subtexto, isWarn = false) {
   if (subtexto) row.querySelector('.vp-proc-sub').textContent = subtexto
 }
 
-// ── Genera imagen con cara CLARA + área del documento PIXELADA ──
-// El validador ve al ciudadano sosteniendo el documento pero no puede leer los datos
-function generarImagenConDocumentoBloqueado(selfieDocFile) {
+// ── Genera imagen compuesta para validadores ──
+// IZQUIERDA: selfie sosteniendo el doc (cara del ciudadano visible)
+// DERECHA: foto del documento con solo la foto del rostro visible, datos bloqueados
+// El validador puede comparar ambas caras sin ver nombre, DNI ni fecha
+function generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile) {
   return new Promise((resolve, reject) => {
     if (!selfieDocFile) return reject(new Error('Sin imagen de selfie'))
-    const img = new Image()
-    const objUrl = URL.createObjectURL(selfieDocFile)
-    img.onload = () => {
-      URL.revokeObjectURL(objUrl)
-      const W = img.naturalWidth, H = img.naturalHeight
-      const canvas = document.createElement('canvas')
-      canvas.width = W; canvas.height = H
-      const ctx = canvas.getContext('2d')
 
-      // 1. Dibujar imagen completa a máxima calidad
-      ctx.drawImage(img, 0, 0, W, H)
+    const cargarImg = (file) => new Promise((res, rej) => {
+      if (!file) return res(null)
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload  = () => { URL.revokeObjectURL(url); res(img) }
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Error cargando imagen')) }
+      img.src = url
+    })
 
-      // 2. Pixelar el 45% inferior (donde normalmente está el documento)
-      //    Técnica: escalar la región hacia abajo y volver a escalar arriba → pixelado
-      const docY     = Math.floor(H * 0.52)   // línea de corte: cara arriba, doc abajo
-      const docH     = H - docY
-      const pixSize  = Math.max(12, Math.floor(W / 40))  // tamaño del píxel visual
+    Promise.all([cargarImg(selfieDocFile), cargarImg(docFrenteFile)])
+      .then(([selfieImg, docImg]) => {
+        // Canvas apaisado: selfie izquierda + documento derecha
+        const OUT_H = 900
+        const OUT_W = docImg ? 1600 : 800
+        const PAD   = 20
 
-      // Extraer región del documento
-      const tmpCanvas = document.createElement('canvas')
-      tmpCanvas.width  = Math.ceil(W / pixSize)
-      tmpCanvas.height = Math.ceil(docH / pixSize)
-      const tmpCtx = tmpCanvas.getContext('2d')
-      tmpCtx.imageSmoothingEnabled = false
-      tmpCtx.drawImage(canvas, 0, docY, W, docH, 0, 0, tmpCanvas.width, tmpCanvas.height)
+        const canvas = document.createElement('canvas')
+        canvas.width = OUT_W; canvas.height = OUT_H
+        const ctx = canvas.getContext('2d')
 
-      // Re-dibujar pixelado sobre canvas principal
-      ctx.imageSmoothingEnabled = false
-      ctx.drawImage(tmpCanvas, 0, 0, tmpCanvas.width, tmpCanvas.height, 0, docY, W, docH)
-      ctx.imageSmoothingEnabled = true
+        ctx.fillStyle = '#0d0d0d'
+        ctx.fillRect(0, 0, OUT_W, OUT_H)
 
-      // 3. Overlay semitransparente con etiqueta sobre la zona pixelada
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'
-      ctx.fillRect(0, docY, W, docH)
+        // ── PANEL IZQUIERDO: Selfie completa (cara visible) ──
+        const selfieAreaW = docImg ? OUT_W / 2 - PAD * 1.5 : OUT_W - PAD * 2
+        const selfieAreaH = OUT_H - PAD * 4 - 36
+        const selfieR = selfieImg.naturalWidth / selfieImg.naturalHeight
+        let sW = selfieAreaW, sH = sW / selfieR
+        if (sH > selfieAreaH) { sH = selfieAreaH; sW = sH * selfieR }
+        const sX = PAD + (selfieAreaW - sW) / 2
+        const sY = PAD + 36 + (selfieAreaH - sH) / 2
+        ctx.drawImage(selfieImg, sX, sY, sW, sH)
 
-      // Etiqueta "DATOS BLOQUEADOS"
-      const labelH = Math.max(28, Math.floor(H * 0.06))
-      const labelY = docY + (docH - labelH) / 2
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.9)'
-      ctx.beginPath()
-      ctx.roundRect(W * 0.15, labelY, W * 0.7, labelH, 6)
-      ctx.fill()
-      ctx.fillStyle = '#fff'
-      ctx.font = `bold ${Math.floor(labelH * 0.45)}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('DATOS DEL DOCUMENTO BLOQUEADOS', W / 2, labelY + labelH / 2)
+        // Header panel izquierdo
+        ctx.fillStyle = 'rgba(34,197,94,0.85)'
+        ctx.fillRect(PAD, PAD, selfieAreaW, 30)
+        ctx.fillStyle = '#000'
+        ctx.font = 'bold 13px sans-serif'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('✓ SELFIE — ROSTRO DEL CIUDADANO', PAD + selfieAreaW / 2, PAD + 15)
 
-      // 4. Indicador verde en zona de cara
-      const badgeH = Math.max(22, Math.floor(H * 0.045))
-      ctx.fillStyle = 'rgba(34, 197, 94, 0.85)'
-      ctx.beginPath()
-      ctx.roundRect(W * 0.25, H * 0.03, W * 0.5, badgeH, 5)
-      ctx.fill()
-      ctx.fillStyle = '#fff'
-      ctx.font = `bold ${Math.floor(badgeH * 0.5)}px sans-serif`
-      ctx.textBaseline = 'middle'
-      ctx.fillText('✓ ROSTRO VISIBLE — VALIDACIÓN HUMANA', W / 2, H * 0.03 + badgeH / 2)
+        if (docImg) {
+          // ── PANEL DERECHO: Documento con datos bloqueados ──
+          const docAreaX = OUT_W / 2 + PAD / 2
+          const docAreaW = OUT_W / 2 - PAD * 1.5
+          const docAreaH = OUT_H - PAD * 4 - 36
 
-      canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.92)
-    }
-    img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('No se pudo cargar la imagen')) }
-    img.src = objUrl
+          // Dibujar el documento entero pixelado primero
+          const docR = docImg.naturalWidth / docImg.naturalHeight
+          let dW = docAreaW, dH = dW / docR
+          if (dH > docAreaH) { dH = docAreaH; dW = dH * docR }
+          const dX = docAreaX + (docAreaW - dW) / 2
+          const dY = PAD + 36 + (docAreaH - dH) / 2
+
+          // Pixelado del documento completo
+          const pixSize = Math.max(14, Math.floor(dW / 25))
+          const tmpC = document.createElement('canvas')
+          tmpC.width = Math.ceil(dW / pixSize); tmpC.height = Math.ceil(dH / pixSize)
+          const tmpCtx = tmpC.getContext('2d')
+          tmpCtx.imageSmoothingEnabled = false
+          tmpCtx.drawImage(docImg, 0, 0, docImg.naturalWidth, docImg.naturalHeight, 0, 0, tmpC.width, tmpC.height)
+          ctx.imageSmoothingEnabled = false
+          ctx.drawImage(tmpC, 0, 0, tmpC.width, tmpC.height, dX, dY, dW, dH)
+          ctx.imageSmoothingEnabled = true
+
+          // Overlay rojo sobre zona de texto (derecha del doc, ~65% del ancho)
+          const fotoW = dW * 0.33   // la foto del doc ocupa ~33% izquierda
+          const textoX = dX + fotoW
+          const textoW = dW - fotoW
+          ctx.fillStyle = 'rgba(180,0,0,0.45)'
+          ctx.fillRect(textoX, dY, textoW, dH)
+
+          // Etiqueta sobre zona bloqueada
+          ctx.fillStyle = 'rgba(239,68,68,0.95)'
+          ctx.fillRect(textoX, dY + dH * 0.42, textoW, 28)
+          ctx.fillStyle = '#fff'
+          ctx.font = 'bold 12px sans-serif'
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.fillText('DNI · FECHA BLOQUEADOS', textoX + textoW / 2, dY + dH * 0.42 + 14)
+
+          // Desbloquear la zona de la foto del documento (izquierda ~33%)
+          ctx.save()
+          ctx.beginPath()
+          ctx.rect(dX, dY, fotoW, dH)
+          ctx.clip()
+          ctx.imageSmoothingEnabled = true
+          ctx.drawImage(docImg, 0, 0, docImg.naturalWidth, docImg.naturalHeight, dX, dY, dW, dH)
+          ctx.restore()
+
+          // Borde verde alrededor de la foto del doc
+          ctx.strokeStyle = '#22c55e'
+          ctx.lineWidth = 3
+          ctx.strokeRect(dX, dY, fotoW, dH)
+
+          // Header panel derecho
+          ctx.fillStyle = 'rgba(34,197,94,0.85)'
+          ctx.fillRect(docAreaX, PAD, docAreaW, 30)
+          ctx.fillStyle = '#000'
+          ctx.font = 'bold 13px sans-serif'
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+          ctx.fillText('FOTO DEL DOCUMENTO ✓ · DATOS BLOQUEADOS 🔒', docAreaX + docAreaW / 2, PAD + 15)
+
+          // Divisor vertical
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)'
+          ctx.lineWidth = 1
+          ctx.beginPath()
+          ctx.moveTo(OUT_W / 2, PAD); ctx.lineTo(OUT_W / 2, OUT_H - PAD)
+          ctx.stroke()
+        }
+
+        // Pie de página
+        ctx.fillStyle = 'rgba(255,255,255,0.3)'
+        ctx.font = '11px sans-serif'
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
+        ctx.fillText('CabildoOS · Imagen para validación humana · Generada localmente · Datos personales no transmitidos', OUT_W / 2, OUT_H - 6)
+
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.93)
+      })
+      .catch(reject)
   })
 }
 
-// Mantener compatibilidad (por si hay otras llamadas)
-function generarImagenAnonimizada(file) {
-  return generarImagenConDocumentoBloqueado(file)
+function generarImagenAnonimizada(selfieFile, docFile) {
+  return generarImagenConDocumentoBloqueado(selfieFile, docFile)
 }
 
 // ── Flujo completo hacia Supabase
 // 1. Inserta identidad (solo hash + país)
 // 2. Sube imagen anonimizada a Storage
 // 3. Inserta solicitud de verificación
-async function enviarVerificacionASupabase(country, selfieFile, anonBlobPreGenerado = null) {
+async function enviarVerificacionASupabase(country, selfieFile, anonBlobPreGenerado = null, docFrenteFile = null) {
   // Hash incluye número de documento para que sea único por identidad real
   const numDoc = document.getElementById('vp-num-doc')?.value.trim() || ''
   const nonce  = generarNonce()
@@ -2213,7 +2271,7 @@ async function enviarVerificacionASupabase(country, selfieFile, anonBlobPreGener
   if (idErr) throw new Error('Error creando identidad: ' + idErr.message)
 
   // 2. Imagen anonimizada — si no se pre-generó, generarla ahora
-  const anonBlob = anonBlobPreGenerado || await generarImagenConDocumentoBloqueado(selfieFile)
+  const anonBlob = anonBlobPreGenerado || await generarImagenConDocumentoBloqueado(selfieFile, docFrenteFile)
   const filePath = `requests/${identity.id}/selfie_anon.jpg`
 
   const { error: uploadErr } = await sb.storage
@@ -3312,10 +3370,10 @@ async function vpIniciarProceso() {
     // No es falla dura — continuamos
   }
 
-  // ── PASO 4: Generar imagen anonimizada ──
+  // ── PASO 4: Generar imagen compuesta para validador ──
   activarFilaProceso('vpc-r4')
   try {
-    vpAnonBlob = await generarImagenConDocumentoBloqueado(selfieDocFile)
+    vpAnonBlob = await generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile)
     completarFilaProceso('vpc-r4', 'Cara visible · datos del documento pixelados')
     // Mostrar preview en paso 4a
     const url = URL.createObjectURL(vpAnonBlob)
@@ -3359,10 +3417,11 @@ async function vpEnviarVerificacion() {
   if (btn) { btn.textContent = 'Enviando…'; btn.disabled = true }
 
   const selfieDocFile = document.getElementById('f-selfie-doc').files?.[0] || null
+  const docFrenteFile = document.getElementById('f-doc-frente').files?.[0] || null
   const country = document.getElementById('vp-pais').value || 'Venezuela'
 
   try {
-    const { hash } = await enviarVerificacionASupabase(country, selfieDocFile, vpAnonBlob)
+    const { hash } = await enviarVerificacionASupabase(country, selfieDocFile, vpAnonBlob, docFrenteFile)
     const h = hash.slice(0,8).toUpperCase() + '…' + hash.slice(-4).toUpperCase()
     window._vpSession = window._vpSession || {}
     window._vpSession.hash = hash
