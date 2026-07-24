@@ -2263,11 +2263,52 @@ async function cargarFaceApi() {
   faceApiLoaded = true
 }
 
+/// ── Preprocesamiento de imagen para mejorar OCR ──
+// Upscale 2x + escala de grises + aumento de contraste
+function preprocesarParaOCR(blob) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(blob)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const SCALE = 2
+      const canvas = document.createElement('canvas')
+      canvas.width  = img.naturalWidth  * SCALE
+      canvas.height = img.naturalHeight * SCALE
+      const ctx = canvas.getContext('2d')
+
+      // Dibujar upscaled
+      ctx.imageSmoothingEnabled  = true
+      ctx.imageSmoothingQuality  = 'high'
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+      // Procesar píxeles: grises + contraste
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const d = imgData.data
+      for (let i = 0; i < d.length; i += 4) {
+        // Luminancia perceptual
+        const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]
+        // Contraste fuerte (factor 1.8)
+        const v = Math.max(0, Math.min(255, (gray - 128) * 1.8 + 128))
+        d[i] = d[i+1] = d[i+2] = v
+        // alfa sin cambio
+      }
+      ctx.putImageData(imgData, 0, 0)
+
+      canvas.toBlob(resolve, 'image/png', 1.0)  // PNG lossless = mejor para OCR
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(blob) }
+    img.src = url
+  })
+}
+
 // ── OCR: extrae texto completo del documento ──
 async function extraerTextoCompleto(file) {
   if (!file) return ''
   await cargarTesseract()
-  const url = URL.createObjectURL(file)
+  // Preprocesar para mejorar legibilidad
+  const processed = await preprocesarParaOCR(file)
+  const url = URL.createObjectURL(processed)
   try {
     const { data: { text } } = await Tesseract.recognize(url, 'spa+eng', { logger: () => {} })
     return text || ''
@@ -2280,9 +2321,18 @@ function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac, pais) {
     .normalize('NFD').replace(/[̀-ͯ]/g, '')  // quitar acentos
     .replace(/[^a-z0-9\n]/g, ' ').replace(/\s+/g, ' ')
 
-  // 1. Número de documento — búsqueda exacta normalizada
+  // 1. Número de documento — búsqueda con tolerancia a errores OCR (0↔O, 1↔I)
   const numNorm = numDoc.replace(/[^a-z0-9]/gi, '').toLowerCase()
-  const numMatch = numNorm.length >= 4 && ocr.replace(/\s/g,'').includes(numNorm)
+  const ocrFlat = ocr.replace(/\s/g,'')
+  // Variantes con sustituciones comunes de OCR
+  const numVariants = [numNorm]
+  const numOcr = numNorm.replace(/0/g,'o').replace(/1/g,'i').replace(/o/g,'0').replace(/i/g,'1')
+  if (numOcr !== numNorm) numVariants.push(numOcr)
+  numVariants.push(numNorm.replace(/0/g,'o'))
+  numVariants.push(numNorm.replace(/o/g,'0'))
+  numVariants.push(numNorm.replace(/1/g,'i'))
+  numVariants.push(numNorm.replace(/i/g,'1'))
+  const numMatch = numNorm.length >= 4 && numVariants.some(v => ocrFlat.includes(v))
 
   // 2. Nombre — al menos 60% de palabras del nombre encontradas en OCR
   const palabras = nombre.toLowerCase()
@@ -4020,6 +4070,12 @@ async function vpIniciarProceso() {
   if (!match.nombre)       fallas.push(`Nombre "${nombreUsuario}" no coincide con el documento`)
   if (!match.fecha)        fallas.push(`Fecha de nacimiento ${fechaUsuario} no encontrada en el documento`)
   if (!match.nacionalidad) fallas.push(`País "${country}" no coincide con la nacionalidad del documento`)
+
+  // DIAGNÓSTICO: mostrar primeros 300 chars del texto OCR para debuggear
+  if (fallas.length > 0 && ocrTexto.length > 0) {
+    const preview = ocrTexto.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)
+    fallas.push(`📋 Texto leído por OCR: "${preview}"`)
+  }
 
   const todoCorrecto = match.numDoc && match.nombre && match.fecha && match.nacionalidad
 
