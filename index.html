@@ -4342,6 +4342,14 @@ async function vpDocCapturarFrame(_unused) {
 
     document.getElementById('vp-doc-analizando').style.display = 'none'
 
+    if (resp.status === 409) {
+      // Documento ya usado — error bloqueante
+      vpDocMsg('Este documento ya fue usado para verificar otra cuenta', '#ef4444')
+      document.getElementById('vp-doc-sin-datos').style.display = ''
+      document.getElementById('vp-doc-sin-datos').querySelector('p').textContent =
+        'Cada documento de identidad solo puede usarse una vez en CabildoOS.'
+      return
+    }
     if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`)
 
     const data = await resp.json()
