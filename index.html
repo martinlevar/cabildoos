@@ -5529,23 +5529,29 @@ async function vpEnviarVerificacion() {
       vpCapturedSelfieDoc ? blobToB64(vpCapturedSelfieDoc) : Promise.resolve(''),
     ])
 
+    // Generar foto censurada: cara visible, datos del documento pixelados
+    // Esta es la ÚNICA imagen que llega al servidor y al admin
+    let selfieDocCensuradaB64 = selfieDocB64
+    if (vpCapturedSelfieDoc && vpCapturedDoc) {
+      try {
+        const censurada = await generarImagenConDocumentoBloqueado(vpCapturedSelfieDoc, vpCapturedDoc)
+        selfieDocCensuradaB64 = await blobToB64(censurada)
+      } catch(e) {
+        console.warn('No se pudo censurar — usando foto sin censura', e)
+      }
+    }
+
     const resp = await fetch(`${VP_API_URL}/api/verify/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         verification_id: vpVerificationId,
-        datos_declarados: {
-          nombre:    document.getElementById('vp-nombre')?.value?.trim()   || '',
-          apellido:  document.getElementById('vp-apellido')?.value?.trim() || '',
-          numero_doc: document.getElementById('vp-num-doc')?.value?.trim() || '',
-          tipo_doc:   vpTipoDoc2,
-          fecha_nac:  document.getElementById('vp-fecha-nac')?.value || '',
-          email:      document.getElementById('vp-email')?.value?.trim()   || '',
-        },
-        selfie_liveness_b64:  selfieB64,
-        liveness_instruccion: vpLivenessInstruccion?.texto || '',
-        selfie_doc_b64:       selfieDocB64,
-        doc_extracted:        vpGeminiResult || null,
+        // Solo la foto censurada — sin datos personales
+        selfie_doc_b64: selfieDocCensuradaB64,
+        // Resultado booleano del análisis Gemini (sin texto, sin nombres, sin números)
+        gemini_match: vpGeminiResult
+          ? (vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide)
+          : false,
       }),
     })
 
