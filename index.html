@@ -1917,12 +1917,18 @@ body.on-landing #social-footer.visible { display:flex; }
         <div id="vp-barcode-fields" style="color:var(--fg);line-height:1.8"></div>
         <button class="vp-btn-main" style="margin-top:12px;width:100%" onclick="vpConfirmarBarcode()">Confirmar y continuar →</button>
       </div>
-      <!-- Fallback (aparece a los 25s si no detecta automáticamente) -->
+      <!-- Fallback: foto con cámara nativa (mejor calidad que streaming) -->
       <div id="vp-scan-fallback" style="display:none;margin-top:8px">
-        <p style="font-size:12px;color:#f59e0b;text-align:center;margin:0 0 8px">¿No se detectó el código? Probá tomar una foto directa del documento:</p>
-        <button class="cam-capture-btn" onclick="document.getElementById('vp-foto-doc-input').click()">📸 Tomar foto del documento</button>
+        <p style="font-size:12px;color:var(--mid);text-align:center;margin:0 0 8px">
+          📱 <strong>Encuadrá solo el código de barras</strong> — esquina inferior derecha del frente del DNI
+        </p>
+        <button class="cam-capture-btn" style="font-size:15px;padding:14px" onclick="document.getElementById('vp-foto-doc-input').click()">
+          📸 Fotografiar código de barras
+        </button>
         <input type="file" id="vp-foto-doc-input" accept="image/*" capture="environment" style="display:none" onchange="vpEscanearFotoDoc(this)">
-        <button class="cam-capture-btn" style="background:rgba(255,255,255,0.08);margin-top:6px" onclick="vpCapturarFallbackOCR()">🔤 Verificar por texto (cédula venezolana)</button>
+        <button class="cam-capture-btn" style="background:rgba(255,255,255,0.06);margin-top:6px;font-size:13px" onclick="vpCapturarFallbackOCR()">
+          🔤 Cédula venezolana sin código de barras
+        </button>
       </div>
       <p style="font-size:11px;color:var(--mid);text-align:center;margin:6px 0 10px">DNI argentino: código en esquina inferior derecha del frente · Cédula venezolana: reverso</p>
       <!-- DEBUG: texto crudo del barcode — visible en pantalla para diagnóstico -->
@@ -4074,11 +4080,18 @@ async function vpIniciarBarcodeScanner() {
   const video = document.getElementById('cam-doc-video')
   if (scanLine) scanLine.style.display = 'block'
 
-  // Fallback manual a los 25s
-  vpScannerTimeout = setTimeout(() => {
+  // En mobile mostramos "Tomar foto" de inmediato — la cámara nativa da mucha mejor calidad
+  // que el streaming. En desktop damos 8s para que el BarcodeDetector lo intente.
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  if (isMobile) {
     if (fallbackEl) fallbackEl.style.display = 'block'
-    vpMostrarBarcodeMsg('¿No se detecta el código? Tomá una foto manual ↓', '#f59e0b')
-  }, 25000)
+    vpMostrarBarcodeMsg('Apuntá al código o tomá una foto del documento ↓')
+  } else {
+    vpScannerTimeout = setTimeout(() => {
+      if (fallbackEl) fallbackEl.style.display = 'block'
+      vpMostrarBarcodeMsg('¿No se detecta el código? Tomá una foto manual ↓', '#f59e0b')
+    }, 8000)
+  }
 
   // ── Estrategia 1: BarcodeDetector nativa (Chrome, Edge, Android)
   //    Mismo motor que Apple Pay / Google Pay / apps bancarias
@@ -4201,11 +4214,12 @@ async function vpIniciarBarcodeScanner() {
         vpProcesarCodigoBarras(text)
 
       } catch(e) {
-        // Sin código en este frame = normal; errores reales se muestran
+        // "No encontré código en este frame" = normal, no mostrar
         const msg = e?.message || ''
-        if (!msg.includes('No barcode') && !msg.includes('Unable to') && !msg.includes('NotFoundException')) {
-          vpMostrarBarcodeMsg(`Error: ${msg.slice(0,60)}`, '#ef4444')
-        }
+        const esNormal = msg.includes('No barcode') || msg.includes('Unable to')
+          || msg.includes('NotFoundException') || msg.includes('No MultiFormat')
+          || msg.includes('No code') || msg.includes('QR code parse error')
+        if (!esNormal) vpMostrarBarcodeMsg(`Error: ${msg.slice(0,60)}`, '#ef4444')
       } finally { busy = false }
     }, 600)
   }
