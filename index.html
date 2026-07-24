@@ -4008,7 +4008,25 @@ async function vpIniciarBarcodeScanner() {
           canvas.getContext('2d').drawImage(video, 0, 0)
           vpCapturedDoc = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92))
 
-          vpProcesarCodigoBarras(codes[0].rawValue)
+          // Intentar todos los códigos detectados (puede haber varios)
+          let parsed = null
+          let rawTexto = ''
+          for (const code of codes) {
+            rawTexto = code.rawValue
+            console.log('[BarcodeDetector]', code.format, JSON.stringify(rawTexto.slice(0,120)))
+            parsed = parsearCodigoBarraDNI(rawTexto)
+            if (parsed.numDoc && parsed.fechaNac) break
+          }
+
+          if (parsed?.numDoc && parsed?.fechaNac) {
+            vpProcesarCodigoBarras(rawTexto)
+          } else {
+            // Mostrar raw text para debug — invaluable para ajustar el parser
+            const preview = rawTexto.slice(0,80).replace(/\n/g,'↵').replace(/\r/g,'')
+            vpMostrarBarcodeMsg(`Código leído (${codes[0].format}): "${preview}" — ajustando...`, '#f59e0b')
+            console.warn('[CabildoOS] Barcode leído pero no parseado como DNI:', rawTexto)
+            setTimeout(vpIniciarBarcodeScanner, 3000)
+          }
         }
       } catch(e) {
         if (e.name !== 'NotSupportedError' && e.name !== 'SecurityError') {
