@@ -3958,48 +3958,64 @@ async function cargarHtml5QrCode() {
   })
 }
 
-// Parser del PDF417 del DNI argentino (y variantes RENAPER)
-// Formato: @APELLIDO@NOMBRE@[otro]@SEXO@NUMEROS@EJEMPLAR@DDMMYYYY@...
-// o:       @APELLIDO@NOMBRE@@SEXO@NUMERO@EJEMPLAR@DDMMYYYY@...
+// Parser del PDF417 del DNI argentino — cubre todas las variantes RENAPER
+// Formato estándar: @APELLIDO@NOMBRE@@SEXO@NUMERO@EJEMPLAR@DDMMYYYY@DDMMYYYY@CUIL@
+// Variantes: con puntos en DNI (30.368.193), año ≤ 2025, campo combinado, sin @ inicial
 function parsearCodigoBarraDNI(texto) {
-  // Separar por @ y limpiar
-  const partes = texto.split('@').map(p => p.trim())
+  if (!texto) return { apellido:'', nombre:'', numDoc:'', fechaNac:'' }
 
+  const partes = texto.split('@').map(p => p.trim())
   let apellido = '', nombre = '', numDoc = '', fechaNac = ''
 
   for (const parte of partes) {
     if (!parte) continue
 
-    // Número DNI: 7-8 dígitos
+    // DNI sin puntos: 7-8 dígitos exactos
     if (/^\d{7,8}$/.test(parte) && !numDoc) {
-      numDoc = parte
-      continue
+      numDoc = parte; continue
     }
 
-    // Fecha DDMMYYYY: exactamente 8 dígitos con día/mes válido
+    // DNI con puntos: 30.368.193 o 9.368.193
+    if (/^\d{1,2}\.\d{3}\.\d{3}$/.test(parte) && !numDoc) {
+      numDoc = parte.replace(/\./g, ''); continue
+    }
+
+    // Fecha DDMMYYYY: 8 dígitos, año 1900–2025
     if (/^\d{8}$/.test(parte) && !fechaNac) {
-      const dd = parte.slice(0,2), mm = parte.slice(2,4), yyyy = parte.slice(4,8)
-      const y = parseInt(yyyy), m = parseInt(mm), d = parseInt(dd)
-      if (y >= 1900 && y <= 2020 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-        fechaNac = `${yyyy}-${mm}-${dd}`  // → YYYY-MM-DD
-        continue
+      const dd = +parte.slice(0,2), mm = +parte.slice(2,4), yyyy = +parte.slice(4,8)
+      if (yyyy >= 1900 && yyyy <= 2025 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+        fechaNac = `${parte.slice(4,8)}-${parte.slice(2,4)}-${parte.slice(0,2)}`; continue
       }
     }
 
-    // Sexo: M o F solos
+    // Sexo, ejemplar, CUIL/tramite: skip
     if (parte === 'M' || parte === 'F') continue
-
-    // Ejemplar: A, B, C solos
     if (/^[A-C]$/.test(parte)) continue
-
-    // Números de trámite o CUIL: > 8 dígitos, skip
     if (/^\d{9,}$/.test(parte)) continue
+    // CUIL con guiones: 20-12345678-9
+    if (/^\d{2}-\d{7,8}-\d$/.test(parte)) continue
 
-    // Texto: nombre o apellido (solo letras y espacios, longitud > 2)
-    if (/^[A-ZÁÉÍÓÚÜÑ\s]+$/i.test(parte) && parte.length > 2) {
+    // Texto: nombre o apellido
+    if (/^[A-ZÁÉÍÓÚÜÑ\s'-]+$/i.test(parte) && parte.length > 2) {
       if (!apellido) { apellido = parte; continue }
       if (!nombre)   { nombre   = parte; continue }
     }
+  }
+
+  // ── Fallback por regex sobre el texto completo (si @ no alcanzó) ──
+  if (!numDoc) {
+    // DNI con puntos embebido en el texto
+    const m1 = texto.match(/\b(\d{2})\.(\d{3})\.(\d{3})\b/)
+    if (m1) numDoc = m1[1] + m1[2] + m1[3]
+    else {
+      const m2 = texto.match(/\b(\d{7,8})\b/)
+      if (m2) numDoc = m2[1]
+    }
+  }
+  if (!fechaNac) {
+    // Buscar DDMMYYYY en cualquier parte del texto
+    const m = texto.match(/\b(0[1-9]|[12]\d|3[01])(0[1-9]|1[0-2])(19\d{2}|20[01]\d|202[0-5])\b/)
+    if (m) fechaNac = `${m[3]}-${m[2]}-${m[1]}`
   }
 
   return { apellido, nombre, numDoc, fechaNac }
