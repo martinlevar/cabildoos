@@ -2078,10 +2078,10 @@ body.on-landing #social-footer.visible { display:flex; }
         </div>
 
         <div id="vp-s2b-pre">
-          <input type="file" id="vp-foto-doc-full" accept="image/*" capture="environment" style="display:none" onchange="vpFotoCompletaTomada(this)">
-          <button class="cam-capture-btn" style="font-size:15px;padding:14px" onclick="document.getElementById('vp-foto-doc-full').click()">
+          <input type="file" id="vp-foto-doc-full" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="vpFotoCompletaTomada(this)">
+          <label for="vp-foto-doc-full" class="cam-capture-btn" style="font-size:15px;padding:14px;cursor:pointer;display:block;text-align:center">
             📷 Tomar foto del documento
-          </button>
+          </label>
           <p style="font-size:11px;color:var(--mid);text-align:center;margin:8px 0 0">Usá la cámara trasera · buena luz · sin flash directo</p>
         </div>
         <div id="vp-s2b-post" style="display:none">
@@ -2128,10 +2128,10 @@ body.on-landing #social-footer.visible { display:flex; }
         </div>
 
         <div id="vp-s2c-pre">
-          <input type="file" id="vp-foto-zona" accept="image/*" capture="environment" style="display:none" onchange="vpFotoZonaTomada(this)">
-          <button class="cam-capture-btn" style="font-size:15px;padding:14px" onclick="document.getElementById('vp-foto-zona').click()">
+          <input type="file" id="vp-foto-zona" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="vpFotoZonaTomada(this)">
+          <label for="vp-foto-zona" class="cam-capture-btn" style="font-size:15px;padding:14px;cursor:pointer;display:block;text-align:center">
             🔍 Fotografiar zona
-          </button>
+          </label>
         </div>
 
         <!-- Estado de decodificación -->
@@ -2152,7 +2152,7 @@ body.on-landing #social-footer.visible { display:flex; }
           <div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:10px;padding:10px;font-size:12px;color:#fb923c;margin-bottom:8px" id="vp-decode-error-msg">
             No se pudo leer el código. Intentá de nuevo más cerca.
           </div>
-          <button class="cam-capture-btn" onclick="document.getElementById('vp-foto-zona').click()">📷 Reintentar</button>
+          <label for="vp-foto-zona" class="cam-capture-btn" style="cursor:pointer;display:block;text-align:center">📷 Reintentar</label>
           <button class="cam-capture-btn" style="background:rgba(255,255,255,.05);margin-top:6px;font-size:13px" onclick="vpSaltarBarcode()">
             Continuar sin código de barras
           </button>
