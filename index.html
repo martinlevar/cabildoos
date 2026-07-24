@@ -4239,12 +4239,19 @@ async function vpDocIniciar() {
   // Iniciar BarcodeDetector en vivo si disponible
   if ('BarcodeDetector' in window) {
     try {
-      const fmts = await BarcodeDetector.getSupportedFormats()
-      vpDocDetector = new BarcodeDetector({ formats: fmts })
+      const allFmts = await BarcodeDetector.getSupportedFormats()
+      // Solo formatos 2D que pueden contener datos personales completos
+      // Los 1D (code128, code39, itf, etc.) solo tienen el número de legajo — inútiles
+      const DOC_2D = ['pdf417', 'qr_code', 'data_matrix', 'aztec']
+      const docFmts = DOC_2D.filter(f => allFmts.includes(f))
+      vpDocDetector = new BarcodeDetector({ formats: docFmts.length ? docFmts : allFmts })
       vpDocScanTimer = setInterval(vpDocScanFrame, 300)
     } catch(_) {}
   }
 }
+
+// Longitud mínima para que un rawValue sea "datos reales" (no solo un número de legajo)
+const VP_MIN_BARCODE_LEN = 20
 
 async function vpDocScanFrame() {
   const vid = document.getElementById('cam-doc-video')
@@ -4252,14 +4259,14 @@ async function vpDocScanFrame() {
   try {
     const codes = await vpDocDetector.detect(vid)
     for (const c of codes) {
-      if (c.rawValue && c.rawValue.trim()) {
-        clearInterval(vpDocScanTimer); vpDocScanTimer = null
-        vpDocMsg('✓ Código detectado', '#22c55e')
-        if (navigator.vibrate) navigator.vibrate(80)
-        // Auto-capturar el frame en el momento de detección
-        vpDocCapturarFrame(c.rawValue)
-        return
-      }
+      const raw = c.rawValue && c.rawValue.trim()
+      // Ignorar barcodes cortos (números sueltos, código de barras 1D del legajo)
+      if (!raw || raw.length < VP_MIN_BARCODE_LEN) continue
+      clearInterval(vpDocScanTimer); vpDocScanTimer = null
+      vpDocMsg('✓ Código detectado', '#22c55e')
+      if (navigator.vibrate) navigator.vibrate(80)
+      vpDocCapturarFrame(raw)
+      return
     }
   } catch(_) {}
 }
@@ -4307,11 +4314,13 @@ async function vpDocCapturarFrame(rawValuePrevio) {
     const msgEl = document.getElementById('vp-doc-decode-msg')
     const res = await vpDecodificarImagen(file, msgEl)
     document.getElementById('vp-doc-analizando').style.display = 'none'
-    if (res && res.texto) {
+    // Ignorar resultados cortos — son barcodes 1D con solo el número de legajo
+    if (res && res.texto && res.texto.trim().length >= VP_MIN_BARCODE_LEN) {
       vpMostrarDebugRaw(res.texto, res.formato)
       vpProcesarCodigoBarras(res.texto)
     } else {
-      vpDocMsg('No se detectó el código')
+      if (res && res.texto) vpMostrarDebugRaw(res.texto, res.formato + '/ignorado-muy-corto')
+      vpDocMsg('No se detectó el código completo')
       document.getElementById('vp-doc-sin-datos').style.display = ''
     }
   }, 'image/jpeg', 0.92)
