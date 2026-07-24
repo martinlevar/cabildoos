@@ -1983,7 +1983,8 @@ body.on-landing #social-footer.visible { display:flex; }
     <div class="vp-step" id="vp-s6a">
       <div class="vp-result-badge match">✓</div>
       <p class="vp-title">Datos verificados</p>
-      <p class="vp-sub">Nombre, número y fecha coinciden. Esto es lo único que verá el validador — tu cara sosteniendo el documento, con los datos pixelados:</p>
+      <p class="vp-sub">Número y nombre coinciden. Esto es lo único que verá el validador — tu cara sosteniendo el documento, con los datos pixelados:</p>
+      <div id="vp-s6a-warnings" style="display:none;margin-bottom:12px;font-size:13px"></div>
       <div class="vp-anon-box">
         <p class="vp-anon-label">Vista del validador humano</p>
         <div style="width:100%;border-radius:10px;overflow:hidden;background:#111;min-height:180px;display:flex;align-items:center;justify-content:center">
@@ -4066,21 +4067,32 @@ async function vpIniciarProceso() {
   activarFilaProceso('vpc-r2')
   const match = vpCompararDatos(ocrTexto, nombreUsuario, numDocUsuario, fechaUsuario, country)
 
-  if (!match.numDoc)       fallas.push(`Número ${numDocUsuario} no encontrado en el documento`)
-  if (!match.nombre)       fallas.push(`Nombre "${nombreUsuario}" no coincide con el documento`)
-  if (!match.fecha)        fallas.push(`Fecha de nacimiento ${fechaUsuario} no encontrada en el documento`)
-  if (!match.nacionalidad) fallas.push(`País "${country}" no coincide con la nacionalidad del documento`)
+  // Checks DUROS: número (obligatorio) + nombre (obligatorio, 50% palabras)
+  // Checks SUAVES: fecha + nacionalidad — se avisa pero no bloquean
+  // (la parte inferior del DNI puede quedar fuera del encuadre)
+  if (!match.numDoc) fallas.push(`Número ${numDocUsuario} no encontrado en el documento`)
+  if (!match.nombre) fallas.push(`Nombre "${nombreUsuario}" no coincide con el documento`)
 
-  // DIAGNÓSTICO: mostrar primeros 300 chars del texto OCR para debuggear
+  const advertencias = []
+  if (!match.fecha)        advertencias.push(`⚠ Fecha ${fechaUsuario} no visible en el encuadre — el validador la verificará`)
+  if (!match.nacionalidad) advertencias.push(`⚠ Texto de país "${country}" no detectado — el validador lo verificará`)
+
+  // DIAGNÓSTICO OCR (se muestra solo si hay fallas duras)
   if (fallas.length > 0 && ocrTexto.length > 0) {
     const preview = ocrTexto.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)
     fallas.push(`📋 Texto leído por OCR: "${preview}"`)
   }
 
-  const todoCorrecto = match.numDoc && match.nombre && match.fecha && match.nacionalidad
+  // Bloquear solo si fallan checks DUROS (número o nombre)
+  const bloquear = fallas.length > 0
 
-  if (todoCorrecto) {
-    completarFilaProceso('vpc-r2', 'Número ✓ · Nombre ✓ · Fecha ✓ · Nacionalidad ✓')
+  if (!bloquear) {
+    const checkStr = [
+      'Número ✓', 'Nombre ✓',
+      match.fecha ? 'Fecha ✓' : 'Fecha⚠',
+      match.nacionalidad ? 'Nacionalidad ✓' : 'Nacionalidad⚠'
+    ].join(' · ')
+    completarFilaProceso('vpc-r2', checkStr)
   } else {
     completarFilaProceso('vpc-r2', `${fallas.length} dato(s) no coinciden — proceso detenido`, true)
     await vpMostrarFallo(fallas)
@@ -4124,9 +4136,18 @@ async function vpIniciarProceso() {
 
   await new Promise(r => setTimeout(r, 400))
 
-  if (fallas.length > 0 && !match.numDoc) {
+  // Aquí solo llegan solicitudes con número+nombre OK; bloquear solo si hay error de cara o imagen
+  if (fallas.length > 0) {
     await vpMostrarFallo(fallas)
   } else {
+    // Mostrar advertencias suaves en el paso de éxito si fecha/nacionalidad no se leyeron
+    const warnContainer = document.getElementById('vp-s6a-warnings')
+    if (warnContainer) {
+      warnContainer.innerHTML = advertencias.length
+        ? advertencias.map(w => `<div class="vp-val-row" style="color:#f59e0b">${w}</div>`).join('')
+        : ''
+      warnContainer.style.display = advertencias.length ? 'block' : 'none'
+    }
     vpShowStep('6a')
   }
 }
