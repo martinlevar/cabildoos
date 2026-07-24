@@ -2182,6 +2182,23 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="auth-btn" id="login-btn" onclick="iniciarSesion()" disabled>Entrar →</button>
       <p class="auth-msg" id="login-msg"></p>
     </div>
+
+    <!-- RESET PASSWORD (se muestra automáticamente al llegar desde el link del email) -->
+    <div id="auth-form-reset" style="display:none">
+      <p class="auth-sub">Elegí una contraseña nueva para tu cuenta.</p>
+      <div class="auth-field">
+        <label>Nueva contraseña</label>
+        <input type="password" id="reset-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckReset()" autocomplete="new-password">
+        <span class="auth-field-hint" id="reset-pass-hint"></span>
+      </div>
+      <div class="auth-field">
+        <label>Repetir contraseña</label>
+        <input type="password" id="reset-pass2" placeholder="Repetí la contraseña" oninput="authCheckReset()" autocomplete="new-password">
+        <span class="auth-field-hint" id="reset-pass2-hint"></span>
+      </div>
+      <button class="auth-btn" id="reset-btn" onclick="cambiarContrasena()" disabled>Guardar nueva contraseña →</button>
+      <p class="auth-msg" id="reset-msg"></p>
+    </div>
   </div>
 </div>
 
@@ -3685,6 +3702,10 @@ let _authProfile = null  // perfil (alias, seat_number)
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session?.user) await _onLogin(session.user)
     if (event === 'SIGNED_OUT') _onLogout()
+    if (event === 'PASSWORD_RECOVERY') {
+      // El usuario llegó desde el link de reset → mostrar formulario de nueva contraseña
+      abrirAuth('reset')
+    }
   })
 })()
 
@@ -3753,8 +3774,59 @@ function cerrarAuth() {
 function authSetTab(tab) {
   document.getElementById('auth-form-registro').style.display = tab === 'registro' ? '' : 'none'
   document.getElementById('auth-form-login').style.display    = tab === 'login'    ? '' : 'none'
+  document.getElementById('auth-form-reset').style.display    = tab === 'reset'    ? '' : 'none'
   document.getElementById('tab-registro').classList.toggle('active', tab === 'registro')
   document.getElementById('tab-login').classList.toggle('active', tab === 'login')
+  // En modo reset ocultamos las pestañas
+  document.querySelector('.auth-tabs').style.display = tab === 'reset' ? 'none' : ''
+  if (tab === 'reset') {
+    // Limpiar campos
+    document.getElementById('reset-pass').value = ''
+    document.getElementById('reset-pass2').value = ''
+    document.getElementById('reset-btn').disabled = true
+    document.getElementById('reset-msg').textContent = ''
+  }
+}
+
+// ── Reset de contraseña ──
+function authCheckReset() {
+  const pass  = document.getElementById('reset-pass').value
+  const pass2 = document.getElementById('reset-pass2').value
+  const hint1 = document.getElementById('reset-pass-hint')
+  const hint2 = document.getElementById('reset-pass2-hint')
+  const btn   = document.getElementById('reset-btn')
+
+  const ok1 = pass.length >= 8
+  hint1.textContent = ok1 ? '✓' : (pass ? 'Mínimo 8 caracteres' : '')
+  hint1.className = 'auth-field-hint ' + (ok1 ? 'ok' : (pass ? 'err' : ''))
+
+  const ok2 = pass === pass2 && pass2.length > 0
+  hint2.textContent = ok2 ? '✓ Coinciden' : (pass2 ? '✗ No coinciden' : '')
+  hint2.className = 'auth-field-hint ' + (ok2 ? 'ok' : (pass2 ? 'err' : ''))
+
+  btn.disabled = !(ok1 && ok2)
+}
+
+async function cambiarContrasena() {
+  const pass = document.getElementById('reset-pass').value
+  const btn  = document.getElementById('reset-btn')
+  const msg  = document.getElementById('reset-msg')
+  btn.disabled = true
+  msg.textContent = 'Guardando...'
+  msg.className = 'auth-msg'
+
+  const { error } = await sb.auth.updateUser({ password: pass })
+  if (error) {
+    msg.textContent = 'Error: ' + error.message
+    msg.className = 'auth-msg err'
+    btn.disabled = false
+    return
+  }
+  msg.textContent = '✓ Contraseña actualizada. Redirigiendo...'
+  msg.className = 'auth-msg ok'
+  // Limpiar el hash de la URL
+  history.replaceState(null, '', window.location.pathname)
+  setTimeout(() => cerrarAuth(), 1800)
 }
 
 // ── Validaciones en tiempo real ──
