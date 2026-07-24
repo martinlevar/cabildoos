@@ -1205,6 +1205,16 @@ html, body {
 .cam-note {
   font-size:11px; color:var(--mid); text-align:center; margin-bottom:12px;
 }
+/* Indicadores del escáner en tiempo real */
+.scan-ind {
+  font-size:12px; color:rgba(255,255,255,.55);
+  display:flex; align-items:center; gap:5px;
+  padding:3px 0;
+  transition: color 0.3s;
+}
+.scan-ind.encontrado { color:#22c55e; }
+.scan-ind.buscando  { color:#f59e0b; }
+.scan-ic { font-size:14px; width:16px; display:inline-block; text-align:center; }
 
 /* Upload zones (legacy, por si acaso) */
 .vp-uploads { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
@@ -1881,27 +1891,32 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
     </div>
 
-    <!-- ── PASO 2: Cámara — Documento ── -->
+    <!-- ── PASO 2: Escáner en tiempo real ── -->
     <div class="vp-step" id="vp-s2">
       <div class="vp-step-icon">📄</div>
-      <p class="vp-title">Escanear documento</p>
-      <p class="vp-sub">Apuntá la cámara al <strong>frente del documento</strong>. El nombre, número y fecha deben verse con claridad.</p>
-      <div class="cam-wrap" id="cam-doc-wrap">
+      <p class="vp-title">Escaneá tu documento</p>
+      <p class="vp-sub">Mostrá el documento <strong>completo</strong> dentro del recuadro — incluyendo la fecha en la parte inferior. El sistema captura automáticamente cuando verifica todos los datos.</p>
+      <div class="cam-wrap" id="cam-doc-wrap" style="position:relative">
         <video id="cam-doc-video" class="cam-video" autoplay playsinline muted></video>
         <div class="cam-corners"><span></span><span></span></div>
-      </div>
-      <img id="cam-doc-preview" class="cam-preview-img" style="display:none">
-      <div id="cam-doc-pre">
-        <button class="cam-capture-btn" onclick="vpCapturar('doc')">📸 Capturar documento</button>
-        <p class="cam-note">Solo captura directa desde cámara — no se acepta galería</p>
-      </div>
-      <div id="cam-doc-post" style="display:none">
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button class="vp-btn-link" style="flex:1" onclick="vpRetomar('doc')">↩ Retomar</button>
-          <button class="vp-btn-main" style="flex:2" onclick="vpUsarDoc()">Usar esta →</button>
+        <!-- Overlay de estado del escáner sobre el video -->
+        <div id="vp-scan-overlay" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:10px 12px;display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+            <div class="scan-ind" id="scan-ind-numDoc"><span class="scan-ic">○</span> Número</div>
+            <div class="scan-ind" id="scan-ind-nombre"><span class="scan-ic">○</span> Nombre</div>
+            <div class="scan-ind" id="scan-ind-fecha"><span class="scan-ic">○</span> Fecha nac.</div>
+            <div class="scan-ind" id="scan-ind-nacionalidad"><span class="scan-ic">○</span> País</div>
+          </div>
         </div>
       </div>
-      <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver</button>
+      <!-- Estado del escáner debajo del video -->
+      <div id="vp-scan-status" style="text-align:center;margin:10px 0 6px;font-size:13px;color:var(--mid)">
+        <span id="vp-scan-msg">Iniciando cámara...</span>
+      </div>
+      <p style="font-size:11px;color:var(--mid);text-align:center;margin:0 0 10px">Solo captura directa desde cámara — no se acepta galería</p>
+      <!-- Botón manual de emergencia (aparece después de 30s si el scanner falla) -->
+      <button class="cam-capture-btn" id="vp-scan-manual-btn" style="display:none" onclick="vpCapturarManualDoc()">📸 Captura manual (iluminación difícil)</button>
+      <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver y corregir datos</button>
     </div>
 
     <!-- ── PASO 3: Cámara — Selfie ── -->
@@ -1983,8 +1998,7 @@ body.on-landing #social-footer.visible { display:flex; }
     <div class="vp-step" id="vp-s6a">
       <div class="vp-result-badge match">✓</div>
       <p class="vp-title">Datos verificados</p>
-      <p class="vp-sub">Número y nombre coinciden. Esto es lo único que verá el validador — tu cara sosteniendo el documento, con los datos pixelados:</p>
-      <div id="vp-s6a-warnings" style="display:none;margin-bottom:12px;font-size:13px"></div>
+      <p class="vp-sub">Número, nombre, fecha y país verificados por el escáner. Esto es lo único que verá el validador — tu cara sosteniendo el documento, con los datos pixelados:</p>
       <div class="vp-anon-box">
         <p class="vp-anon-label">Vista del validador humano</p>
         <div style="width:100%;border-radius:10px;overflow:hidden;background:#111;min-height:180px;display:flex;align-items:center;justify-content:center">
@@ -3823,6 +3837,145 @@ function vpPararCamara() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  ESCÁNER EN TIEMPO REAL — paso 2
+//  Escanea frames continuamente hasta verificar los 4 campos.
+//  Auto-captura cuando todos coinciden.
+// ══════════════════════════════════════════════════════════════
+
+let vpScannerTimer     = null   // setInterval handle
+let vpScannerRunning   = false  // bandera anti-solapamiento
+let vpScannerTimeout   = null   // timeout para botón manual (30s)
+
+// Captura un frame del video y lo devuelve como Blob
+function vpCapturarFrame(videoId, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const video = document.getElementById(videoId)
+    if (!video || !video.videoWidth) { reject(new Error('video no listo')); return }
+    const canvas = document.createElement('canvas')
+    canvas.width  = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d').drawImage(video, 0, 0)
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error('blob null')), 'image/jpeg', quality)
+  })
+}
+
+function vpSetScanMsg(txt, color = 'var(--mid)') {
+  const el = document.getElementById('vp-scan-msg')
+  if (el) { el.textContent = txt; el.style.color = color }
+}
+
+function vpActualizarScanUI(found) {
+  const campos = { numDoc: 'Número', nombre: 'Nombre', fecha: 'Fecha nac.', nacionalidad: 'País' }
+  Object.entries(campos).forEach(([key, label]) => {
+    const el = document.getElementById(`scan-ind-${key}`)
+    if (!el) return
+    if (found[key]) {
+      el.className = 'scan-ind encontrado'
+      el.querySelector('.scan-ic').textContent = '✓'
+    } else {
+      el.className = 'scan-ind buscando'
+      el.querySelector('.scan-ic').textContent = '◌'
+    }
+    el.childNodes[1] && (el.childNodes[1].textContent = ' ' + label)
+  })
+}
+
+async function vpIniciarScanner() {
+  vpPararScanner()
+
+  // Mostrar overlay de indicadores
+  const overlay = document.getElementById('vp-scan-overlay')
+  if (overlay) overlay.style.display = 'block'
+
+  // Resetear indicadores
+  vpActualizarScanUI({ numDoc: false, nombre: false, fecha: false, nacionalidad: false })
+  vpSetScanMsg('Apuntá al documento completo — incluyendo la fecha inferior')
+
+  // Botón manual después de 30s si el scanner no logra verificar
+  vpScannerTimeout = setTimeout(() => {
+    const btn = document.getElementById('vp-scan-manual-btn')
+    if (btn) btn.style.display = 'block'
+    vpSetScanMsg('¿Problemas? Mejorá la iluminación o usá la captura manual', '#f59e0b')
+  }, 30000)
+
+  // Obtener datos del formulario
+  const nombreUsuario = document.getElementById('vp-nombre')?.value.trim() || ''
+  const numDocUsuario = document.getElementById('vp-num-doc')?.value.trim() || ''
+  const fechaUsuario  = document.getElementById('vp-fecha-nac')?.value || ''
+  const country       = document.getElementById('vp-pais')?.value || ''
+
+  let intentos = 0
+
+  vpScannerTimer = setInterval(async () => {
+    if (vpScannerRunning) return
+    vpScannerRunning = true
+    intentos++
+
+    try {
+      vpSetScanMsg(`Escaneando${'.'.repeat((intentos % 3) + 1)}`)
+
+      const frame = await vpCapturarFrame('cam-doc-video', 0.88)
+      const texto = await extraerTextoCompleto(frame)
+      const found = vpCompararDatos(texto, nombreUsuario, numDocUsuario, fechaUsuario, country)
+
+      vpActualizarScanUI(found)
+
+      const todosOK = found.numDoc && found.nombre && found.fecha && found.nacionalidad
+
+      if (todosOK) {
+        // ¡Todos verificados! — capturar frame de alta calidad y avanzar
+        vpPararScanner()
+        vpSetScanMsg('✓ Documento verificado — capturando...', '#22c55e')
+
+        // Captura final en alta calidad
+        const docBlob = await vpCapturarFrame('cam-doc-video', 0.95)
+        vpCapturedDoc = docBlob
+        vpPararCamara()
+
+        // Pequeña pausa para que el usuario vea el ✓
+        await new Promise(r => setTimeout(r, 800))
+        vpGoStep(3)  // → selfie
+
+      } else {
+        // Construir mensaje de hint
+        const faltantes = []
+        if (!found.numDoc)       faltantes.push('número')
+        if (!found.nombre)       faltantes.push('nombre')
+        if (!found.fecha)        faltantes.push('fecha')
+        if (!found.nacionalidad) faltantes.push('país')
+        vpSetScanMsg(`Buscando: ${faltantes.join(', ')} — mostrá el documento completo`)
+      }
+
+    } catch (e) {
+      console.warn('Scanner frame error:', e)
+    } finally {
+      vpScannerRunning = false
+    }
+  }, 3500)  // escanea cada 3.5s
+}
+
+function vpPararScanner() {
+  if (vpScannerTimer) { clearInterval(vpScannerTimer); vpScannerTimer = null }
+  if (vpScannerTimeout) { clearTimeout(vpScannerTimeout); vpScannerTimeout = null }
+  vpScannerRunning = false
+  const overlay = document.getElementById('vp-scan-overlay')
+  if (overlay) overlay.style.display = 'none'
+}
+
+// Captura manual de emergencia (aparece tras 30s de fallo)
+async function vpCapturarManualDoc() {
+  try {
+    const blob = await vpCapturarFrame('cam-doc-video', 0.95)
+    vpCapturedDoc = blob
+    vpPararScanner()
+    vpPararCamara()
+    vpGoStep(3)
+  } catch (e) {
+    showToast('Error al capturar — verificá que la cámara esté activa')
+  }
+}
+
 async function vpCapturar(tipo) {
   const videoId = tipo === 'doc' ? 'cam-doc-video'
                 : tipo === 'selfie' ? 'cam-selfie-video'
@@ -3967,17 +4120,23 @@ function vpResetCamUI(tipo) {
 }
 
 function vpShowStep(n) {
-  // Parar cámara al salir de pasos de cámara
+  // Parar cámara y escáner al salir de pasos de cámara
+  vpPararScanner()
   vpPararCamara()
 
   document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
   const el = document.getElementById('vp-s' + n)
   if (el) el.classList.add('active')
 
-  // Iniciar cámara al entrar en pasos de cámara
+  // Iniciar cámara / escáner al entrar en pasos de cámara
   if (n === 2) {
-    vpResetCamUI('doc')
-    vpAbrirCamara('cam-doc-video', 'environment').catch(() => {})
+    // Paso 2: escáner en tiempo real
+    const manualBtn = document.getElementById('vp-scan-manual-btn')
+    if (manualBtn) manualBtn.style.display = 'none'
+    vpSetScanMsg('Iniciando cámara...')
+    vpAbrirCamara('cam-doc-video', 'environment')
+      .then(() => vpIniciarScanner())
+      .catch(() => { vpSetScanMsg('No se pudo acceder a la cámara', '#ef4444') })
   } else if (n === 3) {
     vpResetCamUI('selfie')
     vpAbrirCamara('cam-selfie-video', 'user').catch(() => {})
@@ -4067,37 +4226,24 @@ async function vpIniciarProceso() {
   activarFilaProceso('vpc-r2')
   const match = vpCompararDatos(ocrTexto, nombreUsuario, numDocUsuario, fechaUsuario, country)
 
-  // Checks DUROS: número (obligatorio) + nombre (obligatorio, 50% palabras)
-  // Checks SUAVES: fecha + nacionalidad — se avisa pero no bloquean
-  // (la parte inferior del DNI puede quedar fuera del encuadre)
-  if (!match.numDoc) fallas.push(`Número ${numDocUsuario} no encontrado en el documento`)
-  if (!match.nombre) fallas.push(`Nombre "${nombreUsuario}" no coincide con el documento`)
+  // Todos los campos son obligatorios — el escáner del paso 2 ya los verificó,
+  // esto es una segunda confirmación de seguridad.
+  if (!match.numDoc)       fallas.push(`Número ${numDocUsuario} no encontrado`)
+  if (!match.nombre)       fallas.push(`Nombre "${nombreUsuario}" no coincide`)
+  if (!match.fecha)        fallas.push(`Fecha de nacimiento ${fechaUsuario} no encontrada`)
+  if (!match.nacionalidad) fallas.push(`País "${country}" no coincide`)
 
-  const advertencias = []
-  if (!match.fecha)        advertencias.push(`⚠ Fecha ${fechaUsuario} no visible en el encuadre — el validador la verificará`)
-  if (!match.nacionalidad) advertencias.push(`⚠ Texto de país "${country}" no detectado — el validador lo verificará`)
-
-  // DIAGNÓSTICO OCR (se muestra solo si hay fallas duras)
-  if (fallas.length > 0 && ocrTexto.length > 0) {
-    const preview = ocrTexto.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)
-    fallas.push(`📋 Texto leído por OCR: "${preview}"`)
-  }
-
-  // Bloquear solo si fallan checks DUROS (número o nombre)
-  const bloquear = fallas.length > 0
-
-  if (!bloquear) {
-    const checkStr = [
-      'Número ✓', 'Nombre ✓',
-      match.fecha ? 'Fecha ✓' : 'Fecha⚠',
-      match.nacionalidad ? 'Nacionalidad ✓' : 'Nacionalidad⚠'
-    ].join(' · ')
-    completarFilaProceso('vpc-r2', checkStr)
-  } else {
-    completarFilaProceso('vpc-r2', `${fallas.length} dato(s) no coinciden — proceso detenido`, true)
+  if (fallas.length > 0) {
+    // Solo para diagnóstico interno — no debería ocurrir si el scanner funcionó
+    const preview = ocrTexto.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 250)
+    fallas.push(`Texto OCR: "${preview}"`)
+    completarFilaProceso('vpc-r2', `${fallas.length - 1} dato(s) no confirmados`, true)
     await vpMostrarFallo(fallas)
     return
   }
+
+  completarFilaProceso('vpc-r2', 'Número ✓ · Nombre ✓ · Fecha ✓ · Nacionalidad ✓')
+  const advertencias = []  // no hay advertencias — todo verificado
 
   // ── PASO 3: Detección de rostro en selfie ──
   activarFilaProceso('vpc-r3')
@@ -4136,18 +4282,10 @@ async function vpIniciarProceso() {
 
   await new Promise(r => setTimeout(r, 400))
 
-  // Aquí solo llegan solicitudes con número+nombre OK; bloquear solo si hay error de cara o imagen
+  // Bloquear si hay error de cara o de imagen
   if (fallas.length > 0) {
     await vpMostrarFallo(fallas)
   } else {
-    // Mostrar advertencias suaves en el paso de éxito si fecha/nacionalidad no se leyeron
-    const warnContainer = document.getElementById('vp-s6a-warnings')
-    if (warnContainer) {
-      warnContainer.innerHTML = advertencias.length
-        ? advertencias.map(w => `<div class="vp-val-row" style="color:#f59e0b">${w}</div>`).join('')
-        : ''
-      warnContainer.style.display = advertencias.length ? 'block' : 'none'
-    }
     vpShowStep('6a')
   }
 }
