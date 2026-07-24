@@ -2278,56 +2278,73 @@ async function cargarFaceApi() {
   faceApiLoaded = true
 }
 
-/// ── Preprocesamiento de imagen para mejorar OCR ──
-// Upscale 2x + escala de grises + aumento de contraste
-function preprocesarParaOCR(blob) {
-  return new Promise((resolve) => {
-    const img = new Image()
-    const url = URL.createObjectURL(blob)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const SCALE = 2
-      const canvas = document.createElement('canvas')
-      canvas.width  = img.naturalWidth  * SCALE
-      canvas.height = img.naturalHeight * SCALE
-      const ctx = canvas.getContext('2d')
+// ══════════════════════════════════════════════════════════════
+//  OCR MULTI-REGIÓN — escanea el documento en paralelo por zonas
+//  para maximizar la lectura de todos los campos, especialmente
+//  la fecha que suele estar en la columna derecha del DNI.
+// ══════════════════════════════════════════════════════════════
 
-      // Dibujar upscaled
-      ctx.imageSmoothingEnabled  = true
-      ctx.imageSmoothingQuality  = 'high'
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-      // Procesar píxeles: grises + contraste
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const d = imgData.data
-      for (let i = 0; i < d.length; i += 4) {
-        // Luminancia perceptual
-        const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]
-        // Contraste fuerte (factor 1.8)
-        const v = Math.max(0, Math.min(255, (gray - 128) * 1.8 + 128))
-        d[i] = d[i+1] = d[i+2] = v
-        // alfa sin cambio
-      }
-      ctx.putImageData(imgData, 0, 0)
-
-      canvas.toBlob(resolve, 'image/png', 1.0)  // PNG lossless = mejor para OCR
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(blob) }
-    img.src = url
-  })
+// Dibuja una región de `img` en un canvas y aplica preprocesamiento
+function _ocrCanvas(img, sx, sy, sw, sh, escala, contraste, binarizar = false) {
+  const canvas = document.createElement('canvas')
+  canvas.width  = Math.floor(sw * escala)
+  canvas.height = Math.floor(sh * escala)
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  const d = imgData.data
+  for (let i = 0; i < d.length; i += 4) {
+    const g = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]
+    const v = binarizar
+      ? (g > 127 ? 255 : 0)
+      : Math.max(0, Math.min(255, (g - 128) * contraste + 128))
+    d[i] = d[i+1] = d[i+2] = v
+  }
+  ctx.putImageData(imgData, 0, 0)
+  return canvas
 }
 
-// ── OCR: extrae texto completo del documento ──
-async function extraerTextoCompleto(file) {
-  if (!file) return ''
-  await cargarTesseract()
-  // Preprocesar para mejorar legibilidad
-  const processed = await preprocesarParaOCR(file)
-  const url = URL.createObjectURL(processed)
+// Convierte un canvas en texto OCR
+async function _ocrDeCanvas(canvas) {
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/png', 1.0))
+  const url  = URL.createObjectURL(blob)
   try {
     const { data: { text } } = await Tesseract.recognize(url, 'spa+eng', { logger: () => {} })
     return text || ''
-  } finally { URL.revokeObjectURL(url) }
+  } catch { return '' }
+  finally { URL.revokeObjectURL(url) }
+}
+
+// OCR principal: 3 regiones en paralelo
+// - imagen completa (captura header/nacionalidad)
+// - columna derecha ×3 con alto contraste (nombre, fecha, número)
+// - columna derecha ×3 binarizada (MRZ y texto con fondo oscuro)
+async function extraerTextoCompleto(file) {
+  if (!file) return ''
+  await cargarTesseract()
+
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = async () => {
+      URL.revokeObjectURL(url)
+      const W = img.naturalWidth, H = img.naturalHeight
+      // La columna derecha del DNI (donde está toda la info de texto)
+      // empieza aproximadamente al 38% del ancho (después de la foto)
+      const rx = Math.floor(W * 0.38), rw = W - rx
+
+      const [t1, t2, t3] = await Promise.all([
+        _ocrDeCanvas(_ocrCanvas(img, 0,  0, W,  H,  2, 1.8)),         // completa ×2
+        _ocrDeCanvas(_ocrCanvas(img, rx, 0, rw, H,  3, 2.5)),         // col. derecha ×3 alto contraste
+        _ocrDeCanvas(_ocrCanvas(img, rx, 0, rw, H,  3, 1.8, true)),   // col. derecha ×3 binarizada
+      ])
+      resolve([t1, t2, t3].join('\n'))
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve('') }
+    img.src = url
+  })
 }
 
 /// ── Comparación de datos: OCR vs. datos ingresados ──
@@ -2356,42 +2373,78 @@ function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac, pais) {
   const palabrasEncontradas = palabras.filter(p => ocr.includes(p))
   const nombreMatch = palabras.length > 0 && palabrasEncontradas.length / palabras.length >= 0.6
 
-  // 3. Fecha — buscar en múltiples formatos incluyendo abreviaturas en español/inglés
+  // 3. Fecha — multi-formato con corrección de errores OCR
   let fechaMatch = false
   if (fechaNac) {
     const [anio, mes, dia] = fechaNac.split('-')
     const mesNum = parseInt(mes, 10)
+    const diaNum = parseInt(dia, 10).toString()  // "06" → "6"
 
-    // Abreviaturas de mes en español e inglés (SET/SEP para septiembre, etc.)
-    const MESES_ESP = ['','ene','feb','mar','abr','may','jun','jul','ago','set','oct','nov','dic']
-    const MESES_SEP = ['','ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
-    const MESES_ENG = ['','jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']
-    const mesEsp  = MESES_ESP[mesNum]  // "set" para septiembre en DNI argentino
-    const mesSep  = MESES_SEP[mesNum]  // "sep"
-    const mesEng  = MESES_ENG[mesNum]  // "sep" en inglés
-    const diaNum  = dia.replace(/^0/, '')  // sin cero inicial
+    // Texto limpio para búsqueda de palabras
+    const ocrLow = ocrTexto.toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9\n ]/g, ' ').replace(/\s+/g, ' ')
 
-    // Formatos numéricos
-    const ocrNum   = ocrTexto.replace(/[^0-9]/g, '')
-    const yymmdd   = `${anio.slice(2)}${mes}${dia}`
-    const ddmmyyyy = `${dia}${mes}${anio}`
-    const ddmmyy   = `${dia}${mes}${anio.slice(2)}`
+    // Versión con correcciones de errores OCR comunes (l↔1, O/o↔0)
+    const ocrFix = ocrLow
+      .replace(/(?<![a-z])l(?![a-z])/g, '1')   // l aislada → 1
+      .replace(/(?<![a-z])o(?![a-z])/g, '0')   // o aislada → 0
 
-    // Formato texto: "12 set 1981", "12set1981", "set 1981", "12/set/1981"
-    const ocr2 = ocrTexto.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ')
-    const tieneAnio = ocr2.includes(anio)
-    const tieneDia  = ocr2.includes(` ${diaNum} `) || ocr2.includes(` ${dia} `) || ocr.startsWith(`${diaNum} `) || ocr.startsWith(`${dia} `)
+    // ── Búsqueda del AÑO (tolerante a l↔1, O↔0) ──
+    const anioVariants = [anio,
+      anio.replace(/1/g,'l'), anio.replace(/1/g,'i'),
+      anio.replace(/0/g,'o'), anio.replace(/0/g,'O')]
+    const tieneAnio = anioVariants.some(v => ocrLow.includes(v)) ||
+      ocrFix.includes(anio)
 
-    const mesEnTexto = (abbr) => abbr && (ocr2.includes(abbr))
+    // ── Búsqueda del DÍA ──
+    // El día puede aparecer como "6", "06", "6 ", " 6 "
+    const tieneDia = new RegExp(`(^| )0?${diaNum}( |$|\\b)`, 'm').test(ocrLow)
+
+    // ── Búsqueda del MES — abreviaturas en español, inglés, formatos DNI ──
+    const MESES = [
+      [],                                        // índice 0 (unused)
+      ['ene','jan','enero','january'],            // 1
+      ['feb','febrero','february'],              // 2
+      ['mar','marzo','march'],                   // 3
+      ['abr','apr','abril','april'],             // 4
+      ['may','mayo'],                            // 5
+      ['jun','juni','junio','june'],             // 6  ← tu caso
+      ['jul','julio','july'],                    // 7
+      ['ago','aug','agosto','august'],           // 8
+      ['set','sep','sept','septiembre','september'], // 9
+      ['oct','octubre','october'],               // 10
+      ['nov','noviembre','november'],            // 11
+      ['dic','dec','diciembre','december'],      // 12
+    ]
+    const mesAbrevs = MESES[mesNum] || []
+    const tieneMes = mesAbrevs.some(m => ocrLow.includes(m))
+
+    // ── Formatos numéricos puros (dígitos extraídos del OCR) ──
+    const ocrDigits = ocrTexto.replace(/[^0-9]/g, '')
+    // También con corrección de l↔1 y O↔0
+    const ocrDigitsFix = ocrTexto
+      .replace(/l/gi, '1').replace(/[oO]/g, '0').replace(/[^0-9]/g, '')
+
+    const numFormatos = [
+      `${anio.slice(2)}${mes}${dia}`,   // MRZ:    830606
+      `${dia}${mes}${anio}`,            // DDMMYYYY: 06061983
+      `${dia}${mes}${anio.slice(2)}`,   // DDMMYY:  060683
+      `${anio}${mes}${dia}`,            // YYYYMMDD: 19830606
+      `${mes}${dia}${anio}`,            // MMDDYYYY: 06061983
+    ]
+    const encontradoNumerico = numFormatos.some(f =>
+      ocrDigits.includes(f) || ocrDigitsFix.includes(f)
+    )
 
     fechaMatch =
-      ocrNum.includes(yymmdd) || ocrNum.includes(ddmmyyyy) || ocrNum.includes(ddmmyy) ||
-      // texto: mes abreviado + año
-      (mesEnTexto(mesEsp) && tieneAnio) ||
-      (mesEnTexto(mesSep) && tieneAnio) ||
-      (mesEnTexto(mesEng) && tieneAnio) ||
-      // día numérico + año (fallback flexible)
-      (tieneDia && tieneAnio)
+      encontradoNumerico ||
+      // Texto: mes + año (el DNI argentino dice "06 JUN 1983")
+      (tieneMes && tieneAnio) ||
+      // Texto: mes + día (si el año no se lee bien)
+      (tieneMes && tieneDia) ||
+      // Texto: día + año con el mes numérico
+      (tieneDia && tieneAnio && ocrLow.includes(` ${mes} `))
   }
 
   // 4. Nacionalidad / país — buscar en OCR
@@ -3952,7 +4005,7 @@ async function vpIniciarScanner() {
     } finally {
       vpScannerRunning = false
     }
-  }, 3500)  // escanea cada 3.5s
+  }, 5000)  // escanea cada 5s (3 OCR en paralelo toman ~4s)
 }
 
 function vpPararScanner() {
