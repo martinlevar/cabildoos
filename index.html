@@ -4456,18 +4456,6 @@ const VP_LIVENESS = [
 ]
 let vpLivenessInstruccion = null
 
-function vpLivenessIniciar() {
-  // Instrucción aleatoria — cambia cada vez
-  vpLivenessInstruccion = VP_LIVENESS[Math.floor(Math.random() * VP_LIVENESS.length)]
-  const emoji = document.getElementById('vp-liveness-emoji')
-  const texto = document.getElementById('vp-liveness-texto')
-  if (emoji) emoji.textContent = vpLivenessInstruccion.emoji
-  if (texto) texto.textContent = vpLivenessInstruccion.texto
-
-  vpResetCamUI('selfie')
-  vpAbrirCamara('cam-selfie-video', 'user').catch(() => {})
-}
-
 // ── Chip de tipo de documento ──────────────────────────────────────────────────
 
 function vpDocChip(tipo) {
@@ -5219,6 +5207,128 @@ async function vpCapturarManualDoc() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  AUTO-CAPTURE — countdown overlay sobre la cámara
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function vpContador(videoWrapperId, segundos) {
+  const wrap = document.getElementById(videoWrapperId)
+  if (!wrap) return
+  // Crear overlay de countdown
+  const overlay = document.createElement('div')
+  overlay.style.cssText = `
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;z-index:10;
+    background:rgba(0,0,0,.35);border-radius:10px;
+  `
+  const num = document.createElement('div')
+  num.style.cssText = 'font-size:72px;font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,.5)'
+  const txt = document.createElement('div')
+  txt.style.cssText = 'font-size:13px;color:rgba(255,255,255,.8);margin-top:8px;font-weight:600'
+  txt.textContent = 'Mantené quieto…'
+  overlay.appendChild(num); overlay.appendChild(txt)
+  wrap.style.position = 'relative'
+  wrap.appendChild(overlay)
+  for (let i = segundos; i > 0; i--) {
+    num.textContent = i
+    await new Promise(r => setTimeout(r, 1000))
+  }
+  overlay.remove()
+}
+
+async function vpAutoCapturar(tipo, wrapperId, segundos = 3) {
+  await vpContador(wrapperId, segundos)
+  await vpCapturar(tipo)
+}
+
+// ── Paso 3: liveness con auto-capture ────────────────────────────────────────
+function vpLivenessIniciar() {
+  vpLivenessInstruccion = VP_LIVENESS[Math.floor(Math.random() * VP_LIVENESS.length)]
+  const emoji = document.getElementById('vp-liveness-emoji')
+  const texto = document.getElementById('vp-liveness-texto')
+  if (emoji) emoji.textContent = vpLivenessInstruccion.emoji
+  if (texto) texto.textContent = vpLivenessInstruccion.texto
+  vpResetCamUI('selfie')
+  vpAbrirCamara('cam-selfie-video', 'user')
+    .then(() => {
+      // Esperar que el video tenga frames reales
+      const vid = document.getElementById('cam-selfie-video')
+      return new Promise(res => {
+        if (vid.videoWidth > 0) { res(); return }
+        vid.addEventListener('loadeddata', res, { once: true })
+        setTimeout(res, 2000)
+      })
+    })
+    .then(() => vpAutoCapturar('selfie', 'cam-selfie-wrap', 4))
+    .then(() => {
+      // Auto-avanzar al paso 4 después de capturar
+      setTimeout(() => vpGoStep(4), 800)
+    })
+    .catch(e => console.warn('Liveness error:', e))
+}
+
+// ── Paso 4: selfie sosteniendo documento con auto-capture ────────────────────
+async function vpSelfieDocIniciar() {
+  try {
+    await vpAbrirCamara('cam-selfiedoc-video', 'user')
+    const vid = document.getElementById('cam-selfiedoc-video')
+    await new Promise(res => {
+      if (vid.videoWidth > 0) { res(); return }
+      vid.addEventListener('loadeddata', res, { once: true })
+      setTimeout(res, 2000)
+    })
+    await vpAutoCapturar('selfiedoc', 'cam-selfiedoc-wrap', 4)
+    // Auto-avanzar al procesamiento
+    setTimeout(() => vpUsarSelfieDoc(), 600)
+  } catch(e) {
+    console.warn('SelfieDoc error:', e)
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  BLUR DE DOCUMENTO — pixela la zona donde está el documento en la selfie
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function vpPixelarDocumento(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width  = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+
+      // Dibujar imagen completa
+      ctx.drawImage(img, 0, 0)
+
+      // Pixelar el 55% inferior (donde está el documento)
+      // El pixel size da el efecto "datos borrados" sin perder la cara
+      const startY   = Math.floor(img.height * 0.42)
+      const pixSize  = Math.max(Math.floor(img.width / 18), 14)
+
+      for (let y = startY; y < img.height; y += pixSize) {
+        for (let x = 0; x < img.width; x += pixSize) {
+          const [r, g, b] = ctx.getImageData(x + pixSize/2|0, y + pixSize/2|0, 1, 1).data
+          ctx.fillStyle = `rgb(${r},${g},${b})`
+          ctx.fillRect(x, y, pixSize, pixSize)
+        }
+      }
+
+      // Agregar franja semitransparente con texto "DATOS PROTEGIDOS"
+      ctx.fillStyle = 'rgba(0,0,0,0.45)'
+      ctx.fillRect(0, startY, img.width, 36)
+      ctx.fillStyle = '#fff'
+      ctx.font = `bold ${Math.max(img.width/28, 12)}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.fillText('DATOS DEL DOCUMENTO PROTEGIDOS', img.width/2, startY + 24)
+
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.88)
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(blob)
+  })
+}
+
 async function vpCapturar(tipo) {
   const videoId = tipo === 'doc' ? 'cam-doc-video'
                 : tipo === 'selfie' ? 'cam-selfie-video'
@@ -5384,7 +5494,7 @@ function vpShowStep(n) {
     vpLivenessIniciar()
   } else if (n === 4) {
     vpResetCamUI('selfiedoc')
-    vpAbrirCamara('cam-selfiedoc-video', 'user').catch(() => {})
+    vpSelfieDocIniciar()
   }
 
   // Progress dots
@@ -5471,27 +5581,31 @@ async function vpIniciarProceso() {
     completarFilaProceso('vpc-r3', `Liveness · "${vpLivenessInstruccion?.texto || 'completado'}" ✓`)
   }
 
-  // ── Paso 4: selfie sosteniendo documento ──────────────────────────────────
+  // ── Paso 4: selfie sosteniendo documento + generar imagen censurada ─────────
   activarFilaProceso('vpc-r4')
   if (!vpCapturedSelfieDoc) {
     completarFilaProceso('vpc-r4', 'No se tomó selfie con documento', true)
     fallas.push('Falta el selfie sosteniendo el documento')
   } else {
-    // Detección de rostro (opcional, no bloquea)
-    try {
-      const fr = await verificarPresenciaFacial(vpCapturedSelfieDoc, null)
-      completarFilaProceso('vpc-r4', fr
-        ? `Rostro detectado · ${fr.confianza}% confianza`
-        : 'Foto guardada · revisión manual ⚠'
-      )
-    } catch {
-      completarFilaProceso('vpc-r4', 'Foto guardada ✓')
-    }
+    completarFilaProceso('vpc-r4', 'Foto capturada ✓')
   }
 
-  // ── Paso 5: listo ─────────────────────────────────────────────────────────
+  // ── Paso 5: generar imagen censurada para el admin ─────────────────────────
   activarFilaProceso('vpc-r5')
-  completarFilaProceso('vpc-r5', 'Listo para enviar · esperando confirmación')
+  if (vpCapturedSelfieDoc) {
+    try {
+      vpAnonBlob = await vpPixelarDocumento(vpCapturedSelfieDoc)
+      completarFilaProceso('vpc-r5', 'Imagen censurada generada — cara visible, documento pixelado ✓')
+      // Mostrar preview en paso 6a
+      const previewImg = document.getElementById('vp-anon-preview')
+      const previewPh  = document.getElementById('vp-anon-preview-ph')
+      if (previewImg) { previewImg.src = URL.createObjectURL(vpAnonBlob); previewImg.style.display = 'block' }
+      if (previewPh)  previewPh.style.display = 'none'
+    } catch(e) {
+      completarFilaProceso('vpc-r5', 'Error generando imagen censurada', true)
+      fallas.push('No se pudo procesar la imagen')
+    }
+  }
 
   await new Promise(r => setTimeout(r, 300))
 
@@ -5535,16 +5649,12 @@ async function vpEnviarVerificacion() {
       vpCapturedSelfieDoc ? blobToB64(vpCapturedSelfieDoc) : Promise.resolve(''),
     ])
 
-    // Generar foto censurada: cara visible, datos del documento pixelados
-    // Esta es la ÚNICA imagen que llega al servidor y al admin
+    // Usar la imagen ya censurada generada en vpIniciarProceso (vpAnonBlob)
+    // Si por alguna razón no está, regenerar
     let selfieDocCensuradaB64 = selfieDocB64
-    if (vpCapturedSelfieDoc && vpCapturedDoc) {
-      try {
-        const censurada = await generarImagenConDocumentoBloqueado(vpCapturedSelfieDoc, vpCapturedDoc)
-        selfieDocCensuradaB64 = await blobToB64(censurada)
-      } catch(e) {
-        console.warn('No se pudo censurar — usando foto sin censura', e)
-      }
+    const blobCensurado = vpAnonBlob || (vpCapturedSelfieDoc ? await vpPixelarDocumento(vpCapturedSelfieDoc) : null)
+    if (blobCensurado) {
+      selfieDocCensuradaB64 = await blobToB64(blobCensurado)
     }
 
     const resp = await fetch(`${VP_API_URL}/api/verify/submit`, {
