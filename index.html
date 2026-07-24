@@ -2007,70 +2007,92 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
     </div>
 
-    <!-- ── PASO 2: Foto del documento ── -->
+    <!-- ── PASO 2: Documento — cámara forzada (getUserMedia) ── -->
     <div class="vp-step" id="vp-s2">
-      <div class="vp-step-icon">📄</div>
-      <p class="vp-title">Foto del documento</p>
-      <p class="vp-sub">Sacá una foto clara del frente de tu documento. El sistema extrae los datos automáticamente.</p>
+      <p class="vp-title" style="margin:0 0 4px">Documento de identidad</p>
+      <p class="vp-sub">Cámara directa — sin opción de galería. Mostrá el frente completo.</p>
 
-      <!-- Selector de tipo (chips) -->
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-        <button class="vp-chip active" id="vp-chip-DNI_AR"     onclick="vpDocChip('DNI_AR')">🇦🇷 DNI</button>
-        <button class="vp-chip"       id="vp-chip-PASAPORTE"   onclick="vpDocChip('PASAPORTE')">📘 Pasaporte</button>
-        <button class="vp-chip"       id="vp-chip-CEDULA_VE"   onclick="vpDocChip('CEDULA_VE')">🇻🇪 Cédula VE</button>
-        <button class="vp-chip"       id="vp-chip-LICENCIA"    onclick="vpDocChip('LICENCIA')">🚗 Licencia</button>
+      <!-- Chips de tipo -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="vp-chip active" id="vp-chip-DNI_AR"   onclick="vpDocChip('DNI_AR')">🇦🇷 DNI</button>
+        <button class="vp-chip" id="vp-chip-PASAPORTE"       onclick="vpDocChip('PASAPORTE')">📘 Pasaporte</button>
+        <button class="vp-chip" id="vp-chip-CEDULA_VE"       onclick="vpDocChip('CEDULA_VE')">🇻🇪 Cédula VE</button>
+        <button class="vp-chip" id="vp-chip-LICENCIA"        onclick="vpDocChip('LICENCIA')">🚗 Licencia</button>
       </div>
 
-      <!-- Preview de la foto -->
-      <div id="vp-doc-preview-wrap" style="display:none;margin-bottom:10px;position:relative">
-        <img id="vp-doc-img" style="width:100%;border-radius:10px;display:block;border:2px solid rgba(255,255,255,.1)">
-        <div id="vp-doc-decode-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.55);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
-          <div class="vp-decode-spinner" style="width:22px;height:22px;border-width:3px"></div>
-          <span style="font-size:12px;color:#fff" id="vp-doc-decode-msg">Leyendo datos…</span>
+      <!-- Visor de cámara (getUserMedia, sin file input) -->
+      <div class="cam-wrap" id="cam-doc-wrap" style="position:relative">
+        <video id="cam-doc-video" class="cam-video" autoplay playsinline muted></video>
+        <div class="cam-corners"><span></span><span></span></div>
+        <!-- Overlay: línea de scan animada -->
+        <div id="vp-doc-scanline" style="position:absolute;left:8%;right:8%;height:2px;background:rgba(34,197,94,.8);box-shadow:0 0 10px #22c55e;animation:scanLine 2s ease-in-out infinite;top:50%"></div>
+        <!-- Overlay: detectado OK -->
+        <div id="vp-doc-ok-overlay" style="display:none;position:absolute;inset:0;border:3px solid #22c55e;border-radius:10px;background:rgba(34,197,94,.08);align-items:center;justify-content:center">
+          <span style="font-size:40px">✓</span>
         </div>
       </div>
 
-      <!-- Botón de foto — overlay technique: input transparente sobre el div -->
-      <div id="vp-doc-foto-wrap" style="position:relative;margin-bottom:8px;border-radius:12px;overflow:hidden">
-        <div class="cam-capture-btn" id="vp-doc-foto-btn" style="font-size:15px;padding:16px;pointer-events:none">
-          📷 <span id="vp-doc-foto-label">Fotografiar documento</span>
-        </div>
-        <input type="file" accept="image/*" capture="environment"
-               style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"
-               onchange="vpDocFotoTomada(this)">
+      <!-- Estado del scanner en vivo -->
+      <div style="text-align:center;margin:8px 0 4px;min-height:20px">
+        <span id="vp-doc-msg" style="font-size:12px;color:var(--mid)">Escaneando…</span>
       </div>
-      <p style="font-size:11px;color:var(--mid);text-align:center;margin:0 0 10px">
-        Cámara trasera · documento completo · buena iluminación
-      </p>
 
-      <!-- Resultado de decodificación -->
+      <!-- Foto capturada -->
+      <img id="vp-doc-preview" style="display:none;width:100%;border-radius:10px;border:2px solid rgba(255,255,255,.1);margin:8px 0">
+
+      <!-- Botón captura manual -->
+      <div id="vp-doc-pre">
+        <button class="cam-capture-btn" style="font-size:15px;padding:14px" onclick="vpDocCapturar()">📸 Capturar foto del documento</button>
+        <p class="cam-note">La cámara detecta el barcode automáticamente · o capturá manualmente</p>
+      </div>
+
+      <!-- Spinner de análisis -->
+      <div id="vp-doc-analizando" style="display:none;text-align:center;padding:12px">
+        <div class="vp-decode-spinner" style="width:20px;height:20px;border-width:3px;display:inline-block;vertical-align:middle;margin-right:8px"></div>
+        <span id="vp-doc-decode-msg" style="font-size:13px;color:var(--mid)">Analizando…</span>
+      </div>
+
+      <!-- Resultado: datos extraídos -->
       <div id="vp-barcode-result" style="display:none;background:rgba(34,197,94,0.1);border:1px solid #22c55e;border-radius:10px;padding:12px;margin:8px 0;font-size:13px">
         <div style="color:#22c55e;font-weight:700;margin-bottom:8px">✓ Datos extraídos del documento</div>
         <div id="vp-barcode-fields" style="color:var(--fg);line-height:1.9"></div>
-        <button class="vp-btn-main" style="margin-top:12px;width:100%" onclick="vpConfirmarBarcode()">Confirmar y continuar →</button>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="vp-btn-link" style="flex:1" onclick="vpDocReintentar()">↩ Repetir</button>
+          <button class="vp-btn-main" style="flex:2" onclick="vpConfirmarBarcode()">Confirmar →</button>
+        </div>
       </div>
 
-      <!-- No se pudo leer — continuar igual (validador humano revisa la foto) -->
+      <!-- No se pudo leer — continuar igual -->
       <div id="vp-doc-sin-datos" style="display:none;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:10px;padding:12px;margin:8px 0;font-size:13px">
-        <div style="color:#fb923c;font-weight:600;margin-bottom:6px">⚠ No se leyó el código automáticamente</div>
+        <div style="color:#fb923c;font-weight:600;margin-bottom:4px">Código no detectado</div>
         <p style="color:var(--mid);font-size:12px;margin:0 0 10px">La foto quedó guardada. El verificador revisará el documento manualmente.</p>
-        <button class="vp-btn-main" style="width:100%" onclick="vpSaltarBarcode()">Continuar →</button>
+        <div style="display:flex;gap:8px">
+          <button class="vp-btn-link" style="flex:1" onclick="vpDocReintentar()">↩ Repetir</button>
+          <button class="vp-btn-main" style="flex:2" onclick="vpSaltarBarcode()">Continuar →</button>
+        </div>
       </div>
 
       <!-- DEBUG -->
-      <div id="vp-debug-raw" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:8px;word-break:break-all">
+      <div id="vp-debug-raw" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.15);border-radius:8px;word-break:break-all">
         <p style="font-size:10px;color:#94a3b8;margin:0 0 4px;font-weight:600">DEBUG:</p>
         <p id="vp-debug-raw-text" style="font-size:11px;color:#e2e8f0;margin:0;font-family:monospace;line-height:1.5"></p>
       </div>
 
-      <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver</button>
+      <button class="vp-btn-link" onclick="vpGoStep(1)" style="margin-top:4px">← Volver</button>
     </div>
 
-    <!-- ── PASO 3: Cámara — Selfie ── -->
+    <!-- ── PASO 3: Selfie con liveness ── -->
     <div class="vp-step" id="vp-s3">
-      <div class="vp-step-icon">🤳</div>
-      <p class="vp-title">Selfie</p>
-      <p class="vp-sub">Mirá a la cámara. Tu cara debe verse completa con buena iluminación.</p>
+      <p class="vp-title" style="margin:0 0 4px">Verificación de presencia</p>
+      <p class="vp-sub">Realizá la acción que aparece en pantalla. Esto confirma que sos una persona real.</p>
+
+      <!-- Instrucción liveness (aleatoria) -->
+      <div id="vp-liveness-instruccion" style="background:rgba(29,31,60,.3);border:1.5px solid rgba(29,31,60,.5);border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center">
+        <div style="font-size:32px;margin-bottom:6px" id="vp-liveness-emoji">😐</div>
+        <div style="font-weight:700;font-size:15px;color:var(--fg)" id="vp-liveness-texto">Cargando instrucción…</div>
+        <div style="font-size:11px;color:var(--mid);margin-top:4px">Realizá esta acción mirando a la cámara</div>
+      </div>
+
       <div class="cam-wrap" id="cam-selfie-wrap">
         <video id="cam-selfie-video" class="cam-video cam-mirror" autoplay playsinline muted></video>
         <div class="cam-face-guide"></div>
@@ -2078,7 +2100,7 @@ body.on-landing #social-footer.visible { display:flex; }
       <img id="cam-selfie-preview" class="cam-preview-img" style="display:none">
       <div id="cam-selfie-pre">
         <button class="cam-capture-btn" onclick="vpCapturar('selfie')">📸 Capturar selfie</button>
-        <p class="cam-note">Solo captura directa desde cámara</p>
+        <p class="cam-note">Solo captura directa — cámara frontal</p>
       </div>
       <div id="cam-selfie-post" style="display:none">
         <div style="display:flex;gap:8px;margin-bottom:10px">
@@ -4181,6 +4203,156 @@ let vpBarcodeScanTimer = null
 let vpTipoDoc2 = 'DNI_AR'  // tipo activo
 let vpZbarLoaded = false
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  PASO 2 — DOCUMENTO (getUserMedia, sin galería)
+// ══════════════════════════════════════════════════════════════════════════════
+
+let vpDocScanTimer = null   // BarcodeDetector live scan interval
+let vpDocDetector  = null   // instancia reutilizable de BarcodeDetector
+
+function vpDocMsg(txt, color) {
+  const el = document.getElementById('vp-doc-msg')
+  if (el) { el.textContent = txt; el.style.color = color || 'var(--mid)' }
+}
+
+async function vpDocIniciar() {
+  // Reset UI
+  document.getElementById('vp-doc-preview').style.display    = 'none'
+  document.getElementById('vp-doc-pre').style.display        = ''
+  document.getElementById('vp-barcode-result').style.display = 'none'
+  document.getElementById('vp-doc-sin-datos').style.display  = 'none'
+  document.getElementById('vp-doc-analizando').style.display = 'none'
+  document.getElementById('vp-debug-raw').style.display      = 'none'
+  document.getElementById('vp-doc-scanline').style.display   = ''
+  document.getElementById('vp-doc-ok-overlay').style.display = 'none'
+  vpDocMsg('Iniciando cámara…')
+
+  // Abrir cámara trasera (sin file picker)
+  try {
+    await vpAbrirCamara('cam-doc-video', 'environment')
+    vpDocMsg('Mostrá el frente del documento completo')
+  } catch(e) {
+    vpDocMsg('Sin acceso a cámara — verificá los permisos', '#f59e0b')
+    return
+  }
+
+  // Iniciar BarcodeDetector en vivo si disponible
+  if ('BarcodeDetector' in window) {
+    try {
+      const fmts = await BarcodeDetector.getSupportedFormats()
+      vpDocDetector = new BarcodeDetector({ formats: fmts })
+      vpDocScanTimer = setInterval(vpDocScanFrame, 300)
+    } catch(_) {}
+  }
+}
+
+async function vpDocScanFrame() {
+  const vid = document.getElementById('cam-doc-video')
+  if (!vid || !vid.videoWidth || !vpDocDetector) return
+  try {
+    const codes = await vpDocDetector.detect(vid)
+    for (const c of codes) {
+      if (c.rawValue && c.rawValue.trim()) {
+        clearInterval(vpDocScanTimer); vpDocScanTimer = null
+        vpDocMsg('✓ Código detectado', '#22c55e')
+        if (navigator.vibrate) navigator.vibrate(80)
+        // Auto-capturar el frame en el momento de detección
+        vpDocCapturarFrame(c.rawValue)
+        return
+      }
+    }
+  } catch(_) {}
+}
+
+// Captura manual (botón) o auto-captura con rawValue ya conocido
+async function vpDocCapturar(rawValueConocido) {
+  if (vpDocScanTimer) { clearInterval(vpDocScanTimer); vpDocScanTimer = null }
+  await vpDocCapturarFrame(rawValueConocido || null)
+}
+
+async function vpDocCapturarFrame(rawValuePrevio) {
+  const vid = document.getElementById('cam-doc-video')
+  if (!vid || !vid.videoWidth) { showToast('Esperá que la cámara esté lista'); return }
+
+  // Capturar frame a canvas
+  const canvas = document.createElement('canvas')
+  canvas.width = vid.videoWidth; canvas.height = vid.videoHeight
+  canvas.getContext('2d').drawImage(vid, 0, 0)
+
+  // Detener cámara (ya tenemos la foto)
+  vpPararCamara()
+  document.getElementById('vp-doc-scanline').style.display = 'none'
+  document.getElementById('vp-doc-pre').style.display      = 'none'
+
+  // Mostrar preview
+  const preview = document.getElementById('vp-doc-preview')
+  preview.src = canvas.toDataURL('image/jpeg', 0.92)
+  preview.style.display = 'block'
+
+  // Convertir a blob para guardarlo
+  canvas.toBlob(blob => { vpCapturedDoc = blob }, 'image/jpeg', 0.92)
+
+  // Si ya tenemos el rawValue del scanner en vivo → usar directo
+  if (rawValuePrevio) {
+    vpMostrarDebugRaw(rawValuePrevio, 'BarcodeDetector/live')
+    vpProcesarCodigoBarras(rawValuePrevio)
+    return
+  }
+
+  // Si no → correr cadena de decodificación sobre el frame
+  document.getElementById('vp-doc-analizando').style.display = ''
+  vpDocMsg('Analizando imagen…')
+  canvas.toBlob(async blob => {
+    const file = new File([blob], 'doc.jpg', { type: 'image/jpeg' })
+    const msgEl = document.getElementById('vp-doc-decode-msg')
+    const res = await vpDecodificarImagen(file, msgEl)
+    document.getElementById('vp-doc-analizando').style.display = 'none'
+    if (res && res.texto) {
+      vpMostrarDebugRaw(res.texto, res.formato)
+      vpProcesarCodigoBarras(res.texto)
+    } else {
+      vpDocMsg('No se detectó el código')
+      document.getElementById('vp-doc-sin-datos').style.display = ''
+    }
+  }, 'image/jpeg', 0.92)
+}
+
+function vpDocReintentar() {
+  document.getElementById('vp-barcode-result').style.display = 'none'
+  document.getElementById('vp-doc-sin-datos').style.display  = 'none'
+  document.getElementById('vp-debug-raw').style.display      = 'none'
+  document.getElementById('vp-doc-preview').style.display    = 'none'
+  vpBarcodeData = null
+  vpDocIniciar()
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PASO 3 — LIVENESS (instrucción aleatoria anti-foto-estática)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const VP_LIVENESS = [
+  { emoji: '😉', texto: 'Guiñá un ojo' },
+  { emoji: '😁', texto: 'Sonreí bien amplio' },
+  { emoji: '👈', texto: 'Girá la cabeza a la izquierda' },
+  { emoji: '👉', texto: 'Girá la cabeza a la derecha' },
+  { emoji: '😮', texto: 'Abrí la boca' },
+  { emoji: '🫡', texto: 'Tocáte la nariz' },
+  { emoji: '✌️', texto: 'Mostrá dos dedos' },
+]
+let vpLivenessInstruccion = null
+
+function vpLivenessIniciar() {
+  // Instrucción aleatoria — cambia cada vez
+  vpLivenessInstruccion = VP_LIVENESS[Math.floor(Math.random() * VP_LIVENESS.length)]
+  const emoji = document.getElementById('vp-liveness-emoji')
+  const texto = document.getElementById('vp-liveness-texto')
+  if (emoji) emoji.textContent = vpLivenessInstruccion.emoji
+  if (texto) texto.textContent = vpLivenessInstruccion.texto
+
+  vpResetCamUI('selfie')
+  vpAbrirCamara('cam-selfie-video', 'user').catch(() => {})
+}
+
 // ── Chip de tipo de documento ──────────────────────────────────────────────────
 
 function vpDocChip(tipo) {
@@ -5125,11 +5297,9 @@ function vpShowStep(n) {
   if (el) el.classList.add('active')
 
   if (n === 2) {
-    // Paso 2: sistema 2-fotos — mostrar sub-paso A (selector de tipo)
-    vp2Ir('a')
+    vpDocIniciar()
   } else if (n === 3) {
-    vpResetCamUI('selfie')
-    vpAbrirCamara('cam-selfie-video', 'user').catch(() => {})
+    vpLivenessIniciar()
   } else if (n === 4) {
     vpResetCamUI('selfiedoc')
     vpAbrirCamara('cam-selfiedoc-video', 'user').catch(() => {})
