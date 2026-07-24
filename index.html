@@ -1156,7 +1156,57 @@ html, body {
 }
 .vp-btn-demo:hover { border-color:var(--orange); color:var(--orange); background:rgba(247,106,30,.04); }
 
-/* Upload zones */
+/* ── CÁMARA ── */
+.cam-wrap {
+  position:relative; width:100%; border-radius:14px;
+  overflow:hidden; background:#111; aspect-ratio:4/3;
+  margin-bottom:12px;
+}
+.cam-video {
+  width:100%; height:100%; object-fit:cover; display:block;
+}
+.cam-mirror { transform:scaleX(-1); }
+/* Guías de encuadre para documento */
+.cam-corners {
+  position:absolute; inset:0; pointer-events:none;
+}
+.cam-corners::before, .cam-corners::after,
+.cam-wrap .cam-corners > span:nth-child(1),
+.cam-wrap .cam-corners > span:nth-child(2) {
+  content:''; position:absolute; width:22px; height:22px;
+  border-color:rgba(255,255,255,.8); border-style:solid;
+}
+.cam-corners::before  { top:12px;    left:12px;  border-width:2px 0 0 2px; }
+.cam-corners::after   { top:12px;    right:12px; border-width:2px 2px 0 0; }
+.cam-corners > span:nth-child(1) { bottom:12px; left:12px;  border-width:0 0 2px 2px; }
+.cam-corners > span:nth-child(2) { bottom:12px; right:12px; border-width:0 2px 2px 0; }
+/* Guía oval para selfie */
+.cam-face-guide {
+  position:absolute; inset:0; pointer-events:none;
+  display:flex; align-items:center; justify-content:center;
+}
+.cam-face-guide::after {
+  content:'';
+  width:55%; padding-top:72%; border-radius:50%;
+  border:2px dashed rgba(255,255,255,.5);
+}
+.cam-capture-btn {
+  width:100%; padding:14px;
+  background:var(--navy); color:#fff;
+  border:none; border-radius:12px;
+  font-size:15px; font-weight:700; cursor:pointer;
+  transition:opacity .15s; margin-bottom:6px;
+}
+.cam-capture-btn:hover { opacity:.88; }
+.cam-preview-img {
+  width:100%; border-radius:14px; margin-bottom:12px;
+  display:block; object-fit:cover;
+}
+.cam-note {
+  font-size:11px; color:var(--mid); text-align:center; margin-bottom:12px;
+}
+
+/* Upload zones (legacy, por si acaso) */
 .vp-uploads { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
 .vpu-zone {
   display:flex; align-items:center; gap:14px;
@@ -1831,41 +1881,77 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
     </div>
 
-    <!-- ── PASO 2: Subir fotos ── -->
+    <!-- ── PASO 2: Cámara — Documento ── -->
     <div class="vp-step" id="vp-s2">
-      <div class="vp-step-icon">📸</div>
-      <p class="vp-title">Fotos del documento</p>
-      <p class="vp-sub">Necesitamos 2 fotos. Se analizan localmente en tu dispositivo — nunca viajan al servidor sin anonimizar.</p>
-      <div class="vp-uploads">
-        <div class="vpu-zone" id="vpu-doc-frente" onclick="document.getElementById('f-doc-frente').click()">
-          <input type="file" id="f-doc-frente" accept="image/*" hidden onchange="vpPreview(this,'doc-frente')">
-          <span class="vpu-emoji">📄</span>
-          <div class="vpu-texts">
-            <p class="vpu-name">Foto del documento — frente</p>
-            <p class="vpu-hint">Nombre, número y fecha deben verse con claridad. Sin reflejos ni partes cortadas.</p>
-          </div>
-          <div class="vpu-check">✓</div>
-        </div>
-        <div class="vpu-zone" id="vpu-selfie-doc" onclick="document.getElementById('f-selfie-doc').click()">
-          <input type="file" id="f-selfie-doc" accept="image/*" hidden onchange="vpPreview(this,'selfie-doc')">
-          <span class="vpu-emoji">🤳</span>
-          <div class="vpu-texts">
-            <p class="vpu-name">Selfie sosteniendo el documento</p>
-            <p class="vpu-hint">Tu cara debe verse completa y el documento visible en la misma foto. Buena iluminación.</p>
-          </div>
-          <div class="vpu-check">✓</div>
+      <div class="vp-step-icon">📄</div>
+      <p class="vp-title">Escanear documento</p>
+      <p class="vp-sub">Apuntá la cámara al <strong>frente del documento</strong>. El nombre, número y fecha deben verse con claridad.</p>
+      <div class="cam-wrap" id="cam-doc-wrap">
+        <video id="cam-doc-video" class="cam-video" autoplay playsinline muted></video>
+        <div class="cam-corners"><span></span><span></span></div>
+      </div>
+      <img id="cam-doc-preview" class="cam-preview-img" style="display:none">
+      <div id="cam-doc-pre">
+        <button class="cam-capture-btn" onclick="vpCapturar('doc')">📸 Capturar documento</button>
+        <p class="cam-note">Solo captura directa desde cámara — no se acepta galería</p>
+      </div>
+      <div id="cam-doc-post" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="vp-btn-link" style="flex:1" onclick="vpRetomar('doc')">↩ Retomar</button>
+          <button class="vp-btn-main" style="flex:2" onclick="vpUsarDoc()">Usar esta →</button>
         </div>
       </div>
-      <div style="background:rgba(247,106,30,.08);border:1px solid rgba(247,106,30,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--mid);line-height:1.6">
-        ⚠ La IA comparará los datos ingresados con el texto del documento. Si el nombre, número o fecha no coinciden exactamente, el proceso se rechazará antes de enviar nada.
-      </div>
-      <p class="vp-privacy-note">🔒 Procesamiento 100% local — nada sube hasta verificar</p>
-      <button class="vp-btn-main" id="vp-btn-s2" onclick="vpIniciarProceso()" disabled>Verificar identidad</button>
       <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver</button>
     </div>
 
-    <!-- ── PASO 3: Procesando ── -->
+    <!-- ── PASO 3: Cámara — Selfie ── -->
     <div class="vp-step" id="vp-s3">
+      <div class="vp-step-icon">🤳</div>
+      <p class="vp-title">Selfie</p>
+      <p class="vp-sub">Mirá a la cámara. Tu cara debe verse completa con buena iluminación.</p>
+      <div class="cam-wrap" id="cam-selfie-wrap">
+        <video id="cam-selfie-video" class="cam-video cam-mirror" autoplay playsinline muted></video>
+        <div class="cam-face-guide"></div>
+      </div>
+      <img id="cam-selfie-preview" class="cam-preview-img" style="display:none">
+      <div id="cam-selfie-pre">
+        <button class="cam-capture-btn" onclick="vpCapturar('selfie')">📸 Capturar selfie</button>
+        <p class="cam-note">Solo captura directa desde cámara</p>
+      </div>
+      <div id="cam-selfie-post" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="vp-btn-link" style="flex:1" onclick="vpRetomar('selfie')">↩ Retomar</button>
+          <button class="vp-btn-main" style="flex:2" onclick="vpUsarSelfie()">Usar esta →</button>
+        </div>
+      </div>
+      <button class="vp-btn-link" onclick="vpGoStep(2)">← Volver</button>
+    </div>
+
+    <!-- ── PASO 4: Cámara — Selfie con documento ── -->
+    <div class="vp-step" id="vp-s4">
+      <div class="vp-step-icon">🪪</div>
+      <p class="vp-title">Selfie sosteniendo el documento</p>
+      <p class="vp-sub">Mostrá tu cara y el documento en la misma toma. El documento debe ser legible.</p>
+      <div class="cam-wrap" id="cam-selfiedoc-wrap">
+        <video id="cam-selfiedoc-video" class="cam-video cam-mirror" autoplay playsinline muted></video>
+        <div class="cam-corners"><span></span><span></span></div>
+      </div>
+      <img id="cam-selfiedoc-preview" class="cam-preview-img" style="display:none">
+      <div id="cam-selfiedoc-pre">
+        <button class="cam-capture-btn" onclick="vpCapturar('selfiedoc')">📸 Capturar</button>
+        <p class="cam-note">Mantené el documento visible y bien iluminado</p>
+      </div>
+      <div id="cam-selfiedoc-post" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="vp-btn-link" style="flex:1" onclick="vpRetomar('selfiedoc')">↩ Retomar</button>
+          <button class="vp-btn-main" style="flex:2" onclick="vpUsarSelfieDoc()">Verificar →</button>
+        </div>
+      </div>
+      <button class="vp-btn-link" onclick="vpGoStep(3)">← Volver</button>
+    </div>
+
+    <!-- ── PASO 5: Procesando ── -->
+    <div class="vp-step" id="vp-s5">
       <div class="vp-step-icon" style="background:rgba(29,29,29,.07)">⚙️</div>
       <p class="vp-title">Verificando en tu dispositivo</p>
       <p class="vp-sub">Todo ocurre localmente. Si los datos no coinciden el proceso se detiene aquí y nada se envía.</p>
@@ -1893,8 +1979,8 @@ body.on-landing #social-footer.visible { display:flex; }
       </div>
     </div>
 
-    <!-- ── PASO 4a: Match ✓ ── -->
-    <div class="vp-step" id="vp-s4a">
+    <!-- ── PASO 6a: Match ✓ ── -->
+    <div class="vp-step" id="vp-s6a">
       <div class="vp-result-badge match">✓</div>
       <p class="vp-title">Datos verificados</p>
       <p class="vp-sub">Nombre, número y fecha coinciden. Esto es lo único que verá el validador — tu cara sosteniendo el documento, con los datos pixelados:</p>
@@ -1909,8 +1995,8 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="vp-btn-main" onclick="vpEnviarVerificacion()">Enviar para revisión humana →</button>
     </div>
 
-    <!-- ── PASO 4b: No match ✗ ── -->
-    <div class="vp-step" id="vp-s4b">
+    <!-- ── PASO 6b: No match ✗ ── -->
+    <div class="vp-step" id="vp-s6b">
       <div class="vp-result-badge nomatch">✗</div>
       <p class="vp-title">Verificación fallida</p>
       <p class="vp-sub">Los datos no pasaron la verificación automática. Nada fue enviado al servidor.</p>
@@ -1921,12 +2007,12 @@ body.on-landing #social-footer.visible { display:flex; }
         </div>
       </div>
       <p style="font-size:12px;color:var(--mid);margin-bottom:14px">Revisá la foto del documento: debe estar bien iluminada, sin reflejos, sin partes cortadas, y los datos deben verse con nitidez.</p>
-      <button class="vp-btn-main" onclick="vpGoStep(2)">Reintentar con nuevas fotos</button>
+      <button class="vp-btn-main" onclick="vpGoStep(2)">Reintentar — nueva foto de documento</button>
       <button class="vp-btn-link" onclick="vpGoStep(1)">Corregir datos ingresados</button>
     </div>
 
-    <!-- ── PASO 5: Validación humana ── -->
-    <div class="vp-step" id="vp-s5">
+    <!-- ── PASO 7: Validación humana ── -->
+    <div class="vp-step" id="vp-s7">
       <div class="vp-pending-anim"><div class="vp-pending-ring"></div></div>
       <p class="vp-title">En revisión</p>
       <p class="vp-sub">Un validador humano verificará tu solicitud en las próximas horas. En ningún momento verá tus datos reales.</p>
@@ -1944,8 +2030,8 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cerrar — te avisamos cuando esté listo</button>
     </div>
 
-    <!-- ── PASO 6: Aprobado ── -->
-    <div class="vp-step" id="vp-s6">
+    <!-- ── PASO 8: Aprobado ── -->
+    <div class="vp-step" id="vp-s8">
       <div class="vp-approved-wrap">
         <div class="vp-approved-ring">✓</div>
       </div>
@@ -3648,6 +3734,134 @@ async function cerrarSesion() {
   await sb.auth.signOut()
 }
 
+// ══════════════════════════════════════════════════════════════
+//  CÁMARA — captura obligatoria (sin galería)
+// ══════════════════════════════════════════════════════════════
+
+let vpCapturedDoc       = null  // Blob: foto del documento
+let vpCapturedSelfie    = null  // Blob: selfie simple
+let vpCapturedSelfieDoc = null  // Blob: selfie sosteniendo doc
+let vpCameraStream      = null  // MediaStream activo
+
+async function vpAbrirCamara(videoId, facing = 'environment') {
+  vpPararCamara()
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: facing },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
+      audio: false
+    })
+    vpCameraStream = stream
+    const video = document.getElementById(videoId)
+    if (!video) return
+    video.srcObject = stream
+    await video.play().catch(() => {})
+  } catch (e) {
+    console.error('Cámara no disponible:', e)
+    showToast('No se pudo acceder a la cámara — verificá los permisos del navegador')
+    throw e
+  }
+}
+
+function vpPararCamara() {
+  if (vpCameraStream) {
+    vpCameraStream.getTracks().forEach(t => t.stop())
+    vpCameraStream = null
+  }
+}
+
+async function vpCapturar(tipo) {
+  const videoId = tipo === 'doc' ? 'cam-doc-video'
+                : tipo === 'selfie' ? 'cam-selfie-video'
+                : 'cam-selfiedoc-video'
+  const video = document.getElementById(videoId)
+  if (!video || !video.videoWidth) {
+    showToast('Cámara no lista — esperá un momento')
+    return
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width  = video.videoWidth
+  canvas.height = video.videoHeight
+  const ctx = canvas.getContext('2d')
+
+  // Despejar el espejo para selfies (guardamos imagen real, no invertida)
+  if (tipo !== 'doc') {
+    ctx.translate(canvas.width, 0)
+    ctx.scale(-1, 1)
+  }
+  ctx.drawImage(video, 0, 0)
+
+  canvas.toBlob(blob => {
+    if (!blob) { showToast('Error al capturar — intentá de nuevo'); return }
+
+    // Guardar blob
+    if (tipo === 'doc')       vpCapturedDoc       = blob
+    else if (tipo === 'selfie')    vpCapturedSelfie    = blob
+    else if (tipo === 'selfiedoc') vpCapturedSelfieDoc = blob
+
+    // Mostrar preview
+    const previewId = `cam-${tipo}-preview`
+    const wrapId    = `cam-${tipo}-wrap`
+    const preId     = `cam-${tipo}-pre`
+    const postId    = `cam-${tipo}-post`
+
+    const preview = document.getElementById(previewId)
+    if (preview) {
+      preview.src = URL.createObjectURL(blob)
+      preview.style.display = 'block'
+    }
+    const wrap = document.getElementById(wrapId)
+    if (wrap) wrap.style.display = 'none'
+    const pre  = document.getElementById(preId)
+    if (pre)  pre.style.display  = 'none'
+    const post = document.getElementById(postId)
+    if (post) post.style.display = 'block'
+
+  }, 'image/jpeg', 0.92)
+}
+
+function vpRetomar(tipo) {
+  const previewId = `cam-${tipo}-preview`
+  const wrapId    = `cam-${tipo}-wrap`
+  const preId     = `cam-${tipo}-pre`
+  const postId    = `cam-${tipo}-post`
+
+  const preview = document.getElementById(previewId)
+  if (preview) { preview.style.display = 'none'; preview.src = '' }
+  const wrap = document.getElementById(wrapId)
+  if (wrap) wrap.style.display = 'block'
+  const pre  = document.getElementById(preId)
+  if (pre)  pre.style.display  = 'block'
+  const post = document.getElementById(postId)
+  if (post) post.style.display = 'none'
+
+  if (tipo === 'doc')       vpCapturedDoc       = null
+  else if (tipo === 'selfie')    vpCapturedSelfie    = null
+  else if (tipo === 'selfiedoc') vpCapturedSelfieDoc = null
+}
+
+function vpUsarDoc() {
+  if (!vpCapturedDoc) return
+  vpPararCamara()
+  vpGoStep(3)  // → selfie
+}
+
+function vpUsarSelfie() {
+  if (!vpCapturedSelfie) return
+  vpPararCamara()
+  vpGoStep(4)  // → selfie con documento
+}
+
+function vpUsarSelfieDoc() {
+  if (!vpCapturedSelfieDoc) return
+  vpPararCamara()
+  vpIniciarProceso()  // → procesamiento
+}
+
 // ── crearIdentidad: requiere login primero ──
 function crearIdentidad() {
   if (!_authUser) {
@@ -3664,13 +3878,14 @@ function crearIdentidad() {
 
 function abrirVerificacion() {
   vpCurrentStep = 1
-  vpUploaded['doc-frente'] = vpUploaded['selfie-doc'] = false
   vpAnonBlob = null
-  document.querySelectorAll('.vpu-zone').forEach(z => {
-    z.classList.remove('uploaded')
-    const thumb = z.querySelector('.vpu-thumb')
-    if (thumb) thumb.remove()
-  })
+  // Limpiar blobs de cámara
+  vpCapturedDoc = null
+  vpCapturedSelfie = null
+  vpCapturedSelfieDoc = null
+  vpPararCamara()
+  // Resetear UI de cámara
+  ;['doc','selfie','selfiedoc'].forEach(t => vpResetCamUI(t))
   document.querySelectorAll('.vp-proc-row').forEach(r => {
     r.classList.remove('active','done')
     r.querySelector('.vp-proc-icon').textContent = '◌'
@@ -3687,13 +3902,41 @@ function abrirVerificacion() {
 }
 
 function cerrarVerificacion() {
+  vpPararCamara()
   document.getElementById('verify-overlay').classList.remove('open')
 }
 
+function vpResetCamUI(tipo) {
+  const preview = document.getElementById(`cam-${tipo}-preview`)
+  if (preview) { preview.style.display = 'none'; preview.src = '' }
+  const wrap = document.getElementById(`cam-${tipo}-wrap`)
+  if (wrap) wrap.style.display = 'block'
+  const pre  = document.getElementById(`cam-${tipo}-pre`)
+  if (pre)  pre.style.display  = 'block'
+  const post = document.getElementById(`cam-${tipo}-post`)
+  if (post) post.style.display = 'none'
+}
+
 function vpShowStep(n) {
+  // Parar cámara al salir de pasos de cámara
+  vpPararCamara()
+
   document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
   const el = document.getElementById('vp-s' + n)
   if (el) el.classList.add('active')
+
+  // Iniciar cámara al entrar en pasos de cámara
+  if (n === 2) {
+    vpResetCamUI('doc')
+    vpAbrirCamara('cam-doc-video', 'environment').catch(() => {})
+  } else if (n === 3) {
+    vpResetCamUI('selfie')
+    vpAbrirCamara('cam-selfie-video', 'user').catch(() => {})
+  } else if (n === 4) {
+    vpResetCamUI('selfiedoc')
+    vpAbrirCamara('cam-selfiedoc-video', 'user').catch(() => {})
+  }
+
   // Progress dots
   const dots  = document.querySelectorAll('.vp-prog-dot')
   const lines = document.querySelectorAll('.vp-prog-line')
@@ -3743,14 +3986,14 @@ function vpPreview(input, type) {
 }
 
 async function vpIniciarProceso() {
-  vpShowStep(3)
+  vpShowStep(5)
   document.querySelectorAll('.vp-proc-row').forEach(r => {
     r.classList.remove('active','done')
     r.querySelector('.vp-proc-icon').textContent = '◌'
   })
 
-  const docFrenteFile = document.getElementById('f-doc-frente').files?.[0] || null
-  const selfieDocFile = document.getElementById('f-selfie-doc').files?.[0] || null
+  const docFrenteFile = vpCapturedDoc       // Blob capturado con cámara
+  const selfieDocFile = vpCapturedSelfieDoc // Blob capturado con cámara
   const country       = document.getElementById('vp-pais').value || 'Venezuela'
 
   // Datos ingresados por el usuario
@@ -3833,7 +4076,7 @@ async function vpIniciarProceso() {
   if (fallas.length > 0 && !match.numDoc) {
     await vpMostrarFallo(fallas)
   } else {
-    vpShowStep('4a')
+    vpShowStep('6a')
   }
 }
 
@@ -3846,16 +4089,16 @@ async function vpMostrarFallo(fallas) {
       .join('')
   }
   await new Promise(r => setTimeout(r, 300))
-  vpShowStep('4b')
+  vpShowStep('6b')
 }
 
 // ── Envío real a Supabase (se llama desde el botón de confirmación en paso 4a) ──
 async function vpEnviarVerificacion() {
-  const btn = document.querySelector('#vp-s4a .vp-btn-main')
+  const btn = document.querySelector('#vp-s6a .vp-btn-main')
   if (btn) { btn.textContent = 'Enviando…'; btn.disabled = true }
 
-  const selfieDocFile = document.getElementById('f-selfie-doc').files?.[0] || null
-  const docFrenteFile = document.getElementById('f-doc-frente').files?.[0] || null
+  const selfieDocFile = vpCapturedSelfieDoc
+  const docFrenteFile = vpCapturedDoc
   const country = document.getElementById('vp-pais').value || 'Venezuela'
 
   try {
@@ -3863,7 +4106,7 @@ async function vpEnviarVerificacion() {
     const h = hash.slice(0,8).toUpperCase() + '…' + hash.slice(-4).toUpperCase()
     window._vpSession = window._vpSession || {}
     window._vpSession.hash = hash
-    vpShowStep(5)
+    vpShowStep(7)
   } catch (e) {
     console.error('Error enviando:', e)
     if (btn) { btn.textContent = 'Reintentar envío'; btn.disabled = false }
