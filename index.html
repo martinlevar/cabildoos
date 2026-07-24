@@ -3998,34 +3998,54 @@ async function vpIniciarBarcodeScanner() {
 
         const codes = await detector.detect(video)
         if (codes.length > 0) {
-          clearTimeout(vpScannerTimeout); vpScannerTimeout = null
-          clearInterval(vpBarcodeScanTimer); vpBarcodeScanTimer = null
-          if (scanLine) scanLine.style.display = 'none'
-
-          // Foto del documento
-          const canvas = document.createElement('canvas')
-          canvas.width = video.videoWidth; canvas.height = video.videoHeight
-          canvas.getContext('2d').drawImage(video, 0, 0)
-          vpCapturedDoc = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92))
-
-          // Intentar todos los códigos detectados (puede haber varios)
-          let parsed = null
+          // Intentar todos los códigos. Si rawValue está vacío, recortar y ampliar.
           let rawTexto = ''
           for (const code of codes) {
-            rawTexto = code.rawValue
-            console.log('[BarcodeDetector]', code.format, JSON.stringify(rawTexto.slice(0,120)))
-            parsed = parsearCodigoBarraDNI(rawTexto)
-            if (parsed.numDoc && parsed.fechaNac) break
+            if (code.rawValue) {
+              rawTexto = code.rawValue
+              break
+            }
+            // rawValue vacío → detectó la geometría pero no pudo leer los datos
+            // Solución: recortar el área del barcode y ampliarla 4x → reintentar
+            const box = code.boundingBox
+            if (box && box.width > 10 && box.height > 10) {
+              const SCALE = 4
+              const crop = document.createElement('canvas')
+              crop.width  = Math.round(box.width  * SCALE)
+              crop.height = Math.round(box.height * SCALE)
+              crop.getContext('2d').drawImage(
+                video,
+                box.x, box.y, box.width, box.height,
+                0, 0, crop.width, crop.height
+              )
+              try {
+                const codes2 = await detector.detect(crop)
+                if (codes2.length > 0 && codes2[0].rawValue) {
+                  rawTexto = codes2[0].rawValue
+                  break
+                }
+              } catch(e2) {}
+            }
           }
 
-          if (parsed?.numDoc && parsed?.fechaNac) {
+          if (rawTexto) {
+            clearTimeout(vpScannerTimeout); vpScannerTimeout = null
+            clearInterval(vpBarcodeScanTimer); vpBarcodeScanTimer = null
+            if (scanLine) scanLine.style.display = 'none'
+
+            // Foto del documento
+            const canvas = document.createElement('canvas')
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight
+            canvas.getContext('2d').drawImage(video, 0, 0)
+            vpCapturedDoc = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92))
+
             vpProcesarCodigoBarras(rawTexto)
           } else {
-            // Mostrar raw text para debug — invaluable para ajustar el parser
-            const preview = rawTexto.slice(0,80).replace(/\n/g,'↵').replace(/\r/g,'')
-            vpMostrarBarcodeMsg(`Código leído (${codes[0].format}): "${preview}" — ajustando...`, '#f59e0b')
-            console.warn('[CabildoOS] Barcode leído pero no parseado como DNI:', rawTexto)
-            setTimeout(vpIniciarBarcodeScanner, 3000)
+            // Código detectado pero no decodificado (resolución insuficiente de la webcam)
+            // Mostrar el botón de foto INMEDIATAMENTE
+            const fallbackEl = document.getElementById('vp-scan-fallback')
+            if (fallbackEl) fallbackEl.style.display = 'block'
+            vpMostrarBarcodeMsg('Código detectado — acercá MÁS el DNI o usá el botón "Tomar foto" ↓', '#f59e0b')
           }
         }
       } catch(e) {
