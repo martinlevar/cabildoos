@@ -2059,12 +2059,13 @@ body.on-landing #social-footer.visible { display:flex; }
         <p class="vp-title" style="margin:0 0 4px">Fotografiá el documento completo</p>
         <p class="vp-sub" id="vp-s2b-sub">Encuadrá el <strong>frente del documento</strong> dentro del recuadro. Que se vea todo, bien iluminado.</p>
 
-        <!-- Frame guía visual -->
+        <!-- Frame guía visual con video stream -->
         <div class="vp-doc-frame" id="vp-doc-frame-preview">
           <span class="c1"></span><span class="c2"></span>
-          <div class="vp-doc-frame-inner">
+          <video id="cam-s2b-video" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;display:none"></video>
+          <div class="vp-doc-frame-inner" id="vp-s2b-placeholder">
             <div id="vp-frame-icon" style="font-size:38px;margin-bottom:8px">🪪</div>
-            <div style="font-size:11px">Encuadrá aquí el documento</div>
+            <div style="font-size:11px">Iniciando cámara…</div>
           </div>
           <!-- Indicador de zona barcode (visible para DNI/Licencia/VE) -->
           <div class="vp-barcode-indicator" id="vp-barcode-ind" style="display:none">
@@ -2074,14 +2075,13 @@ body.on-landing #social-footer.visible { display:flex; }
           <div class="vp-mrz-indicator" id="vp-mrz-ind" style="display:none">
             <span class="vp-mrz-indicator-label">MRZ ▌▌▌▌▌</span>
           </div>
-          <img id="vp-doc-full-preview" class="vp-preview-doc" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px">
+          <img id="vp-doc-full-preview" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px">
         </div>
 
         <div id="vp-s2b-pre">
-          <input type="file" id="vp-foto-doc-full" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="vpFotoCompletaTomada(this)">
-          <label for="vp-foto-doc-full" class="cam-capture-btn" style="font-size:15px;padding:14px;cursor:pointer;display:block;text-align:center">
-            📷 Tomar foto del documento
-          </label>
+          <button class="cam-capture-btn" style="font-size:15px;padding:14px" onclick="vpCapturarDocCompleto()">
+            📷 Capturar foto del documento
+          </button>
           <p style="font-size:11px;color:var(--mid);text-align:center;margin:8px 0 0">Usá la cámara trasera · buena luz · sin flash directo</p>
         </div>
         <div id="vp-s2b-post" style="display:none">
@@ -2107,13 +2107,14 @@ body.on-landing #social-footer.visible { display:flex; }
         <p class="vp-title" style="margin:0 0 4px" id="vp-s2c-title">Acercá la cámara al código</p>
         <p class="vp-sub" id="vp-s2c-sub">Fotografiá <strong>solo la zona del código de barras</strong> — tiene que llenar casi todo el encuadre.</p>
 
-        <!-- Zona animada -->
+        <!-- Zona animada con video stream -->
         <div class="vp-zona-target" id="vp-zona-target">
+          <video id="cam-s2c-video" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px;display:none"></video>
           <div class="vp-zona-bg-bars" id="vp-zona-bg-bars"></div>
           <div class="vp-zona-bg-mrz" id="vp-zona-bg-mrz" style="display:none">
             <div></div><div style="opacity:.7"></div>
           </div>
-          <div class="vp-scan-line"></div>
+          <div class="vp-scan-line" id="vp-s2c-scanline"></div>
           <p class="vp-zona-label" id="vp-zona-label">PDF417</p>
           <img id="vp-doc-zona-preview" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px">
         </div>
@@ -2128,10 +2129,20 @@ body.on-landing #social-footer.visible { display:flex; }
         </div>
 
         <div id="vp-s2c-pre">
-          <input type="file" id="vp-foto-zona" accept="image/*" capture="environment" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="vpFotoZonaTomada(this)">
-          <label for="vp-foto-zona" class="cam-capture-btn" style="font-size:15px;padding:14px;cursor:pointer;display:block;text-align:center">
-            🔍 Fotografiar zona
-          </label>
+          <!-- Botón principal: captura del stream en vivo -->
+          <button class="cam-capture-btn" id="vp-s2c-btn-cap" style="font-size:15px;padding:14px;display:none" onclick="vpCapturarZona()">
+            📸 Capturar zona
+          </button>
+          <!-- Fallback: input nativo (aparece si cámara no disponible o después de timeout) -->
+          <div id="vp-s2c-fallback" style="display:none;margin-top:8px">
+            <p style="font-size:11px;color:var(--mid);text-align:center;margin:0 0 8px">
+              📱 Acercá la cámara hasta que el código llene el encuadre
+            </p>
+            <input type="file" id="vp-foto-zona" accept="image/*" capture="environment" style="display:none" onchange="vpFotoZonaTomada(this)">
+            <button class="cam-capture-btn" style="font-size:14px" onclick="document.getElementById('vp-foto-zona').click()">
+              📷 Tomar foto del código
+            </button>
+          </div>
         </div>
 
         <!-- Estado de decodificación -->
@@ -4328,30 +4339,105 @@ const VP_DOC_CONFIG = {
   }
 }
 
+// Streams activos para sub-pasos B y C
+let vp2StreamB = null
+let vp2StreamC = null
+let vp2ScanTimer = null
+
+function vp2PararTodo() {
+  if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
+  ;[vp2StreamB, vp2StreamC].forEach(s => {
+    if (s) { s.getTracks().forEach(t => t.stop()) }
+  })
+  vp2StreamB = null; vp2StreamC = null
+  const vB = document.getElementById('cam-s2b-video')
+  const vC = document.getElementById('cam-s2c-video')
+  if (vB) { vB.srcObject = null; vB.style.display = 'none' }
+  if (vC) { vC.srcObject = null; vC.style.display = 'none' }
+}
+
 // Navegar entre sub-pasos A / B / C
-function vp2Ir(sub) {
+async function vp2Ir(sub) {
+  // Detener streams al salir
+  if (sub !== 'b') {
+    if (vp2StreamB) { vp2StreamB.getTracks().forEach(t => t.stop()); vp2StreamB = null }
+    const vB = document.getElementById('cam-s2b-video')
+    if (vB) { vB.srcObject = null; vB.style.display = 'none' }
+    const ph = document.getElementById('vp-s2b-placeholder')
+    if (ph) ph.style.display = ''
+  }
+  if (sub !== 'c') {
+    if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
+    if (vp2StreamC) { vp2StreamC.getTracks().forEach(t => t.stop()); vp2StreamC = null }
+    const vC = document.getElementById('cam-s2c-video')
+    if (vC) { vC.srcObject = null; vC.style.display = 'none' }
+  }
+
   document.getElementById('vp-s2a').style.display = sub === 'a' ? '' : 'none'
   document.getElementById('vp-s2b').style.display = sub === 'b' ? '' : 'none'
   document.getElementById('vp-s2c').style.display = sub === 'c' ? '' : 'none'
+
+  if (sub === 'b') {
+    // Limpiar preview anterior
+    const img = document.getElementById('vp-doc-full-preview')
+    img.style.display = 'none'; img.src = ''
+    document.getElementById('vp-s2b-pre').style.display  = ''
+    document.getElementById('vp-s2b-post').style.display = 'none'
+    document.getElementById('vp-s2b-placeholder').style.display = ''
+    // Abrir cámara trasera
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+      })
+      vp2StreamB = stream
+      const vid = document.getElementById('cam-s2b-video')
+      vid.srcObject = stream
+      vid.style.display = 'block'
+      document.getElementById('vp-s2b-placeholder').style.display = 'none'
+    } catch (e) {
+      document.getElementById('vp-s2b-placeholder').innerHTML = '<div style="font-size:12px;color:#f59e0b">⚠ Sin acceso a cámara<br>Verificá los permisos</div>'
+    }
+  }
+
   if (sub === 'c') {
     // Limpiar estado previo
-    document.getElementById('vp-foto-zona').value = ''
-    document.getElementById('vp-doc-zona-preview').style.display = 'none'
-    document.getElementById('vp-doc-zona-preview').src = ''
-    document.getElementById('vp-barcode-result').style.display = 'none'
-    document.getElementById('vp-decode-retry').style.display = 'none'
-    document.getElementById('vp-decode-status').style.display = 'none'
-    document.getElementById('vp-debug-raw').style.display = 'none'
-    document.getElementById('vp-s2c-pre').style.display = ''
-    const tgt = document.getElementById('vp-zona-target')
-    if (tgt) {
-      tgt.querySelector('.vp-zona-bg-bars').style.display = ''
-      tgt.querySelector('.vp-zona-bg-mrz').style.display = 'none'
-      tgt.querySelector('.vp-scan-line').style.display = ''
-    }
-    document.getElementById('vp-doc-zona-preview').style.display = 'none'
-    // Aplicar config de tipo
+    const zPrev = document.getElementById('vp-doc-zona-preview')
+    zPrev.style.display = 'none'; zPrev.src = ''
+    document.getElementById('vp-barcode-result').style.display  = 'none'
+    document.getElementById('vp-decode-retry').style.display    = 'none'
+    document.getElementById('vp-decode-status').style.display   = 'none'
+    document.getElementById('vp-debug-raw').style.display       = 'none'
+    document.getElementById('vp-s2c-pre').style.display         = ''
+    document.getElementById('vp-s2c-btn-cap').style.display     = 'none'
+    document.getElementById('vp-s2c-fallback').style.display    = 'none'
+    document.getElementById('vp-s2c-scanline').style.display    = ''
     vpAplicarConfigZona()
+    // Abrir cámara trasera a máxima resolución
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } }
+      })
+      vp2StreamC = stream
+      const vid = document.getElementById('cam-s2c-video')
+      vid.srcObject = stream
+      vid.style.display = 'block'
+      document.getElementById('vp-zona-bg-bars').style.display = 'none'
+      document.getElementById('vp-zona-bg-mrz').style.display  = 'none'
+      document.getElementById('vp-zona-label').style.display   = 'none'
+      document.getElementById('vp-s2c-btn-cap').style.display  = ''
+      // Iniciar escaneo continuo con BarcodeDetector
+      if ('BarcodeDetector' in window) vpIniciarScanZona()
+      // Fallback: mostrar botón de foto nativa después de 8s si no detectó nada
+      setTimeout(() => {
+        if (document.getElementById('vp-s2c').style.display !== 'none' &&
+            document.getElementById('vp-barcode-result').style.display === 'none') {
+          document.getElementById('vp-s2c-fallback').style.display = ''
+        }
+      }, 8000)
+    } catch (e) {
+      // Sin cámara → mostrar solo fallback nativo
+      document.getElementById('vp-s2c-fallback').style.display = ''
+    }
   }
 }
 
@@ -4401,66 +4487,156 @@ function vpSeleccionarTipoDoc(tipo) {
   vp2Ir('b')
 }
 
-// Sub-paso B: foto completa tomada
-function vpFotoCompletaTomada(input) {
-  const file = input.files?.[0]
-  if (!file) return
-  vpCapturedDoc = file
-  const url = URL.createObjectURL(file)
-  const img = document.getElementById('vp-doc-full-preview')
-  img.src = url
-  img.style.display = 'block'
-  img.classList.add('vp-preview-ok')
-  document.getElementById('vp-doc-frame-preview').querySelector('.vp-doc-frame-inner').style.display = 'none'
-  document.getElementById('vp-s2b-pre').style.display  = 'none'
-  document.getElementById('vp-s2b-post').style.display = ''
+// Sub-paso B: capturar frame del video stream
+function vpCapturarDocCompleto() {
+  const vid = document.getElementById('cam-s2b-video')
+  if (!vid || !vid.videoWidth) { showToast('Esperá que la cámara esté lista'); return }
+  const canvas = document.createElement('canvas')
+  canvas.width = vid.videoWidth; canvas.height = vid.videoHeight
+  canvas.getContext('2d').drawImage(vid, 0, 0)
+  canvas.toBlob(blob => {
+    vpCapturedDoc = blob
+    const url = URL.createObjectURL(blob)
+    const img = document.getElementById('vp-doc-full-preview')
+    img.src = url; img.style.display = 'block'
+    // Detener stream B
+    if (vp2StreamB) { vp2StreamB.getTracks().forEach(t => t.stop()); vp2StreamB = null }
+    vid.srcObject = null; vid.style.display = 'none'
+    document.getElementById('vp-s2b-placeholder').style.display = 'none'
+    document.getElementById('vp-s2b-pre').style.display  = 'none'
+    document.getElementById('vp-s2b-post').style.display = ''
+  }, 'image/jpeg', 0.92)
 }
 
 function vpRehacerFotoCompleta() {
   const img = document.getElementById('vp-doc-full-preview')
-  img.style.display = 'none'
-  img.classList.remove('vp-preview-ok')
-  img.src = ''
-  document.getElementById('vp-doc-frame-preview').querySelector('.vp-doc-frame-inner').style.display = ''
+  img.style.display = 'none'; img.src = ''
+  vpCapturedDoc = null
   document.getElementById('vp-s2b-pre').style.display  = ''
   document.getElementById('vp-s2b-post').style.display = 'none'
-  document.getElementById('vp-foto-doc-full').value = ''
-  vpCapturedDoc = null
+  document.getElementById('vp-s2b-placeholder').style.display = ''
+  // Reabrir cámara
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+  }).then(stream => {
+    vp2StreamB = stream
+    const vid = document.getElementById('cam-s2b-video')
+    vid.srcObject = stream; vid.style.display = 'block'
+    document.getElementById('vp-s2b-placeholder').style.display = 'none'
+  }).catch(() => {})
 }
 
-// Sub-paso C: foto close-up tomada → decodificar
-async function vpFotoZonaTomada(input) {
-  const file = input.files?.[0]
-  if (!file) return
-  input.value = ''
+// Sub-paso C: capturar frame del video stream (botón manual)
+function vpCapturarZona() {
+  const vid = document.getElementById('cam-s2c-video')
+  if (!vid || !vid.videoWidth) { showToast('Esperá que la cámara esté lista'); return }
+  if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
+  const canvas = document.createElement('canvas')
+  canvas.width = vid.videoWidth; canvas.height = vid.videoHeight
+  canvas.getContext('2d').drawImage(vid, 0, 0)
 
   // Mostrar preview
-  const preview = document.getElementById('vp-doc-zona-preview')
-  const url = URL.createObjectURL(file)
-  preview.src = url
-  preview.style.display = 'block'
-  document.getElementById('vp-zona-target').querySelector('.vp-scan-line').style.display = 'none'
-
-  document.getElementById('vp-s2c-pre').style.display    = 'none'
-  document.getElementById('vp-decode-retry').style.display  = 'none'
-  document.getElementById('vp-barcode-result').style.display = 'none'
+  const zPrev = document.getElementById('vp-doc-zona-preview')
+  zPrev.src = canvas.toDataURL('image/jpeg', 0.95)
+  zPrev.style.display = 'block'
+  document.getElementById('vp-s2c-scanline').style.display = 'none'
+  document.getElementById('vp-s2c-btn-cap').style.display  = 'none'
+  document.getElementById('vp-s2c-fallback').style.display = 'none'
   document.getElementById('vp-decode-status').style.display = ''
   document.getElementById('vp-decode-msg').textContent = 'Analizando imagen…'
 
-  const resultado = await vpDecodificarImagen(file)
+  canvas.toBlob(async blob => {
+    const file = new File([blob], 'zona.jpg', { type: 'image/jpeg' })
+    const res = await vpDecodificarImagen(file)
+    document.getElementById('vp-decode-status').style.display = 'none'
+    if (res && res.texto) {
+      vpMostrarDebugRaw(res.texto, res.formato)
+      vpProcesarCodigoBarras(res.texto)
+    } else {
+      document.getElementById('vp-decode-retry').style.display = ''
+      document.getElementById('vp-s2c-pre').style.display = ''
+      document.getElementById('vp-decode-error-msg').textContent =
+        'No se pudo leer el código. Acercate más y que llene todo el encuadre.'
+      document.getElementById('vp-s2c-scanline').style.display = ''
+      document.getElementById('vp-s2c-btn-cap').style.display  = ''
+      document.getElementById('vp-s2c-fallback').style.display = ''
+    }
+  }, 'image/jpeg', 0.95)
+}
 
+// Sub-paso C: escaneo continuo con BarcodeDetector
+async function vpIniciarScanZona() {
+  if (!('BarcodeDetector' in window)) return
+  const vid = document.getElementById('cam-s2c-video')
+  if (!vid) return
+  let formatos
+  try { formatos = await BarcodeDetector.getSupportedFormats() } catch(_) { return }
+  const detector = new BarcodeDetector({ formats: formatos })
+
+  vp2ScanTimer = setInterval(async () => {
+    if (!vp2StreamC || !vid.videoWidth) return
+    try {
+      const codes = await detector.detect(vid)
+      for (const code of codes) {
+        if (code.rawValue && code.rawValue.trim()) {
+          clearInterval(vp2ScanTimer); vp2ScanTimer = null
+          // Capturar frame en el momento de detección
+          const canvas = document.createElement('canvas')
+          canvas.width = vid.videoWidth; canvas.height = vid.videoHeight
+          canvas.getContext('2d').drawImage(vid, 0, 0)
+          if (vp2StreamC) { vp2StreamC.getTracks().forEach(t => t.stop()); vp2StreamC = null }
+          vid.srcObject = null; vid.style.display = 'none'
+          const zPrev = document.getElementById('vp-doc-zona-preview')
+          zPrev.src = canvas.toDataURL('image/jpeg', 0.9)
+          zPrev.style.display = 'block'
+          document.getElementById('vp-s2c-scanline').style.display = 'none'
+          document.getElementById('vp-s2c-btn-cap').style.display  = 'none'
+          document.getElementById('vp-s2c-fallback').style.display = 'none'
+          vpMostrarDebugRaw(code.rawValue, 'BarcodeDetector/live')
+          vpProcesarCodigoBarras(code.rawValue)
+          if (navigator.vibrate) navigator.vibrate(80)
+          return
+        }
+      }
+    } catch(_) {}
+  }, 250)
+}
+
+// Sub-paso C: foto close-up tomada → decodificar
+// Fallback: foto nativa desde file input (aparece si BarcodeDetector no funciona)
+async function vpFotoZonaTomada(input) {
+  const file = input.files?.[0]
+  if (!file) return
+  try { input.value = '' } catch(_) {}
+
+  if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
+  if (vp2StreamC)   { vp2StreamC.getTracks().forEach(t => t.stop()); vp2StreamC = null }
+  const vid = document.getElementById('cam-s2c-video')
+  if (vid) { vid.srcObject = null; vid.style.display = 'none' }
+
+  const preview = document.getElementById('vp-doc-zona-preview')
+  preview.src = URL.createObjectURL(file)
+  preview.style.display = 'block'
+  document.getElementById('vp-s2c-scanline').style.display    = 'none'
+  document.getElementById('vp-s2c-btn-cap').style.display     = 'none'
+  document.getElementById('vp-s2c-fallback').style.display    = 'none'
+  document.getElementById('vp-decode-retry').style.display    = 'none'
+  document.getElementById('vp-barcode-result').style.display  = 'none'
+  document.getElementById('vp-decode-status').style.display   = ''
+  document.getElementById('vp-decode-msg').textContent        = 'Analizando imagen…'
+
+  const resultado = await vpDecodificarImagen(file)
   document.getElementById('vp-decode-status').style.display = 'none'
 
   if (resultado && resultado.texto) {
     vpMostrarDebugRaw(resultado.texto, resultado.formato)
     vpProcesarCodigoBarras(resultado.texto)
   } else {
-    // Reintentar
     document.getElementById('vp-decode-retry').style.display = ''
-    document.getElementById('vp-s2c-pre').style.display = ''
+    document.getElementById('vp-s2c-fallback').style.display = ''
     document.getElementById('vp-decode-error-msg').textContent =
-      resultado?.error || 'No se pudo leer el código. Intentá acercarte más y mantener el doc quieto.'
-    document.getElementById('vp-zona-target').querySelector('.vp-scan-line').style.display = ''
+      resultado?.error || 'No se pudo leer. Acercate más — que el código llene todo el encuadre.'
+    document.getElementById('vp-s2c-scanline').style.display = ''
   }
 }
 
@@ -5430,6 +5606,7 @@ function vpShowStep(n) {
   vpPararBarcodeScanner()
   vpPararScanner()
   vpPararCamara()
+  vp2PararTodo()
 
   document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
   const el = document.getElementById('vp-s' + n)
