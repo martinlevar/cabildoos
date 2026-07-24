@@ -4196,8 +4196,23 @@ function vpMostrarDebugRaw(texto, formato) {
 
 let vpBarcodeScanTimer = null
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  CONFIGURACIÓN BACKEND
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Cambiar a la URL de Render una vez deployado
+const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'http://localhost:8000'
+  : 'https://cabildoos-api.onrender.com'
+
+// ID único de sesión — vincula todas las fotos de este usuario
+let vpVerificationId = crypto.randomUUID()
+
+// Datos extraídos del documento por Gemini (para el submit final)
+let vpGeminiResult = null
+
 // ─────────────────────────────────────────────────────────────────────────────
-//  PASO 2: FOTO DEL DOCUMENTO — versión simple y sólida
+//  PASO 2: FOTO DEL DOCUMENTO — getUserMedia + Gemini Vision
 // ─────────────────────────────────────────────────────────────────────────────
 
 let vpTipoDoc2 = 'DNI_AR'  // tipo activo
@@ -4277,7 +4292,7 @@ async function vpDocCapturar(rawValueConocido) {
   await vpDocCapturarFrame(rawValueConocido || null)
 }
 
-async function vpDocCapturarFrame(rawValuePrevio) {
+async function vpDocCapturarFrame(_unused) {
   const vid = document.getElementById('cam-doc-video')
   if (!vid || !vid.videoWidth) { showToast('Esperá que la cámara esté lista'); return }
 
@@ -4296,34 +4311,84 @@ async function vpDocCapturarFrame(rawValuePrevio) {
   preview.src = canvas.toDataURL('image/jpeg', 0.92)
   preview.style.display = 'block'
 
-  // Convertir a blob para guardarlo
+  // Guardar blob
   canvas.toBlob(blob => { vpCapturedDoc = blob }, 'image/jpeg', 0.92)
 
-  // Si ya tenemos el rawValue del scanner en vivo → usar directo
-  if (rawValuePrevio) {
-    vpMostrarDebugRaw(rawValuePrevio, 'BarcodeDetector/live')
-    vpProcesarCodigoBarras(rawValuePrevio)
+  // ── Llamar al backend (Gemini Vision) ──────────────────────────────────────
+  document.getElementById('vp-doc-analizando').style.display = ''
+  document.getElementById('vp-doc-decode-msg').textContent   = 'Analizando con IA…'
+  vpDocMsg('Enviando al servidor…')
+
+  try {
+    const b64 = canvas.toDataURL('image/jpeg', 0.92).split(',')[1]
+
+    // Datos del paso 1
+    const nombre   = (document.getElementById('vp-nombre')?.value   || '').trim()
+    const apellido = (document.getElementById('vp-apellido')?.value || '').trim()
+    const numDoc   = (document.getElementById('vp-num-doc')?.value  || '').trim()
+
+    const resp = await fetch(`${VP_API_URL}/api/verify/documento`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        verification_id:    vpVerificationId,
+        image_b64:          b64,
+        tipo_doc:           vpTipoDoc2,
+        nombre_declarado:   nombre,
+        apellido_declarado: apellido,
+        numero_declarado:   numDoc,
+      }),
+    })
+
+    document.getElementById('vp-doc-analizando').style.display = 'none'
+
+    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`)
+
+    const data = await resp.json()
+    vpGeminiResult = data.extracted
+
+    // Mostrar resultado
+    vpMostrarResultadoGemini(data)
+
+  } catch (err) {
+    document.getElementById('vp-doc-analizando').style.display = 'none'
+    console.error('[vpDocCapturarFrame]', err)
+    vpDocMsg('Error de conexión — revisá tu internet', '#ef4444')
+    // Fallback: permitir continuar sin verificación automática
+    document.getElementById('vp-doc-sin-datos').style.display = ''
+  }
+}
+
+function vpMostrarResultadoGemini(data) {
+  const ext = data.extracted || {}
+  const match = data.match
+
+  if (!ext.es_documento_real) {
+    // Rechazar: no parece un documento real
+    document.getElementById('vp-doc-sin-datos').style.display = ''
+    vpDocMsg('No se detectó un documento válido — asegurate de mostrar el documento físico', '#f59e0b')
     return
   }
 
-  // Si no → correr cadena de decodificación sobre el frame
-  document.getElementById('vp-doc-analizando').style.display = ''
-  vpDocMsg('Analizando imagen…')
-  canvas.toBlob(async blob => {
-    const file = new File([blob], 'doc.jpg', { type: 'image/jpeg' })
-    const msgEl = document.getElementById('vp-doc-decode-msg')
-    const res = await vpDecodificarImagen(file, msgEl)
-    document.getElementById('vp-doc-analizando').style.display = 'none'
-    // Ignorar resultados cortos — son barcodes 1D con solo el número de legajo
-    if (res && res.texto && res.texto.trim().length >= VP_MIN_BARCODE_LEN) {
-      vpMostrarDebugRaw(res.texto, res.formato)
-      vpProcesarCodigoBarras(res.texto)
-    } else {
-      if (res && res.texto) vpMostrarDebugRaw(res.texto, res.formato + '/ignorado-muy-corto')
-      vpDocMsg('No se detectó el código completo')
-      document.getElementById('vp-doc-sin-datos').style.display = ''
-    }
-  }, 'image/jpeg', 0.92)
+  // Mostrar panel de resultado
+  const panel = document.getElementById('vp-barcode-result')
+  const fields = document.getElementById('vp-barcode-fields')
+  panel.style.display = ''
+
+  const ico = match ? '✓' : '⚠'
+  const color = match ? '#22c55e' : '#f59e0b'
+
+  fields.innerHTML = [
+    ext.nombre_completo  ? `<div><span style="color:var(--mid);font-size:11px">NOMBRE</span><br><b>${ext.nombre_completo}</b></div>` : '',
+    ext.numero_documento ? `<div><span style="color:var(--mid);font-size:11px">NÚMERO</span><br><b>${ext.numero_documento}</b></div>` : '',
+    ext.fecha_nacimiento ? `<div><span style="color:var(--mid);font-size:11px">NACIMIENTO</span><br><b>${ext.fecha_nacimiento}</b></div>` : '',
+    `<div style="margin-top:8px;color:${color};font-size:12px">${ico} ${match ? 'Los datos coinciden con lo declarado' : 'Revisá los datos — pueden no coincidir'}</div>`,
+    ext.observaciones    ? `<div style="color:var(--mid);font-size:11px;margin-top:4px">${ext.observaciones}</div>` : '',
+  ].filter(Boolean).join('')
+
+  document.querySelector('#vp-barcode-result .vp-btn-main').textContent = match
+    ? 'Confirmar y continuar →'
+    : 'Continuar de todas formas →'
 }
 
 function vpDocReintentar() {
@@ -5255,6 +5320,8 @@ function abrirVerificacion() {
   vpCurrentStep = 1
   vpAnonBlob = null
   vpBarcodeData = null
+  vpGeminiResult = null
+  vpVerificationId = crypto.randomUUID()   // nuevo ID por sesión
   // Limpiar blobs de cámara
   vpCapturedDoc = null
   vpCapturedSelfie = null
@@ -5364,96 +5431,64 @@ async function vpIniciarProceso() {
   document.querySelectorAll('.vp-proc-row').forEach(r => {
     r.classList.remove('active','done')
     r.querySelector('.vp-proc-icon').textContent = '◌'
+    r.querySelector('.vp-proc-sub').textContent  = ''
   })
 
-  const docFrenteFile = vpCapturedDoc       // Blob capturado con cámara
-  const selfieDocFile = vpCapturedSelfieDoc // Blob capturado con cámara
-  const country       = document.getElementById('vp-pais').value || 'Venezuela'
+  const fallas = []
 
-  // Datos ingresados por el usuario
-  const nombreUsuario = document.getElementById('vp-nombre').value.trim()
-  const numDocUsuario = document.getElementById('vp-num-doc').value.trim()
-  const fechaUsuario  = document.getElementById('vp-fecha-nac').value  // YYYY-MM-DD
-
-  let fallas = []
-  vpAnonBlob = null
-
-  // ── PASO 1: Verificar datos del código de barras ──
+  // ── Paso 1: foto de documento ──────────────────────────────────────────────
   activarFilaProceso('vpc-r1')
-  if (!vpBarcodeData) {
-    completarFilaProceso('vpc-r1', 'No se escaneó el código de barras', true)
-    fallas.push('Falta el escaneo del código de barras (reverso del documento)')
-    await vpMostrarFallo(fallas)
-    return
+  if (!vpCapturedDoc) {
+    completarFilaProceso('vpc-r1', 'No se tomó foto del documento', true)
+    fallas.push('Falta la foto del documento')
+    await vpMostrarFallo(fallas); return
   }
-  completarFilaProceso('vpc-r1', `Código de barras leído · DNI ${vpBarcodeData.numDoc}`)
+  const match = vpGeminiResult
+    ? (vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide)
+    : true   // si no hubo análisis Gemini, lo deja pasar (revisión manual)
+  completarFilaProceso('vpc-r1',
+    vpGeminiResult
+      ? `Gemini Vision · ${match ? 'Datos coinciden ✓' : 'Revisión manual requerida ⚠'}`
+      : 'Foto guardada · revisión manual'
+  )
 
-  // ── PASO 2: Confirmar que los datos del barcode coinciden con lo ingresado ──
+  // ── Paso 2: comparación de datos ──────────────────────────────────────────
   activarFilaProceso('vpc-r2')
-  const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim()
+  completarFilaProceso('vpc-r2', match ? 'Nombre ✓ · Número ✓' : 'Datos a revisar manualmente ⚠', !match)
 
-  const numBarcode = vpBarcodeData.numDoc.replace(/\D/g,'')
-  const numIngresado = numDocUsuario.replace(/\D/g,'')
-  if (numBarcode !== numIngresado)
-    fallas.push(`Número no coincide: ingresaste ${numIngresado}, el código dice ${numBarcode}`)
-
-  if (vpBarcodeData.fechaNac !== fechaUsuario)
-    fallas.push(`Fecha no coincide: ingresaste ${fechaUsuario}, el código dice ${vpBarcodeData.fechaNac}`)
-
-  const barcodeNombre = norm(vpBarcodeData.apellido + ' ' + vpBarcodeData.nombre)
-  const palabras = norm(nombreUsuario).split(' ').filter(p => p.length > 1)
-  const encontradas = palabras.filter(p => barcodeNombre.includes(p))
-  if (palabras.length > 0 && encontradas.length / palabras.length < 0.5)
-    fallas.push(`Nombre no coincide: ingresaste "${nombreUsuario}", el código dice "${vpBarcodeData.apellido} ${vpBarcodeData.nombre}"`)
-
-  if (fallas.length > 0) {
-    completarFilaProceso('vpc-r2', `${fallas.length} dato(s) no coinciden`, true)
-    await vpMostrarFallo(fallas)
-    return
-  }
-  completarFilaProceso('vpc-r2', `Número ✓ · Nombre ✓ · Fecha ✓`)
-
-  completarFilaProceso('vpc-r2', 'Número ✓ · Nombre ✓ · Fecha ✓ · Nacionalidad ✓')
-  const advertencias = []  // no hay advertencias — todo verificado
-
-  // ── PASO 3: Detección de rostro en selfie ──
+  // ── Paso 3: selfie liveness ────────────────────────────────────────────────
   activarFilaProceso('vpc-r3')
-  try {
-    const fr = await verificarPresenciaFacial(selfieDocFile, null)
-    if (!fr) {
-      completarFilaProceso('vpc-r3', 'No se detectó un rostro claro', true)
-      fallas.push('No se detectó un rostro en la selfie con el documento. Asegurate de que tu cara sea visible.')
-    } else {
-      completarFilaProceso('vpc-r3', `Rostro detectado · ${fr.confianza}% confianza`)
-    }
-  } catch {
-    completarFilaProceso('vpc-r3', 'Detección facial no disponible', true)
-    // No es falla dura — continuamos
+  if (!vpCapturedSelfie) {
+    completarFilaProceso('vpc-r3', 'No se tomó selfie de liveness', true)
+    fallas.push('Falta el selfie de verificación de presencia')
+  } else {
+    completarFilaProceso('vpc-r3', `Liveness · "${vpLivenessInstruccion?.texto || 'completado'}" ✓`)
   }
 
-  // ── PASO 4: Generar imagen compuesta para validador ──
+  // ── Paso 4: selfie sosteniendo documento ──────────────────────────────────
   activarFilaProceso('vpc-r4')
-  try {
-    vpAnonBlob = await generarImagenConDocumentoBloqueado(selfieDocFile, docFrenteFile)
-    completarFilaProceso('vpc-r4', 'Cara visible · datos del documento pixelados')
-    // Mostrar preview en paso 4a
-    const url = URL.createObjectURL(vpAnonBlob)
-    const previewImg = document.getElementById('vp-anon-preview')
-    const previewPh  = document.getElementById('vp-anon-preview-ph')
-    if (previewImg) { previewImg.src = url; previewImg.style.display = 'block' }
-    if (previewPh)  previewPh.style.display = 'none'
-  } catch (e) {
-    completarFilaProceso('vpc-r4', 'Error generando imagen', true)
-    fallas.push('No se pudo procesar la imagen de la selfie')
+  if (!vpCapturedSelfieDoc) {
+    completarFilaProceso('vpc-r4', 'No se tomó selfie con documento', true)
+    fallas.push('Falta el selfie sosteniendo el documento')
+  } else {
+    // Detección de rostro (opcional, no bloquea)
+    try {
+      const fr = await verificarPresenciaFacial(vpCapturedSelfieDoc, null)
+      completarFilaProceso('vpc-r4', fr
+        ? `Rostro detectado · ${fr.confianza}% confianza`
+        : 'Foto guardada · revisión manual ⚠'
+      )
+    } catch {
+      completarFilaProceso('vpc-r4', 'Foto guardada ✓')
+    }
   }
 
-  // ── PASO 5: Placeholder (el envío real ocurre al confirmar) ──
+  // ── Paso 5: listo ─────────────────────────────────────────────────────────
   activarFilaProceso('vpc-r5')
   completarFilaProceso('vpc-r5', 'Listo para enviar · esperando confirmación')
 
-  await new Promise(r => setTimeout(r, 400))
+  await new Promise(r => setTimeout(r, 300))
 
-  // Bloquear si hay error de cara o de imagen
   if (fallas.length > 0) {
     await vpMostrarFallo(fallas)
   } else {
@@ -5473,23 +5508,57 @@ async function vpMostrarFallo(fallas) {
   vpShowStep('6b')
 }
 
-// ── Envío real a Supabase (se llama desde el botón de confirmación en paso 4a) ──
+// ── Envío final al backend Python ──────────────────────────────────────────
 async function vpEnviarVerificacion() {
   const btn = document.querySelector('#vp-s6a .vp-btn-main')
   if (btn) { btn.textContent = 'Enviando…'; btn.disabled = true }
 
-  const selfieDocFile = vpCapturedSelfieDoc
-  const docFrenteFile = vpCapturedDoc
-  const country = document.getElementById('vp-pais').value || 'Venezuela'
+  // Convertir blobs a base64
+  function blobToB64(blob) {
+    return new Promise((res, rej) => {
+      const reader = new FileReader()
+      reader.onload  = () => res(reader.result.split(',')[1])
+      reader.onerror = rej
+      reader.readAsDataURL(blob)
+    })
+  }
 
   try {
-    const { hash } = await enviarVerificacionASupabase(country, selfieDocFile, vpAnonBlob, docFrenteFile)
-    const h = hash.slice(0,8).toUpperCase() + '…' + hash.slice(-4).toUpperCase()
+    const [selfieB64, selfieDocB64] = await Promise.all([
+      vpCapturedSelfie    ? blobToB64(vpCapturedSelfie)    : Promise.resolve(''),
+      vpCapturedSelfieDoc ? blobToB64(vpCapturedSelfieDoc) : Promise.resolve(''),
+    ])
+
+    const resp = await fetch(`${VP_API_URL}/api/verify/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        verification_id: vpVerificationId,
+        datos_declarados: {
+          nombre:    document.getElementById('vp-nombre')?.value?.trim()   || '',
+          apellido:  document.getElementById('vp-apellido')?.value?.trim() || '',
+          numero_doc: document.getElementById('vp-num-doc')?.value?.trim() || '',
+          tipo_doc:   vpTipoDoc2,
+          fecha_nac:  document.getElementById('vp-fecha-nac')?.value || '',
+          email:      document.getElementById('vp-email')?.value?.trim()   || '',
+        },
+        selfie_liveness_b64:  selfieB64,
+        liveness_instruccion: vpLivenessInstruccion?.texto || '',
+        selfie_doc_b64:       selfieDocB64,
+        doc_extracted:        vpGeminiResult || null,
+      }),
+    })
+
+    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`)
+    const data = await resp.json()
+
     window._vpSession = window._vpSession || {}
-    window._vpSession.hash = hash
+    window._vpSession.verification_id = vpVerificationId
+    window._vpSession.status = data.status
+
     vpShowStep(7)
   } catch (e) {
-    console.error('Error enviando:', e)
+    console.error('Error enviando verificacion:', e)
     if (btn) { btn.textContent = 'Reintentar envío'; btn.disabled = false }
     showToast('Error al enviar — verificá tu conexión')
   }
