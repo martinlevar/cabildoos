@@ -3943,78 +3943,103 @@ function vpMostrarBarcodeMsg(msg, color = 'var(--mid)') {
   if (el) { el.textContent = msg; el.style.color = color }
 }
 
+let vpBarcodeScanTimer = null   // intervalo del loop de scan
+
 async function vpIniciarBarcodeScanner() {
   vpPararBarcodeScanner()
   vpBarcodeData = null
 
-  // Ocultar resultado anterior
-  const res = document.getElementById('vp-barcode-result')
-  if (res) res.style.display = 'none'
+  const resDiv = document.getElementById('vp-barcode-result')
+  if (resDiv) resDiv.style.display = 'none'
   vpMostrarBarcodeMsg('Cargando lector...')
 
+  // 1. Cargar ZXing
+  try { await cargarZXing() }
+  catch(e) { vpMostrarBarcodeMsg('Error cargando lector — verificá la conexión', '#ef4444'); return }
+
+  // 2. Abrir cámara trasera manualmente (getUserMedia, no ZXing)
   try {
-    await cargarZXing()
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    })
+    vpCameraStream = stream
+    const video = document.getElementById('cam-barcode-video')
+    video.srcObject = stream
+    await video.play().catch(() => {})
   } catch(e) {
-    vpMostrarBarcodeMsg('Error cargando ZXing — verificá la conexión', '#ef4444')
+    vpMostrarBarcodeMsg('Sin acceso a la cámara — verificá los permisos del navegador', '#ef4444')
     return
   }
 
-  const hints = new Map()
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-    ZXing.BarcodeFormat.PDF_417,
-    ZXing.BarcodeFormat.QR_CODE,
-    ZXing.BarcodeFormat.DATA_MATRIX,
-  ])
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, true)
+  // 3. Crear lector ZXing sin hints (detecta todos los formatos, más compatible)
+  vpZxingReader = new ZXing.BrowserMultiFormatReader()
 
-  vpZxingReader = new ZXing.BrowserMultiFormatReader(hints)
-  vpMostrarBarcodeMsg('Apuntá al código de barras del reverso...')
+  vpMostrarBarcodeMsg('Apuntá al código de barras del reverso del documento')
 
-  try {
-    await vpZxingReader.decodeFromConstraints(
-      { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
-      'cam-barcode-video',
-      (result, error) => {
-        if (!result) return
-        const texto = result.getText()
-        const parsed = parsearCodigoBarraDNI(texto)
+  let dots = 0
+  let scanning = false
 
-        if (!parsed.numDoc || !parsed.fechaNac) {
-          // Código leído pero no parece un DNI
-          vpMostrarBarcodeMsg('Código leído pero no es un DNI — intentá de nuevo', '#f59e0b')
-          return
-        }
+  // 4. Loop: captura frame → canvas → decodeFromCanvas (síncrono, lanza NotFoundException si no hay código)
+  vpBarcodeScanTimer = setInterval(() => {
+    if (scanning) return
+    scanning = true
 
-        // ¡Datos encontrados!
-        vpPararBarcodeScanner()
-        vpBarcodeData = parsed
+    const video = document.getElementById('cam-barcode-video')
+    if (!video || !video.videoWidth) { scanning = false; return }
 
-        // Mostrar datos extraídos
-        const fields = document.getElementById('vp-barcode-fields')
-        if (fields) {
-          fields.innerHTML = [
-            `<b>Apellido:</b> ${parsed.apellido || '—'}`,
-            `<b>Nombre:</b> ${parsed.nombre || '—'}`,
-            `<b>Número:</b> ${parsed.numDoc}`,
-            `<b>Fecha nac.:</b> ${parsed.fechaNac}`,
-          ].join('<br>')
-        }
-        vpMostrarBarcodeMsg('✓ Código leído correctamente', '#22c55e')
-        const res = document.getElementById('vp-barcode-result')
-        if (res) res.style.display = 'block'
+    dots = (dots % 3) + 1
+    vpMostrarBarcodeMsg('Escaneando' + '.'.repeat(dots) + ' — apuntá al reverso del DNI')
+
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width  = video.videoWidth
+      canvas.height = video.videoHeight
+      canvas.getContext('2d').drawImage(video, 0, 0)
+
+      const result = vpZxingReader.decodeFromCanvas(canvas)  // lanza si no encuentra
+
+      // ── Código encontrado ──
+      clearInterval(vpBarcodeScanTimer)
+      vpBarcodeScanTimer = null
+
+      const texto  = result.getText()
+      const parsed = parsearCodigoBarraDNI(texto)
+
+      if (!parsed.numDoc || !parsed.fechaNac) {
+        // Código leído pero no tiene estructura de DNI
+        vpMostrarBarcodeMsg('Código leído pero no parece un DNI — intentá de nuevo', '#f59e0b')
+        // Reiniciar scanner tras 2 segundos
+        setTimeout(vpIniciarBarcodeScanner, 2000)
+        scanning = false
+        return
       }
-    )
-  } catch(e) {
-    console.error('ZXing error:', e)
-    vpMostrarBarcodeMsg('Error iniciando cámara — verificá permisos', '#ef4444')
-  }
+
+      // Mostrar datos extraídos
+      vpBarcodeData = parsed
+      const fields = document.getElementById('vp-barcode-fields')
+      if (fields) {
+        fields.innerHTML = [
+          `<b>Apellido:</b> ${parsed.apellido || '—'}`,
+          `<b>Nombre:</b> ${parsed.nombre || '—'}`,
+          `<b>Número:</b> ${parsed.numDoc}`,
+          `<b>Fecha nac.:</b> ${parsed.fechaNac}`,
+        ].join('<br>')
+      }
+      vpMostrarBarcodeMsg('✓ Código leído', '#22c55e')
+      if (resDiv) resDiv.style.display = 'block'
+
+    } catch(e) {
+      // NotFoundException o similar — normal cuando no hay código en el frame
+    } finally {
+      scanning = false
+    }
+  }, 300)  // intenta 3 veces por segundo
 }
 
 function vpPararBarcodeScanner() {
-  if (vpZxingReader) {
-    try { vpZxingReader.reset() } catch(e) {}
-    vpZxingReader = null
-  }
+  if (vpBarcodeScanTimer) { clearInterval(vpBarcodeScanTimer); vpBarcodeScanTimer = null }
+  if (vpZxingReader) { try { vpZxingReader.reset() } catch(e) {} vpZxingReader = null }
 }
 
 // El usuario confirmó los datos del código de barras
