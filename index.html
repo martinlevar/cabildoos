@@ -4333,6 +4333,7 @@ async function vpDocCapturarFrame(_unused) {
     const nombre   = (document.getElementById('vp-nombre')?.value   || '').trim()
     const apellido = (document.getElementById('vp-apellido')?.value || '').trim()
     const numDoc   = (document.getElementById('vp-num-doc')?.value  || '').trim()
+    const pais     = (document.getElementById('vp-pais')?.value     || '').trim()
 
     const resp = await fetch(`${VP_API_URL}/api/verify/documento`, {
       method: 'POST',
@@ -4344,6 +4345,7 @@ async function vpDocCapturarFrame(_unused) {
         nombre_declarado:   nombre,
         apellido_declarado: apellido,
         numero_declarado:   numDoc,
+        pais_declarado:     pais,
       }),
     })
 
@@ -5035,42 +5037,7 @@ async function vpEscanearFotoDoc(input) {
 
 // El usuario confirmó los datos del código de barras
 function vpConfirmarBarcode() {
-  if (!vpBarcodeData) return
-
-  // Comparar con lo ingresado por el usuario
-  const nombreIngresado = (document.getElementById('vp-nombre')?.value || '').trim()
-  const numIngresado    = (document.getElementById('vp-num-doc')?.value || '').replace(/\D/g,'')
-  const fechaIngresada  = document.getElementById('vp-fecha-nac')?.value || ''
-
-  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim()
-
-  // Número: exacto (sin puntos ni espacios) — solo si barcode lo tiene
-  if (vpBarcodeData.numDoc) {
-    const numBarcode = vpBarcodeData.numDoc.replace(/\D/g,'')
-    if (numBarcode && numIngresado && numBarcode !== numIngresado) {
-      showToast(`Número no coincide: ingresaste ${numIngresado}, el código dice ${numBarcode}`)
-      return
-    }
-  }
-
-  // Fecha: exacta — solo si barcode la tiene
-  if (vpBarcodeData.fechaNac && fechaIngresada && vpBarcodeData.fechaNac !== fechaIngresada) {
-    showToast(`Fecha no coincide: ingresaste ${fechaIngresada}, el código dice ${vpBarcodeData.fechaNac}`)
-    return
-  }
-
-  // Nombre: al menos 50% de palabras coinciden — solo si barcode lo tiene
-  if (vpBarcodeData.apellido || vpBarcodeData.nombre) {
-    const barcodeNombre = norm((vpBarcodeData.apellido || '') + ' ' + (vpBarcodeData.nombre || ''))
-    const palabras = norm(nombreIngresado).split(' ').filter(p => p.length > 1)
-    const encontradas = palabras.filter(p => barcodeNombre.includes(p))
-    if (palabras.length > 0 && encontradas.length / palabras.length < 0.5) {
-      showToast(`Nombre no coincide: ingresaste "${nombreIngresado}", el código dice "${vpBarcodeData.apellido} ${vpBarcodeData.nombre}"`)
-      return
-    }
-  }
-
-  // Todo OK → selfie
+  // Gemini ya verificó todo — avanzar directo al paso 3 (liveness)
   vpGoStep(3)
 }
 
