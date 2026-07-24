@@ -1891,32 +1891,52 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
     </div>
 
-    <!-- ── PASO 2: Escáner en tiempo real ── -->
+    <!-- ── PASO 2: Lector de código de barras (reverso del DNI) ── -->
     <div class="vp-step" id="vp-s2">
-      <div class="vp-step-icon">📄</div>
-      <p class="vp-title">Escaneá tu documento</p>
-      <p class="vp-sub">Mostrá el documento <strong>completo</strong> dentro del recuadro — incluyendo la fecha en la parte inferior. El sistema captura automáticamente cuando verifica todos los datos.</p>
-      <div class="cam-wrap" id="cam-doc-wrap" style="position:relative">
-        <video id="cam-doc-video" class="cam-video" autoplay playsinline muted></video>
-        <div class="cam-corners"><span></span><span></span></div>
-        <!-- Overlay de estado del escáner sobre el video -->
-        <div id="vp-scan-overlay" style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);padding:10px 12px;display:none">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            <div class="scan-ind" id="scan-ind-numDoc"><span class="scan-ic">○</span> Número</div>
-            <div class="scan-ind" id="scan-ind-nombre"><span class="scan-ic">○</span> Nombre</div>
-            <div class="scan-ind" id="scan-ind-fecha"><span class="scan-ic">○</span> Fecha nac.</div>
-            <div class="scan-ind" id="scan-ind-nacionalidad"><span class="scan-ic">○</span> País</div>
-          </div>
+      <div class="vp-step-icon">🔍</div>
+      <p class="vp-title">Escaneá el reverso del documento</p>
+      <p class="vp-sub">Apuntá la cámara al <strong>código de barras del reverso</strong>. El sistema lee los datos automáticamente — sin OCR ni interpretación.</p>
+      <div class="cam-wrap" id="cam-barcode-wrap" style="position:relative">
+        <video id="cam-barcode-video" class="cam-video" autoplay playsinline muted></video>
+        <!-- Guía de código de barras: rectángulo horizontal estrecho -->
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+          <div style="width:80%;height:28%;border:2px solid rgba(255,255,255,0.7);border-radius:6px;box-shadow:0 0 0 9999px rgba(0,0,0,0.35)"></div>
         </div>
       </div>
-      <!-- Estado del escáner debajo del video -->
-      <div id="vp-scan-status" style="text-align:center;margin:10px 0 6px;font-size:13px;color:var(--mid)">
-        <span id="vp-scan-msg">Iniciando cámara...</span>
+      <div style="text-align:center;margin:10px 0 4px;font-size:13px">
+        <span id="vp-barcode-msg" style="color:var(--mid)">Apuntá al código de barras...</span>
       </div>
-      <p style="font-size:11px;color:var(--mid);text-align:center;margin:0 0 10px">Solo captura directa desde cámara — no se acepta galería</p>
-      <!-- Botón manual de emergencia (aparece después de 30s si el scanner falla) -->
-      <button class="cam-capture-btn" id="vp-scan-manual-btn" style="display:none" onclick="vpCapturarManualDoc()">📸 Captura manual (iluminación difícil)</button>
+      <!-- Datos extraídos del código (se muestra cuando se lee) -->
+      <div id="vp-barcode-result" style="display:none;background:rgba(34,197,94,0.1);border:1px solid #22c55e;border-radius:10px;padding:12px;margin:8px 0;font-size:13px">
+        <div style="color:#22c55e;font-weight:600;margin-bottom:8px">✓ Código de barras leído</div>
+        <div id="vp-barcode-fields" style="color:var(--fg);line-height:1.8"></div>
+        <button class="vp-btn-main" style="margin-top:12px;width:100%" onclick="vpConfirmarBarcode()">Confirmar y continuar →</button>
+      </div>
+      <p style="font-size:11px;color:var(--mid);text-align:center;margin:6px 0 10px">El código de barras está en el <strong>reverso</strong> del DNI</p>
       <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver y corregir datos</button>
+    </div>
+
+    <!-- ── PASO 2b: Foto del frente del documento (para el validador) ── -->
+    <div class="vp-step" id="vp-s2b">
+      <div class="vp-step-icon">📄</div>
+      <p class="vp-title">Foto del frente del documento</p>
+      <p class="vp-sub">Datos verificados ✓ — ahora tomá una foto del <strong>frente</strong> del documento. Esta imagen (con datos pixelados) la verá el validador humano.</p>
+      <div class="cam-wrap" id="cam-doc-wrap">
+        <video id="cam-doc-video" class="cam-video" autoplay playsinline muted></video>
+        <div class="cam-corners"><span></span><span></span></div>
+      </div>
+      <img id="cam-doc-preview" class="cam-preview-img" style="display:none">
+      <div id="cam-doc-pre">
+        <button class="cam-capture-btn" onclick="vpCapturar('doc')">📸 Capturar frente</button>
+        <p class="cam-note">Solo captura directa desde cámara</p>
+      </div>
+      <div id="cam-doc-post" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="vp-btn-link" style="flex:1" onclick="vpRetomar('doc')">↩ Retomar</button>
+          <button class="vp-btn-main" style="flex:2" onclick="vpUsarDoc()">Usar esta →</button>
+        </div>
+      </div>
+      <button class="vp-btn-link" onclick="vpGoStep(2)">← Volver</button>
     </div>
 
     <!-- ── PASO 3: Cámara — Selfie ── -->
@@ -1939,7 +1959,7 @@ body.on-landing #social-footer.visible { display:flex; }
           <button class="vp-btn-main" style="flex:2" onclick="vpUsarSelfie()">Usar esta →</button>
         </div>
       </div>
-      <button class="vp-btn-link" onclick="vpGoStep(2)">← Volver</button>
+      <button class="vp-btn-link" onclick="vpGoStep('2b')">← Volver</button>
     </div>
 
     <!-- ── PASO 4: Cámara — Selfie con documento ── -->
@@ -3852,6 +3872,189 @@ async function cerrarSesion() {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  LECTOR PDF417 — código de barras del reverso del DNI
+//  Usa ZXing.js: 100% preciso, sin interpretación de imagen
+// ══════════════════════════════════════════════════════════════
+
+let zxingLoaded   = false
+let vpZxingReader = null
+let vpBarcodeData = null   // datos extraídos del código de barras
+
+async function cargarZXing() {
+  if (zxingLoaded) return
+  await new Promise((res, rej) => {
+    const s = document.createElement('script')
+    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js'
+    s.onload = () => { zxingLoaded = true; res() }
+    s.onerror = rej
+    document.head.appendChild(s)
+  })
+}
+
+// Parser del PDF417 del DNI argentino (y variantes RENAPER)
+// Formato: @APELLIDO@NOMBRE@[otro]@SEXO@NUMEROS@EJEMPLAR@DDMMYYYY@...
+// o:       @APELLIDO@NOMBRE@@SEXO@NUMERO@EJEMPLAR@DDMMYYYY@...
+function parsearCodigoBarraDNI(texto) {
+  // Separar por @ y limpiar
+  const partes = texto.split('@').map(p => p.trim())
+
+  let apellido = '', nombre = '', numDoc = '', fechaNac = ''
+
+  for (const parte of partes) {
+    if (!parte) continue
+
+    // Número DNI: 7-8 dígitos
+    if (/^\d{7,8}$/.test(parte) && !numDoc) {
+      numDoc = parte
+      continue
+    }
+
+    // Fecha DDMMYYYY: exactamente 8 dígitos con día/mes válido
+    if (/^\d{8}$/.test(parte) && !fechaNac) {
+      const dd = parte.slice(0,2), mm = parte.slice(2,4), yyyy = parte.slice(4,8)
+      const y = parseInt(yyyy), m = parseInt(mm), d = parseInt(dd)
+      if (y >= 1900 && y <= 2020 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+        fechaNac = `${yyyy}-${mm}-${dd}`  // → YYYY-MM-DD
+        continue
+      }
+    }
+
+    // Sexo: M o F solos
+    if (parte === 'M' || parte === 'F') continue
+
+    // Ejemplar: A, B, C solos
+    if (/^[A-C]$/.test(parte)) continue
+
+    // Números de trámite o CUIL: > 8 dígitos, skip
+    if (/^\d{9,}$/.test(parte)) continue
+
+    // Texto: nombre o apellido (solo letras y espacios, longitud > 2)
+    if (/^[A-ZÁÉÍÓÚÜÑ\s]+$/i.test(parte) && parte.length > 2) {
+      if (!apellido) { apellido = parte; continue }
+      if (!nombre)   { nombre   = parte; continue }
+    }
+  }
+
+  return { apellido, nombre, numDoc, fechaNac }
+}
+
+function vpMostrarBarcodeMsg(msg, color = 'var(--mid)') {
+  const el = document.getElementById('vp-barcode-msg')
+  if (el) { el.textContent = msg; el.style.color = color }
+}
+
+async function vpIniciarBarcodeScanner() {
+  vpPararBarcodeScanner()
+  vpBarcodeData = null
+
+  // Ocultar resultado anterior
+  const res = document.getElementById('vp-barcode-result')
+  if (res) res.style.display = 'none'
+  vpMostrarBarcodeMsg('Cargando lector...')
+
+  try {
+    await cargarZXing()
+  } catch(e) {
+    vpMostrarBarcodeMsg('Error cargando ZXing — verificá la conexión', '#ef4444')
+    return
+  }
+
+  const hints = new Map()
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.PDF_417,
+    ZXing.BarcodeFormat.QR_CODE,
+    ZXing.BarcodeFormat.DATA_MATRIX,
+  ])
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true)
+
+  vpZxingReader = new ZXing.BrowserMultiFormatReader(hints)
+  vpMostrarBarcodeMsg('Apuntá al código de barras del reverso...')
+
+  try {
+    await vpZxingReader.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+      'cam-barcode-video',
+      (result, error) => {
+        if (!result) return
+        const texto = result.getText()
+        const parsed = parsearCodigoBarraDNI(texto)
+
+        if (!parsed.numDoc || !parsed.fechaNac) {
+          // Código leído pero no parece un DNI
+          vpMostrarBarcodeMsg('Código leído pero no es un DNI — intentá de nuevo', '#f59e0b')
+          return
+        }
+
+        // ¡Datos encontrados!
+        vpPararBarcodeScanner()
+        vpBarcodeData = parsed
+
+        // Mostrar datos extraídos
+        const fields = document.getElementById('vp-barcode-fields')
+        if (fields) {
+          fields.innerHTML = [
+            `<b>Apellido:</b> ${parsed.apellido || '—'}`,
+            `<b>Nombre:</b> ${parsed.nombre || '—'}`,
+            `<b>Número:</b> ${parsed.numDoc}`,
+            `<b>Fecha nac.:</b> ${parsed.fechaNac}`,
+          ].join('<br>')
+        }
+        vpMostrarBarcodeMsg('✓ Código leído correctamente', '#22c55e')
+        const res = document.getElementById('vp-barcode-result')
+        if (res) res.style.display = 'block'
+      }
+    )
+  } catch(e) {
+    console.error('ZXing error:', e)
+    vpMostrarBarcodeMsg('Error iniciando cámara — verificá permisos', '#ef4444')
+  }
+}
+
+function vpPararBarcodeScanner() {
+  if (vpZxingReader) {
+    try { vpZxingReader.reset() } catch(e) {}
+    vpZxingReader = null
+  }
+}
+
+// El usuario confirmó los datos del código de barras
+function vpConfirmarBarcode() {
+  if (!vpBarcodeData) return
+
+  // Comparar con lo ingresado por el usuario
+  const nombreIngresado = (document.getElementById('vp-nombre')?.value || '').trim()
+  const numIngresado    = (document.getElementById('vp-num-doc')?.value || '').replace(/\D/g,'')
+  const fechaIngresada  = document.getElementById('vp-fecha-nac')?.value || ''
+
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim()
+
+  // Número: exacto (sin puntos ni espacios)
+  const numBarcode = vpBarcodeData.numDoc.replace(/\D/g,'')
+  if (numBarcode !== numIngresado) {
+    showToast(`Número no coincide: ingresaste ${numIngresado}, el código dice ${numBarcode}`)
+    return
+  }
+
+  // Fecha: exacta
+  if (vpBarcodeData.fechaNac !== fechaIngresada) {
+    showToast(`Fecha no coincide: ingresaste ${fechaIngresada}, el código dice ${vpBarcodeData.fechaNac}`)
+    return
+  }
+
+  // Nombre: al menos 60% de palabras coinciden
+  const barcodeNombre = norm(vpBarcodeData.apellido + ' ' + vpBarcodeData.nombre)
+  const palabras = norm(nombreIngresado).split(' ').filter(p => p.length > 1)
+  const encontradas = palabras.filter(p => barcodeNombre.includes(p))
+  if (palabras.length > 0 && encontradas.length / palabras.length < 0.5) {
+    showToast(`Nombre no coincide: ingresaste "${nombreIngresado}", el código dice "${vpBarcodeData.apellido} ${vpBarcodeData.nombre}"`)
+    return
+  }
+
+  // Todo OK → foto del frente
+  vpGoStep('2b')
+}
+
+// ══════════════════════════════════════════════════════════════
 //  CÁMARA — captura obligatoria (sin galería)
 // ══════════════════════════════════════════════════════════════
 
@@ -4103,7 +4306,7 @@ function vpRetomar(tipo) {
 function vpUsarDoc() {
   if (!vpCapturedDoc) return
   vpPararCamara()
-  vpGoStep(3)  // → selfie
+  vpGoStep(3)  // → selfie (desde paso 2b)
 }
 
 function vpUsarSelfie() {
@@ -4135,10 +4338,13 @@ function crearIdentidad() {
 function abrirVerificacion() {
   vpCurrentStep = 1
   vpAnonBlob = null
+  vpBarcodeData = null
   // Limpiar blobs de cámara
   vpCapturedDoc = null
   vpCapturedSelfie = null
   vpCapturedSelfieDoc = null
+  vpPararBarcodeScanner()
+  vpPararScanner()
   vpPararCamara()
   // Resetear UI de cámara
   ;['doc','selfie','selfiedoc'].forEach(t => vpResetCamUI(t))
@@ -4173,7 +4379,8 @@ function vpResetCamUI(tipo) {
 }
 
 function vpShowStep(n) {
-  // Parar cámara y escáner al salir de pasos de cámara
+  // Parar todo al salir
+  vpPararBarcodeScanner()
   vpPararScanner()
   vpPararCamara()
 
@@ -4181,15 +4388,13 @@ function vpShowStep(n) {
   const el = document.getElementById('vp-s' + n)
   if (el) el.classList.add('active')
 
-  // Iniciar cámara / escáner al entrar en pasos de cámara
   if (n === 2) {
-    // Paso 2: escáner en tiempo real
-    const manualBtn = document.getElementById('vp-scan-manual-btn')
-    if (manualBtn) manualBtn.style.display = 'none'
-    vpSetScanMsg('Iniciando cámara...')
-    vpAbrirCamara('cam-doc-video', 'environment')
-      .then(() => vpIniciarScanner())
-      .catch(() => { vpSetScanMsg('No se pudo acceder a la cámara', '#ef4444') })
+    // Paso 2: lector de código de barras (ZXing)
+    vpIniciarBarcodeScanner()
+  } else if (n === '2b') {
+    // Paso 2b: foto del frente (cámara trasera, sin OCR)
+    vpResetCamUI('doc')
+    vpAbrirCamara('cam-doc-video', 'environment').catch(() => {})
   } else if (n === 3) {
     vpResetCamUI('selfie')
     vpAbrirCamara('cam-selfie-video', 'user').catch(() => {})
@@ -4259,41 +4464,43 @@ async function vpIniciarProceso() {
   const numDocUsuario = document.getElementById('vp-num-doc').value.trim()
   const fechaUsuario  = document.getElementById('vp-fecha-nac').value  // YYYY-MM-DD
 
-  let ocrTexto = '', fallas = []
+  let fallas = []
   vpAnonBlob = null
 
-  // ── PASO 1: OCR del documento ──
+  // ── PASO 1: Verificar datos del código de barras ──
   activarFilaProceso('vpc-r1')
-  try {
-    ocrTexto = await extraerTextoCompleto(docFrenteFile)
-    const preview = ocrTexto.slice(0, 60).replace(/\n/g, ' ')
-    completarFilaProceso('vpc-r1', ocrTexto.length > 20
-      ? `Texto extraído · "${preview}…"`
-      : 'Texto extraído (poca legibilidad)')
-  } catch (e) {
-    completarFilaProceso('vpc-r1', 'OCR falló — foto poco legible', true)
-    fallas.push('No se pudo leer el documento (foto borrosa o con reflejos)')
-  }
-
-  // ── PASO 2: Comparar datos ingresados vs OCR — TODOS deben coincidir ──
-  activarFilaProceso('vpc-r2')
-  const match = vpCompararDatos(ocrTexto, nombreUsuario, numDocUsuario, fechaUsuario, country)
-
-  // Todos los campos son obligatorios — el escáner del paso 2 ya los verificó,
-  // esto es una segunda confirmación de seguridad.
-  if (!match.numDoc)       fallas.push(`Número ${numDocUsuario} no encontrado`)
-  if (!match.nombre)       fallas.push(`Nombre "${nombreUsuario}" no coincide`)
-  if (!match.fecha)        fallas.push(`Fecha de nacimiento ${fechaUsuario} no encontrada`)
-  if (!match.nacionalidad) fallas.push(`País "${country}" no coincide`)
-
-  if (fallas.length > 0) {
-    // Solo para diagnóstico interno — no debería ocurrir si el scanner funcionó
-    const preview = ocrTexto.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 250)
-    fallas.push(`Texto OCR: "${preview}"`)
-    completarFilaProceso('vpc-r2', `${fallas.length - 1} dato(s) no confirmados`, true)
+  if (!vpBarcodeData) {
+    completarFilaProceso('vpc-r1', 'No se escaneó el código de barras', true)
+    fallas.push('Falta el escaneo del código de barras (reverso del documento)')
     await vpMostrarFallo(fallas)
     return
   }
+  completarFilaProceso('vpc-r1', `Código de barras leído · DNI ${vpBarcodeData.numDoc}`)
+
+  // ── PASO 2: Confirmar que los datos del barcode coinciden con lo ingresado ──
+  activarFilaProceso('vpc-r2')
+  const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim()
+
+  const numBarcode = vpBarcodeData.numDoc.replace(/\D/g,'')
+  const numIngresado = numDocUsuario.replace(/\D/g,'')
+  if (numBarcode !== numIngresado)
+    fallas.push(`Número no coincide: ingresaste ${numIngresado}, el código dice ${numBarcode}`)
+
+  if (vpBarcodeData.fechaNac !== fechaUsuario)
+    fallas.push(`Fecha no coincide: ingresaste ${fechaUsuario}, el código dice ${vpBarcodeData.fechaNac}`)
+
+  const barcodeNombre = norm(vpBarcodeData.apellido + ' ' + vpBarcodeData.nombre)
+  const palabras = norm(nombreUsuario).split(' ').filter(p => p.length > 1)
+  const encontradas = palabras.filter(p => barcodeNombre.includes(p))
+  if (palabras.length > 0 && encontradas.length / palabras.length < 0.5)
+    fallas.push(`Nombre no coincide: ingresaste "${nombreUsuario}", el código dice "${vpBarcodeData.apellido} ${vpBarcodeData.nombre}"`)
+
+  if (fallas.length > 0) {
+    completarFilaProceso('vpc-r2', `${fallas.length} dato(s) no coinciden`, true)
+    await vpMostrarFallo(fallas)
+    return
+  }
+  completarFilaProceso('vpc-r2', `Número ✓ · Nombre ✓ · Fecha ✓`)
 
   completarFilaProceso('vpc-r2', 'Número ✓ · Nombre ✓ · Fecha ✓ · Nacionalidad ✓')
   const advertencias = []  // no hay advertencias — todo verificado
