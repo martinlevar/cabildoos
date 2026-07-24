@@ -1925,6 +1925,11 @@ body.on-landing #social-footer.visible { display:flex; }
         <button class="cam-capture-btn" style="background:rgba(255,255,255,0.08);margin-top:6px" onclick="vpCapturarFallbackOCR()">🔤 Verificar por texto (cédula venezolana)</button>
       </div>
       <p style="font-size:11px;color:var(--mid);text-align:center;margin:6px 0 10px">DNI argentino: código en esquina inferior derecha del frente · Cédula venezolana: reverso</p>
+      <!-- DEBUG: texto crudo del barcode — visible en pantalla para diagnóstico -->
+      <div id="vp-debug-raw" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:8px;word-break:break-all">
+        <p style="font-size:10px;color:#94a3b8;margin:0 0 4px;font-weight:600">DEBUG — texto leído:</p>
+        <p id="vp-debug-raw-text" style="font-size:11px;color:#e2e8f0;margin:0;font-family:monospace;line-height:1.5"></p>
+      </div>
       <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver y corregir datos</button>
     </div>
 
@@ -4005,6 +4010,19 @@ function vpMostrarBarcodeMsg(msg, color = 'var(--mid)') {
   if (el) { el.textContent = msg; el.style.color = color }
 }
 
+function vpMostrarDebugRaw(texto, formato) {
+  const panel = document.getElementById('vp-debug-raw')
+  const pre   = document.getElementById('vp-debug-raw-text')
+  if (!panel || !pre) return
+  // Mostrar con @ reemplazados por "·@·" para que sea legible
+  const visible = texto
+    .replace(/\r\n/g, '↵').replace(/\n/g, '↵').replace(/\r/g, '↵')
+    .replace(/@/g, ' @ ')
+    .trim()
+  pre.textContent = `[${formato}] "${visible}"`
+  panel.style.display = 'block'
+}
+
 let vpBarcodeScanTimer = null
 
 async function vpIniciarBarcodeScanner() {
@@ -4111,10 +4129,9 @@ async function vpIniciarBarcodeScanner() {
             canvas.getContext('2d').drawImage(video, 0, 0)
             vpCapturedDoc = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92))
 
+            vpMostrarDebugRaw(rawTexto, codes[0]?.format || 'unknown')
             vpProcesarCodigoBarras(rawTexto)
           } else {
-            // Código detectado pero no decodificado (resolución insuficiente de la webcam)
-            // Mostrar el botón de foto INMEDIATAMENTE
             const fallbackEl = document.getElementById('vp-scan-fallback')
             if (fallbackEl) fallbackEl.style.display = 'block'
             vpMostrarBarcodeMsg('Código detectado — acercá MÁS el DNI o usá el botón "Tomar foto" ↓', '#f59e0b')
@@ -4312,6 +4329,7 @@ async function vpEscanearFotoDoc(input) {
     }
     const scanner = new Html5Qrcode('__vp_h5qr', { verbose: false })
     const text = await scanner.scanFile(file, false)
+    vpMostrarDebugRaw(text, 'html5-qrcode')
     vpProcesarCodigoBarras(text)
     return
   } catch(e) {}
