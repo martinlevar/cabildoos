@@ -4394,6 +4394,13 @@ function vpMostrarResultadoGemini(data) {
     panel.querySelector('div').textContent = 'Foto insuficiente — reintentá'
     panel.querySelector('p').textContent =
       `Faltó detectar: ${faltantes.join(', ')}. Mejor iluminación, sin reflejos, documento completo en cuadro.`
+    // Mostrar observaciones de Gemini para diagnóstico
+    if (ext.observaciones) {
+      const obs = document.createElement('p')
+      obs.style.cssText = 'color:var(--mid);font-size:11px;margin:4px 0 0;font-style:italic'
+      obs.textContent = ext.observaciones
+      panel.appendChild(obs)
+    }
     // Ocultar el botón "Continuar" — solo mostrar "Repetir"
     const btnContinuar = panel.querySelector('.vp-btn-main')
     if (btnContinuar) btnContinuar.style.display = 'none'
