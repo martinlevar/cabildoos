@@ -3930,10 +3930,12 @@ function vpMostrarBarcodeMsg(msg, color = 'var(--mid)') {
   if (el) { el.textContent = msg; el.style.color = color }
 }
 
+let vpBarcodeScanTimer = null
+
 async function vpIniciarBarcodeScanner() {
   vpPararBarcodeScanner()
   vpBarcodeData = null
-  vpCapturedDoc  = null
+  vpCapturedDoc = null
 
   const resDiv     = document.getElementById('vp-barcode-result')
   const fallbackEl = document.getElementById('vp-scan-fallback')
@@ -3942,90 +3944,107 @@ async function vpIniciarBarcodeScanner() {
   if (fallbackEl) fallbackEl.style.display = 'none'
   if (scanLine)   scanLine.style.display   = 'none'
 
-  vpMostrarBarcodeMsg('Cargando lector de documentos...')
+  vpMostrarBarcodeMsg('Cargando lector...')
 
   // 1. Cargar ZXing
   try { await cargarZXing() }
-  catch(e) {
-    vpMostrarBarcodeMsg('Error cargando lector — verificá la conexión', '#ef4444')
+  catch(e) { vpMostrarBarcodeMsg('Error cargando lector — verificá conexión a internet', '#ef4444'); return }
+
+  // 2. Abrir cámara con getUserMedia (más confiable que dejar que ZXing lo haga)
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    })
+    vpCameraStream = stream
+    const video = document.getElementById('cam-doc-video')
+    video.srcObject = stream
+    await video.play().catch(() => {})
+  } catch(e) {
+    vpMostrarBarcodeMsg(`Sin acceso a cámara: ${e.message}`, '#ef4444')
     return
   }
 
+  // 3. Crear lector una sola vez (caro de construir)
   vpZxingReader = new ZXing.BrowserMultiFormatReader()
 
-  // 2. Elegir cámara trasera si está disponible
-  let deviceId = undefined
-  try {
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices()
-    if (devices.length > 1) {
-      // En móviles la cámara trasera suele estar al final o tiene "back/rear/0" en el label
-      const rear = devices.find(d => /back|rear|posterior|environment/i.test(d.label))
-        || devices[devices.length - 1]
-      deviceId = rear?.deviceId
-    }
-  } catch(e) { /* usa default */ }
-
-  vpMostrarBarcodeMsg('Apuntá el documento a la cámara...')
+  vpMostrarBarcodeMsg('Apuntá el frente del documento a la cámara...')
   if (scanLine) scanLine.style.display = 'block'
 
-  // 3. Mostrar fallback OCR si no encuentra en 20 segundos
+  // 4. Fallback visible a los 25s
   vpScannerTimeout = setTimeout(() => {
     if (fallbackEl) fallbackEl.style.display = 'block'
-    vpMostrarBarcodeMsg('No se detectó código de barras — ¿documento sin código?', '#f59e0b')
-  }, 20000)
+    vpMostrarBarcodeMsg('¿Sin código de barras? Usá la captura manual ↓', '#f59e0b')
+  }, 25000)
 
-  // 4. decodeFromVideoDevice — ZXing abre la cámara y escanea continuamente
-  //    Es el API más estable y compatible del SDK
-  try {
-    vpZxingReader.decodeFromVideoDevice(deviceId, 'cam-doc-video', async (result, err) => {
-      if (!result) return   // NotFoundException es normal (no hay código en el frame)
+  let busy = false, dots = 0
+
+  // 5. Loop: captura frame → data URL → decodeFromImageUrl (API de alto nivel, siempre presente en ZXing UMD)
+  vpBarcodeScanTimer = setInterval(async () => {
+    if (busy) return
+    busy = true
+
+    try {
+      const video = document.getElementById('cam-doc-video')
+      if (!video || video.readyState < 2 || !video.videoWidth) return
+
+      dots = (dots % 3) + 1
+      vpMostrarBarcodeMsg('Buscando código de barras' + '.'.repeat(dots))
+
+      // Capturar frame completo
+      const canvas = document.createElement('canvas')
+      canvas.width  = video.videoWidth
+      canvas.height = video.videoHeight
+      canvas.getContext('2d').drawImage(video, 0, 0)
+
+      // decodeFromImageUrl es el API más alto nivel y más compatible del UMD
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+      const result  = await vpZxingReader.decodeFromImageUrl(dataUrl)
+
+      // ¡Código encontrado!
+      clearTimeout(vpScannerTimeout); vpScannerTimeout = null
+      clearInterval(vpBarcodeScanTimer); vpBarcodeScanTimer = null
+      if (scanLine) scanLine.style.display = 'none'
+
+      // Guardar el frame como foto del documento
+      vpCapturedDoc = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.92))
 
       const texto  = result.getText()
       const parsed = parsearCodigoBarraDNI(texto)
 
       if (!parsed.numDoc || !parsed.fechaNac) {
-        // Barcode leído pero no tiene estructura de DNI, seguir buscando
+        // Código no es DNI — reintentar
+        vpMostrarBarcodeMsg('Código leído pero no parece un DNI — seguí apuntando...', '#f59e0b')
+        setTimeout(vpIniciarBarcodeScanner, 1500)
         return
       }
 
-      // ── ¡Encontrado! ── capturar frame como foto del documento
-      clearTimeout(vpScannerTimeout)
-      if (scanLine) scanLine.style.display = 'none'
-
-      const video = document.getElementById('cam-doc-video')
-      if (video && video.videoWidth) {
-        const c = document.createElement('canvas')
-        c.width = video.videoWidth; c.height = video.videoHeight
-        c.getContext('2d').drawImage(video, 0, 0)
-        vpCapturedDoc = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92))
-      }
-
-      // Detener decode (no la cámara — la imagen sigue mostrándose)
-      try { vpZxingReader.stopContinuousDecode() } catch(e) {}
-
       vpBarcodeData = parsed
-
       const fields = document.getElementById('vp-barcode-fields')
       if (fields) {
         fields.innerHTML = [
           `<b>Apellido:</b> ${parsed.apellido || '—'}`,
-          `<b>Nombre:</b> ${parsed.nombre || '—'}`,
-          `<b>Número:</b> ${parsed.numDoc}`,
+          `<b>Nombre:</b>   ${parsed.nombre   || '—'}`,
+          `<b>Número:</b>   ${parsed.numDoc}`,
           `<b>Fecha nac.:</b> ${parsed.fechaNac}`,
         ].join('<br>')
       }
-      vpMostrarBarcodeMsg('✓ Código de barras leído', '#22c55e')
+      vpMostrarBarcodeMsg('✓ Código de barras leído correctamente', '#22c55e')
       if (resDiv) resDiv.style.display = 'block'
-    })
-  } catch(e) {
-    console.error('ZXing init error:', e)
-    vpMostrarBarcodeMsg('Error iniciando — verificá permisos de cámara', '#ef4444')
-  }
+
+    } catch(e) {
+      // NotFoundException = no hay código en el frame actual → normal, seguir
+      // Otros errores también son esperables (FormatException, ChecksumException)
+    } finally {
+      busy = false
+    }
+  }, 400)   // 400ms = ~2.5 intentos por segundo
 }
 
 function vpPararBarcodeScanner() {
-  if (vpScannerTimeout) { clearTimeout(vpScannerTimeout); vpScannerTimeout = null }
-  if (vpZxingReader) { try { vpZxingReader.reset() } catch(e) {} vpZxingReader = null }
+  if (vpScannerTimeout)   { clearTimeout(vpScannerTimeout);   vpScannerTimeout   = null }
+  if (vpBarcodeScanTimer) { clearInterval(vpBarcodeScanTimer); vpBarcodeScanTimer = null }
+  if (vpZxingReader)      { try { vpZxingReader.reset() } catch(e) {} vpZxingReader = null }
 }
 
 // Fallback para documentos sin código de barras (cédula venezolana antigua, etc.)
