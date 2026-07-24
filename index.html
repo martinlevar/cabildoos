@@ -2064,8 +2064,8 @@ body.on-landing #social-footer.visible { display:flex; }
 
       <!-- No se pudo leer — continuar igual -->
       <div id="vp-doc-sin-datos" style="display:none;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:10px;padding:12px;margin:8px 0;font-size:13px">
-        <div style="color:#fb923c;font-weight:600;margin-bottom:4px">Código no detectado</div>
-        <p style="color:var(--mid);font-size:12px;margin:0 0 10px">La foto quedó guardada. El verificador revisará el documento manualmente.</p>
+        <div style="color:#fb923c;font-weight:600;margin-bottom:4px">No se pudo verificar automáticamente</div>
+        <p style="color:var(--mid);font-size:12px;margin:0 0 10px">Intentá de nuevo con mejor iluminación, o continuá para revisión manual.</p>
         <div style="display:flex;gap:8px">
           <button class="vp-btn-link" style="flex:1" onclick="vpDocReintentar()">↩ Repetir</button>
           <button class="vp-btn-main" style="flex:2" onclick="vpSaltarBarcode()">Continuar →</button>
@@ -4245,6 +4245,13 @@ async function vpDocIniciar() {
   // Abrir cámara trasera (sin file picker)
   try {
     await vpAbrirCamara('cam-doc-video', 'environment')
+    // Esperar que el video realmente tenga frames (evita capturar pantalla negra)
+    const vid = document.getElementById('cam-doc-video')
+    await new Promise(res => {
+      if (vid.videoWidth > 0) { res(); return }
+      vid.addEventListener('loadeddata', res, { once: true })
+      setTimeout(res, 3000) // máximo 3 segundos de espera
+    })
     vpDocMsg('Mostrá el frente del documento completo')
   } catch(e) {
     vpDocMsg('Sin acceso a cámara — verificá los permisos', '#f59e0b')
@@ -4371,10 +4378,11 @@ function vpMostrarResultadoGemini(data) {
   const ext = data.extracted || {}
   const match = data.match
 
-  if (!ext.es_documento_real) {
-    // Rechazar: no parece un documento real
+  // Rechazar solo si Gemini no encontró NINGÚN dato — foto negra o sin documento
+  const tieneAlgunDato = ext.nombre_completo || ext.numero_documento || ext.fecha_nacimiento
+  if (!ext.es_documento_real && !tieneAlgunDato) {
     document.getElementById('vp-doc-sin-datos').style.display = ''
-    vpDocMsg('No se detectó un documento válido — asegurate de mostrar el documento físico', '#f59e0b')
+    vpDocMsg('No se detectó el documento — asegurate de que esté bien iluminado y enfocado', '#f59e0b')
     return
   }
 
