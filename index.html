@@ -1157,20 +1157,15 @@ html, body {
 .vp-btn-demo:hover { border-color:var(--orange); color:var(--orange); background:rgba(247,106,30,.04); }
 
 /* ── CAPTURA DE DOCUMENTO — sistema de 2 fotos ── */
-.vp-doc-grid {
-  display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:16px 0;
+.vp-chip {
+  background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.1);
+  border-radius:20px; padding:6px 14px; cursor:pointer; color:var(--mid);
+  font-size:12px; font-weight:600; font-family:inherit; transition:all .15s;
+  white-space:nowrap;
 }
-.vp-doc-btn {
-  display:flex; flex-direction:column; align-items:center; gap:5px;
-  background:rgba(255,255,255,.04); border:1.5px solid rgba(255,255,255,.1);
-  border-radius:14px; padding:18px 10px; cursor:pointer; color:var(--fg);
-  transition:all .15s; font-family:inherit;
+.vp-chip.active {
+  border-color:var(--navy); background:rgba(29,31,60,.35); color:var(--fg);
 }
-.vp-doc-btn:hover, .vp-doc-btn.selected {
-  border-color:var(--navy); background:rgba(29,31,60,.25); transform:translateY(-1px);
-}
-.vp-doc-btn strong { font-size:13px; font-weight:700; }
-.vp-doc-btn small  { font-size:10px; color:var(--mid); }
 
 .vp-cap-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
 .vp-cap-back   {
@@ -2012,171 +2007,63 @@ body.on-landing #social-footer.visible { display:flex; }
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
     </div>
 
-    <!-- ── PASO 2: Captura de documento — sistema 2 fotos ── -->
+    <!-- ── PASO 2: Foto del documento ── -->
     <div class="vp-step" id="vp-s2">
+      <div class="vp-step-icon">📄</div>
+      <p class="vp-title">Foto del documento</p>
+      <p class="vp-sub">Sacá una foto clara del frente de tu documento. El sistema extrae los datos automáticamente.</p>
 
-      <!-- SUB-PASO A: Elegir tipo de documento -->
-      <div id="vp-s2a">
-        <div class="vp-step-icon">🪪</div>
-        <p class="vp-title">Tipo de documento</p>
-        <p class="vp-sub">Elegí el documento que vas a presentar. El sistema lo detectará automáticamente.</p>
-        <div class="vp-doc-grid">
-          <button class="vp-doc-btn" onclick="vpSeleccionarTipoDoc('DNI_AR')">
-            <span style="font-size:28px">🇦🇷</span>
-            <strong>DNI argentino</strong>
-            <small>Código de barras PDF417</small>
-          </button>
-          <button class="vp-doc-btn" onclick="vpSeleccionarTipoDoc('PASAPORTE')">
-            <span style="font-size:28px">📘</span>
-            <strong>Pasaporte</strong>
-            <small>MRZ — cualquier país</small>
-          </button>
-          <button class="vp-doc-btn" onclick="vpSeleccionarTipoDoc('CEDULA_VE')">
-            <span style="font-size:28px">🇻🇪</span>
-            <strong>Cédula venezolana</strong>
-            <small>Código de barras PDF417</small>
-          </button>
-          <button class="vp-doc-btn" onclick="vpSeleccionarTipoDoc('LICENCIA')">
-            <span style="font-size:28px">🚗</span>
-            <strong>Licencia de conducir</strong>
-            <small>Código de barras PDF417</small>
-          </button>
-        </div>
-        <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver</button>
+      <!-- Selector de tipo (chips) -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="vp-chip active" id="vp-chip-DNI_AR"     onclick="vpDocChip('DNI_AR')">🇦🇷 DNI</button>
+        <button class="vp-chip"       id="vp-chip-PASAPORTE"   onclick="vpDocChip('PASAPORTE')">📘 Pasaporte</button>
+        <button class="vp-chip"       id="vp-chip-CEDULA_VE"   onclick="vpDocChip('CEDULA_VE')">🇻🇪 Cédula VE</button>
+        <button class="vp-chip"       id="vp-chip-LICENCIA"    onclick="vpDocChip('LICENCIA')">🚗 Licencia</button>
       </div>
 
-      <!-- SUB-PASO B: Foto completa del documento -->
-      <div id="vp-s2b" style="display:none">
-        <div class="vp-cap-header">
-          <button class="vp-cap-back" onclick="vp2Ir('a')">←</button>
-          <div class="vp-cap-steps">
-            <span class="on">1</span>
-            <span style="width:20px;height:2px;background:rgba(255,255,255,.1)"></span>
-            <span>2</span>
-          </div>
-          <span style="font-size:13px;color:var(--mid);margin-left:4px">Foto completa</span>
+      <!-- Preview de la foto -->
+      <div id="vp-doc-preview-wrap" style="display:none;margin-bottom:10px;position:relative">
+        <img id="vp-doc-img" style="width:100%;border-radius:10px;display:block;border:2px solid rgba(255,255,255,.1)">
+        <div id="vp-doc-decode-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.55);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
+          <div class="vp-decode-spinner" style="width:22px;height:22px;border-width:3px"></div>
+          <span style="font-size:12px;color:#fff" id="vp-doc-decode-msg">Leyendo datos…</span>
         </div>
-        <p class="vp-title" style="margin:0 0 4px">Fotografiá el documento completo</p>
-        <p class="vp-sub" id="vp-s2b-sub">Encuadrá el <strong>frente del documento</strong> dentro del recuadro. Que se vea todo, bien iluminado.</p>
-
-        <!-- Frame guía visual con video stream -->
-        <div class="vp-doc-frame" id="vp-doc-frame-preview">
-          <span class="c1"></span><span class="c2"></span>
-          <video id="cam-s2b-video" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px;display:none"></video>
-          <div class="vp-doc-frame-inner" id="vp-s2b-placeholder">
-            <div id="vp-frame-icon" style="font-size:38px;margin-bottom:8px">🪪</div>
-            <div style="font-size:11px">Iniciando cámara…</div>
-          </div>
-          <!-- Indicador de zona barcode (visible para DNI/Licencia/VE) -->
-          <div class="vp-barcode-indicator" id="vp-barcode-ind" style="display:none">
-            <span class="vp-barcode-indicator-label">BARCODE</span>
-          </div>
-          <!-- Indicador de zona MRZ (visible para pasaportes) -->
-          <div class="vp-mrz-indicator" id="vp-mrz-ind" style="display:none">
-            <span class="vp-mrz-indicator-label">MRZ ▌▌▌▌▌</span>
-          </div>
-          <img id="vp-doc-full-preview" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px">
-        </div>
-
-        <div id="vp-s2b-pre">
-          <button class="cam-capture-btn" style="font-size:15px;padding:14px" onclick="vpCapturarDocCompleto()">
-            📷 Capturar foto del documento
-          </button>
-          <p style="font-size:11px;color:var(--mid);text-align:center;margin:8px 0 0">Usá la cámara trasera · buena luz · sin flash directo</p>
-        </div>
-        <div id="vp-s2b-post" style="display:none">
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="vp-btn-link" style="flex:1" onclick="vpRehacerFotoCompleta()">↩ Rehacer</button>
-            <button class="vp-btn-main" style="flex:2" onclick="vp2Ir('c')">Continuar →</button>
-          </div>
-        </div>
-        <button class="vp-btn-link" onclick="vp2Ir('a')" style="margin-top:4px">← Cambiar tipo</button>
       </div>
 
-      <!-- SUB-PASO C: Foto close-up de la zona de código / MRZ -->
-      <div id="vp-s2c" style="display:none">
-        <div class="vp-cap-header">
-          <button class="vp-cap-back" onclick="vp2Ir('b')">←</button>
-          <div class="vp-cap-steps">
-            <span>1</span>
-            <span style="width:20px;height:2px;background:rgba(255,255,255,.1)"></span>
-            <span class="on">2</span>
-          </div>
-          <span style="font-size:13px;color:var(--mid);margin-left:4px">Foto de zona</span>
+      <!-- Botón de foto — overlay technique: input transparente sobre el div -->
+      <div id="vp-doc-foto-wrap" style="position:relative;margin-bottom:8px;border-radius:12px;overflow:hidden">
+        <div class="cam-capture-btn" id="vp-doc-foto-btn" style="font-size:15px;padding:16px;pointer-events:none">
+          📷 <span id="vp-doc-foto-label">Fotografiar documento</span>
         </div>
-        <p class="vp-title" style="margin:0 0 4px" id="vp-s2c-title">Acercá la cámara al código</p>
-        <p class="vp-sub" id="vp-s2c-sub">Fotografiá <strong>solo la zona del código de barras</strong> — tiene que llenar casi todo el encuadre.</p>
+        <input type="file" accept="image/*" capture="environment"
+               style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"
+               onchange="vpDocFotoTomada(this)">
+      </div>
+      <p style="font-size:11px;color:var(--mid);text-align:center;margin:0 0 10px">
+        Cámara trasera · documento completo · buena iluminación
+      </p>
 
-        <!-- Zona animada con video stream -->
-        <div class="vp-zona-target" id="vp-zona-target">
-          <video id="cam-s2c-video" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px;display:none"></video>
-          <div class="vp-zona-bg-bars" id="vp-zona-bg-bars"></div>
-          <div class="vp-zona-bg-mrz" id="vp-zona-bg-mrz" style="display:none">
-            <div></div><div style="opacity:.7"></div>
-          </div>
-          <div class="vp-scan-line" id="vp-s2c-scanline"></div>
-          <p class="vp-zona-label" id="vp-zona-label">PDF417</p>
-          <img id="vp-doc-zona-preview" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:10px">
-        </div>
-
-        <!-- Instrucción visual con ilustración -->
-        <div style="display:flex;gap:10px;align-items:flex-start;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;margin:8px 0;font-size:12px" id="vp-zona-hint">
-          <div id="vp-zona-emoji" style="font-size:24px">📦</div>
-          <div>
-            <strong id="vp-zona-hint-title">Código de barras PDF417</strong>
-            <p id="vp-zona-hint-desc" style="color:var(--mid);margin:2px 0 0;font-size:11px">Esquina inferior derecha del frente · acercate a 5–10 cm · que llene el encuadre</p>
-          </div>
-        </div>
-
-        <div id="vp-s2c-pre">
-          <!-- Botón principal: captura del stream en vivo -->
-          <button class="cam-capture-btn" id="vp-s2c-btn-cap" style="font-size:15px;padding:14px;display:none" onclick="vpCapturarZona()">
-            📸 Capturar zona
-          </button>
-          <!-- Fallback: input nativo (aparece si cámara no disponible o después de timeout) -->
-          <div id="vp-s2c-fallback" style="display:none;margin-top:8px">
-            <p style="font-size:11px;color:var(--mid);text-align:center;margin:0 0 8px">
-              📱 Acercá la cámara hasta que el código llene el encuadre
-            </p>
-            <input type="file" id="vp-foto-zona" accept="image/*" capture="environment" style="display:none" onchange="vpFotoZonaTomada(this)">
-            <button class="cam-capture-btn" style="font-size:14px" onclick="document.getElementById('vp-foto-zona').click()">
-              📷 Tomar foto del código
-            </button>
-          </div>
-        </div>
-
-        <!-- Estado de decodificación -->
-        <div id="vp-decode-status" style="display:none" class="vp-decode-status">
-          <span class="vp-decode-spinner"></span>
-          <span id="vp-decode-msg">Analizando imagen…</span>
-        </div>
-
-        <!-- Resultado OK -->
-        <div id="vp-barcode-result" style="display:none;background:rgba(34,197,94,0.1);border:1px solid #22c55e;border-radius:10px;padding:12px;margin:8px 0;font-size:13px">
-          <div style="color:#22c55e;font-weight:600;margin-bottom:8px">✓ Documento leído correctamente</div>
-          <div id="vp-barcode-fields" style="color:var(--fg);line-height:1.8"></div>
-          <button class="vp-btn-main" style="margin-top:12px;width:100%" onclick="vpConfirmarBarcode()">Confirmar y continuar →</button>
-        </div>
-
-        <!-- Error / reintentar -->
-        <div id="vp-decode-retry" style="display:none;margin:8px 0">
-          <div style="background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:10px;padding:10px;font-size:12px;color:#fb923c;margin-bottom:8px" id="vp-decode-error-msg">
-            No se pudo leer el código. Intentá de nuevo más cerca.
-          </div>
-          <label for="vp-foto-zona" class="cam-capture-btn" style="cursor:pointer;display:block;text-align:center">📷 Reintentar</label>
-          <button class="cam-capture-btn" style="background:rgba(255,255,255,.05);margin-top:6px;font-size:13px" onclick="vpSaltarBarcode()">
-            Continuar sin código de barras
-          </button>
-        </div>
-
-        <!-- DEBUG -->
-        <div id="vp-debug-raw" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:8px;word-break:break-all">
-          <p style="font-size:10px;color:#94a3b8;margin:0 0 4px;font-weight:600">DEBUG — texto leído:</p>
-          <p id="vp-debug-raw-text" style="font-size:11px;color:#e2e8f0;margin:0;font-family:monospace;line-height:1.5"></p>
-        </div>
-        <button class="vp-btn-link" onclick="vp2Ir('b')" style="margin-top:4px">← Volver</button>
+      <!-- Resultado de decodificación -->
+      <div id="vp-barcode-result" style="display:none;background:rgba(34,197,94,0.1);border:1px solid #22c55e;border-radius:10px;padding:12px;margin:8px 0;font-size:13px">
+        <div style="color:#22c55e;font-weight:700;margin-bottom:8px">✓ Datos extraídos del documento</div>
+        <div id="vp-barcode-fields" style="color:var(--fg);line-height:1.9"></div>
+        <button class="vp-btn-main" style="margin-top:12px;width:100%" onclick="vpConfirmarBarcode()">Confirmar y continuar →</button>
       </div>
 
+      <!-- No se pudo leer — continuar igual (validador humano revisa la foto) -->
+      <div id="vp-doc-sin-datos" style="display:none;background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.3);border-radius:10px;padding:12px;margin:8px 0;font-size:13px">
+        <div style="color:#fb923c;font-weight:600;margin-bottom:6px">⚠ No se leyó el código automáticamente</div>
+        <p style="color:var(--mid);font-size:12px;margin:0 0 10px">La foto quedó guardada. El verificador revisará el documento manualmente.</p>
+        <button class="vp-btn-main" style="width:100%" onclick="vpSaltarBarcode()">Continuar →</button>
+      </div>
+
+      <!-- DEBUG -->
+      <div id="vp-debug-raw" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.15);border-radius:8px;word-break:break-all">
+        <p style="font-size:10px;color:#94a3b8;margin:0 0 4px;font-weight:600">DEBUG:</p>
+        <p id="vp-debug-raw-text" style="font-size:11px;color:#e2e8f0;margin:0;font-family:monospace;line-height:1.5"></p>
+      </div>
+
+      <button class="vp-btn-link" onclick="vpGoStep(1)">← Volver</button>
     </div>
 
     <!-- ── PASO 3: Cámara — Selfie ── -->
@@ -4288,439 +4175,151 @@ function vpMostrarDebugRaw(texto, formato) {
 let vpBarcodeScanTimer = null
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  SISTEMA 2-FOTOS: nuevo motor de captura de documentos
+//  PASO 2: FOTO DEL DOCUMENTO — versión simple y sólida
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Tipo seleccionado: 'DNI_AR' | 'PASAPORTE' | 'CEDULA_VE' | 'LICENCIA'
-let vpTipoDoc2 = null
+let vpTipoDoc2 = 'DNI_AR'  // tipo activo
 let vpZbarLoaded = false
 
-// Configuración visual por tipo de doc
-const VP_DOC_CONFIG = {
-  DNI_AR: {
-    frameIcon: '🇦🇷',
-    barcodeInd: true, mrzInd: false,
-    zonaBg: 'bars', zonaLabel: 'PDF417',
-    zonaEmoji: '📦', zonaHintTitle: 'Código de barras PDF417',
-    zonaHintDesc: 'Esquina inferior derecha del frente · acercate a 5–10 cm · que llene el encuadre',
-    s2bSub: 'Encuadrá el <strong>frente del DNI</strong> dentro del recuadro — completo, sin cortar.',
-    s2cTitle: 'Acercá la cámara al código de barras',
-    s2cSub: 'Esquina inferior derecha del frente del DNI. Que el código llene el encuadre.'
-  },
-  PASAPORTE: {
-    frameIcon: '📘',
-    barcodeInd: false, mrzInd: true,
-    zonaBg: 'mrz', zonaLabel: 'MRZ',
-    zonaEmoji: '🔡', zonaHintTitle: 'Zona MRZ (Machine Readable Zone)',
-    zonaHintDesc: 'Las 2 líneas de letras y números al pie de la página de datos · llená el encuadre',
-    s2bSub: 'Encuadrá la <strong>página de datos del pasaporte</strong> (la que tiene tu foto) en el recuadro.',
-    s2cTitle: 'Acercá la cámara a la zona MRZ',
-    s2cSub: 'Las dos líneas de texto codificado en la parte inferior de la página de datos.'
-  },
-  CEDULA_VE: {
-    frameIcon: '🇻🇪',
-    barcodeInd: true, mrzInd: false,
-    zonaBg: 'bars', zonaLabel: 'PDF417',
-    zonaEmoji: '📦', zonaHintTitle: 'Código de barras PDF417',
-    zonaHintDesc: 'En el dorso (reverso) de la cédula · acercate a 5–10 cm · que llene el encuadre',
-    s2bSub: 'Encuadrá el <strong>frente de la cédula venezolana</strong> completa dentro del recuadro.',
-    s2cTitle: 'Acercá la cámara al código de barras',
-    s2cSub: 'Está en el reverso de la cédula. Que el código llene casi todo el encuadre.'
-  },
-  LICENCIA: {
-    frameIcon: '🚗',
-    barcodeInd: true, mrzInd: false,
-    zonaBg: 'bars', zonaLabel: 'PDF417',
-    zonaEmoji: '📦', zonaHintTitle: 'Código de barras PDF417',
-    zonaHintDesc: 'Generalmente en el dorso de la licencia · acercate a 5–10 cm',
-    s2bSub: 'Encuadrá el <strong>frente de la licencia</strong> completa dentro del recuadro.',
-    s2cTitle: 'Acercá la cámara al código de barras',
-    s2cSub: 'En el dorso de la licencia. Que el código llene casi todo el encuadre.'
-  }
-}
+// ── Chip de tipo de documento ──────────────────────────────────────────────────
 
-// Streams activos para sub-pasos B y C
-let vp2StreamB = null
-let vp2StreamC = null
-let vp2ScanTimer = null
-
-function vp2PararTodo() {
-  if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
-  ;[vp2StreamB, vp2StreamC].forEach(s => {
-    if (s) { s.getTracks().forEach(t => t.stop()) }
-  })
-  vp2StreamB = null; vp2StreamC = null
-  const vB = document.getElementById('cam-s2b-video')
-  const vC = document.getElementById('cam-s2c-video')
-  if (vB) { vB.srcObject = null; vB.style.display = 'none' }
-  if (vC) { vC.srcObject = null; vC.style.display = 'none' }
-}
-
-// Navegar entre sub-pasos A / B / C
-async function vp2Ir(sub) {
-  // Detener streams al salir
-  if (sub !== 'b') {
-    if (vp2StreamB) { vp2StreamB.getTracks().forEach(t => t.stop()); vp2StreamB = null }
-    const vB = document.getElementById('cam-s2b-video')
-    if (vB) { vB.srcObject = null; vB.style.display = 'none' }
-    const ph = document.getElementById('vp-s2b-placeholder')
-    if (ph) ph.style.display = ''
-  }
-  if (sub !== 'c') {
-    if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
-    if (vp2StreamC) { vp2StreamC.getTracks().forEach(t => t.stop()); vp2StreamC = null }
-    const vC = document.getElementById('cam-s2c-video')
-    if (vC) { vC.srcObject = null; vC.style.display = 'none' }
-  }
-
-  document.getElementById('vp-s2a').style.display = sub === 'a' ? '' : 'none'
-  document.getElementById('vp-s2b').style.display = sub === 'b' ? '' : 'none'
-  document.getElementById('vp-s2c').style.display = sub === 'c' ? '' : 'none'
-
-  if (sub === 'b') {
-    // Limpiar preview anterior
-    const img = document.getElementById('vp-doc-full-preview')
-    img.style.display = 'none'; img.src = ''
-    document.getElementById('vp-s2b-pre').style.display  = ''
-    document.getElementById('vp-s2b-post').style.display = 'none'
-    document.getElementById('vp-s2b-placeholder').style.display = ''
-    // Abrir cámara trasera
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
-      })
-      vp2StreamB = stream
-      const vid = document.getElementById('cam-s2b-video')
-      vid.srcObject = stream
-      vid.style.display = 'block'
-      document.getElementById('vp-s2b-placeholder').style.display = 'none'
-    } catch (e) {
-      document.getElementById('vp-s2b-placeholder').innerHTML = '<div style="font-size:12px;color:#f59e0b">⚠ Sin acceso a cámara<br>Verificá los permisos</div>'
-    }
-  }
-
-  if (sub === 'c') {
-    // Limpiar estado previo
-    const zPrev = document.getElementById('vp-doc-zona-preview')
-    zPrev.style.display = 'none'; zPrev.src = ''
-    document.getElementById('vp-barcode-result').style.display  = 'none'
-    document.getElementById('vp-decode-retry').style.display    = 'none'
-    document.getElementById('vp-decode-status').style.display   = 'none'
-    document.getElementById('vp-debug-raw').style.display       = 'none'
-    document.getElementById('vp-s2c-pre').style.display         = ''
-    document.getElementById('vp-s2c-btn-cap').style.display     = 'none'
-    document.getElementById('vp-s2c-fallback').style.display    = 'none'
-    document.getElementById('vp-s2c-scanline').style.display    = ''
-    vpAplicarConfigZona()
-    // Abrir cámara trasera a máxima resolución
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 3840 }, height: { ideal: 2160 } }
-      })
-      vp2StreamC = stream
-      const vid = document.getElementById('cam-s2c-video')
-      vid.srcObject = stream
-      vid.style.display = 'block'
-      document.getElementById('vp-zona-bg-bars').style.display = 'none'
-      document.getElementById('vp-zona-bg-mrz').style.display  = 'none'
-      document.getElementById('vp-zona-label').style.display   = 'none'
-      document.getElementById('vp-s2c-btn-cap').style.display  = ''
-      // Iniciar escaneo continuo con BarcodeDetector
-      if ('BarcodeDetector' in window) vpIniciarScanZona()
-      // Fallback: mostrar botón de foto nativa después de 8s si no detectó nada
-      setTimeout(() => {
-        if (document.getElementById('vp-s2c').style.display !== 'none' &&
-            document.getElementById('vp-barcode-result').style.display === 'none') {
-          document.getElementById('vp-s2c-fallback').style.display = ''
-        }
-      }, 8000)
-    } catch (e) {
-      // Sin cámara → mostrar solo fallback nativo
-      document.getElementById('vp-s2c-fallback').style.display = ''
-    }
-  }
-}
-
-// Aplica configuración visual de la zona según tipo seleccionado
-function vpAplicarConfigZona() {
-  const cfg = VP_DOC_CONFIG[vpTipoDoc2]
-  if (!cfg) return
-  const el = id => document.getElementById(id)
-  el('vp-s2c-title').textContent = cfg.s2cTitle
-  el('vp-s2c-sub').textContent   = ''
-  el('vp-s2c-sub').innerHTML     = cfg.s2cSub
-  el('vp-zona-label').textContent = cfg.zonaLabel
-  el('vp-zona-emoji').textContent = cfg.zonaEmoji
-  el('vp-zona-hint-title').textContent = cfg.zonaHintTitle
-  el('vp-zona-hint-desc').textContent  = cfg.zonaHintDesc
-  const bgBars = el('vp-zona-bg-bars')
-  const bgMrz  = el('vp-zona-bg-mrz')
-  if (bgBars) bgBars.style.display = cfg.zonaBg === 'bars' ? '' : 'none'
-  if (bgMrz)  bgMrz.style.display  = cfg.zonaBg === 'mrz'  ? '' : 'none'
-}
-
-// Sub-paso A: elegir tipo
-function vpSeleccionarTipoDoc(tipo) {
+function vpDocChip(tipo) {
   vpTipoDoc2 = tipo
-  vpBarcodeData = null
-  const cfg = VP_DOC_CONFIG[tipo]
-  if (!cfg) return
-
-  // Actualizar UI del sub-paso B
-  document.getElementById('vp-frame-icon').textContent = cfg.frameIcon
-  document.getElementById('vp-s2b-sub').innerHTML = cfg.s2bSub
-  document.getElementById('vp-barcode-ind').style.display  = cfg.barcodeInd ? '' : 'none'
-  document.getElementById('vp-mrz-ind').style.display      = cfg.mrzInd     ? '' : 'none'
-
-  // Limpiar foto previa
-  vpCapturedDoc = null
-
-  // Marcar botón seleccionado
-  document.querySelectorAll('.vp-doc-btn').forEach(b => b.classList.remove('selected'))
-  event && event.currentTarget && event.currentTarget.classList.add('selected')
-
-  vp2Ir('b')
+  document.querySelectorAll('.vp-chip').forEach(c => c.classList.remove('active'))
+  const chip = document.getElementById('vp-chip-' + tipo)
+  if (chip) chip.classList.add('active')
+  // Actualizar label del botón según tipo
+  const labels = {
+    DNI_AR:    'Fotografiar DNI (frente)',
+    PASAPORTE: 'Fotografiar página de datos',
+    CEDULA_VE: 'Fotografiar cédula (frente)',
+    LICENCIA:  'Fotografiar licencia (frente)'
+  }
+  const lbl = document.getElementById('vp-doc-foto-label')
+  if (lbl) lbl.textContent = labels[tipo] || 'Fotografiar documento'
 }
 
-// Sub-paso B: capturar frame del video stream
-function vpCapturarDocCompleto() {
-  const vid = document.getElementById('cam-s2b-video')
-  if (!vid || !vid.videoWidth) { showToast('Esperá que la cámara esté lista'); return }
-  const canvas = document.createElement('canvas')
-  canvas.width = vid.videoWidth; canvas.height = vid.videoHeight
-  canvas.getContext('2d').drawImage(vid, 0, 0)
-  canvas.toBlob(blob => {
-    vpCapturedDoc = blob
-    const url = URL.createObjectURL(blob)
-    const img = document.getElementById('vp-doc-full-preview')
-    img.src = url; img.style.display = 'block'
-    // Detener stream B
-    if (vp2StreamB) { vp2StreamB.getTracks().forEach(t => t.stop()); vp2StreamB = null }
-    vid.srcObject = null; vid.style.display = 'none'
-    document.getElementById('vp-s2b-placeholder').style.display = 'none'
-    document.getElementById('vp-s2b-pre').style.display  = 'none'
-    document.getElementById('vp-s2b-post').style.display = ''
-  }, 'image/jpeg', 0.92)
-}
+// ── Foto tomada: decodificar y mostrar resultado ───────────────────────────────
 
-function vpRehacerFotoCompleta() {
-  const img = document.getElementById('vp-doc-full-preview')
-  img.style.display = 'none'; img.src = ''
-  vpCapturedDoc = null
-  document.getElementById('vp-s2b-pre').style.display  = ''
-  document.getElementById('vp-s2b-post').style.display = 'none'
-  document.getElementById('vp-s2b-placeholder').style.display = ''
-  // Reabrir cámara
-  navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
-  }).then(stream => {
-    vp2StreamB = stream
-    const vid = document.getElementById('cam-s2b-video')
-    vid.srcObject = stream; vid.style.display = 'block'
-    document.getElementById('vp-s2b-placeholder').style.display = 'none'
-  }).catch(() => {})
-}
-
-// Sub-paso C: capturar frame del video stream (botón manual)
-function vpCapturarZona() {
-  const vid = document.getElementById('cam-s2c-video')
-  if (!vid || !vid.videoWidth) { showToast('Esperá que la cámara esté lista'); return }
-  if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
-  const canvas = document.createElement('canvas')
-  canvas.width = vid.videoWidth; canvas.height = vid.videoHeight
-  canvas.getContext('2d').drawImage(vid, 0, 0)
-
-  // Mostrar preview
-  const zPrev = document.getElementById('vp-doc-zona-preview')
-  zPrev.src = canvas.toDataURL('image/jpeg', 0.95)
-  zPrev.style.display = 'block'
-  document.getElementById('vp-s2c-scanline').style.display = 'none'
-  document.getElementById('vp-s2c-btn-cap').style.display  = 'none'
-  document.getElementById('vp-s2c-fallback').style.display = 'none'
-  document.getElementById('vp-decode-status').style.display = ''
-  document.getElementById('vp-decode-msg').textContent = 'Analizando imagen…'
-
-  canvas.toBlob(async blob => {
-    const file = new File([blob], 'zona.jpg', { type: 'image/jpeg' })
-    const res = await vpDecodificarImagen(file)
-    document.getElementById('vp-decode-status').style.display = 'none'
-    if (res && res.texto) {
-      vpMostrarDebugRaw(res.texto, res.formato)
-      vpProcesarCodigoBarras(res.texto)
-    } else {
-      document.getElementById('vp-decode-retry').style.display = ''
-      document.getElementById('vp-s2c-pre').style.display = ''
-      document.getElementById('vp-decode-error-msg').textContent =
-        'No se pudo leer el código. Acercate más y que llene todo el encuadre.'
-      document.getElementById('vp-s2c-scanline').style.display = ''
-      document.getElementById('vp-s2c-btn-cap').style.display  = ''
-      document.getElementById('vp-s2c-fallback').style.display = ''
-    }
-  }, 'image/jpeg', 0.95)
-}
-
-// Sub-paso C: escaneo continuo con BarcodeDetector
-async function vpIniciarScanZona() {
-  if (!('BarcodeDetector' in window)) return
-  const vid = document.getElementById('cam-s2c-video')
-  if (!vid) return
-  let formatos
-  try { formatos = await BarcodeDetector.getSupportedFormats() } catch(_) { return }
-  const detector = new BarcodeDetector({ formats: formatos })
-
-  vp2ScanTimer = setInterval(async () => {
-    if (!vp2StreamC || !vid.videoWidth) return
-    try {
-      const codes = await detector.detect(vid)
-      for (const code of codes) {
-        if (code.rawValue && code.rawValue.trim()) {
-          clearInterval(vp2ScanTimer); vp2ScanTimer = null
-          // Capturar frame en el momento de detección
-          const canvas = document.createElement('canvas')
-          canvas.width = vid.videoWidth; canvas.height = vid.videoHeight
-          canvas.getContext('2d').drawImage(vid, 0, 0)
-          if (vp2StreamC) { vp2StreamC.getTracks().forEach(t => t.stop()); vp2StreamC = null }
-          vid.srcObject = null; vid.style.display = 'none'
-          const zPrev = document.getElementById('vp-doc-zona-preview')
-          zPrev.src = canvas.toDataURL('image/jpeg', 0.9)
-          zPrev.style.display = 'block'
-          document.getElementById('vp-s2c-scanline').style.display = 'none'
-          document.getElementById('vp-s2c-btn-cap').style.display  = 'none'
-          document.getElementById('vp-s2c-fallback').style.display = 'none'
-          vpMostrarDebugRaw(code.rawValue, 'BarcodeDetector/live')
-          vpProcesarCodigoBarras(code.rawValue)
-          if (navigator.vibrate) navigator.vibrate(80)
-          return
-        }
-      }
-    } catch(_) {}
-  }, 250)
-}
-
-// Sub-paso C: foto close-up tomada → decodificar
-// Fallback: foto nativa desde file input (aparece si BarcodeDetector no funciona)
-async function vpFotoZonaTomada(input) {
+async function vpDocFotoTomada(input) {
   const file = input.files?.[0]
   if (!file) return
   try { input.value = '' } catch(_) {}
 
-  if (vp2ScanTimer) { clearInterval(vp2ScanTimer); vp2ScanTimer = null }
-  if (vp2StreamC)   { vp2StreamC.getTracks().forEach(t => t.stop()); vp2StreamC = null }
-  const vid = document.getElementById('cam-s2c-video')
-  if (vid) { vid.srcObject = null; vid.style.display = 'none' }
+  vpCapturedDoc = file
 
-  const preview = document.getElementById('vp-doc-zona-preview')
-  preview.src = URL.createObjectURL(file)
-  preview.style.display = 'block'
-  document.getElementById('vp-s2c-scanline').style.display    = 'none'
-  document.getElementById('vp-s2c-btn-cap').style.display     = 'none'
-  document.getElementById('vp-s2c-fallback').style.display    = 'none'
-  document.getElementById('vp-decode-retry').style.display    = 'none'
+  // Mostrar preview
+  const img  = document.getElementById('vp-doc-img')
+  const wrap = document.getElementById('vp-doc-preview-wrap')
+  img.src = URL.createObjectURL(file)
+  wrap.style.display = ''
+
+  // Mostrar overlay de análisis
+  const overlay = document.getElementById('vp-doc-decode-overlay')
+  const msgEl   = document.getElementById('vp-doc-decode-msg')
+  overlay.style.display = 'flex'
+  msgEl.textContent = 'Leyendo datos…'
+
+  // Ocultar resultados anteriores
   document.getElementById('vp-barcode-result').style.display  = 'none'
-  document.getElementById('vp-decode-status').style.display   = ''
-  document.getElementById('vp-decode-msg').textContent        = 'Analizando imagen…'
+  document.getElementById('vp-doc-sin-datos').style.display   = 'none'
+  document.getElementById('vp-debug-raw').style.display       = 'none'
 
-  const resultado = await vpDecodificarImagen(file)
-  document.getElementById('vp-decode-status').style.display = 'none'
+  // Decodificar
+  const res = await vpDecodificarImagen(file, msgEl)
+  overlay.style.display = 'none'
 
-  if (resultado && resultado.texto) {
-    vpMostrarDebugRaw(resultado.texto, resultado.formato)
-    vpProcesarCodigoBarras(resultado.texto)
+  if (res && res.texto) {
+    vpMostrarDebugRaw(res.texto, res.formato)
+    vpProcesarCodigoBarras(res.texto)
   } else {
-    document.getElementById('vp-decode-retry').style.display = ''
-    document.getElementById('vp-s2c-fallback').style.display = ''
-    document.getElementById('vp-decode-error-msg').textContent =
-      resultado?.error || 'No se pudo leer. Acercate más — que el código llene todo el encuadre.'
-    document.getElementById('vp-s2c-scanline').style.display = ''
+    // No se pudo leer — el verificador revisará la foto
+    document.getElementById('vp-doc-sin-datos').style.display = ''
   }
 }
 
-// Motor de decodificación en cadena: BarcodeDetector → ZBar WASM → html5-qrcode → MRZ
-async function vpDecodificarImagen(file) {
+// ── Motor de decodificación ────────────────────────────────────────────────────
+// Cadena: BarcodeDetector → ZBar WASM → html5-qrcode (ZXing)
+
+async function vpDecodificarImagen(file, msgEl) {
+  const msg = txt => { if (msgEl) msgEl.textContent = txt }
   try {
-    // 1. BarcodeDetector nativo (Chrome, Android, macOS)
+    // 1. BarcodeDetector nativo (Chrome Desktop, Android, macOS)
     if ('BarcodeDetector' in window) {
+      msg('Leyendo código de barras…')
       try {
         const formatos = await BarcodeDetector.getSupportedFormats()
         const detector = new BarcodeDetector({ formats: formatos })
         const bitmap   = await createImageBitmap(file)
         const codes    = await detector.detect(bitmap)
         bitmap.close()
-        for (const code of codes) {
-          if (code.rawValue && code.rawValue.trim()) {
-            return { texto: code.rawValue, formato: 'BarcodeDetector/' + code.format }
-          }
+        for (const c of codes) {
+          if (c.rawValue && c.rawValue.trim())
+            return { texto: c.rawValue, formato: 'BarcodeDetector/' + c.format }
         }
-        // Si detectó geometría pero rawValue vacío, intentamos crop
+        // Barcode detectado pero rawValue vacío: crop y reintento
         if (codes.length > 0) {
-          const best = codes[0]
-          const bmp2 = await createImageBitmap(file)
-          const { x, y, width, height } = best.boundingBox
-          const PAD = 0.05
-          const ix = Math.max(0, x - width * PAD)
-          const iy = Math.max(0, y - height * PAD)
-          const iw = width  * (1 + 2 * PAD)
-          const ih = height * (1 + 2 * PAD)
+          const { x, y, width: w, height: h } = codes[0].boundingBox
           try {
-            const cropBmp = await createImageBitmap(bmp2, ix, iy, iw, ih, { resizeWidth: Math.min(iw * 3, 2400), resizeHeight: Math.min(ih * 3, 1200) })
-            const codes2  = await detector.detect(cropBmp)
-            cropBmp.close()
-            for (const c2 of codes2) {
-              if (c2.rawValue && c2.rawValue.trim()) {
-                return { texto: c2.rawValue, formato: 'BarcodeDetector/crop' }
-              }
+            const bmp2 = await createImageBitmap(file)
+            const PAD  = 0.08
+            const crop = await createImageBitmap(bmp2,
+              Math.max(0, x - w*PAD), Math.max(0, y - h*PAD),
+              w*(1+2*PAD), h*(1+2*PAD),
+              { resizeWidth: Math.min(w*4, 3000), resizeHeight: Math.min(h*4, 1500) })
+            bmp2.close()
+            const codes2 = await detector.detect(crop)
+            crop.close()
+            for (const c of codes2) {
+              if (c.rawValue && c.rawValue.trim())
+                return { texto: c.rawValue, formato: 'BarcodeDetector/crop' }
             }
-          } catch (_) {}
-          bmp2.close()
+          } catch(_) {}
         }
-      } catch (_) {}
+      } catch(_) {}
     }
 
-    // 2. ZBar WASM
-    document.getElementById('vp-decode-msg').textContent = 'Probando ZBar WASM…'
+    // 2. ZBar WASM (mejor soporte PDF417)
+    msg('Probando ZBar…')
     try {
-      const resZbar = await decodificarConZBar(file)
-      if (resZbar) return { texto: resZbar.value, formato: 'ZBar/' + resZbar.type }
-    } catch (_) {}
+      const r = await decodificarConZBar(file)
+      if (r) return { texto: r.value, formato: 'ZBar/' + r.type }
+    } catch(_) {}
 
-    // 3. html5-qrcode (ZXing)
-    document.getElementById('vp-decode-msg').textContent = 'Probando decodificador alternativo…'
+    // 3. html5-qrcode / ZXing (fallback Firefox / Safari)
+    msg('Probando ZXing…')
     try {
       await cargarHtml5QrCode()
+      if (!document.getElementById('vp-decode-hidden')) {
+        const d = document.createElement('div')
+        d.id = 'vp-decode-hidden'
+        d.style.cssText = 'display:none;position:absolute;width:1px;height:1px'
+        document.body.appendChild(d)
+      }
       const scanner = new Html5Qrcode('vp-decode-hidden', { verbose: false })
       const result  = await scanner.scanFile(file, false)
       if (result && result.trim()) return { texto: result, formato: 'ZXing' }
-    } catch (e) {
-      if (e && !String(e).includes('No MultiFormat') && !String(e).includes('No QR code found') && !String(e).includes('NotFoundException')) {
-        console.warn('[vpDecode ZXing]', e)
-      }
-    }
-
-    // 4. MRZ (para pasaportes) — intentar OCR estructurado si el tipo es pasaporte
-    if (vpTipoDoc2 === 'PASAPORTE') {
-      document.getElementById('vp-decode-msg').textContent = 'Buscando zona MRZ…'
-      try {
-        const resMrz = await extraerMRZDeImagen(file)
-        if (resMrz) return { texto: resMrz, formato: 'MRZ' }
-      } catch (_) {}
+    } catch(e) {
+      const s = String(e)
+      if (!s.includes('No MultiFormat') && !s.includes('NotFoundException') && !s.includes('No QR code'))
+        console.warn('[ZXing]', e)
     }
 
     return null
-  } catch (err) {
+  } catch(err) {
     console.error('[vpDecodificarImagen]', err)
-    return { error: String(err) }
+    return null
   }
 }
 
-// ── ZBar WASM ─────────────────────────────────────────────────────────────────
+// ── ZBar WASM ──────────────────────────────────────────────────────────────────
 
 async function cargarZBar() {
   if (vpZbarLoaded) return
   await new Promise((res, rej) => {
     const s = document.createElement('script')
-    // @undecaf/zbar-wasm — WASM inlined, sin servidor
     s.src = 'https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.10.1/dist/main.js'
-    s.onload  = () => { vpZbarLoaded = true; res() }
+    s.onload = () => { vpZbarLoaded = true; res() }
     s.onerror = rej
     document.head.appendChild(s)
   })
@@ -4728,82 +4327,18 @@ async function cargarZBar() {
 
 async function decodificarConZBar(file) {
   await cargarZBar()
-  // zbar-wasm expone zbarWasm en window
   const zbar = window.zbarWasm
   if (!zbar) return null
-
-  // Convertir imagen a ImageData
   const bitmap = await createImageBitmap(file)
   const canvas = document.createElement('canvas')
-  canvas.width  = bitmap.width
-  canvas.height = bitmap.height
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(bitmap, 0, 0)
+  canvas.width = bitmap.width; canvas.height = bitmap.height
+  canvas.getContext('2d').drawImage(bitmap, 0, 0)
   bitmap.close()
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-
-  // Decodificar con ZBar
-  const symbols = await zbar.scanImageData(imageData)
+  const imageData = ctx => canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+  const symbols = await zbar.scanImageData(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height))
   if (!symbols || symbols.length === 0) return null
-
-  // Preferir PDF417
-  const pdf417 = symbols.find(s => s.type === 'PDF417' || s.typeName === 'PDF417')
-  const result  = pdf417 || symbols[0]
-  return { value: result.decode ? result.decode() : result.data, type: result.typeName || result.type }
-}
-
-// ── MRZ OCR básico con Tesseract ─────────────────────────────────────────────
-// Solo para pasaportes — extraemos la zona inferior con crop y filtramos con regex ICAO 9303
-
-async function extraerMRZDeImagen(file) {
-  try {
-    // Crop bottom 25% of image (where MRZ lives)
-    const bitmap = await createImageBitmap(file)
-    const w = bitmap.width, h = bitmap.height
-    const mrzH = Math.floor(h * 0.28)
-    const mrzBitmap = await createImageBitmap(bitmap, 0, h - mrzH, w, mrzH, {
-      resizeWidth: 1200, resizeHeight: Math.floor(mrzH * 1200 / w)
-    })
-    bitmap.close()
-
-    const canvas = document.createElement('canvas')
-    canvas.width = mrzBitmap.width; canvas.height = mrzBitmap.height
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(mrzBitmap, 0, 0)
-    mrzBitmap.close()
-
-    // Convertir a blob para Tesseract
-    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
-    const blobFile = new File([blob], 'mrz.png', { type: 'image/png' })
-
-    // Cargar Tesseract si no está
-    if (!window.Tesseract) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script')
-        s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
-        s.onload = res; s.onerror = rej
-        document.head.appendChild(s)
-      })
-    }
-
-    const result = await Tesseract.recognize(blobFile, 'ocrb+eng', {
-      tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
-      tessedit_pageseg_mode: '6'
-    })
-
-    const raw = result.data.text.replace(/\s+/g, '').toUpperCase()
-    // Buscar 2 líneas MRZ de 44 chars
-    const mrzMatch = raw.match(/[A-Z0-9<]{44,88}/)
-    if (mrzMatch) {
-      const s = mrzMatch[0]
-      if (s.length >= 88) return s.slice(0, 44) + '\n' + s.slice(44, 88)
-      if (s.length >= 44) return s.slice(0, 44)
-    }
-    return null
-  } catch (e) {
-    console.warn('[MRZ]', e)
-    return null
-  }
+  const pdf417 = symbols.find(s => s.typeName === 'PDF417' || s.type === 'PDF417') || symbols[0]
+  return { value: pdf417.decode ? pdf417.decode() : pdf417.data, type: pdf417.typeName || pdf417.type }
 }
 
 // ── Parser MRZ ICAO 9303 ──────────────────────────────────────────────────────
@@ -4811,55 +4346,37 @@ async function extraerMRZDeImagen(file) {
 function parsearMRZ(mrz) {
   const lines = mrz.trim().split('\n').map(l => l.trim())
   if (lines.length < 2) {
-    // Intentar split a la mitad
     const s = lines[0] || ''
     if (s.length >= 44) { lines[0] = s.slice(0, 44); lines[1] = s.slice(44, 88) }
     else return null
   }
   const l1 = lines[0].padEnd(44, '<')
   const l2 = lines[1].padEnd(44, '<')
-
   const decode = s => s.replace(/</g, ' ').trim()
   const decodeDate = s => {
     if (!/^\d{6}$/.test(s)) return ''
     const yy = +s.slice(0,2), mm = s.slice(2,4), dd = s.slice(4,6)
-    const yyyy = yy > 30 ? 1900 + yy : 2000 + yy
-    return `${yyyy}-${mm}-${dd}`
+    return `${yy > 30 ? 1900+yy : 2000+yy}-${mm}-${dd}`
   }
-
-  // Línea 1: tipo|país|nombre (cols 6-44)
   const nameField = l1.slice(5)
-  const sepIdx    = nameField.indexOf('<<')
-  const apellido  = sepIdx >= 0 ? decode(nameField.slice(0, sepIdx)) : ''
-  const nombre    = sepIdx >= 0 ? decode(nameField.slice(sepIdx+2).replace(/</g,' ')) : ''
-
-  // Línea 2: numDoc|checkD|pais|fechaNac|check|sexo|fechaVenc|check|personal|check
-  const numDoc   = decode(l2.slice(0,9))
-  const paisMRZ  = l2.slice(10,13)
-  const fechaNac = decodeDate(l2.slice(13,19))
-  const sexo     = l2[20] === 'F' ? 'F' : l2[20] === 'M' ? 'M' : ''
-
-  return { apellido, nombre, numDoc: numDoc.replace(/</g,''), fechaNac, sexo, pais: paisMRZ }
+  const sep = nameField.indexOf('<<')
+  const apellido = sep >= 0 ? decode(nameField.slice(0, sep)) : ''
+  const nombre   = sep >= 0 ? decode(nameField.slice(sep+2).replace(/</g,' ')) : ''
+  return {
+    apellido, nombre,
+    numDoc:   decode(l2.slice(0,9)).replace(/</g,''),
+    fechaNac: decodeDate(l2.slice(13,19)),
+    sexo:     l2[20] === 'F' ? 'F' : l2[20] === 'M' ? 'M' : '',
+    pais:     l2.slice(10,13)
+  }
 }
 
-// ── Continuar sin barcode (para cédulas venezolanas sin código) ───────────────
+// ── Continuar sin datos de barcode ────────────────────────────────────────────
 
 function vpSaltarBarcode() {
-  // Continuar con datos del paso 1 únicamente — el validador humano revisará la foto
   vpBarcodeData = { manual: true }
   vpGoStep(3)
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Div hidden para html5-qrcode (necesita un elemento DOM)
-// Se crea dinámicamente para no contaminar el HTML
-(function() {
-  if (document.getElementById('vp-decode-hidden')) return
-  const d = document.createElement('div')
-  d.id = 'vp-decode-hidden'
-  d.style.cssText = 'display:none;position:absolute;width:1px;height:1px'
-  document.body.appendChild(d)
-})()
 
 async function vpIniciarBarcodeScanner() {
   vpPararBarcodeScanner()
@@ -5601,7 +5118,7 @@ function vpShowStep(n) {
   vpPararBarcodeScanner()
   vpPararScanner()
   vpPararCamara()
-  vp2PararTodo()
+  // (streams del paso 2 ya no aplican — arquitectura simplificada)
 
   document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
   const el = document.getElementById('vp-s' + n)
