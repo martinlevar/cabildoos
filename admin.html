@@ -1971,10 +1971,12 @@ async function cargarPreguntas() {
             ? '<span class="badge active">● Activa</span>'
             : q.status === 'cerrada'
             ? '<span class="badge closed">Cerrada</span>'
-            : '<span class="badge pending">Pendiente</span>'
+            : q.status === 'pleno'
+            ? '<span class="badge">En pleno</span>'
+            : '<span class="badge pending">En agenda</span>'
           const accionBtn = q.status === 'activa'
             ? `<button class="btn btn-ghost btn-sm" onclick="cerrarPregunta('${q.id}',this)">■ Cerrar</button>`
-            : q.status !== 'cerrada'
+            : q.status === 'revision'
             ? `<button class="btn btn-green btn-sm" onclick="activarPreguntaDB('${q.id}',this)">▶ Activar</button>`
             : ''
           return `
@@ -2003,8 +2005,8 @@ async function crearPregunta() {
   const { error } = await sb.from('questions').insert({
     text:        texto,
     category:    cat,
-    status:      estado === 'activa' ? 'activa' : 'pendiente',
-    proposed_by: 'admin',
+    status:      estado === 'activa' ? 'activa' : 'revision',
+    proposed_by: null,
   })
   if (error) { toast('Error: ' + error.message); return }
   cerrarModal('nueva-pregunta')
@@ -2015,9 +2017,9 @@ async function crearPregunta() {
 
 async function aprobarPregunta(id, btn) {
   btn.disabled = true
-  const { error } = await sb.from('questions').update({ status: 'pendiente' }).eq('id', id)
+  const { error } = await sb.from('questions').update({ status: 'activa' }).eq('id', id)
   if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
-  toast('Pregunta aprobada — activala cuando quieras')
+  toast('✓ Pregunta aprobada y activada en el hemiciclo')
   cargarPreguntas()
 }
 
