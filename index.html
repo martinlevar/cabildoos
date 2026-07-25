@@ -3078,12 +3078,15 @@ function buildSeats() {
     }
     row++
   }
-  bx0=Infinity; bx1=-Infinity; by0=Infinity; by1=-Infinity
-  SEATS.forEach(s => {
-    bx0=Math.min(bx0,s.x); bx1=Math.max(bx1,s.x)
-    by0=Math.min(by0,s.y); by1=Math.max(by1,s.y)
-  })
-  MY_SEAT_POS = SEATS[Math.min(MY_SEAT, TOTAL_SEATS) - 1] || SEATS[0]
+  bx0=0; bx1=0; by0=0; by1=0  // defaults para cuando no hay butacas
+  if (SEATS.length > 0) {
+    bx0=Infinity; bx1=-Infinity; by0=Infinity; by1=-Infinity
+    SEATS.forEach(s => {
+      bx0=Math.min(bx0,s.x); bx1=Math.max(bx1,s.x)
+      by0=Math.min(by0,s.y); by1=Math.max(by1,s.y)
+    })
+  }
+  MY_SEAT_POS = SEATS[Math.min(MY_SEAT, TOTAL_SEATS) - 1] || SEATS[0] || { x: 0, y: 0 }
 }
 buildSeats()
 // Sincronizar labels con TOTAL_SEATS inicial
