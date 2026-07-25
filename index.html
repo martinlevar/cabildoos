@@ -5395,7 +5395,7 @@ async function vpPixelarDocumento(blob) {
       ctx.lineWidth = 2
       ctx.strokeRect(bx, by, bw, bh)
 
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.88)
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.72)
     }
     img.onerror = reject
     img.src = URL.createObjectURL(blob)
@@ -5731,19 +5731,22 @@ async function vpEnviarVerificacion() {
       selfieDocCensuradaB64 = await blobToB64(blobCensurado)
     }
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 30000)
+
     const resp = await fetch(`${VP_API_URL}/api/verify/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         verification_id: vpVerificationId,
-        // Solo la foto censurada — sin datos personales
         selfie_doc_b64: selfieDocCensuradaB64,
-        // Resultado booleano del análisis Gemini (sin texto, sin nombres, sin números)
         gemini_match: vpGeminiResult
-          ? (vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide)
+          ? (vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide)
           : false,
       }),
     })
+    clearTimeout(timeout)
 
     if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`)
     const data = await resp.json()
