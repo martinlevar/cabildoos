@@ -4414,10 +4414,13 @@ function vpMostrarResultadoGemini(data) {
   const fields = document.getElementById('vp-barcode-fields')
   panel.style.display = ''
 
+  const paisDeclarado = (document.getElementById('vp-pais')?.value || '').trim()
+
   fields.innerHTML = [
     `<div><span style="color:var(--mid);font-size:11px">NOMBRE</span><br><b>${ext.nombre_completo}</b></div>`,
     `<div><span style="color:var(--mid);font-size:11px">NÚMERO</span><br><b>${ext.numero_documento}</b></div>`,
     `<div><span style="color:var(--mid);font-size:11px">NACIMIENTO</span><br><b>${ext.fecha_nacimiento}</b></div>`,
+    paisDeclarado ? `<div><span style="color:var(--mid);font-size:11px">PAÍS</span><br><b>${paisDeclarado}</b></div>` : '',
     `<div style="margin-top:8px;color:#22c55e;font-size:12px">✓ Todos los datos verificados — avanzando…</div>`,
   ].join('')
 
@@ -5290,6 +5293,30 @@ async function vpSelfieDocIniciar() {
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function vpPixelarDocumento(blob) {
+  // 1. Pedir a Gemini la caja del documento en la foto
+  let docBox = null
+  try {
+    const b64 = await new Promise((res, rej) => {
+      const reader = new FileReader()
+      reader.onload  = () => res(reader.result.split(',')[1])
+      reader.onerror = rej
+      reader.readAsDataURL(blob)
+    })
+    const resp = await fetch(`${VP_API_URL}/api/verify/censurar-campos`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ image_b64: b64 }),
+    })
+    if (resp.ok) {
+      const data = await resp.json()
+      docBox = data.document || null
+      console.log('[censurar] document box:', docBox)
+    }
+  } catch(e) {
+    console.warn('[censurar] Error:', e)
+  }
+
+  // 2. Aplicar blur pesado al área del documento
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
@@ -5297,30 +5324,39 @@ async function vpPixelarDocumento(blob) {
       canvas.width  = img.width
       canvas.height = img.height
       const ctx = canvas.getContext('2d')
-
-      // Dibujar imagen completa
       ctx.drawImage(img, 0, 0)
 
-      // Pixelar el 55% inferior (donde está el documento)
-      // El pixel size da el efecto "datos borrados" sin perder la cara
-      const startY   = Math.floor(img.height * 0.42)
-      const pixSize  = Math.max(Math.floor(img.width / 18), 14)
+      // Definir zona a blurear
+      let bx, by, bw, bh
+      if (docBox && docBox.x1 != null) {
+        bx = docBox.x1 * img.width
+        by = docBox.y1 * img.height
+        bw = (docBox.x2 - docBox.x1) * img.width
+        bh = (docBox.y2 - docBox.y1) * img.height
+      } else {
+        // Fallback: zona inferior central (documento típico en selfie)
+        bx = img.width  * 0.05
+        by = img.height * 0.48
+        bw = img.width  * 0.90
+        bh = img.height * 0.48
+      }
 
-      for (let y = startY; y < img.height; y += pixSize) {
-        for (let x = 0; x < img.width; x += pixSize) {
-          const [r, g, b] = ctx.getImageData(x + pixSize/2|0, y + pixSize/2|0, 1, 1).data
+      // Pixelación tipo mosaico (más agresiva que blur CSS)
+      const pixSize = Math.max(Math.floor(Math.min(bw, bh) / 14), 10)
+      for (let py = by; py < by + bh; py += pixSize) {
+        for (let px = bx; px < bx + bw; px += pixSize) {
+          const mx = Math.min(px + (pixSize/2|0), img.width  - 1)
+          const my = Math.min(py + (pixSize/2|0), img.height - 1)
+          const [r, g, b] = ctx.getImageData(mx, my, 1, 1).data
           ctx.fillStyle = `rgb(${r},${g},${b})`
-          ctx.fillRect(x, y, pixSize, pixSize)
+          ctx.fillRect(px, py, pixSize, pixSize)
         }
       }
 
-      // Agregar franja semitransparente con texto "DATOS PROTEGIDOS"
-      ctx.fillStyle = 'rgba(0,0,0,0.45)'
-      ctx.fillRect(0, startY, img.width, 36)
-      ctx.fillStyle = '#fff'
-      ctx.font = `bold ${Math.max(img.width/28, 12)}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.fillText('DATOS DEL DOCUMENTO PROTEGIDOS', img.width/2, startY + 24)
+      // Borde sutil alrededor del área censurada
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'
+      ctx.lineWidth = 2
+      ctx.strokeRect(bx, by, bw, bh)
 
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.88)
     }
