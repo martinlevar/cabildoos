@@ -1635,7 +1635,7 @@ async function cargarIdentidades() {
   try {
     let query = sb
       .from('verifications')
-      .select('id, doc_hash, status, created_at, selfie_doc_url, doc_match')
+      .select('id, doc_hash, status, created_at, selfie_doc_url, doc_match, butaca_numero')
       .order('created_at', { ascending: false })
       .limit(100)
     if (filtroId !== 'all') query = query.eq('status', filtroId)
@@ -1691,7 +1691,10 @@ function renderIdCard(r) {
     <div class="id-actions">
       <button class="btn btn-green btn-sm" onclick="aprobarId('${r.id}',this)">✓ Aprobar</button>
       <button class="btn btn-red btn-sm"   onclick="rechazarId('${r.id}',this)">✗ Rechazar</button>
-    </div>` : `<div style="font-size:11px;color:var(--muted)">Sin acciones disponibles</div>`
+    </div>`
+  : r.status === 'aprobado' && r.butaca_numero ? `
+    <div style="font-size:12px;color:var(--green);font-weight:600">✓ #Butaca ${r.butaca_numero} asignada</div>`
+  : `<div style="font-size:11px;color:var(--muted)">Sin acciones disponibles</div>`
 
   // selfie_doc_url es una URL firmada ya generada por el backend
   const hasImg = !!r.selfie_doc_url
@@ -1778,19 +1781,15 @@ async function aprobarId(requestId, btn) {
   btn.disabled = true
   btn.textContent = 'Procesando...'
   try {
-    const { error } = await sb
-      .from('verifications')
-      .update({
-        status:      'aprobado',
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq('id', requestId)
+    // Llama la función SQL que asigna el próximo #butaca y marca como aprobado
+    const { data, error } = await sb.rpc('assign_butaca', { verification_id: requestId })
     if (error) throw error
 
+    const butaca = data
     document.getElementById('id-card-' + requestId)
       .querySelector('.id-actions').innerHTML =
-      `<span class="badge approved" style="width:100%;justify-content:center">✓ Identidad aprobada</span>`
-    toast('✓ Identidad aprobada')
+      `<span class="badge approved" style="width:100%;justify-content:center">✓ #Butaca ${butaca} asignada</span>`
+    toast(`✓ #Butaca ${butaca} asignada`)
     cargarStats()
   } catch (e) {
     console.error('Error aprobando:', e)
