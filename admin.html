@@ -1119,9 +1119,9 @@ select option { background: var(--surface); }
         </span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="filtrarId('all')" id="f-all" style="border-color:var(--accent);color:var(--accent)">Todas</button>
-          <button class="btn btn-ghost btn-sm" onclick="filtrarId('pending')" id="f-pending">Pendientes</button>
-          <button class="btn btn-ghost btn-sm" onclick="filtrarId('approved')" id="f-approved">Aprobadas</button>
-          <button class="btn btn-ghost btn-sm" onclick="filtrarId('rejected')" id="f-rejected">Rechazadas</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarId('pendiente_revision')" id="f-pendiente_revision">Pendientes</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarId('aprobado')" id="f-aprobado">Aprobadas</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarId('rechazado')" id="f-rechazado">Rechazadas</button>
         </div>
       </div>
 
@@ -1607,22 +1607,22 @@ async function cargarStats() {
   try {
     // Pendientes de verificación
     const { count: pendCount } = await sb
-      .from('verification_requests')
+      .from('verifications')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
+      .eq('status', 'pendiente_revision')
     document.getElementById('stat-pending-id').textContent = pendCount ?? '—'
     document.getElementById('badge-id').textContent = pendCount ?? 0
 
-    // Butacas asignadas
+    // Butacas asignadas (aprobadas)
     const { count: butacas } = await sb
-      .from('identities')
+      .from('verifications')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'approved')
+      .eq('status', 'aprobado')
     if (butacas !== null) {
       document.getElementById('stat-butacas').textContent = butacas.toLocaleString('es-VE')
     }
   } catch (e) {
-    console.warn('Supabase no disponible, usando datos demo:', e.message)
+    console.warn('Supabase no disponible:', e.message)
   }
 }
 
@@ -1634,8 +1634,8 @@ async function cargarIdentidades() {
 
   try {
     let query = sb
-      .from('verification_requests')
-      .select('id, identity_hash, status, created_at, anon_image_path, user_id, profiles(alias)')
+      .from('verifications')
+      .select('id, doc_hash, status, created_at, selfie_doc_url, doc_match')
       .order('created_at', { ascending: false })
       .limit(100)
     if (filtroId !== 'all') query = query.eq('status', filtroId)
@@ -1670,35 +1670,38 @@ const DEMO_IDS = [
 ]
 
 function renderIdCard(r) {
-  const hash = r.identity_hash || ''
+  const hash = r.doc_hash || ''
   const hashShort = hash.slice(0,8).toUpperCase() + '…' + hash.slice(-4).toUpperCase()
   const ago = tiempoRelativo(r.created_at)
-  // Alias del usuario si está disponible (viene del JOIN con profiles)
-  const aliasTag = r.profiles?.alias
-    ? `<span style="font-size:11px;font-weight:700;color:var(--accent);background:rgba(247,106,30,.1);padding:2px 7px;border-radius:6px">@${r.profiles.alias}</span>`
-    : ''
-  const statusBadge = {
-    pending:      '<span class="badge pending">Pendiente</span>',
-    under_review: '<span class="badge review">En revisión</span>',
-    approved:     '<span class="badge approved">✓ Aprobada</span>',
-    rejected:     '<span class="badge rejected">✗ Rechazada</span>',
-  }[r.status] || ''
 
-  const actions = r.status === 'pending' || r.status === 'under_review' ? `
+  const statusBadge = {
+    pendiente_revision: '<span class="badge pending">Pendiente</span>',
+    en_proceso:         '<span class="badge review">En proceso</span>',
+    aprobado:           '<span class="badge approved">✓ Aprobada</span>',
+    rechazado:          '<span class="badge rejected">✗ Rechazada</span>',
+  }[r.status] || `<span class="badge">${r.status}</span>`
+
+  const matchBadge = r.doc_match === true
+    ? '<span style="font-size:10px;color:#22c55e">✓ Gemini OK</span>'
+    : r.doc_match === false
+      ? '<span style="font-size:10px;color:#ef4444">✗ Gemini falló</span>'
+      : ''
+
+  const actions = (r.status === 'pendiente_revision' || r.status === 'en_proceso') ? `
     <div class="id-actions">
-      <button class="btn btn-green btn-sm" onclick="aprobarId('${r.id}','${hash}',this)">✓ Aprobar</button>
+      <button class="btn btn-green btn-sm" onclick="aprobarId('${r.id}',this)">✓ Aprobar</button>
       <button class="btn btn-red btn-sm"   onclick="rechazarId('${r.id}',this)">✗ Rechazar</button>
     </div>` : `<div style="font-size:11px;color:var(--muted)">Sin acciones disponibles</div>`
 
-  // Imagen: se carga vía signed URL tras el render (src vacío dispara onerror)
-  const hasImg = !!r.anon_image_path
+  // selfie_doc_url es una URL firmada ya generada por el backend
+  const hasImg = !!r.selfie_doc_url
 
   return `
   <div class="id-card" id="id-card-${r.id}">
     <div class="id-card-img">
-      ${hasImg ? `<img id="img-${r.id}" data-path="${r.anon_image_path}"
+      ${hasImg ? `<img id="img-${r.id}" data-url="${r.selfie_doc_url}"
            style="width:100%;height:100%;object-fit:cover;display:none;cursor:zoom-in;"
-           alt="Imagen anonimizada" title="Clic para ver en pantalla completa"
+           alt="Foto censurada" title="Clic para ver en pantalla completa"
            onclick="event.stopPropagation();abrirFullscreen(this.src)">` : ''}
       <div class="id-anon-placeholder" id="ph-${r.id}">
         <div class="id-anon-face">${hasImg ? '⏳' : '🙂'}</div>
@@ -1710,7 +1713,7 @@ function renderIdCard(r) {
     <div class="id-card-body">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
         <div class="id-hash">${hashShort}</div>
-        ${aliasTag}
+        ${matchBadge}
       </div>
       <div class="id-meta">
         ${statusBadge}
@@ -1721,34 +1724,26 @@ function renderIdCard(r) {
   </div>`
 }
 
-// Carga las signed URLs y muestra las imágenes cuando cargan
+// Carga las imágenes — selfie_doc_url ya es una URL firmada completa
 async function cargarImagenesCards() {
-  const imgs = document.querySelectorAll('.id-card-img img[data-path]')
+  const imgs = document.querySelectorAll('.id-card-img img[data-url]')
   for (const img of imgs) {
-    const path = img.getAttribute('data-path')
-    if (!path) continue
-    try {
-      const { data, error } = await sb.storage
-        .from('anon-verification')
-        .createSignedUrl(path, 3600)
-      if (error || !data?.signedUrl) continue
+    const url = img.getAttribute('data-url')
+    if (!url) continue
 
-      // Mostrar imagen cuando cargue, ocultar placeholder
-      img.onload = () => {
-        img.style.display = 'block'
-        const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
-        if (ph) ph.style.display = 'none'
+    img.onload = () => {
+      img.style.display = 'block'
+      const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
+      if (ph) ph.style.display = 'none'
+    }
+    img.onerror = () => {
+      const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
+      if (ph) {
+        ph.querySelector('.id-anon-face').textContent = '⚠'
+        ph.querySelector('div:last-child').textContent = 'Error al cargar'
       }
-      img.onerror = () => {
-        const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
-        if (ph) {
-          ph.querySelector('.id-anon-face').textContent = '⚠'
-          ph.querySelector('div:last-child').textContent = 'Error al cargar'
-        }
-      }
-      img.src = data.signedUrl
-    } catch { /* sin imagen */ }
-  }
+    }
+    img.src = url
 }
 
 function tiempoRelativo(iso) {
@@ -1777,35 +1772,24 @@ function filtrarId(f) {
 }
 
 // ── ACCIONES DE IDENTIDAD ──
-async function aprobarId(requestId, hash, btn) {
+async function aprobarId(requestId, btn) {
   if (!confirm('¿Confirmar aprobación de esta identidad?')) return
   btn.disabled = true
   btn.textContent = 'Procesando...'
   try {
-    // 1. Asignar butaca y marcar identidad como aprobada
-    const { data: seat, error: rpcErr } = await sb.rpc('assign_next_seat', { p_identity_hash: hash })
-    if (rpcErr) throw rpcErr
-
-    // 2. Actualizar estado de la solicitud
-    const { error: updErr } = await sb
-      .from('verification_requests')
-      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+    const { error } = await sb
+      .from('verifications')
+      .update({
+        status:      'aprobado',
+        reviewed_at: new Date().toISOString(),
+      })
       .eq('id', requestId)
-    if (updErr) throw updErr
-
-    // 3. Registrar decisión del validador
-    const { data: { user } } = await sb.auth.getUser()
-    await sb.from('validator_decisions').insert({
-      verification_request_id: requestId,
-      validator_id: user?.id,
-      decision: 'approved',
-      note: `Butaca #${seat} asignada`
-    })
+    if (error) throw error
 
     document.getElementById('id-card-' + requestId)
       .querySelector('.id-actions').innerHTML =
-      `<span class="badge approved" style="width:100%;justify-content:center">✓ Butaca #${seat} asignada</span>`
-    toast(`✓ Butaca #${seat} asignada — identidad aprobada`)
+      `<span class="badge approved" style="width:100%;justify-content:center">✓ Identidad aprobada</span>`
+    toast('✓ Identidad aprobada')
     cargarStats()
   } catch (e) {
     console.error('Error aprobando:', e)
@@ -1817,23 +1801,19 @@ async function aprobarId(requestId, hash, btn) {
 
 async function rechazarId(requestId, btn) {
   const motivo = prompt('Motivo del rechazo (opcional):')
-  if (motivo === null) return  // canceló el diálogo
+  if (motivo === null) return
   btn.disabled = true
   btn.textContent = 'Rechazando...'
   try {
-    const { error: updErr } = await sb
-      .from('verification_requests')
-      .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
+    const { error } = await sb
+      .from('verifications')
+      .update({
+        status:       'rechazado',
+        review_notes: motivo || null,
+        reviewed_at:  new Date().toISOString(),
+      })
       .eq('id', requestId)
-    if (updErr) throw updErr
-
-    const { data: { user } } = await sb.auth.getUser()
-    await sb.from('validator_decisions').insert({
-      verification_request_id: requestId,
-      validator_id: user?.id,
-      decision: 'rejected',
-      note: motivo || null
-    })
+    if (error) throw error
 
     document.getElementById('id-card-' + requestId)
       .querySelector('.id-actions').innerHTML =
