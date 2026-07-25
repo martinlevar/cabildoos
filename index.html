@@ -4330,22 +4330,24 @@ async function vpDocCapturarFrame(_unused) {
     const b64 = canvas.toDataURL('image/jpeg', 0.92).split(',')[1]
 
     // Datos del paso 1
-    const nombre   = (document.getElementById('vp-nombre')?.value   || '').trim()
-    const apellido = (document.getElementById('vp-apellido')?.value || '').trim()
-    const numDoc   = (document.getElementById('vp-num-doc')?.value  || '').trim()
-    const pais     = (document.getElementById('vp-pais')?.value     || '').trim()
+    const nombre    = (document.getElementById('vp-nombre')?.value    || '').trim()
+    const apellido  = (document.getElementById('vp-apellido')?.value  || '').trim()
+    const numDoc    = (document.getElementById('vp-num-doc')?.value   || '').trim()
+    const pais      = (document.getElementById('vp-pais')?.value      || '').trim()
+    const fechaNac  = (document.getElementById('vp-fecha-nac')?.value || '').trim()
 
     const resp = await fetch(`${VP_API_URL}/api/verify/documento`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        verification_id:    vpVerificationId,
-        image_b64:          b64,
-        tipo_doc:           vpTipoDoc2,
-        nombre_declarado:   nombre,
-        apellido_declarado: apellido,
-        numero_declarado:   numDoc,
-        pais_declarado:     pais,
+        verification_id:      vpVerificationId,
+        image_b64:            b64,
+        tipo_doc:             vpTipoDoc2,
+        nombre_declarado:     nombre,
+        apellido_declarado:   apellido,
+        numero_declarado:     numDoc,
+        pais_declarado:       pais,
+        fecha_nac_declarada:  fechaNac,
       }),
     })
 
@@ -4381,12 +4383,13 @@ function vpMostrarResultadoGemini(data) {
 
   // Campos obligatorios — todos deben estar presentes
   const faltantes = []
-  if (!ext.nombre_completo)  faltantes.push('nombre')
-  if (!ext.numero_documento) faltantes.push('número de documento')
-  if (!ext.fecha_nacimiento) faltantes.push('fecha de nacimiento')
+  if (!ext.nombre_completo)   faltantes.push('nombre')
+  if (!ext.numero_documento)  faltantes.push('número de documento')
+  if (!ext.fecha_nacimiento)  faltantes.push('fecha de nacimiento')
   if (!ext.es_documento_real) faltantes.push('documento físico válido')
-  if (!ext.nombre_coincide)  faltantes.push('nombre coincidente con lo declarado')
-  if (!ext.numero_coincide)  faltantes.push('número coincidente con lo declarado')
+  if (!ext.nombre_coincide)   faltantes.push('nombre coincidente con lo declarado')
+  if (!ext.numero_coincide)   faltantes.push('número coincidente con lo declarado')
+  if (!ext.fecha_coincide)    faltantes.push('fecha de nacimiento coincidente con lo declarado')
 
   if (faltantes.length > 0) {
     // Reintento obligatorio — sin opción de continuar
@@ -5263,11 +5266,45 @@ function vpLivenessIniciar() {
       })
     })
     .then(() => vpAutoCapturar('selfie', 'cam-selfie-wrap', 4))
-    .then(() => {
-      // Auto-avanzar al paso 4 después de capturar
+    .then(async () => {
+      // Verificar con Gemini que la instrucción fue cumplida
+      vpPararCamara()
+      const instrTxt = vpLivenessInstruccion?.texto || ''
+      const livenessOk = await vpVerificarLiveness(instrTxt)
+      if (!livenessOk) {
+        // Mostrar error y reintentar
+        const texto = document.getElementById('vp-liveness-texto')
+        if (texto) texto.textContent = '⚠ No se detectó la acción. Intentá de nuevo: ' + instrTxt
+        vpResetCamUI('selfie')
+        vpLivenessIniciar()
+        return
+      }
       setTimeout(() => vpGoStep(4), 800)
     })
     .catch(e => console.warn('Liveness error:', e))
+}
+
+async function vpVerificarLiveness(instruccion) {
+  try {
+    if (!vpCapturedSelfie) return true  // si no hay foto, pasar (error previo)
+    const b64 = await new Promise((res, rej) => {
+      const reader = new FileReader()
+      reader.onload  = () => res(reader.result.split(',')[1])
+      reader.onerror = rej
+      reader.readAsDataURL(vpCapturedSelfie)
+    })
+    const resp = await fetch(`${VP_API_URL}/api/verify/liveness`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_b64: b64, instruccion }),
+    })
+    if (!resp.ok) return true  // si el backend falla, no bloquear
+    const data = await resp.json()
+    return data.cumplió === true
+  } catch(e) {
+    console.warn('Error verificando liveness:', e)
+    return true  // ante error de red, no bloquear
+  }
 }
 
 // ── Paso 4: selfie sosteniendo documento con auto-capture ────────────────────
@@ -5737,15 +5774,22 @@ function vpIniciarPolling(verification_id) {
 
       if (data.status === 'aprobado' && data.butaca_numero) {
         clearInterval(_vpPollingTimer)
+        // Persistir en localStorage
+        localStorage.setItem('cabildoos_butaca', data.butaca_numero)
+        localStorage.setItem('cabildoos_vid',    verification_id)
         // Mostrar #butaca en paso 8
         const numEl = document.getElementById('vp-seat-num')
         if (numEl) numEl.textContent = data.butaca_numero
         const hashEl = document.getElementById('vp-hash-display')
         if (hashEl) hashEl.textContent = `ID: ${verification_id.slice(0,8).toUpperCase()}`
         vpShowStep(8)
+        // Actualizar UI principal
+        vpAplicarButacaEnUI(data.butaca_numero)
       } else if (data.status === 'rechazado') {
         clearInterval(_vpPollingTimer)
-        vpShowStep(6)  // volver a paso 6b (no match)
+        localStorage.removeItem('cabildoos_butaca')
+        localStorage.removeItem('cabildoos_vid')
+        vpShowStep(6)
         showToast('Tu verificación fue rechazada. Podés intentarlo de nuevo.')
       }
     } catch (e) {
@@ -5756,18 +5800,45 @@ function vpIniciarPolling(verification_id) {
 
 function vpFinalizar() {
   cerrarVerificacion()
-  // La butaca NO se asigna aquí — solo cuando el validador humano aprueba.
-  // Mostrar estado "en revisión" en el nav
-  const statusEl = document.getElementById('nav-user-status')
-  if (statusEl) {
-    statusEl.textContent = 'En revisión'
-    statusEl.className = 'pending'
+  const butaca = localStorage.getItem('cabildoos_butaca')
+  if (butaca) {
+    vpAplicarButacaEnUI(butaca)
+  } else {
+    // Aún en revisión
+    const lbl = document.getElementById('st-noident-label')
+    if (lbl) lbl.textContent = 'Verificación en revisión…'
+    showToast('Solicitud enviada — se actualizará cuando el admin apruebe')
   }
-  // El botón de landing sigue mostrando st-noident pero con texto actualizado
-  const lbl = document.getElementById('st-noident-label')
-  if (lbl) lbl.textContent = 'Verificación en revisión'
-  showToast('Solicitud enviada — te avisamos por email cuando sea aprobada')
 }
+
+function vpAplicarButacaEnUI(butacaNum) {
+  // Ocultar "sin verificar", mostrar "verificado"
+  document.getElementById('st-noident').style.display = 'none'
+  document.getElementById('st-ident').style.display   = 'flex'
+  document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = butacaNum)
+  document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + butacaNum)
+  const statusEl = document.getElementById('nav-user-status')
+  if (statusEl) { statusEl.textContent = '✓ Verificado'; statusEl.className = 'verified' }
+}
+
+// ── Restaurar estado verificado al recargar ──────────────────────────────────
+;(function vpRestaurarEstado() {
+  const butaca = localStorage.getItem('cabildoos_butaca')
+  const vid    = localStorage.getItem('cabildoos_vid')
+  if (butaca) {
+    // Butaca ya confirmada — mostrar directo
+    window.addEventListener('DOMContentLoaded', () => vpAplicarButacaEnUI(butaca))
+    return
+  }
+  if (vid) {
+    // Verificación enviada pero aún no aprobada — reanudar polling
+    window.addEventListener('DOMContentLoaded', () => {
+      const lbl = document.getElementById('st-noident-label')
+      if (lbl) lbl.textContent = 'Verificación en revisión…'
+      vpIniciarPolling(vid)
+    })
+  }
+})()
 
 let observerMode = false
 
