@@ -5499,6 +5499,7 @@ function abrirVerificacion() {
 
 function cerrarVerificacion() {
   vpPararCamara()
+  clearInterval(_vpPollingTimer)
   document.getElementById('verify-overlay').classList.remove('open')
 }
 
@@ -5715,6 +5716,7 @@ async function vpEnviarVerificacion() {
     window._vpSession.status = data.status
 
     vpShowStep(7)
+    vpIniciarPolling(vpVerificationId)
   } catch (e) {
     console.error('Error enviando verificacion:', e)
     if (btn) { btn.textContent = 'Reintentar envío'; btn.disabled = false }
@@ -5722,7 +5724,35 @@ async function vpEnviarVerificacion() {
   }
 }
 
-// vpSimularAprobacion eliminado — la aprobación ocurre desde el panel de validadores
+// ── Polling: espera aprobación del admin ─────────────────────────────────────
+let _vpPollingTimer = null
+
+function vpIniciarPolling(verification_id) {
+  clearInterval(_vpPollingTimer)
+  _vpPollingTimer = setInterval(async () => {
+    try {
+      const resp = await fetch(`${VP_API_URL}/api/verify/status/${verification_id}`)
+      if (!resp.ok) return
+      const data = await resp.json()
+
+      if (data.status === 'aprobado' && data.butaca_numero) {
+        clearInterval(_vpPollingTimer)
+        // Mostrar #butaca en paso 8
+        const numEl = document.getElementById('vp-seat-num')
+        if (numEl) numEl.textContent = data.butaca_numero
+        const hashEl = document.getElementById('vp-hash-display')
+        if (hashEl) hashEl.textContent = `ID: ${verification_id.slice(0,8).toUpperCase()}`
+        vpShowStep(8)
+      } else if (data.status === 'rechazado') {
+        clearInterval(_vpPollingTimer)
+        vpShowStep(6)  // volver a paso 6b (no match)
+        showToast('Tu verificación fue rechazada. Podés intentarlo de nuevo.')
+      }
+    } catch (e) {
+      // Error de red — seguir intentando
+    }
+  }, 8000)  // cada 8 segundos
+}
 
 function vpFinalizar() {
   cerrarVerificacion()
