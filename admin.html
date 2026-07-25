@@ -1580,6 +1580,7 @@ function navTo(id, el) {
   if (id === 'hemiciclo')     setTimeout(drawAdminHemi, 50)
   if (id === 'verificadores') cargarVerificadores()
   if (id === 'identidades') cargarIdentidades()
+  if (id === 'preguntas')  cargarPreguntas()
   if (id === 'dashboard') cargarStats()
 }
 
@@ -1687,14 +1688,19 @@ function renderIdCard(r) {
       ? '<span style="font-size:10px;color:#ef4444">✗ Gemini falló</span>'
       : ''
 
+  const elimBtn = `<button class="btn btn-ghost btn-sm" onclick="eliminarId('${r.id}',this)" title="Eliminar completamente — permite reverificar con el mismo documento" style="opacity:.6">🗑</button>`
   const actions = (r.status === 'pendiente_revision' || r.status === 'en_proceso') ? `
     <div class="id-actions">
       <button class="btn btn-green btn-sm" onclick="aprobarId('${r.id}',this)">✓ Aprobar</button>
       <button class="btn btn-red btn-sm"   onclick="rechazarId('${r.id}',this)">✗ Rechazar</button>
+      ${elimBtn}
     </div>`
   : r.status === 'aprobado' && r.butaca_numero ? `
-    <div style="font-size:12px;color:var(--green);font-weight:600">✓ #Butaca ${r.butaca_numero} asignada</div>`
-  : `<div style="font-size:11px;color:var(--muted)">Sin acciones disponibles</div>`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--green);font-weight:600">✓ #Butaca ${r.butaca_numero} asignada</span>
+      ${elimBtn}
+    </div>`
+  : `<div style="display:flex;align-items:center;gap:8px">${elimBtn}</div>`
 
   // selfie_doc_url es una URL firmada ya generada por el backend
   const hasImg = !!r.selfie_doc_url
@@ -1906,31 +1912,138 @@ function toggleSistema(key, el) {
   toast(`${labels[key] || key} ${state}`)
 }
 
-// ── NUEVA PREGUNTA ──
-function crearPregunta() {
-  const texto = document.getElementById('np-texto').value.trim()
-  const cat   = document.getElementById('np-cat').value
+// ── ELIMINAR IDENTIDAD COMPLETAMENTE ──
+async function eliminarId(requestId, btn) {
+  if (!confirm('¿Eliminar completamente este registro?\n\nEl usuario podrá volver a verificarse con el mismo documento.')) return
+  btn.disabled = true
+  try {
+    const { error } = await sb.from('verifications').delete().eq('id', requestId)
+    if (error) throw error
+    const card = document.getElementById('id-card-' + requestId)
+    if (card) card.remove()
+    toast('Registro eliminado — el usuario puede volver a verificarse')
+    cargarStats()
+  } catch (e) {
+    console.error('Error eliminando:', e)
+    btn.disabled = false
+    toast('Error al eliminar: ' + (e.message || 'intente de nuevo'))
+  }
+}
+
+// ── PREGUNTAS — Carga desde Supabase ──
+async function cargarPreguntas() {
+  const { data, error } = await sb.from('questions').select('*').order('created_at', { ascending: false })
+  if (error) { console.error('cargarPreguntas:', error); return }
+  const rows = data || []
+
+  const pendientes = rows.filter(q => q.status === 'revision')
+  const agenda     = rows.filter(q => q.status !== 'revision')
+
+  // Tabla propuestas pendientes
+  const tbPend = document.getElementById('tb-prop-pendientes')
+  if (tbPend) {
+    tbPend.innerHTML = pendientes.length === 0
+      ? '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Sin propuestas pendientes</td></tr>'
+      : pendientes.map(q => `
+          <tr>
+            <td style="max-width:360px">${q.text}</td>
+            <td><span class="tag">${q.category || '—'}</span></td>
+            <td class="mono">${q.proposed_by ? '#' + q.proposed_by : '—'}</td>
+            <td class="mono text-muted">${new Date(q.created_at).toLocaleDateString('es-VE',{day:'numeric',month:'short'})}</td>
+            <td>
+              <div class="action-row">
+                <button class="btn btn-green btn-sm" onclick="aprobarPregunta('${q.id}',this)">✓ Aprobar</button>
+                <button class="btn btn-red btn-sm"   onclick="eliminarPregunta('${q.id}',this)">✗ Rechazar</button>
+              </div>
+            </td>
+          </tr>`).join('')
+    const badge = document.getElementById('badge-preguntas')
+    if (badge) badge.textContent = pendientes.length > 0 ? pendientes.length : ''
+  }
+
+  // Tabla agenda
+  const tbAgenda = document.getElementById('tb-agenda')
+  if (tbAgenda) {
+    tbAgenda.innerHTML = agenda.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">Sin preguntas — creá una con + Agregar</td></tr>'
+      : agenda.map((q, i) => {
+          const statusBadge = q.status === 'activa'
+            ? '<span class="badge active">● Activa</span>'
+            : q.status === 'cerrada'
+            ? '<span class="badge closed">Cerrada</span>'
+            : '<span class="badge pending">Pendiente</span>'
+          const accionBtn = q.status === 'activa'
+            ? `<button class="btn btn-ghost btn-sm" onclick="cerrarPregunta('${q.id}',this)">■ Cerrar</button>`
+            : q.status !== 'cerrada'
+            ? `<button class="btn btn-green btn-sm" onclick="activarPreguntaDB('${q.id}',this)">▶ Activar</button>`
+            : ''
+          return `
+          <tr>
+            <td class="mono text-muted">${String(i+1).padStart(2,'0')}</td>
+            <td style="max-width:320px">${q.text}</td>
+            <td><span class="tag">${q.category || '—'}</span></td>
+            <td>${statusBadge}</td>
+            <td class="mono">—</td>
+            <td>
+              <div class="action-row">
+                ${accionBtn}
+                <button class="btn btn-ghost btn-sm" onclick="eliminarPregunta('${q.id}',this)" title="Eliminar">🗑</button>
+              </div>
+            </td>
+          </tr>`
+        }).join('')
+  }
+}
+
+async function crearPregunta() {
+  const texto  = document.getElementById('np-texto').value.trim()
+  const cat    = document.getElementById('np-cat').value
+  const estado = document.getElementById('np-estado').value
   if (!texto) { toast('Escribí el texto de la pregunta'); return }
-  // Agregar a la tabla de agenda
-  const tbody = document.getElementById('tb-agenda')
-  const n = tbody.querySelectorAll('tr').length + 1
-  const tr = document.createElement('tr')
-  tr.innerHTML = `
-    <td class="mono text-muted">0${n}</td>
-    <td style="max-width:320px">${texto}</td>
-    <td><span class="tag">${cat}</span></td>
-    <td><span class="badge pending">Pendiente</span></td>
-    <td class="mono">—</td>
-    <td>
-      <div class="action-row">
-        <button class="btn btn-green btn-sm" onclick="activarPregunta(this)">▶ Activar</button>
-        <button class="btn btn-ghost btn-sm">✎</button>
-      </div>
-    </td>`
-  tbody.appendChild(tr)
+  const { error } = await sb.from('questions').insert({
+    text:        texto,
+    category:    cat,
+    status:      estado === 'activa' ? 'activa' : 'pendiente',
+    proposed_by: 'admin',
+  })
+  if (error) { toast('Error: ' + error.message); return }
   cerrarModal('nueva-pregunta')
   document.getElementById('np-texto').value = ''
-  toast('Pregunta creada y agregada a la agenda')
+  toast('Pregunta creada')
+  cargarPreguntas()
+}
+
+async function aprobarPregunta(id, btn) {
+  btn.disabled = true
+  const { error } = await sb.from('questions').update({ status: 'pendiente' }).eq('id', id)
+  if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
+  toast('Pregunta aprobada — activala cuando quieras')
+  cargarPreguntas()
+}
+
+async function activarPreguntaDB(id, btn) {
+  btn.disabled = true
+  const { error } = await sb.from('questions').update({ status: 'activa' }).eq('id', id)
+  if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
+  toast('✓ Pregunta activada — aparece ahora en el hemiciclo')
+  cargarPreguntas()
+}
+
+async function cerrarPregunta(id, btn) {
+  btn.disabled = true
+  const { error } = await sb.from('questions').update({ status: 'cerrada' }).eq('id', id)
+  if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
+  toast('Pregunta cerrada')
+  cargarPreguntas()
+}
+
+async function eliminarPregunta(id, btn) {
+  if (!confirm('¿Eliminar esta pregunta definitivamente?')) return
+  btn.disabled = true
+  const { error } = await sb.from('questions').delete().eq('id', id)
+  if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
+  toast('Pregunta eliminada')
+  cargarPreguntas()
 }
 
 // ── HEMICICLO PREVIEW ──

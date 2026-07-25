@@ -5955,10 +5955,11 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); cargarPreguntasActivas() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
+  cargarPreguntasActivas()
 }
 
 let observerMode = false
@@ -6065,12 +6066,26 @@ function enviarPropuesta() {
 // ══════════════════════════════════════════════════════════════
 //  TIMER & QUESTIONS
 // ══════════════════════════════════════════════════════════════
-const PREGUNTAS = [
-  '¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?',
-  '¿Deberían celebrarse elecciones presidenciales supervisadas por la OEA?',
-  '¿Debería levantarse el estado de excepción en los estados fronterizos?',
-]
+let PREGUNTAS = [] // cargadas desde Supabase — questions WHERE status='activa'
+let PREGUNTAS_IDS = []
 let qIdx = 0, secs = 48 * 3600
+
+async function cargarPreguntasActivas() {
+  try {
+    const { data } = await sb.from('questions').select('id, text').eq('status', 'activa').order('created_at')
+    if (data && data.length > 0) {
+      PREGUNTAS     = data.map(q => q.text)
+      PREGUNTAS_IDS = data.map(q => q.id)
+      qIdx = 0
+      updateQDisplay()
+    } else {
+      const qEl = document.getElementById('q-text')
+      const nEl = document.getElementById('q-num')
+      if (qEl) qEl.textContent = 'El admin activará una pregunta pronto…'
+      if (nEl) nEl.textContent = '—'
+    }
+  } catch (e) { console.warn('cargarPreguntasActivas:', e) }
+}
 
 function fmtTime(s) {
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60
