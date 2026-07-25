@@ -3900,8 +3900,12 @@ async function _onLogin(user) {
     }
   }
 
-  // Landing: si está verificado mostrar butaca, si no mostrar "Verificar identidad"
-  if (profile?.seat_number) {
+  // Landing: VaV — si tiene butaca verificada en localStorage, respetar ese estado
+  const _vavButaca = localStorage.getItem('cabildoos_butaca')
+  if (_vavButaca) {
+    // Ya aplicado por vpRestaurarEstado — no sobreescribir con "sin verificar"
+    vpAplicarButacaEnUI(_vavButaca)
+  } else if (profile?.seat_number) {
     document.getElementById('st-noident').style.display = 'none'
     document.getElementById('st-ident').style.display   = 'flex'
     document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = profile.seat_number)
@@ -4325,7 +4329,7 @@ async function vpDocCapturarFrame(_unused) {
 
   // ── Llamar al backend (Gemini Vision) ──────────────────────────────────────
   document.getElementById('vp-doc-analizando').style.display = ''
-  document.getElementById('vp-doc-decode-msg').textContent   = 'Analizando con IA…'
+  document.getElementById('vp-doc-decode-msg').textContent   = 'Analizando con sistema VaV…'
   vpDocMsg('Enviando al servidor…')
 
   try {
@@ -5901,11 +5905,32 @@ function vpRestaurarEstado() {
     vpIniciarPolling(vid)
   }
 }
+// ── Cargar cantidad real de butacas aprobadas desde Supabase ────────────────
+async function cargarConteoReal() {
+  try {
+    const count = await sb.rpc('get_butaca_count')
+    const n = count.data ?? 0
+    if (n > 0) {
+      // Actualizar hemiciclo con el conteo real
+      TOTAL_SEATS = n
+      buildSeats()
+      const fmt = n.toLocaleString('es-VE').replace(',', '.')
+      const el = document.getElementById('citizen-num')
+      if (el) el.textContent = fmt
+      const cl = document.querySelector('.cl-sub')
+      if (cl) cl.textContent = `— ${fmt} butacas en el hemiciclo`
+    }
+  } catch (e) {
+    console.warn('cargarConteoReal:', e)
+  }
+}
+
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', vpRestaurarEstado)
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal() })
 } else {
   vpRestaurarEstado()
+  cargarConteoReal()
 }
 
 let observerMode = false
