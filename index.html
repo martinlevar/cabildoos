@@ -2103,8 +2103,9 @@ body.on-landing #social-footer.visible { display:flex; }
         <p class="cam-note">Solo captura directa — cámara frontal</p>
       </div>
       <div id="cam-selfie-post" style="display:none">
+        <p id="vp-selfie-contador" style="text-align:center;font-size:12px;color:var(--mid);margin:0 0 8px">Intento 1 de 3</p>
         <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button class="vp-btn-link" style="flex:1" onclick="vpRetomar('selfie')">↩ Retomar</button>
+          <button class="vp-btn-link" style="flex:1" onclick="vpLivenessReintentar()">↩ Otra foto</button>
           <button class="vp-btn-main" style="flex:2" onclick="vpUsarSelfie()">Usar esta →</button>
         </div>
       </div>
@@ -2126,8 +2127,9 @@ body.on-landing #social-footer.visible { display:flex; }
         <p class="cam-note">Mantené el documento visible y bien iluminado</p>
       </div>
       <div id="cam-selfiedoc-post" style="display:none">
+        <p id="vp-selfiedoc-contador" style="text-align:center;font-size:12px;color:var(--mid);margin:0 0 8px">Intento 1 de 3</p>
         <div style="display:flex;gap:8px;margin-bottom:10px">
-          <button class="vp-btn-link" style="flex:1" onclick="vpRetomar('selfiedoc')">↩ Retomar</button>
+          <button class="vp-btn-link" style="flex:1" onclick="vpSelfieDocReintentar()">↩ Otra foto</button>
           <button class="vp-btn-main" style="flex:2" onclick="vpUsarSelfieDoc()">Verificar →</button>
         </div>
       </div>
@@ -4427,19 +4429,20 @@ function vpMostrarResultadoGemini(data) {
     `<div style="margin-top:8px;color:#22c55e;font-size:12px">✓ Todos los datos verificados — avanzando…</div>`,
   ].join('')
 
-  // Ocultar botones — avance automático en 2 segundos
-  const btns = panel.querySelector('div[style*="display:flex"]')
-  if (btns) btns.style.display = 'none'
-
-  setTimeout(() => vpConfirmarBarcode(), 2000)
+  // Mostrar contador y dejar que el usuario confirme manualmente
+  const cnt = document.createElement('p')
+  cnt.style.cssText = 'text-align:center;font-size:11px;color:var(--mid);margin:8px 0 0'
+  cnt.textContent = vpReintentoDoc > 0 ? `Intento ${vpReintentoDoc + 1} de ${VP_MAX_REINTENTOS}` : ''
+  panel.appendChild(cnt)
 }
 
 function vpDocReintentar() {
+  vpReintentoDoc++
+  if (vpReintentoDoc >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
   document.getElementById('vp-barcode-result').style.display = 'none'
   document.getElementById('vp-doc-sin-datos').style.display  = 'none'
   document.getElementById('vp-debug-raw').style.display      = 'none'
   document.getElementById('vp-doc-preview').style.display    = 'none'
-  // Restaurar botón continuar por si fue ocultado en intento anterior
   const btnContinuar = document.querySelector('#vp-doc-sin-datos .vp-btn-main')
   if (btnContinuar) btnContinuar.style.display = ''
   vpBarcodeData = null
@@ -4461,6 +4464,28 @@ const VP_LIVENESS = [
   { emoji: '✌️', texto: 'Mostrá dos dedos' },
 ]
 let vpLivenessInstruccion = null
+
+// ── Contadores de reintentos (max 3 por paso) ─────────────────────────────────
+let vpReintentoDoc      = 0
+let vpReintentoSelfie   = 0
+let vpReintentoSelfieDoc = 0
+const VP_MAX_REINTENTOS = 3
+
+function vpReiniciarTodo() {
+  vpPararCamara()
+  clearInterval(_vpPollingTimer)
+  vpReintentoDoc = 0
+  vpReintentoSelfie = 0
+  vpReintentoSelfieDoc = 0
+  vpBarcodeData = null
+  vpGeminiResult = null
+  vpCapturedSelfie = null
+  vpCapturedSelfieDoc = null
+  vpAnonBlob = null
+  vpVerificationId = crypto.randomUUID()
+  vpShowStep(1)
+  showToast('Demasiados intentos — reiniciando desde el principio')
+}
 
 // ── Chip de tipo de documento ──────────────────────────────────────────────────
 
@@ -5266,22 +5291,31 @@ function vpLivenessIniciar() {
       })
     })
     .then(() => vpAutoCapturar('selfie', 'cam-selfie-wrap', 4))
-    .then(async () => {
-      // Verificar con Gemini que la instrucción fue cumplida
+    .then(() => {
+      // Mostrar preview y botones de confirmación — NO avanzar automático
       vpPararCamara()
-      const instrTxt = vpLivenessInstruccion?.texto || ''
-      const livenessOk = await vpVerificarLiveness(instrTxt)
-      if (!livenessOk) {
-        // Mostrar error y reintentar
-        const texto = document.getElementById('vp-liveness-texto')
-        if (texto) texto.textContent = '⚠ No se detectó la acción. Intentá de nuevo: ' + instrTxt
-        vpResetCamUI('selfie')
-        vpLivenessIniciar()
-        return
-      }
-      setTimeout(() => vpGoStep(4), 800)
+      document.getElementById('cam-selfie-pre').style.display  = 'none'
+      document.getElementById('cam-selfie-post').style.display = ''
+      document.getElementById('cam-selfie-preview').style.display = 'block'
+      const cnt = document.getElementById('vp-selfie-contador')
+      if (cnt) cnt.textContent = `Intento ${vpReintentoSelfie + 1} de ${VP_MAX_REINTENTOS}`
     })
     .catch(e => console.warn('Liveness error:', e))
+}
+
+function vpLivenessReintentar() {
+  vpReintentoSelfie++
+  if (vpReintentoSelfie >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
+  document.getElementById('cam-selfie-post').style.display = 'none'
+  document.getElementById('cam-selfie-preview').style.display = 'none'
+  document.getElementById('cam-selfie-pre').style.display = ''
+  vpLivenessInstruccion = VP_LIVENESS[Math.floor(Math.random() * VP_LIVENESS.length)]
+  const emoji = document.getElementById('vp-liveness-emoji')
+  const texto = document.getElementById('vp-liveness-texto')
+  if (emoji) emoji.textContent = vpLivenessInstruccion.emoji
+  if (texto) texto.textContent = vpLivenessInstruccion.texto
+  vpResetCamUI('selfie')
+  vpLivenessIniciar()
 }
 
 async function vpVerificarLiveness(instruccion) {
@@ -5318,11 +5352,26 @@ async function vpSelfieDocIniciar() {
       setTimeout(res, 2000)
     })
     await vpAutoCapturar('selfiedoc', 'cam-selfiedoc-wrap', 4)
-    // Auto-avanzar al procesamiento
-    setTimeout(() => vpUsarSelfieDoc(), 600)
+    // Mostrar preview y botones de confirmación — usuario decide
+    vpPararCamara()
+    document.getElementById('cam-selfiedoc-pre').style.display  = 'none'
+    document.getElementById('cam-selfiedoc-post').style.display = ''
+    document.getElementById('cam-selfiedoc-preview').style.display = 'block'
+    const cnt = document.getElementById('vp-selfiedoc-contador')
+    if (cnt) cnt.textContent = `Intento ${vpReintentoSelfieDoc + 1} de ${VP_MAX_REINTENTOS}`
   } catch(e) {
     console.warn('SelfieDoc error:', e)
   }
+}
+
+function vpSelfieDocReintentar() {
+  vpReintentoSelfieDoc++
+  if (vpReintentoSelfieDoc >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
+  document.getElementById('cam-selfiedoc-post').style.display = 'none'
+  document.getElementById('cam-selfiedoc-preview').style.display = 'none'
+  document.getElementById('cam-selfiedoc-pre').style.display = ''
+  vpResetCamUI('selfiedoc')
+  vpSelfieDocIniciar()
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -5479,10 +5528,24 @@ function vpUsarDoc() {
   vpGoStep(3)  // → selfie (desde paso 2b)
 }
 
-function vpUsarSelfie() {
+async function vpUsarSelfie() {
   if (!vpCapturedSelfie) return
-  vpPararCamara()
-  vpGoStep(4)  // → selfie con documento
+  const instrTxt = vpLivenessInstruccion?.texto || ''
+  const btn = document.querySelector('#cam-selfie-post .vp-btn-main')
+  if (btn) { btn.textContent = 'Verificando…'; btn.disabled = true }
+
+  const ok = await vpVerificarLiveness(instrTxt)
+  if (btn) { btn.textContent = 'Usar esta →'; btn.disabled = false }
+
+  if (!ok) {
+    vpReintentoSelfie++
+    if (vpReintentoSelfie >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
+    const cnt = document.getElementById('vp-selfie-contador')
+    if (cnt) cnt.textContent = `⚠ No se detectó la acción. Intento ${vpReintentoSelfie + 1} de ${VP_MAX_REINTENTOS}`
+    return
+  }
+  vpReintentoSelfie = 0
+  vpGoStep(4)
 }
 
 function vpUsarSelfieDoc() {
@@ -5825,23 +5888,25 @@ function vpAplicarButacaEnUI(butacaNum) {
 }
 
 // ── Restaurar estado verificado al recargar ──────────────────────────────────
-;(function vpRestaurarEstado() {
+function vpRestaurarEstado() {
   const butaca = localStorage.getItem('cabildoos_butaca')
   const vid    = localStorage.getItem('cabildoos_vid')
   if (butaca) {
-    // Butaca ya confirmada — mostrar directo
-    window.addEventListener('DOMContentLoaded', () => vpAplicarButacaEnUI(butaca))
+    vpAplicarButacaEnUI(butaca)
     return
   }
   if (vid) {
-    // Verificación enviada pero aún no aprobada — reanudar polling
-    window.addEventListener('DOMContentLoaded', () => {
-      const lbl = document.getElementById('st-noident-label')
-      if (lbl) lbl.textContent = 'Verificación en revisión…'
-      vpIniciarPolling(vid)
-    })
+    const lbl = document.getElementById('st-noident-label')
+    if (lbl) lbl.textContent = 'Verificación en revisión…'
+    vpIniciarPolling(vid)
   }
-})()
+}
+// Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', vpRestaurarEstado)
+} else {
+  vpRestaurarEstado()
+}
 
 let observerMode = false
 
