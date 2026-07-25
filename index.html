@@ -1710,7 +1710,7 @@ body.on-landing #social-footer.visible { display:flex; }
         <button class="map-btn orange" onclick="resetCamera()">↵ Mi butaca</button>
         <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">0</b> ciudadanos</div>
         <button class="map-btn" onclick="zoomOut()">Ver todo</button>
-        <button class="map-btn" onclick="iniciarSimulacion()" style="border-color:rgba(247,106,30,.4);color:var(--orange)">⚡ Simular votación</button>
+        <button class="map-btn" onclick="iniciarSimulacion()" id="btn-simular" style="border-color:rgba(247,106,30,.4);color:var(--orange)">⚡ Simular votación</button>
         <button class="map-btn" onclick="abrirHemiConfig()" id="btn-hemi-config" style="border-color:rgba(0,0,0,.15)">◈ Hemiciclo</button>
       </div>
     </div>
@@ -2953,7 +2953,7 @@ async function consultarEstado(requestId) {
 // ══════════════════════════════════════════════════════════════
 const IS_DEMO   = new URLSearchParams(location.search).has('demo')
 let TOTAL_SEATS = IS_DEMO ? 2847 : 0
-const MY_SEAT     = 7
+let MY_SEAT     = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
 
 const PHRASES = [
   'Venezuela libre y soberana.',
@@ -3089,13 +3089,20 @@ function buildSeats() {
   MY_SEAT_POS = SEATS[Math.min(MY_SEAT, TOTAL_SEATS) - 1] || SEATS[0] || { x: 0, y: 0 }
 }
 buildSeats()
-// Sincronizar labels con TOTAL_SEATS inicial
+// Sincronizar labels y ocultar botones de demo según modo
 ;(function() {
   const fmt = TOTAL_SEATS > 0 ? TOTAL_SEATS.toLocaleString('es-VE').replace(',','.') : '0'
   const el = document.getElementById('citizen-num')
   if (el) el.textContent = fmt
   const cl = document.querySelector('.cl-sub')
   if (cl) cl.textContent = `— ${fmt} butacas en el hemiciclo`
+  // En modo real: ocultar botones de demo/simulación
+  if (!IS_DEMO) {
+    const bs = document.getElementById('btn-simular')
+    const bh = document.getElementById('btn-hemi-config')
+    if (bs) bs.style.display = 'none'
+    if (bh) bh.style.display = 'none'
+  }
 })()
 
 // ══════════════════════════════════════════════════════════════
@@ -5901,6 +5908,11 @@ function vpAplicarButacaEnUI(butacaNum) {
   document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + butacaNum)
   const statusEl = document.getElementById('nav-user-status')
   if (statusEl) { statusEl.textContent = '✓ Verificado'; statusEl.className = 'verified' }
+  // Actualizar hemiciclo: mostrar mi dot naranja
+  if (!IS_DEMO) {
+    MY_SEAT = parseInt(butacaNum) || 0
+    cargarConteoReal() // refresca conteo real + mueve cámara a mi butaca
+  }
 }
 
 // ── Restaurar estado verificado al recargar ──────────────────────────────────
@@ -5923,15 +5935,18 @@ async function cargarConteoReal() {
   try {
     const count = await sb.rpc('get_butaca_count')
     const n = count.data ?? 0
-    if (n > 0) {
-      // Actualizar hemiciclo con el conteo real
-      TOTAL_SEATS = n
-      buildSeats()
-      const fmt = n.toLocaleString('es-VE').replace(',', '.')
-      const el = document.getElementById('citizen-num')
-      if (el) el.textContent = fmt
-      const cl = document.querySelector('.cl-sub')
-      if (cl) cl.textContent = `— ${fmt} butacas en el hemiciclo`
+    // Sincronizar MY_SEAT desde localStorage
+    MY_SEAT = parseInt(localStorage.getItem('cabildoos_butaca')) || 0
+    TOTAL_SEATS = Math.max(n, MY_SEAT) // mínimo: que mi butaca exista
+    buildSeats()
+    const fmt = n.toLocaleString('es-VE').replace(',', '.')
+    const el = document.getElementById('citizen-num')
+    if (el) el.textContent = fmt
+    const cl = document.querySelector('.cl-sub')
+    if (cl) cl.textContent = `— ${fmt} ${n === 1 ? 'butaca' : 'butacas'} en el hemiciclo`
+    // Si tengo butaca, centrar la cámara en mi dot naranja
+    if (MY_SEAT > 0 && MY_SEAT_POS) {
+      cam.tx = MY_SEAT_POS.x; cam.ty = MY_SEAT_POS.y; cam.ts = 3.2
     }
   } catch (e) {
     console.warn('cargarConteoReal:', e)
