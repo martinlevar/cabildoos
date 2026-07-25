@@ -1708,7 +1708,7 @@ body.on-landing #social-footer.visible { display:flex; }
       </div>
       <div class="map-controls" id="map-controls">
         <button class="map-btn orange" onclick="resetCamera()">↵ Mi butaca</button>
-        <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">2.847</b> ciudadanos</div>
+        <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">0</b> ciudadanos</div>
         <button class="map-btn" onclick="zoomOut()">Ver todo</button>
         <button class="map-btn" onclick="iniciarSimulacion()" style="border-color:rgba(247,106,30,.4);color:var(--orange)">⚡ Simular votación</button>
         <button class="map-btn" onclick="abrirHemiConfig()" id="btn-hemi-config" style="border-color:rgba(0,0,0,.15)">◈ Hemiciclo</button>
@@ -2398,7 +2398,7 @@ body.on-landing #social-footer.visible { display:flex; }
   <div class="cl-header">
     <div>
       <span class="cl-title">Ciudadanos</span>
-      <span class="cl-sub">— 2.847 butacas en el hemiciclo</span>
+      <span class="cl-sub">— 0 butacas en el hemiciclo</span>
     </div>
     <button class="cl-close" onclick="cerrarCiudadanos()">← Volver al congreso</button>
   </div>
@@ -2951,7 +2951,8 @@ async function consultarEstado(requestId) {
 // ══════════════════════════════════════════════════════════════
 //  DATA & PROFILES
 // ══════════════════════════════════════════════════════════════
-let TOTAL_SEATS = 2847
+const IS_DEMO   = new URLSearchParams(location.search).has('demo')
+let TOTAL_SEATS = IS_DEMO ? 2847 : 0
 const MY_SEAT     = 7
 
 const PHRASES = [
@@ -3085,6 +3086,14 @@ function buildSeats() {
   MY_SEAT_POS = SEATS[Math.min(MY_SEAT, TOTAL_SEATS) - 1] || SEATS[0]
 }
 buildSeats()
+// Sincronizar labels con TOTAL_SEATS inicial
+;(function() {
+  const fmt = TOTAL_SEATS > 0 ? TOTAL_SEATS.toLocaleString('es-VE').replace(',','.') : '0'
+  const el = document.getElementById('citizen-num')
+  if (el) el.textContent = fmt
+  const cl = document.querySelector('.cl-sub')
+  if (cl) cl.textContent = `— ${fmt} butacas en el hemiciclo`
+})()
 
 // ══════════════════════════════════════════════════════════════
 //  HEMICICLO CONFIG PANEL
@@ -5907,6 +5916,7 @@ function vpRestaurarEstado() {
 }
 // ── Cargar cantidad real de butacas aprobadas desde Supabase ────────────────
 async function cargarConteoReal() {
+  if (IS_DEMO) return // en modo demo, el conteo viene de TOTAL_SEATS estático
   try {
     const count = await sb.rpc('get_butaca_count')
     const n = count.data ?? 0
