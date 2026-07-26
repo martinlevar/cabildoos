@@ -1747,8 +1747,8 @@ function renderIdCard(r) {
       ? '<span style="font-size:10px;color:#ef4444">✗ Gemini falló</span>'
       : ''
 
-  const elimBtn      = `<button class="btn btn-ghost btn-sm" onclick="eliminarId('${r.id}',this)" title="Eliminar completamente — permite reverificar con el mismo documento" style="opacity:.6">🗑</button>`
-  const contactBtn   = `<button class="btn btn-ghost btn-sm" onclick="abrirModalContacto('${r.id}')" title="Pedir más información al usuario por email" style="color:#a855f7">📧</button>`
+  const elimBtn      = `<button class="btn btn-ghost btn-sm" onclick="eliminarId('${r.id}',this)" style="opacity:.7">🗑 Eliminar</button>`
+  const contactBtn   = `<button class="btn btn-ghost btn-sm" onclick="abrirModalContacto('${r.id}')" style="color:#a855f7">📧 Pedir más info</button>`
   const actions = (r.status === 'pendiente_revision' || r.status === 'en_proceso' || r.status === 'info_requerida') ? `
     <div class="id-actions">
       <button class="btn btn-green btn-sm" onclick="aprobarId('${r.id}',this)">✓ Aprobar</button>
@@ -2037,15 +2037,19 @@ async function abrirModalContacto(verificationId) {
   document.getElementById('contacto-nomail').style.display = 'none'
   document.getElementById('contacto-btn').disabled = false
 
-  // Verificar si tiene email antes de abrir el modal
-  const { data } = await sb.from('verifications').select('contact_email').eq('id', verificationId).single()
-  const tieneEmail = !!(data?.contact_email)
-  if (!tieneEmail) {
-    document.getElementById('contacto-nomail').style.display = 'block'
-    document.getElementById('contacto-btn').disabled = true
-  }
+  // Abrir el modal primero — no esperar la query
+  abrirModal('contacto')
 
-  document.getElementById('modal-contacto').classList.add('active')
+  // Verificar si tiene email (en background)
+  try {
+    const { data } = await sb.from('verifications').select('contact_email').eq('id', verificationId).single()
+    if (!data?.contact_email) {
+      document.getElementById('contacto-nomail').style.display = 'block'
+      document.getElementById('contacto-btn').disabled = true
+    }
+  } catch(e) {
+    console.warn('No se pudo verificar email:', e)
+  }
 }
 
 async function enviarMensajeContacto() {
