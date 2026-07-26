@@ -1640,16 +1640,13 @@ select option { background: var(--surface); }
     <div class="row">
       <div class="field">
         <div class="field-label">Duración de la votación</div>
-        <select id="np-duracion">
-          <option value="1">1 hora</option>
-          <option value="3">3 horas</option>
-          <option value="6">6 horas</option>
-          <option value="12">12 horas</option>
-          <option value="24" selected>24 horas</option>
-          <option value="48">48 horas</option>
-          <option value="72">72 horas</option>
-          <option value="168">1 semana</option>
-        </select>
+        <div style="display:flex;gap:8px">
+          <input type="number" id="np-duracion-val" value="24" min="1" max="9999" style="width:90px;flex-shrink:0">
+          <select id="np-duracion-unit" style="flex:1">
+            <option value="minutes">minutos</option>
+            <option value="hours" selected>horas</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="row">
@@ -2683,20 +2680,23 @@ async function cargarPreguntas() {
             : q.status === 'revision'
             ? `<button class="btn btn-green btn-sm" onclick="activarPreguntaDB('${q.id}',this)">▶ Activar</button>`
             : ''
-          const dur = q.duration_hours
-          const durLabel = !dur ? '—'
-            : dur < 24 ? `${dur}h`
-            : dur === 24 ? '24h'
-            : dur === 48 ? '48h'
-            : dur === 72 ? '72h'
-            : dur === 168 ? '1 semana'
-            : `${dur}h`
+          const durMin = q.duration_minutes || q.duration_hours * 60 || 1440
+          const durDisplay = durMin < 60
+            ? `${durMin}min`
+            : durMin % 60 === 0
+              ? `${durMin/60}h`
+              : `${Math.floor(durMin/60)}h ${durMin%60}min`
           return `
           <tr>
             <td class="mono text-muted">${String(i+1).padStart(2,'0')}</td>
             <td style="max-width:320px">${q.text}</td>
             <td><span class="tag">${q.category || '—'}</span></td>
-            <td class="mono text-muted">${durLabel}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="mono text-muted" id="dur-label-${q.id}">${durDisplay}</span>
+                <button class="btn btn-ghost btn-sm" style="padding:3px 8px;font-size:11px" onclick="editarDuracion('${q.id}', ${durMin})">✎</button>
+              </div>
+            </td>
             <td>${statusBadge}</td>
             <td class="mono">—</td>
             <td>
@@ -2714,11 +2714,13 @@ async function crearPregunta() {
   const texto    = document.getElementById('np-texto').value.trim()
   const cat      = document.getElementById('np-cat').value
   const estado   = document.getElementById('np-estado').value
-  const duracion = parseInt(document.getElementById('np-duracion').value) || 24
+  const durVal  = parseInt(document.getElementById('np-duracion-val').value) || 24
+  const durUnit = document.getElementById('np-duracion-unit').value
+  const durMin  = durUnit === 'minutes' ? durVal : durVal * 60
   if (!texto) { toast('Escribí el texto de la pregunta'); return }
   const { error } = await sb.from('questions').insert({
-    text:            texto,
-    duration_hours:  duracion,
+    text:             texto,
+    duration_minutes: durMin,
     category:    cat,
     status:      estado === 'activa' ? 'activa' : 'revision',
     proposed_by: null,
@@ -2752,6 +2754,46 @@ async function cerrarPregunta(id, btn) {
   if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
   toast('Pregunta cerrada')
   cargarPreguntas()
+}
+
+function editarDuracion(id, currentMin) {
+  // Reusar el modal de nueva pregunta adaptado como editor inline
+  // En vez de eso, usamos un prompt simple y rápido
+  const input = prompt(
+    'Nueva duración para esta pregunta:\nEjemplos: "20 minutos", "15 horas", "90 minutos"',
+    currentMin < 60 ? currentMin + ' minutos' : (currentMin / 60) + ' horas'
+  )
+  if (!input) return
+
+  // Parsear el input
+  const txt = input.trim().toLowerCase()
+  let minutes = 0
+  const matchNum = txt.match(/(\d+(?:\.\d+)?)\s*(min|minuto|hora|h\b)/)
+  if (matchNum) {
+    const val = parseFloat(matchNum[1])
+    const unit = matchNum[2]
+    minutes = (unit.startsWith('h')) ? Math.round(val * 60) : Math.round(val)
+  } else {
+    const num = parseFloat(txt)
+    if (!isNaN(num)) minutes = Math.round(num) // asume minutos si solo número
+  }
+
+  if (!minutes || minutes < 1) { toast('Duración inválida'); return }
+
+  sb.from('questions').update({ duration_minutes: minutes }).eq('id', id)
+    .then(({ error }) => {
+      if (error) { toast('Error: ' + error.message); return }
+      // Actualizar label en la tabla sin recargar todo
+      const label = document.getElementById('dur-label-' + id)
+      if (label) {
+        label.textContent = minutes < 60
+          ? `${minutes}min`
+          : minutes % 60 === 0
+            ? `${minutes/60}h`
+            : `${Math.floor(minutes/60)}h ${minutes%60}min`
+      }
+      toast('Duración actualizada')
+    })
 }
 
 async function eliminarPregunta(id, btn) {
