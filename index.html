@@ -160,7 +160,7 @@ html, body {
 }
 .q-label { font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--mid); margin-bottom:6px; }
 .q-num   { font-weight:500; color:rgba(138,138,138,.7); letter-spacing:0; }
-.q-text  { font-size:18px; font-weight:500; color:var(--dark); line-height:1.35; letter-spacing:-.2px; }
+.q-text  { font-size:26px; font-weight:600; color:var(--dark); line-height:1.3; letter-spacing:-.4px; }
 /* Nav arrows */
 .q-nav-col {
   display:flex; flex-direction:column; gap:4px; flex-shrink:0;
@@ -6146,15 +6146,17 @@ function enviarPropuesta() {
 //  TIMER & QUESTIONS
 // ══════════════════════════════════════════════════════════════
 let PREGUNTAS = [] // cargadas desde Supabase — questions WHERE status='activa'
-let PREGUNTAS_IDS = []
-let qIdx = 0, secs = 48 * 3600
+let PREGUNTAS_IDS  = []
+let PREGUNTAS_DATA = []
+let qIdx = 0, secs = 0
 
 async function cargarPreguntasActivas() {
   try {
-    const { data } = await sb.from('questions').select('id, text').eq('status', 'activa').order('created_at')
+    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes').eq('status', 'activa').order('created_at')
     if (data && data.length > 0) {
-      PREGUNTAS     = data.map(q => q.text)
-      PREGUNTAS_IDS = data.map(q => q.id)
+      PREGUNTAS      = data.map(q => q.text)
+      PREGUNTAS_IDS  = data.map(q => q.id)
+      PREGUNTAS_DATA = data
       qIdx = 0
       updateQDisplay()
     } else {
@@ -6185,7 +6187,15 @@ function updateQDisplay() {
   document.getElementById('q-text').textContent = PREGUNTAS[qIdx]
   document.getElementById('q-num').textContent  = `${qIdx + 1} / ${PREGUNTAS.length}`
   document.getElementById('dp-subtitle').textContent = PREGUNTAS[qIdx]
-  secs = 24 * 3600 * (1 + qIdx)
+  // Calcular tiempo restante desde ends_at (DB) o duration_minutes como fallback
+  const qdata = PREGUNTAS_DATA[qIdx]
+  if (qdata?.ends_at) {
+    secs = Math.max(0, Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000))
+  } else if (qdata?.duration_minutes) {
+    secs = qdata.duration_minutes * 60
+  } else {
+    secs = 0
+  }
   resetDebateRoom()
 }
 function prevPregunta() {
