@@ -4413,6 +4413,21 @@ async function vpDocCapturarFrame(_unused) {
 function vpMostrarResultadoGemini(data) {
   const ext = data.extracted || {}
 
+  const paisDeclarado = (document.getElementById('vp-pais')?.value || '').trim()
+
+  // Validación de país — bloqueante si declararon país
+  if (paisDeclarado && !ext.pais_coincide) {
+    vpDocMsg('Nacionalidad incorrecta', '#ef4444')
+    const panel = document.getElementById('vp-doc-sin-datos')
+    panel.style.display = ''
+    panel.querySelector('div').textContent = 'El documento no coincide con el país declarado'
+    panel.querySelector('p').textContent =
+      `Declaraste "${paisDeclarado}" pero el documento es de ${ext.pais_emisor || 'otro país'}. Solo podés verificarte con un documento del país que declarás.`
+    const btnContinuar = panel.querySelector('.vp-btn-main')
+    if (btnContinuar) btnContinuar.style.display = 'none'
+    return
+  }
+
   // Campos obligatorios — todos deben estar presentes
   const faltantes = []
   if (!ext.nombre_completo)   faltantes.push('nombre')
@@ -4424,38 +4439,33 @@ function vpMostrarResultadoGemini(data) {
   if (!ext.fecha_coincide)    faltantes.push('fecha de nacimiento coincidente con lo declarado')
 
   if (faltantes.length > 0) {
-    // Reintento obligatorio — sin opción de continuar
     vpDocMsg('No se pudieron leer todos los datos', '#ef4444')
     const panel = document.getElementById('vp-doc-sin-datos')
     panel.style.display = ''
     panel.querySelector('div').textContent = 'Foto insuficiente — reintentá'
     panel.querySelector('p').textContent =
       `Faltó detectar: ${faltantes.join(', ')}. Mejor iluminación, sin reflejos, documento completo en cuadro.`
-    // Mostrar observaciones de Gemini para diagnóstico
     if (ext.observaciones) {
       const obs = document.createElement('p')
       obs.style.cssText = 'color:var(--mid);font-size:11px;margin:4px 0 0;font-style:italic'
       obs.textContent = ext.observaciones
       panel.appendChild(obs)
     }
-    // Ocultar el botón "Continuar" — solo mostrar "Repetir"
     const btnContinuar = panel.querySelector('.vp-btn-main')
     if (btnContinuar) btnContinuar.style.display = 'none'
     return
   }
 
-  // Todo detectado — mostrar confirmación y avanzar automáticamente
+  // Todo OK — mostrar confirmación
   const panel = document.getElementById('vp-barcode-result')
   const fields = document.getElementById('vp-barcode-fields')
   panel.style.display = ''
-
-  const paisDeclarado = (document.getElementById('vp-pais')?.value || '').trim()
 
   fields.innerHTML = [
     `<div><span style="color:var(--mid);font-size:11px">NOMBRE</span><br><b>${ext.nombre_completo}</b></div>`,
     `<div><span style="color:var(--mid);font-size:11px">NÚMERO</span><br><b>${ext.numero_documento}</b></div>`,
     `<div><span style="color:var(--mid);font-size:11px">NACIMIENTO</span><br><b>${ext.fecha_nacimiento}</b></div>`,
-    paisDeclarado ? `<div><span style="color:var(--mid);font-size:11px">PAÍS</span><br><b>${paisDeclarado}</b></div>` : '',
+    ext.pais_emisor ? `<div><span style="color:var(--mid);font-size:11px">PAÍS</span><br><b>${ext.pais_emisor}</b></div>` : '',
     `<div style="margin-top:8px;color:#22c55e;font-size:12px">✓ Todos los datos verificados — avanzando…</div>`,
   ].join('')
 
@@ -5834,9 +5844,12 @@ async function vpEnviarVerificacion() {
       body: JSON.stringify({
         verification_id: vpVerificationId,
         selfie_doc_b64: selfieDocCensuradaB64,
-        gemini_match: vpGeminiResult
-          ? (vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide)
-          : false,
+        gemini_match: (() => {
+          if (!vpGeminiResult) return false
+          const _paisDec = (document.getElementById('vp-pais')?.value || '').trim()
+          const _paisOk  = _paisDec ? vpGeminiResult.pais_coincide : true
+          return vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide && _paisOk
+        })(),
       }),
     })
     clearTimeout(timeout)
