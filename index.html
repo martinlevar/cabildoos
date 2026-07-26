@@ -4361,9 +4361,13 @@ async function vpDocCapturarFrame(_unused) {
     const pais      = (document.getElementById('vp-pais')?.value      || '').trim()
     const fechaNac  = (document.getElementById('vp-fecha-nac')?.value || '').trim()
 
+    const docCtrl = new AbortController()
+    const docTimeout = setTimeout(() => docCtrl.abort(), 45000)
+
     const resp = await fetch(`${VP_API_URL}/api/verify/documento`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: docCtrl.signal,
       body: JSON.stringify({
         verification_id:      vpVerificationId,
         image_b64:            b64,
@@ -4375,30 +4379,33 @@ async function vpDocCapturarFrame(_unused) {
         fecha_nac_declarada:  fechaNac,
       }),
     })
+    clearTimeout(docTimeout)
 
     document.getElementById('vp-doc-analizando').style.display = 'none'
 
     if (resp.status === 409) {
-      // Documento ya usado — error bloqueante
       vpDocMsg('Este documento ya fue usado para verificar otra cuenta', '#ef4444')
       document.getElementById('vp-doc-sin-datos').style.display = ''
       document.getElementById('vp-doc-sin-datos').querySelector('p').textContent =
         'Cada documento de identidad solo puede usarse una vez en CabildoOS.'
       return
     }
-    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`)
+    if (!resp.ok) {
+      const detail = await resp.json().catch(() => ({}))
+      throw new Error(`${resp.status}: ${detail.detail || resp.statusText}`)
+    }
 
     const data = await resp.json()
     vpGeminiResult = data.extracted
-
-    // Mostrar resultado
     vpMostrarResultadoGemini(data)
 
   } catch (err) {
     document.getElementById('vp-doc-analizando').style.display = 'none'
     console.error('[vpDocCapturarFrame]', err)
-    vpDocMsg('Error de conexión — revisá tu internet', '#ef4444')
-    // Fallback: permitir continuar sin verificación automática
+    const msg = err.name === 'AbortError'
+      ? 'Tiempo agotado (45s) — intentá de nuevo'
+      : `Error: ${err.message}`
+    vpDocMsg(msg, '#ef4444')
     document.getElementById('vp-doc-sin-datos').style.display = ''
   }
 }
