@@ -981,7 +981,7 @@ select option { background: var(--surface); }
     <div class="nav-section">Contenido</div>
     <div class="nav-item" data-section="preguntas" onclick="navTo('preguntas', this)">
       <span class="icon">❓</span> Preguntas
-      <span class="nav-badge orange" id="badge-preguntas">3</span>
+      <span class="nav-badge orange" id="badge-preguntas" style="display:none"></span>
     </div>
 
     <div class="nav-section">Usuarios</div>
@@ -1185,7 +1185,7 @@ select option { background: var(--surface); }
       <div class="table-card" style="margin-bottom:20px">
         <div class="table-header">
           <span class="table-title">Propuestas ciudadanas <span class="table-count">pendientes de revisión</span></span>
-          <span class="badge pending">3 pendientes</span>
+          <span class="badge pending" id="badge-pend-label" style="display:none"></span>
         </div>
         <table>
           <thead>
@@ -1253,6 +1253,7 @@ select option { background: var(--surface); }
               <th>#</th>
               <th>Pregunta</th>
               <th>Categoría</th>
+              <th>Duración</th>
               <th>Estado</th>
               <th>Votos</th>
               <th>Acciones</th>
@@ -1635,6 +1636,21 @@ select option { background: var(--surface); }
     <div class="field">
       <div class="field-label">Texto de la pregunta</div>
       <textarea id="np-texto" placeholder="¿Debería Venezuela...?" rows="3"></textarea>
+    </div>
+    <div class="row">
+      <div class="field">
+        <div class="field-label">Duración de la votación</div>
+        <select id="np-duracion">
+          <option value="1">1 hora</option>
+          <option value="3">3 horas</option>
+          <option value="6">6 horas</option>
+          <option value="12">12 horas</option>
+          <option value="24" selected>24 horas</option>
+          <option value="48">48 horas</option>
+          <option value="72">72 horas</option>
+          <option value="168">1 semana</option>
+        </select>
+      </div>
     </div>
     <div class="row">
       <div class="field">
@@ -2638,14 +2654,22 @@ async function cargarPreguntas() {
             </td>
           </tr>`).join('')
     const badge = document.getElementById('badge-preguntas')
-    if (badge) badge.textContent = pendientes.length > 0 ? pendientes.length : ''
+    const badgeLabel = document.getElementById('badge-pend-label')
+    if (badge) {
+      badge.textContent = pendientes.length
+      badge.style.display = pendientes.length > 0 ? '' : 'none'
+    }
+    if (badgeLabel) {
+      badgeLabel.textContent = pendientes.length + ' pendientes'
+      badgeLabel.style.display = pendientes.length > 0 ? '' : 'none'
+    }
   }
 
   // Tabla agenda
   const tbAgenda = document.getElementById('tb-agenda')
   if (tbAgenda) {
     tbAgenda.innerHTML = agenda.length === 0
-      ? '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">Sin preguntas — creá una con + Agregar</td></tr>'
+      ? '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Sin preguntas — creá una con + Agregar</td></tr>'
       : agenda.map((q, i) => {
           const statusBadge = q.status === 'activa'
             ? '<span class="badge active">● Activa</span>'
@@ -2659,11 +2683,20 @@ async function cargarPreguntas() {
             : q.status === 'revision'
             ? `<button class="btn btn-green btn-sm" onclick="activarPreguntaDB('${q.id}',this)">▶ Activar</button>`
             : ''
+          const dur = q.duration_hours
+          const durLabel = !dur ? '—'
+            : dur < 24 ? `${dur}h`
+            : dur === 24 ? '24h'
+            : dur === 48 ? '48h'
+            : dur === 72 ? '72h'
+            : dur === 168 ? '1 semana'
+            : `${dur}h`
           return `
           <tr>
             <td class="mono text-muted">${String(i+1).padStart(2,'0')}</td>
             <td style="max-width:320px">${q.text}</td>
             <td><span class="tag">${q.category || '—'}</span></td>
+            <td class="mono text-muted">${durLabel}</td>
             <td>${statusBadge}</td>
             <td class="mono">—</td>
             <td>
@@ -2678,12 +2711,14 @@ async function cargarPreguntas() {
 }
 
 async function crearPregunta() {
-  const texto  = document.getElementById('np-texto').value.trim()
-  const cat    = document.getElementById('np-cat').value
-  const estado = document.getElementById('np-estado').value
+  const texto    = document.getElementById('np-texto').value.trim()
+  const cat      = document.getElementById('np-cat').value
+  const estado   = document.getElementById('np-estado').value
+  const duracion = parseInt(document.getElementById('np-duracion').value) || 24
   if (!texto) { toast('Escribí el texto de la pregunta'); return }
   const { error } = await sb.from('questions').insert({
-    text:        texto,
+    text:            texto,
+    duration_hours:  duracion,
     category:    cat,
     status:      estado === 'activa' ? 'activa' : 'revision',
     proposed_by: null,
