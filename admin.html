@@ -848,6 +848,11 @@ select option { background: var(--surface); }
       <span class="nav-badge" id="badge-id">0</span>
     </div>
 
+    <div class="nav-item" data-section="seguimiento" onclick="navTo('seguimiento', this)">
+      <span class="icon">📧</span> Seguimiento
+      <span class="nav-badge" id="badge-seguimiento" style="display:none"></span>
+    </div>
+
     <div class="nav-item admin-only" data-section="verificadores" onclick="navTo('verificadores', this)">
       <span class="icon">👥</span> Verificadores
     </div>
@@ -1132,6 +1137,28 @@ select option { background: var(--surface); }
       <div class="empty" id="id-empty" style="display:none">
         <div class="empty-icon">🔐</div>
         No hay solicitudes en esta categoría
+      </div>
+    </div>
+
+    <!-- ══════ SEGUIMIENTO ══════ -->
+    <div class="section" id="s-seguimiento">
+      <div class="table-header" style="background:transparent;padding:0 0 20px;border:none">
+        <span>
+          <span class="table-title">Pedidos de información</span>
+          <span class="table-count" id="seg-count-label">Cargando...</span>
+        </span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="filtrarSeg('all')"        id="fseg-all"       style="border-color:var(--accent);color:var(--accent)">Todos</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarSeg('esperando')"  id="fseg-esperando" >Esperando</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarSeg('re_enviado')" id="fseg-re_enviado">Re-enviado</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarSeg('aprobado')"   id="fseg-aprobado"  >Aprobados</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarSeg('cerrado')"    id="fseg-cerrado"   >Cerrados</button>
+        </div>
+      </div>
+      <div id="seg-grid" style="display:flex;flex-direction:column;gap:16px"></div>
+      <div class="empty" id="seg-empty" style="display:none">
+        <div class="empty-icon">📧</div>
+        No hay pedidos de información
       </div>
     </div>
 
@@ -1486,9 +1513,9 @@ const sb = createClient(
 
 /// ── RBAC: qué secciones puede ver cada rol ──
 const ROLE_ACCESS = {
-  admin:     ['dashboard','preguntas','identidades','verificadores','hemiciclo','votacion'],
-  validator: ['identidades'],
-  moderator: ['preguntas','identidades'],
+  admin:     ['dashboard','preguntas','identidades','seguimiento','verificadores','hemiciclo','votacion'],
+  validator: ['identidades','seguimiento'],
+  moderator: ['preguntas','identidades','seguimiento'],
 }
 
 const ROLE_LABELS = {
@@ -1589,12 +1616,13 @@ function iniciarPanel(user, role) {
 
 // ── NAV ──
 const SECTION_META = {
-  dashboard:   { title: 'Dashboard',            sub: 'Resumen general del sistema' },
-  preguntas:   { title: 'Preguntas',            sub: 'Gestión de propuestas y agenda' },
-  identidades: { title: 'Verificaciones',       sub: 'Revisión de identidades anónimas' },
+  dashboard:    { title: 'Dashboard',            sub: 'Resumen general del sistema' },
+  preguntas:    { title: 'Preguntas',            sub: 'Gestión de propuestas y agenda' },
+  identidades:  { title: 'Verificaciones',       sub: 'Revisión de identidades anónimas' },
+  seguimiento:  { title: 'Seguimiento',          sub: 'Usuarios que necesitan enviar más información' },
   verificadores:{ title: 'Verificadores',        sub: 'Gestión de acceso al panel de validación' },
-  hemiciclo:   { title: 'Hemiciclo',            sub: 'Configuración visual del recinto' },
-  votacion:    { title: 'Votación',             sub: 'Control y monitoreo de votaciones' },
+  hemiciclo:    { title: 'Hemiciclo',            sub: 'Configuración visual del recinto' },
+  votacion:     { title: 'Votación',             sub: 'Control y monitoreo de votaciones' },
 }
 
 function navTo(id, el) {
@@ -1608,9 +1636,10 @@ function navTo(id, el) {
   document.getElementById('topbar-sub').textContent   = meta.sub   || ''
   if (id === 'hemiciclo')     setTimeout(drawAdminHemi, 50)
   if (id === 'verificadores') cargarVerificadores()
-  if (id === 'identidades') cargarIdentidades()
-  if (id === 'preguntas')  cargarPreguntas()
-  if (id === 'dashboard') cargarStats()
+  if (id === 'identidades')   cargarIdentidades()
+  if (id === 'preguntas')     cargarPreguntas()
+  if (id === 'dashboard')     cargarStats()
+  if (id === 'seguimiento')   cargarSeguimiento()
 }
 
 // ── TOAST ──
@@ -2046,6 +2075,164 @@ async function enviarMensajeContacto() {
     btn.disabled = false
     btn.textContent = 'Enviar mensaje'
   }
+}
+
+// ── SEGUIMIENTO ──
+let _segFiltro = 'all'
+
+async function cargarSeguimiento() {
+  const grid  = document.getElementById('seg-grid')
+  const empty = document.getElementById('seg-empty')
+  const label = document.getElementById('seg-count-label')
+  grid.innerHTML = '<div style="color:var(--muted);padding:20px">Cargando...</div>'
+
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const token = session?.access_token
+    const url = _segFiltro === 'all'
+      ? `${API_BASE}/api/admin/contact-requests`
+      : `${API_BASE}/api/admin/contact-requests?status=${_segFiltro}`
+    const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    const items = await resp.json()
+
+    label.textContent = `${items.length} registro${items.length !== 1 ? 's' : ''}`
+
+    // Badge en el nav
+    const badge = document.getElementById('badge-seguimiento')
+    const esperando = items.filter(i => i.status === 'esperando').length
+    if (esperando > 0) { badge.textContent = esperando; badge.style.display = '' }
+    else { badge.style.display = 'none' }
+
+    if (!items.length) { grid.innerHTML = ''; empty.style.display = 'block'; return }
+    empty.style.display = 'none'
+    grid.innerHTML = items.map(renderSegCard).join('')
+    // Cargar imágenes
+    grid.querySelectorAll('img[data-url]').forEach(img => {
+      img.src = img.getAttribute('data-url')
+      img.onload = () => img.style.opacity = '1'
+    })
+  } catch(e) {
+    grid.innerHTML = `<div style="color:#ef4444;padding:20px">Error: ${e.message}</div>`
+  }
+}
+
+function filtrarSeg(f) {
+  _segFiltro = f
+  document.querySelectorAll('[id^="fseg-"]').forEach(b => b.style.borderColor = '')
+  const btn = document.getElementById('fseg-' + f)
+  if (btn) { btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)' }
+  cargarSeguimiento()
+}
+
+function renderSegCard(r) {
+  const ago = tiempoRelativo(r.created_at)
+  const statusColors = {
+    esperando:  { bg: '#f76a1e22', color: '#f76a1e', label: '⏳ Esperando' },
+    re_enviado: { bg: '#3b82f622', color: '#3b82f6', label: '📤 Re-enviado' },
+    aprobado:   { bg: '#22c55e22', color: '#22c55e', label: '✓ Aprobado' },
+    rechazado:  { bg: '#ef444422', color: '#ef4444', label: '✗ Rechazado' },
+    cerrado:    { bg: '#88888822', color: '#888',    label: '— Cerrado' },
+  }
+  const sc = statusColors[r.status] || { bg: '#88888822', color: '#888', label: r.status }
+
+  const notasHTML = (r.notas || []).map(n => `
+    <div style="padding:8px 10px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--accent)">
+      <div style="font-size:12px;color:var(--text)">${n.texto}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">${tiempoRelativo(n.ts)}</div>
+    </div>`).join('')
+
+  const faceImg = r.doc_face_url ? `
+    <img data-url="${r.doc_face_url}" alt="Cara doc"
+      style="width:56px;height:72px;object-fit:cover;border-radius:6px;opacity:0;transition:opacity .3s;border:2px solid var(--border);cursor:zoom-in"
+      onclick="abrirFullscreen(this.src)">` : `
+    <div style="width:56px;height:72px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.4">—</div>`
+
+  const selfieImg = r.selfie_doc_url ? `
+    <img data-url="${r.selfie_doc_url}" alt="Selfie"
+      style="width:56px;height:72px;object-fit:cover;border-radius:6px;opacity:0;transition:opacity .3s;border:2px solid var(--border);cursor:zoom-in"
+      onclick="abrirFullscreen(this.src)">` : `
+    <div style="width:56px;height:72px;background:var(--surface2);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;opacity:.4">—</div>`
+
+  const canClose = r.status !== 'aprobado' && r.status !== 'rechazado' && r.status !== 'cerrado'
+
+  return `
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px" id="scr-${r.id}">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        ${faceImg}
+        <div style="font-size:18px;opacity:.5;padding-bottom:4px">→</div>
+        ${selfieImg}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">📧 ${r.contact_email}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">${ago}</div>
+        <span style="font-size:11px;padding:3px 8px;border-radius:20px;background:${sc.bg};color:${sc.color}">${sc.label}</span>
+        ${r.doc_match === true ? '<span style="font-size:11px;color:#22c55e;margin-left:6px">✓ Gemini OK</span>' : r.doc_match === false ? '<span style="font-size:11px;color:#ef4444;margin-left:6px">✗ Gemini falló</span>' : ''}
+      </div>
+      ${canClose ? `
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-green btn-sm" onclick="cerrarSegCon('${r.id}','aprobado')">✓ Aprobar</button>
+        <button class="btn btn-red btn-sm"   onclick="cerrarSegCon('${r.id}','rechazado')">✗ Rechazar</button>
+        <button class="btn btn-ghost btn-sm" onclick="cerrarSegCon('${r.id}','cerrado')" title="Cerrar sin decisión">×</button>
+      </div>` : ''}
+    </div>
+
+    <!-- Mensaje enviado -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Mensaje enviado</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;border-left:3px solid #a855f7;white-space:pre-wrap">${r.mensaje_inicial}</div>
+    </div>
+
+    <!-- Notas de seguimiento -->
+    ${notasHTML ? `
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Notas de seguimiento</div>
+      <div style="display:flex;flex-direction:column;gap:6px">${notasHTML}</div>
+    </div>` : ''}
+
+    <!-- Agregar nota -->
+    ${canClose ? `
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input id="nota-${r.id}" type="text" placeholder="Agregar nota de seguimiento…"
+        style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px"
+        onkeydown="if(event.key==='Enter')agregarNotaSeg('${r.id}')">
+      <button class="btn btn-ghost btn-sm" onclick="agregarNotaSeg('${r.id}')">+ Nota</button>
+    </div>` : ''}
+  </div>`
+}
+
+async function agregarNotaSeg(id) {
+  const input = document.getElementById('nota-' + id)
+  const texto = input?.value.trim()
+  if (!texto) return
+  input.value = ''
+  const { data: { session } } = await sb.auth.getSession()
+  const token = session?.access_token
+  try {
+    await fetch(`${API_BASE}/api/admin/contact-requests/${id}/nota`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ texto }),
+    })
+    cargarSeguimiento()
+  } catch(e) { toast('Error agregando nota') }
+}
+
+async function cerrarSegCon(id, status) {
+  const labels = { aprobado: 'aprobar', rechazado: 'rechazar', cerrado: 'cerrar' }
+  if (!confirm(`¿${labels[status] || status} este caso?`)) return
+  const { data: { session } } = await sb.auth.getSession()
+  const token = session?.access_token
+  try {
+    await fetch(`${API_BASE}/api/admin/contact-requests/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status }),
+    })
+    toast(`Caso marcado como ${status}`)
+    cargarSeguimiento()
+  } catch(e) { toast('Error actualizando estado') }
 }
 
 // ── PREGUNTAS — Carga desde Supabase ──
