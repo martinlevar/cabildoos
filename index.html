@@ -2339,10 +2339,23 @@ body.on-landing #social-footer.visible { display:flex; }
       </div>
       <div class="auth-field">
         <label>Contraseña</label>
-        <input type="password" id="login-pass" placeholder="Tu contraseña" oninput="authCheckLogin()" autocomplete="current-password">
+        <input type="password" id="login-pass" placeholder="Tu contraseña" oninput="authCheckLogin()" autocomplete="current-password" onkeydown="if(event.key==='Enter'&&!document.getElementById('login-btn').disabled)iniciarSesion()">
       </div>
       <button class="auth-btn" id="login-btn" onclick="iniciarSesion()" disabled>Entrar →</button>
       <p class="auth-msg" id="login-msg"></p>
+      <button type="button" onclick="authSetTab('forgot')" style="background:none;border:none;color:var(--muted,#888);font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;padding:0">¿Olvidaste tu contraseña?</button>
+    </div>
+
+    <!-- OLVIDÉ MI CONTRASEÑA -->
+    <div id="auth-form-forgot" style="display:none">
+      <p class="auth-sub">Ingresá tu email y te mandamos un link para restablecer la contraseña.</p>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="forgot-email" placeholder="tu@email.com" oninput="authCheckForgot()" autocomplete="email">
+      </div>
+      <button class="auth-btn" id="forgot-btn" onclick="enviarResetEmail()" disabled>Enviar link →</button>
+      <p class="auth-msg" id="forgot-msg"></p>
+      <button type="button" onclick="authSetTab('login')" style="background:none;border:none;color:var(--muted,#888);font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;padding:0">← Volver al login</button>
     </div>
 
     <!-- RESET PASSWORD (se muestra automáticamente al llegar desde el link del email) -->
@@ -3957,19 +3970,24 @@ function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
 }
 function authSetTab(tab) {
+  const hideTabs = tab === 'reset' || tab === 'forgot' || tab === 'confirm'
   document.getElementById('auth-form-registro').style.display = tab === 'registro' ? '' : 'none'
   document.getElementById('auth-form-login').style.display    = tab === 'login'    ? '' : 'none'
   document.getElementById('auth-form-reset').style.display    = tab === 'reset'    ? '' : 'none'
+  document.getElementById('auth-form-forgot').style.display   = tab === 'forgot'   ? '' : 'none'
   document.getElementById('tab-registro').classList.toggle('active', tab === 'registro')
   document.getElementById('tab-login').classList.toggle('active', tab === 'login')
-  // En modo reset ocultamos las pestañas
-  document.querySelector('.auth-tabs').style.display = tab === 'reset' ? 'none' : ''
+  document.querySelector('.auth-tabs').style.display = hideTabs ? 'none' : ''
   if (tab === 'reset') {
-    // Limpiar campos
     document.getElementById('reset-pass').value = ''
     document.getElementById('reset-pass2').value = ''
     document.getElementById('reset-btn').disabled = true
     document.getElementById('reset-msg').textContent = ''
+  }
+  if (tab === 'forgot') {
+    document.getElementById('forgot-email').value = ''
+    document.getElementById('forgot-btn').disabled = true
+    document.getElementById('forgot-msg').textContent = ''
   }
 }
 
@@ -4078,13 +4096,22 @@ async function registrarse() {
   }
 
   // El trigger en Supabase crea el perfil automáticamente
-  msg.textContent = '¡Cuenta creada! Revisá tu email para confirmar.'
-  msg.className = 'auth-msg ok'
   btn.textContent = 'Crear cuenta →'
+  btn.disabled = false
 
-  // Si auto-confirmado (sin email confirmation), cerrar y continuar
-  if (data.user && !data.user.email_confirmed_at === false) {
-    setTimeout(() => cerrarAuth(), 1500)
+  if (data.user?.email_confirmed_at) {
+    // Supabase tiene email confirmation desactivado — sesión inmediata
+    setTimeout(() => cerrarAuth(), 800)
+  } else {
+    // Confirmación por email requerida — mostrar instrucciones claras
+    msg.innerHTML = `
+      <span style="display:block;margin-bottom:6px">✓ Cuenta creada correctamente.</span>
+      <span style="display:block;font-size:12px;opacity:.8">
+        Te enviamos un email a <strong>${email}</strong>.<br>
+        Abrí ese email y hacé clic en el link para activar tu cuenta.<br>
+        Después volvé aquí e iniciá sesión.
+      </span>`
+    msg.className = 'auth-msg ok'
   }
 }
 
@@ -4110,6 +4137,37 @@ async function iniciarSesion() {
   }
 
   cerrarAuth()
+}
+
+// ── Recuperar contraseña ──
+function authCheckForgot() {
+  const email = document.getElementById('forgot-email').value.trim()
+  document.getElementById('forgot-btn').disabled = !email.includes('@')
+}
+
+async function enviarResetEmail() {
+  const email = document.getElementById('forgot-email').value.trim()
+  const btn   = document.getElementById('forgot-btn')
+  const msg   = document.getElementById('forgot-msg')
+  btn.disabled = true
+  btn.textContent = 'Enviando…'
+  msg.textContent = ''
+
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/',
+  })
+
+  btn.textContent = 'Enviar link →'
+  if (error) {
+    msg.textContent = 'Error al enviar. Revisá el email ingresado.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false
+  } else {
+    msg.innerHTML = `
+      <span style="display:block;margin-bottom:4px">✓ Email enviado a <strong>${email}</strong></span>
+      <span style="font-size:12px;opacity:.8">Revisá tu bandeja (y la carpeta de spam). El link expira en 1 hora.</span>`
+    msg.className = 'auth-msg ok'
+  }
 }
 
 // ── Cerrar sesión ──
