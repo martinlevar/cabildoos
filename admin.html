@@ -53,31 +53,47 @@ body {
 }
 
 .sidebar-logo {
-  padding: 24px 20px 20px;
+  padding: 20px;
   border-bottom: 1px solid var(--border);
 }
 .sidebar-logo .logotype {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
   letter-spacing: -0.5px;
   color: var(--text);
 }
-.sidebar-logo .logotype span {
-  color: var(--accent);
-}
+.sidebar-logo .logotype span { color: var(--accent); }
 .sidebar-logo .badge {
   display: inline-block;
   margin-top: 4px;
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: var(--muted2);
-  background: var(--card);
-  border: 1px solid var(--border2);
-  padding: 2px 6px;
+  color: var(--accent);
+  background: var(--accent2);
+  border: 1px solid rgba(245,166,35,.2);
+  padding: 2px 7px;
   border-radius: 4px;
 }
+.sidebar-profile {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #f97316);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #000;
+  flex-shrink: 0;
+}
+.sidebar-profile-info { flex: 1; min-width: 0; }
+.sidebar-profile-name  { font-size: 12px; font-weight: 600; color: var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-profile-role  { font-size: 10px; color: var(--muted2); text-transform: uppercase; letter-spacing: .5px; margin-top:1px; }
 
 .sidebar-nav {
   flex: 1;
@@ -190,36 +206,79 @@ body {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 24px;
 }
 .stat-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 18px 20px;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s, transform .15s;
 }
+.stat-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 14px 14px 0 0;
+}
+.stat-card.c-orange::before { background: linear-gradient(90deg, #F5A623, #f97316); }
+.stat-card.c-green::before  { background: linear-gradient(90deg, #22c55e, #10b981); }
+.stat-card.c-red::before    { background: linear-gradient(90deg, #ef4444, #f43f5e); }
+.stat-card.c-blue::before   { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+.stat-card.c-purple::before { background: linear-gradient(90deg, #a855f7, #ec4899); }
+
+.stat-ring-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+.stat-ring-wrap svg { transform: rotate(-90deg); }
+.stat-ring-bg  { fill: none; stroke: var(--border2); stroke-width: 4; }
+.stat-ring-fg  { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .6s ease; }
+.stat-ring-val {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.stat-body { flex: 1; min-width: 0; }
 .stat-label {
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: .5px;
-  text-transform: uppercase;
+  letter-spacing: .3px;
   color: var(--muted2);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .stat-value {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
   line-height: 1;
   color: var(--text);
+  letter-spacing: -1px;
 }
 .stat-value.accent { color: var(--accent); }
 .stat-value.green  { color: var(--green); }
 .stat-value.red    { color: var(--red); }
+.stat-value.blue   { color: var(--blue); }
 .stat-sub {
   font-size: 11px;
   color: var(--muted);
-  margin-top: 6px;
+  margin-top: 5px;
 }
 
 /* ── TABLES ── */
@@ -570,6 +629,39 @@ select option { background: var(--surface); }
 }
 #admin-canvas { display: block; }
 
+/* ── USER TABLE ── */
+.user-table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.user-search {
+  display: flex; gap: 10px; align-items: center; padding: 14px 16px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+}
+.user-search input {
+  flex: 1; background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 12px; color: var(--text); font-size: 13px;
+}
+.user-row {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1fr 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.user-row:last-child { border-bottom: none; }
+.user-row:hover { background: rgba(255,255,255,.015); }
+.user-row-head {
+  font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--muted); background: rgba(255,255,255,.02);
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1fr 120px;
+  gap: 12px;
+}
+.u-alias { font-weight: 600; font-size: 13px; color: var(--text); }
+.u-email  { font-size: 12px; color: var(--muted2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.u-date   { font-size: 11px; color: var(--muted); }
+
 /* ── EMPTY STATE ── */
 .empty {
   text-align: center;
@@ -830,6 +922,13 @@ select option { background: var(--surface); }
     <div class="logotype">cabildo<span>OS</span></div>
     <div class="badge">Admin Panel</div>
   </div>
+  <div class="sidebar-profile" id="sidebar-profile" style="display:none">
+    <div class="sidebar-avatar" id="sidebar-avatar">?</div>
+    <div class="sidebar-profile-info">
+      <div class="sidebar-profile-name" id="sidebar-profile-name">—</div>
+      <div class="sidebar-profile-role" id="sidebar-profile-role">—</div>
+    </div>
+  </div>
   <nav class="sidebar-nav">
     <div class="nav-section">General</div>
     <div class="nav-item active" data-section="dashboard" onclick="navTo('dashboard', this)">
@@ -840,6 +939,12 @@ select option { background: var(--surface); }
     <div class="nav-item" data-section="preguntas" onclick="navTo('preguntas', this)">
       <span class="icon">❓</span> Preguntas
       <span class="nav-badge orange" id="badge-preguntas">3</span>
+    </div>
+
+    <div class="nav-section">Usuarios</div>
+    <div class="nav-item admin-only" data-section="usuarios" onclick="navTo('usuarios', this)">
+      <span class="icon">👤</span> Usuarios
+      <span class="nav-badge orange" id="badge-usuarios" style="display:none"></span>
     </div>
 
     <div class="nav-section">Identidades</div>
@@ -895,25 +1000,65 @@ select option { background: var(--surface); }
     <!-- ══════ DASHBOARD ══════ -->
     <div class="section active" id="s-dashboard">
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Verificaciones pendientes</div>
-          <div class="stat-value red" id="stat-pending-id">—</div>
-          <div class="stat-sub">Esperan revisión humana</div>
+        <div class="stat-card c-red">
+          <div class="stat-ring-wrap">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle class="stat-ring-bg" cx="28" cy="28" r="22"/>
+              <circle class="stat-ring-fg" id="ring-pending" cx="28" cy="28" r="22"
+                stroke="#ef4444" stroke-dasharray="138" stroke-dashoffset="138"/>
+            </svg>
+            <div class="stat-ring-val red" id="ring-pending-pct">—</div>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Verificaciones pendientes</div>
+            <div class="stat-value red" id="stat-pending-id">—</div>
+            <div class="stat-sub">Esperan revisión humana</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Butacas asignadas</div>
-          <div class="stat-value accent" id="stat-butacas">2.847</div>
-          <div class="stat-sub">Ciudadanos verificados</div>
+        <div class="stat-card c-orange">
+          <div class="stat-ring-wrap">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle class="stat-ring-bg" cx="28" cy="28" r="22"/>
+              <circle class="stat-ring-fg" id="ring-butacas" cx="28" cy="28" r="22"
+                stroke="#F5A623" stroke-dasharray="138" stroke-dashoffset="138"/>
+            </svg>
+            <div class="stat-ring-val accent" id="ring-butacas-pct">—</div>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Butacas asignadas</div>
+            <div class="stat-value accent" id="stat-butacas">—</div>
+            <div class="stat-sub">Ciudadanos verificados</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Preguntas pendientes</div>
-          <div class="stat-value" id="stat-pending-q">3</div>
-          <div class="stat-sub">Propuestas por ciudadanos</div>
+        <div class="stat-card c-purple">
+          <div class="stat-ring-wrap">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle class="stat-ring-bg" cx="28" cy="28" r="22"/>
+              <circle class="stat-ring-fg" id="ring-usuarios" cx="28" cy="28" r="22"
+                stroke="#a855f7" stroke-dasharray="138" stroke-dashoffset="138"/>
+            </svg>
+            <div class="stat-ring-val" style="color:#a855f7" id="ring-usuarios-pct">—</div>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Usuarios registrados</div>
+            <div class="stat-value" style="color:#a855f7" id="stat-usuarios">—</div>
+            <div class="stat-sub">Sin verificar aún</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Pregunta activa</div>
-          <div class="stat-value green" id="stat-active">1</div>
-          <div class="stat-sub">En votación ahora</div>
+        <div class="stat-card c-green">
+          <div class="stat-ring-wrap">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle class="stat-ring-bg" cx="28" cy="28" r="22"/>
+              <circle class="stat-ring-fg" id="ring-active" cx="28" cy="28" r="22"
+                stroke="#22c55e" stroke-dasharray="138" stroke-dashoffset="138"/>
+            </svg>
+            <div class="stat-ring-val green" id="ring-active-pct">—</div>
+          </div>
+          <div class="stat-body">
+            <div class="stat-label">Pregunta activa</div>
+            <div class="stat-value green" id="stat-active">—</div>
+            <div class="stat-sub">En votación ahora</div>
+          </div>
         </div>
       </div>
 
@@ -1159,6 +1304,39 @@ select option { background: var(--surface); }
       <div class="empty" id="seg-empty" style="display:none">
         <div class="empty-icon">📧</div>
         No hay pedidos de información
+      </div>
+    </div>
+
+    <!-- ══════ USUARIOS ══════ -->
+    <div class="section" id="s-usuarios">
+      <div class="table-header" style="background:transparent;padding:0 0 20px;border:none;flex-wrap:wrap;gap:10px">
+        <span>
+          <span class="table-title">Usuarios registrados</span>
+          <span class="table-count" id="usr-count-label">Cargando...</span>
+        </span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="filtrarUsuarios('all')"         id="fusr-all"       style="border-color:var(--accent);color:var(--accent)">Todos</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarUsuarios('sin_verificar')" id="fusr-sin"     >Sin verificar</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarUsuarios('verificado')"   id="fusr-verif"    >Verificados</button>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarUsuarios('pendiente')"    id="fusr-pend"     >En revisión</button>
+        </div>
+      </div>
+
+      <div class="user-table-wrap">
+        <div class="user-search">
+          <input type="text" id="usr-search" placeholder="Buscar por alias o email…" oninput="filtrarUsuariosLocal()">
+          <button class="btn btn-ghost btn-sm" onclick="cargarUsuarios()">↻</button>
+        </div>
+        <div class="user-row-head">
+          <div>Alias</div>
+          <div>Email</div>
+          <div>Registrado</div>
+          <div>Estado</div>
+          <div>Acciones</div>
+        </div>
+        <div id="usr-tbody">
+          <div style="padding:24px;text-align:center;color:var(--muted)">Cargando...</div>
+        </div>
       </div>
     </div>
 
@@ -1513,7 +1691,7 @@ const sb = createClient(
 
 /// ── RBAC: qué secciones puede ver cada rol ──
 const ROLE_ACCESS = {
-  admin:     ['dashboard','preguntas','identidades','seguimiento','verificadores','hemiciclo','votacion'],
+  admin:     ['dashboard','usuarios','preguntas','identidades','seguimiento','verificadores','hemiciclo','votacion'],
   validator: ['identidades','seguimiento'],
   moderator: ['preguntas','identidades','seguimiento'],
 }
@@ -1580,13 +1758,20 @@ function iniciarPanel(user, role) {
   // Ocultar login
   document.getElementById('login-screen').classList.add('hidden')
 
-  // Mostrar info de usuario en topbar
+  // Mostrar info de usuario en topbar y sidebar
   const pill  = document.getElementById('user-pill')
   const rl    = ROLE_LABELS[role] || { icon: '?', label: role }
   document.getElementById('user-role-icon').textContent  = rl.icon
   document.getElementById('user-email-label').textContent = rl.label + ' · ' + user.email.split('@')[0]
   pill.style.display = 'inline-flex'
   document.getElementById('btn-logout').style.display = 'inline-flex'
+
+  // Sidebar profile
+  const alias = user.email.split('@')[0]
+  document.getElementById('sidebar-profile').style.display = 'flex'
+  document.getElementById('sidebar-avatar').textContent = alias.slice(0,2).toUpperCase()
+  document.getElementById('sidebar-profile-name').textContent = user.email
+  document.getElementById('sidebar-profile-role').textContent = rl.label
 
   // Controlar visibilidad de nav items según rol
   const allowed = ROLE_ACCESS[role] || []
@@ -1618,6 +1803,7 @@ function iniciarPanel(user, role) {
 const SECTION_META = {
   dashboard:    { title: 'Dashboard',            sub: 'Resumen general del sistema' },
   preguntas:    { title: 'Preguntas',            sub: 'Gestión de propuestas y agenda' },
+  usuarios:     { title: 'Usuarios',             sub: 'Todos los registrados en la plataforma' },
   identidades:  { title: 'Verificaciones',       sub: 'Revisión de identidades anónimas' },
   seguimiento:  { title: 'Seguimiento',          sub: 'Usuarios que necesitan enviar más información' },
   verificadores:{ title: 'Verificadores',        sub: 'Gestión de acceso al panel de validación' },
@@ -1640,6 +1826,7 @@ function navTo(id, el) {
   if (id === 'preguntas')     cargarPreguntas()
   if (id === 'dashboard')     cargarStats()
   if (id === 'seguimiento')   cargarSeguimiento()
+  if (id === 'usuarios')      cargarUsuarios()
 }
 
 // ── TOAST ──
@@ -1662,26 +1849,43 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 })
 
 // ── SUPABASE: cargar datos ──
+function animarRing(id, pct) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const circ = 2 * Math.PI * 22  // r=22 → ~138.2
+  const offset = circ - (pct / 100) * circ
+  el.style.strokeDasharray = circ
+  el.style.strokeDashoffset = offset
+  const pctEl = document.getElementById(id + '-pct')
+  if (pctEl) pctEl.textContent = Math.round(pct) + '%'
+}
+
 async function cargarStats() {
   try {
-    // Pendientes de verificación
-    const { count: pendCount } = await sb
-      .from('verifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pendiente_revision')
-    document.getElementById('stat-pending-id').textContent = pendCount ?? '—'
-    document.getElementById('badge-id').textContent = pendCount ?? 0
+    const [{ count: pendCount }, { count: butacas }, { data: qs }] = await Promise.all([
+      sb.from('verifications').select('*', { count: 'exact', head: true }).eq('status', 'pendiente_revision'),
+      sb.from('verifications').select('*', { count: 'exact', head: true }).eq('status', 'aprobado'),
+      sb.from('questions').select('status'),
+    ])
 
-    // Butacas asignadas (aprobadas)
-    const { count: butacas } = await sb
-      .from('verifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'aprobado')
-    if (butacas !== null) {
-      document.getElementById('stat-butacas').textContent = butacas.toLocaleString('es-VE')
-    }
+    // Pendientes
+    const pend = pendCount ?? 0
+    document.getElementById('stat-pending-id').textContent = pend
+    document.getElementById('badge-id').textContent = pend
+    animarRing('ring-pending', Math.min(pend * 10, 100))
+
+    // Butacas
+    const b = butacas ?? 0
+    document.getElementById('stat-butacas').textContent = b.toLocaleString('es-VE')
+    animarRing('ring-butacas', Math.min((b / 2847) * 100, 100))
+
+    // Activas
+    const activas = (qs || []).filter(q => q.status === 'activa').length
+    document.getElementById('stat-active').textContent = activas
+    animarRing('ring-active', activas > 0 ? 100 : 0)
+
   } catch (e) {
-    console.warn('Supabase no disponible:', e.message)
+    console.warn('Stats error:', e.message)
   }
 }
 
@@ -2078,6 +2282,130 @@ async function enviarMensajeContacto() {
     document.getElementById('contacto-error').textContent = e.message || 'Error al enviar'
     btn.disabled = false
     btn.textContent = 'Enviar mensaje'
+  }
+}
+
+// ── USUARIOS ──
+let _usersCache = []
+let _usrFiltro  = 'all'
+
+async function cargarUsuarios() {
+  const tbody = document.getElementById('usr-tbody')
+  const label = document.getElementById('usr-count-label')
+  tbody.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Cargando...</div>'
+
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const token = session?.access_token
+    const resp = await fetch(`${API_BASE}/api/admin/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!resp.ok) throw new Error(`Error ${resp.status}`)
+    const users = await resp.json()
+    _usersCache = users
+
+    // Badge sin verificar en nav
+    const sinVerif = users.filter(u => u.status === 'sin_verificar').length
+    const badge = document.getElementById('badge-usuarios')
+    if (sinVerif > 0) { badge.textContent = sinVerif; badge.style.display = '' }
+    else badge.style.display = 'none'
+
+    // Stat card
+    document.getElementById('stat-usuarios').textContent = sinVerif
+    animarRing('ring-usuarios', Math.min((sinVerif / Math.max(users.length, 1)) * 100, 100))
+
+    renderUsuarios()
+    label.textContent = `${users.length} usuarios`
+  } catch(e) {
+    tbody.innerHTML = `<div style="padding:24px;color:#ef4444">${e.message.includes('SUPABASE_SERVICE_ROLE_KEY') ? '⚠ Configurá SUPABASE_SERVICE_ROLE_KEY en las variables de entorno de Render' : 'Error: ' + e.message}</div>`
+  }
+}
+
+function filtrarUsuarios(f) {
+  _usrFiltro = f
+  document.querySelectorAll('[id^="fusr-"]').forEach(b => { b.style.borderColor = ''; b.style.color = '' })
+  const btn = document.getElementById('fusr-' + f)
+  if (btn) { btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)' }
+  renderUsuarios()
+}
+
+function filtrarUsuariosLocal() {
+  renderUsuarios()
+}
+
+function renderUsuarios() {
+  const tbody = document.getElementById('usr-tbody')
+  const search = document.getElementById('usr-search')?.value.toLowerCase() || ''
+  let items = _usersCache
+
+  if (_usrFiltro !== 'all') {
+    items = items.filter(u => {
+      if (_usrFiltro === 'sin_verificar') return u.status === 'sin_verificar' || !u.status
+      if (_usrFiltro === 'verificado')    return u.status === 'verificado' || !!u.seat_number
+      if (_usrFiltro === 'pendiente')     return ['pendiente_revision','en_proceso','info_requerida'].includes(u.status)
+      return true
+    })
+  }
+  if (search) {
+    items = items.filter(u => (u.alias||'').toLowerCase().includes(search) || (u.email||'').toLowerCase().includes(search))
+  }
+
+  document.getElementById('usr-count-label').textContent = `${items.length} usuarios`
+
+  if (!items.length) {
+    tbody.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">No hay usuarios en esta categoría</div>'
+    return
+  }
+
+  const statusLabel = {
+    verificado:        '<span class="badge approved">✓ Verificado</span>',
+    sin_verificar:     '<span class="badge closed">Sin verificar</span>',
+    pendiente_revision:'<span class="badge pending">⏳ En revisión</span>',
+    en_proceso:        '<span class="badge review">En proceso</span>',
+    info_requerida:    '<span class="badge" style="background:#7c3aed22;color:#a855f7">📧 Info pedida</span>',
+  }
+
+  tbody.innerHTML = items.map(u => {
+    const st = statusLabel[u.status] || statusLabel['sin_verificar']
+    const ago = tiempoRelativo(u.created_at)
+    const noVerif = u.status === 'sin_verificar' || !u.status
+    const initials = (u.alias || u.email || '?').slice(0,2).toUpperCase()
+    return `
+    <div class="user-row" id="usr-${u.id}">
+      <div class="u-alias" style="display:flex;align-items:center;gap:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
+        ${u.alias}${u.seat_number ? ` <span style="font-size:10px;color:var(--accent)">#${u.seat_number}</span>` : ''}
+      </div>
+      <div class="u-email">${u.email}</div>
+      <div class="u-date">${ago}</div>
+      <div>${st}</div>
+      <div style="display:flex;gap:6px">
+        ${noVerif ? `<button class="btn btn-ghost btn-sm" onclick="recordarVerificacion('${u.id}','${u.email}','${u.alias}')" style="font-size:11px;white-space:nowrap">📧 Recordar</button>` : ''}
+      </div>
+    </div>`
+  }).join('')
+}
+
+async function recordarVerificacion(uid, email, alias) {
+  if (!confirm(`¿Enviar email de recordatorio a ${email}?`)) return
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const token = session?.access_token
+    const resp = await fetch(`${API_BASE}/api/admin/users/${uid}/remind`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ email, alias }),
+    })
+    if (!resp.ok) throw new Error((await resp.json()).detail)
+    toast(`📧 Recordatorio enviado a ${email}`)
+    // Marcar fila como "contactado"
+    const row = document.getElementById('usr-' + uid)
+    if (row) {
+      const btn = row.querySelector('button')
+      if (btn) { btn.textContent = '✓ Enviado'; btn.disabled = true }
+    }
+  } catch(e) {
+    toast('Error: ' + e.message)
   }
 }
 
