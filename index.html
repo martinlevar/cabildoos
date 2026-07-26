@@ -5844,6 +5844,7 @@ async function vpEnviarVerificacion() {
       body: JSON.stringify({
         verification_id: vpVerificationId,
         selfie_doc_b64: selfieDocCensuradaB64,
+        contact_email: (await sb.auth.getUser())?.data?.user?.email || null,
         gemini_match: (() => {
           if (!vpGeminiResult) return false
           const _paisDec = (document.getElementById('vp-pais')?.value || '').trim()

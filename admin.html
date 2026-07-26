@@ -1435,6 +1435,32 @@ select option { background: var(--surface); }
   </div>
 </div>
 
+<!-- MODAL: PEDIR MÁS INFORMACIÓN -->
+<div class="modal-overlay" id="modal-contacto">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-title">📧 Pedir más información</div>
+    <p style="font-size:13px;color:var(--muted2);margin-bottom:16px;line-height:1.6">
+      El usuario recibirá este mensaje en el email con el que se registró.<br>
+      El estado pasará a <strong style="color:#a855f7">📧 Info pedida</strong> — podrás aprobar o rechazar cuando responda.
+    </p>
+    <div class="field">
+      <div class="field-label">Mensaje para el usuario</div>
+      <textarea id="contacto-mensaje" rows="6"
+        style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;resize:vertical;font-family:inherit"
+        placeholder="Ej: Necesitamos que reenvíes la foto de tu documento con mejor iluminación. El número no fue legible en el intento anterior."></textarea>
+    </div>
+    <div id="contacto-nomail" style="display:none;font-size:12px;color:#ef4444;margin-top:8px;padding:8px;background:#ef444411;border-radius:6px">
+      ⚠ Este usuario no proporcionó email de contacto. No se puede enviar el mensaje.
+    </div>
+    <div class="login-error" id="contacto-error" style="margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="cerrarModal('contacto')">Cancelar</button>
+      <button class="btn btn-primary" id="contacto-btn" onclick="enviarMensajeContacto()"
+        style="background:#7c3aed;border-color:#7c3aed">Enviar mensaje</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
@@ -1448,6 +1474,9 @@ select option { background: var(--surface); }
 </div>
 
 <script>
+// ── API Backend ──
+const API_BASE = 'https://cabildoos-api.onrender.com'
+
 // ── Supabase ──
 const { createClient } = window.supabase
 const sb = createClient(
@@ -1678,6 +1707,7 @@ function renderIdCard(r) {
   const statusBadge = {
     pendiente_revision: '<span class="badge pending">Pendiente</span>',
     en_proceso:         '<span class="badge review">En proceso</span>',
+    info_requerida:     '<span class="badge" style="background:#7c3aed22;color:#a855f7;border:1px solid #7c3aed44">📧 Info pedida</span>',
     aprobado:           '<span class="badge approved">✓ Aprobada</span>',
     rechazado:          '<span class="badge rejected">✗ Rechazada</span>',
   }[r.status] || `<span class="badge">${r.status}</span>`
@@ -1688,11 +1718,13 @@ function renderIdCard(r) {
       ? '<span style="font-size:10px;color:#ef4444">✗ Gemini falló</span>'
       : ''
 
-  const elimBtn = `<button class="btn btn-ghost btn-sm" onclick="eliminarId('${r.id}',this)" title="Eliminar completamente — permite reverificar con el mismo documento" style="opacity:.6">🗑</button>`
-  const actions = (r.status === 'pendiente_revision' || r.status === 'en_proceso') ? `
+  const elimBtn      = `<button class="btn btn-ghost btn-sm" onclick="eliminarId('${r.id}',this)" title="Eliminar completamente — permite reverificar con el mismo documento" style="opacity:.6">🗑</button>`
+  const contactBtn   = `<button class="btn btn-ghost btn-sm" onclick="abrirModalContacto('${r.id}')" title="Pedir más información al usuario por email" style="color:#a855f7">📧</button>`
+  const actions = (r.status === 'pendiente_revision' || r.status === 'en_proceso' || r.status === 'info_requerida') ? `
     <div class="id-actions">
       <button class="btn btn-green btn-sm" onclick="aprobarId('${r.id}',this)">✓ Aprobar</button>
       <button class="btn btn-red btn-sm"   onclick="rechazarId('${r.id}',this)">✗ Rechazar</button>
+      ${contactBtn}
       ${elimBtn}
     </div>`
   : r.status === 'aprobado' && r.butaca_numero ? `
@@ -1963,6 +1995,56 @@ async function eliminarId(requestId, btn) {
     console.error('Error eliminando:', e)
     btn.disabled = false
     toast('Error al eliminar: ' + (e.message || 'intente de nuevo'))
+  }
+}
+
+// ── CONTACTAR USUARIO ──
+let _contactoVerificationId = null
+
+async function abrirModalContacto(verificationId) {
+  _contactoVerificationId = verificationId
+  document.getElementById('contacto-mensaje').value = ''
+  document.getElementById('contacto-error').textContent = ''
+  document.getElementById('contacto-nomail').style.display = 'none'
+  document.getElementById('contacto-btn').disabled = false
+
+  // Verificar si tiene email antes de abrir el modal
+  const { data } = await sb.from('verifications').select('contact_email').eq('id', verificationId).single()
+  const tieneEmail = !!(data?.contact_email)
+  if (!tieneEmail) {
+    document.getElementById('contacto-nomail').style.display = 'block'
+    document.getElementById('contacto-btn').disabled = true
+  }
+
+  document.getElementById('modal-contacto').classList.add('active')
+}
+
+async function enviarMensajeContacto() {
+  const mensaje = document.getElementById('contacto-mensaje').value.trim()
+  if (!mensaje) { document.getElementById('contacto-error').textContent = 'Escribí el mensaje antes de enviar'; return }
+
+  const btn = document.getElementById('contacto-btn')
+  btn.disabled = true
+  btn.textContent = 'Enviando…'
+  document.getElementById('contacto-error').textContent = ''
+
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const token = session?.access_token
+    const resp = await fetch(`${API_BASE}/api/admin/verifications/${_contactoVerificationId}/contact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ mensaje }),
+    })
+    const result = await resp.json()
+    if (!resp.ok) throw new Error(result.detail || `Error ${resp.status}`)
+    cerrarModal('contacto')
+    toast(`📧 Email enviado a ${result.enviado_a}`)
+    cargarIdentidades()   // refrescar para ver badge "Info pedida"
+  } catch (e) {
+    document.getElementById('contacto-error').textContent = e.message || 'Error al enviar'
+    btn.disabled = false
+    btn.textContent = 'Enviar mensaje'
   }
 }
 
