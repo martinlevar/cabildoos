@@ -582,9 +582,9 @@ select option { background: var(--surface); }
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 48px 52px;
+  padding: 48px 56px 52px;
   margin-bottom: 16px;
-  min-height: 60vh;
+  min-height: 75vh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -606,13 +606,14 @@ select option { background: var(--surface); }
 }
 .vote-pregunta {
   font-family: var(--f-display);
-  font-size: clamp(28px, 3.5vw, 48px);
+  font-size: clamp(40px, 5vw, 72px);
   font-weight: 800;
-  letter-spacing: -1.5px;
+  letter-spacing: -2.5px;
   color: var(--text);
-  line-height: 1.15;
+  line-height: 1.08;
   flex: 1;
-  max-width: 82%;
+  max-width: 100%;
+  margin-top: 32px;
 }
 .vote-hero-bottom {
   display: flex;
@@ -1936,6 +1937,7 @@ function navTo(id, el) {
   if (id === 'dashboard')     cargarStats()
   if (id === 'seguimiento')   cargarSeguimiento()
   if (id === 'usuarios')      cargarUsuarios()
+  if (id === 'votacion')      cargarVotacion()
 }
 
 // ── TOAST ──
@@ -2795,9 +2797,22 @@ async function aprobarPregunta(id, btn) {
 
 async function activarPreguntaDB(id, btn) {
   btn.disabled = true
-  const { error } = await sb.from('questions').update({ status: 'activa' }).eq('id', id)
+  // Leer duration_minutes de esta pregunta para calcular ends_at
+  const { data: qdata } = await sb.from('questions').select('duration_minutes').eq('id', id).single()
+  const durMin = qdata?.duration_minutes || 1440
+  const endsAt = new Date(Date.now() + durMin * 60 * 1000).toISOString()
+
+  const { error } = await sb.from('questions').update({
+    status:  'activa',
+    ends_at: endsAt,
+  }).eq('id', id)
   if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
-  toast('✓ Pregunta activada — aparece ahora en el hemiciclo')
+
+  // Actualizar timer local inmediatamente sin esperar reload
+  _adminEndsAt = new Date(endsAt)
+  tickAdminTimer()
+
+  toast('✓ Pregunta activada — votación abierta')
   cargarPreguntas()
 }
 
@@ -2960,17 +2975,43 @@ function recargarDatos() {
   toast('Datos actualizados')
 }
 
-// ── TIMER admin ──
-let adminTimerSecs = 48 * 3600
+// ── TIMER admin — basado en ends_at de la pregunta activa ──
+let _adminEndsAt = null  // Date object con el fin de la votación
+
 function tickAdminTimer() {
-  adminTimerSecs = Math.max(0, adminTimerSecs - 1)
-  const h  = String(Math.floor(adminTimerSecs / 3600)).padStart(2,'0')
-  const m  = String(Math.floor((adminTimerSecs % 3600) / 60)).padStart(2,'0')
-  const s  = String(adminTimerSecs % 60).padStart(2,'0')
   const el = document.getElementById('vote-timer-admin')
-  if (el) el.textContent = `${h}:${m}:${s}`
+  if (!el) return
+  if (!_adminEndsAt) { el.textContent = '--:--:--'; return }
+  const diffMs = _adminEndsAt - Date.now()
+  if (diffMs <= 0) { el.textContent = '00:00:00'; return }
+  const totalSecs = Math.floor(diffMs / 1000)
+  const h = String(Math.floor(totalSecs / 3600)).padStart(2, '0')
+  const m = String(Math.floor((totalSecs % 3600) / 60)).padStart(2, '0')
+  const s = String(totalSecs % 60).padStart(2, '0')
+  el.textContent = `${h}:${m}:${s}`
 }
 setInterval(tickAdminTimer, 1000)
+
+async function cargarVotacion() {
+  // Busca la pregunta activa y actualiza el hero
+  const { data } = await sb.from('questions')
+    .select('id, text, ends_at, duration_minutes, status')
+    .eq('status', 'activa')
+    .order('created_at', { ascending: false })
+    .limit(1)
+  const q = data?.[0]
+  if (!q) return
+
+  // Texto de la pregunta
+  const ptxt = document.getElementById('vote-pregunta-text')
+  if (ptxt) ptxt.textContent = q.text
+
+  // Timer: leer ends_at de la DB
+  if (q.ends_at) {
+    _adminEndsAt = new Date(q.ends_at)
+  }
+  tickAdminTimer()
+}
 
 // ── INVITAR VERIFICADOR ──
 async function enviarInvitacion() {
