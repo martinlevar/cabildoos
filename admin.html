@@ -1636,7 +1636,7 @@ async function cargarIdentidades() {
   try {
     let query = sb
       .from('verifications')
-      .select('id, doc_hash, status, created_at, selfie_doc_url, doc_match, butaca_numero')
+      .select('id, doc_hash, status, created_at, selfie_doc_url, doc_face_url, doc_match, butaca_numero')
       .order('created_at', { ascending: false })
       .limit(100)
     if (filtroId !== 'all') query = query.eq('status', filtroId)
@@ -1702,22 +1702,57 @@ function renderIdCard(r) {
     </div>`
   : `<div style="display:flex;align-items:center;gap:8px">${elimBtn}</div>`
 
-  // selfie_doc_url es una URL firmada ya generada por el backend
-  const hasImg = !!r.selfie_doc_url
+  const hasSelfie = !!r.selfie_doc_url
+  const hasFace   = !!r.doc_face_url
+
+  // Panel de fotos — doc_face (izquierda) + selfie_doc (derecha)
+  const fotoDocumento = hasFace ? `
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">📄 Foto del doc</div>
+      <div style="position:relative;background:#111;border-radius:6px;overflow:hidden;aspect-ratio:3/4">
+        <img id="face-${r.id}" data-url="${r.doc_face_url}"
+             style="width:100%;height:100%;object-fit:cover;display:none;cursor:zoom-in;"
+             alt="Cara del documento" title="Foto extraída del documento"
+             onclick="event.stopPropagation();abrirFullscreen(this.src)">
+        <div id="ph-face-${r.id}" style="height:100%;display:flex;align-items:center;justify-content:center;font-size:22px">⏳</div>
+      </div>
+    </div>` : `
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">📄 Foto del doc</div>
+      <div style="background:#111;border-radius:6px;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.4">—</div>
+    </div>`
+
+  const fotoSelfie = hasSelfie ? `
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">🤳 Selfie</div>
+      <div style="position:relative;background:#111;border-radius:6px;overflow:hidden;aspect-ratio:3/4">
+        <img id="img-${r.id}" data-url="${r.selfie_doc_url}"
+             style="width:100%;height:100%;object-fit:cover;display:none;cursor:zoom-in;"
+             alt="Selfie con documento" title="Clic para ver en pantalla completa"
+             onclick="event.stopPropagation();abrirFullscreen(this.src)">
+        <div id="ph-${r.id}" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+          <div style="font-size:22px">⏳</div>
+          <div style="font-size:9px;color:var(--muted)">Cargando...</div>
+        </div>
+      </div>
+    </div>` : `
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+      <div style="font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">🤳 Selfie</div>
+      <div style="background:#111;border-radius:6px;aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:.4">
+        <div style="font-size:22px">🙂</div>
+        <div style="font-size:9px;color:var(--muted)">Sin imagen</div>
+      </div>
+    </div>`
+
+  const flechaComparar = (hasFace && hasSelfie) ? `
+    <div style="display:flex;align-items:center;padding-top:20px;color:var(--muted);font-size:16px">→</div>` : ''
 
   return `
   <div class="id-card" id="id-card-${r.id}">
-    <div class="id-card-img">
-      ${hasImg ? `<img id="img-${r.id}" data-url="${r.selfie_doc_url}"
-           style="width:100%;height:100%;object-fit:cover;display:none;cursor:zoom-in;"
-           alt="Foto censurada" title="Clic para ver en pantalla completa"
-           onclick="event.stopPropagation();abrirFullscreen(this.src)">` : ''}
-      <div class="id-anon-placeholder" id="ph-${r.id}">
-        <div class="id-anon-face">${hasImg ? '⏳' : '🙂'}</div>
-        <div class="id-redacted-bar">Nº DOCUMENTO: ##########</div>
-        <div class="id-redacted-lines">▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">${hasImg ? 'Cargando...' : 'Sin imagen'}</div>
-      </div>
+    <div style="padding:12px 12px 0;display:flex;gap:6px;align-items:flex-start">
+      ${fotoDocumento}
+      ${flechaComparar}
+      ${fotoSelfie}
     </div>
     <div class="id-card-body">
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
@@ -1733,24 +1768,25 @@ function renderIdCard(r) {
   </div>`
 }
 
-// Carga las imágenes — selfie_doc_url ya es una URL firmada completa
+// Carga las imágenes — selfie_doc_url y doc_face_url son URLs firmadas
 async function cargarImagenesCards() {
-  const imgs = document.querySelectorAll('.id-card-img img[data-url]')
+  const imgs = document.querySelectorAll('img[data-url]')
   for (const img of imgs) {
     const url = img.getAttribute('data-url')
     if (!url) continue
 
+    // Determinar el placeholder asociado a esta imagen
+    let phId = null
+    if (img.id.startsWith('img-'))  phId = 'ph-'      + img.id.slice(4)
+    if (img.id.startsWith('face-')) phId = 'ph-face-' + img.id.slice(5)
+    const ph = phId ? document.getElementById(phId) : null
+
     img.onload = () => {
       img.style.display = 'block'
-      const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
       if (ph) ph.style.display = 'none'
     }
     img.onerror = () => {
-      const ph = document.getElementById('ph-' + img.id.replace('img-', ''))
-      if (ph) {
-        ph.querySelector('.id-anon-face').textContent = '⚠'
-        ph.querySelector('div:last-child').textContent = 'Error al cargar'
-      }
+      if (ph) ph.innerHTML = '<span style="font-size:18px;opacity:.5">⚠</span>'
     }
     img.src = url
   }
