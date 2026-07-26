@@ -578,34 +578,77 @@ textarea { resize: vertical; min-height: 80px; }
 select option { background: var(--surface); }
 
 /* ── VOTACION CONTROLS ── */
+.vote-hero {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 52px;
+  margin-bottom: 16px;
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.vote-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), #f97316, #a855f7);
+}
+.vote-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+}
+.vote-pregunta {
+  font-family: var(--f-display);
+  font-size: clamp(28px, 3.5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  color: var(--text);
+  line-height: 1.15;
+  flex: 1;
+  max-width: 82%;
+}
+.vote-hero-bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 40px;
+}
+.vote-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.vote-timer {
+  font-family: var(--f-display);
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.vote-timer-label {
+  font-family: var(--f-body);
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
 .vote-control {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 16px;
-}
-.vote-pregunta {
-  font-family: var(--f-display);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--text);
-  line-height: 1.4;
-  margin-bottom: 16px;
-}
-.vote-status-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.vote-timer {
-  font-family: var(--f-display);
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--accent);
-  letter-spacing: 1px;
 }
 .vote-actions {
   display: flex;
@@ -628,14 +671,14 @@ select option { background: var(--surface); }
 .vote-results {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 12px;
   margin-top: 16px;
 }
 .result-box {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 10px;
+  padding: 20px 14px;
   text-align: center;
 }
 .result-box .r-label { font-family: var(--f-body); font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
@@ -1461,45 +1504,55 @@ select option { background: var(--surface); }
     <!-- ══════ VOTACION ══════ -->
     <div class="section" id="s-votacion">
 
-      <div class="vote-control">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <span class="badge active">● Votación activa</span>
-          <span class="mono text-muted">Pregunta 1 de 3</span>
-        </div>
-        <div class="vote-pregunta">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</div>
-
-        <div class="vote-status-bar">
-          <span class="vote-timer" id="vote-timer-admin">48:00:00</span>
-          <span class="badge active">En curso</span>
-          <span class="text-muted" style="font-size:12px">· Cierre automático en 48h</span>
-        </div>
-
-        <div style="font-size:12px;color:var(--muted2);margin-bottom:4px">
-          Participación: <strong style="color:var(--text)" id="vt-pct">43.8%</strong>
-          (<span id="vt-count">1.247</span> de <span id="vt-total">2.847</span> ciudadanos)
-        </div>
-        <div class="progress-bar"><div class="progress-fill" id="vt-bar" style="width:43.8%"></div></div>
-
-        <div class="vote-results" id="vr-boxes">
-          <div class="result-box si">
-            <div class="r-label">SÍ</div>
-            <div class="r-count" id="vr-si">763</div>
-            <div class="r-pct" id="vr-si-pct">61.2%</div>
+      <!-- Hero: pregunta activa -->
+      <div class="vote-hero">
+        <div>
+          <div class="vote-hero-top">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="badge active">● Votación activa</span>
+              <span class="mono text-muted" style="font-size:12px">Pregunta 1 de 3</span>
+            </div>
+            <div style="text-align:right">
+              <div class="vote-timer" id="vote-timer-admin">48:00:00</div>
+              <div class="vote-timer-label">tiempo restante</div>
+            </div>
           </div>
-          <div class="result-box no">
-            <div class="r-label">NO</div>
-            <div class="r-count" id="vr-no">374</div>
-            <div class="r-pct" id="vr-no-pct">30.0%</div>
+
+          <div class="vote-pregunta" id="vote-pregunta-text">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre y soberana?</div>
+        </div>
+
+        <div class="vote-hero-bottom">
+          <!-- Resultados -->
+          <div class="vote-results" id="vr-boxes" style="flex:1;margin-top:0">
+            <div class="result-box si">
+              <div class="r-label">SÍ</div>
+              <div class="r-count" id="vr-si">763</div>
+              <div class="r-pct" id="vr-si-pct">61.2%</div>
+            </div>
+            <div class="result-box no">
+              <div class="r-label">NO</div>
+              <div class="r-count" id="vr-no">374</div>
+              <div class="r-pct" id="vr-no-pct">30.0%</div>
+            </div>
+            <div class="result-box abs">
+              <div class="r-label">ABS</div>
+              <div class="r-count" id="vr-abs">110</div>
+              <div class="r-pct" id="vr-abs-pct">8.8%</div>
+            </div>
           </div>
-          <div class="result-box abs">
-            <div class="r-label">ABS</div>
-            <div class="r-count" id="vr-abs">110</div>
-            <div class="r-pct" id="vr-abs-pct">8.8%</div>
+
+          <!-- Participación -->
+          <div style="min-width:220px">
+            <div style="font-family:var(--f-body);font-size:13px;color:var(--muted2);margin-bottom:6px">
+              Participación: <strong style="color:var(--text);font-size:15px" id="vt-pct">43.8%</strong>
+              <span style="font-size:12px">(<span id="vt-count">1.247</span> / <span id="vt-total">2.847</span>)</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="vt-bar" style="width:43.8%"></div></div>
+            <p style="font-size:11px;color:var(--muted);margin-top:10px">
+              ⚠ Resultados parciales — fase commit activa
+            </p>
           </div>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:10px">
-          ⚠ Resultados parciales en fase commit — los votos en texto plano no son visibles hasta la fase reveal.
-        </p>
       </div>
 
       <div class="row">
@@ -1641,10 +1694,10 @@ select option { background: var(--surface); }
       <div class="field">
         <div class="field-label">Duración de la votación</div>
         <div style="display:flex;gap:8px">
-          <input type="number" id="np-duracion-val" value="24" min="1" max="9999" style="width:90px;flex-shrink:0">
+          <input type="number" id="np-duracion-val" value="60" min="1" max="99999" style="width:90px;flex-shrink:0">
           <select id="np-duracion-unit" style="flex:1">
-            <option value="minutes">minutos</option>
-            <option value="hours" selected>horas</option>
+            <option value="minutes" selected>minutos</option>
+            <option value="hours">horas</option>
           </select>
         </div>
       </div>
