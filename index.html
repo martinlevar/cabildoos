@@ -3224,12 +3224,15 @@ function lcg(seed) {
   return ((seed * 1664525 + 1013904223) & 0x7fffffff) >>> 0
 }
 function getProfile(num) {
-  if (num === MY_SEAT && MY_SEAT > 0) return {
-    isMe: true, isAnon: false,
-    name: 'Tú', displayName: _authProfile?.alias || `Butaca #${MY_SEAT}`,
-    phrase: _authProfile?.phrase || 'Mi butaca en el hemiciclo libre de Venezuela.',
-    votes: 0, color: '#f76a1e',
-    initials: String(MY_SEAT),
+  if (num === MY_SEAT && MY_SEAT > 0) {
+    const _votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+    return {
+      isMe: true, isAnon: false,
+      name: 'Tú', displayName: _authProfile?.alias || `Butaca #${MY_SEAT}`,
+      phrase: _authProfile?.phrase || 'Mi butaca en el hemiciclo libre de Venezuela.',
+      votes: Object.keys(_votos).length, color: '#f76a1e',
+      initials: String(MY_SEAT),
+    }
   }
   let s = lcg(num)
   const isAnon  = (s % 100) < 58 ; s = lcg(s)
