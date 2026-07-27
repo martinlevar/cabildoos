@@ -763,6 +763,25 @@ html, body {
   font-family:'Manrope',sans-serif; font-size:13px; font-weight:600; cursor:pointer;
 }
 .btn-full:hover { background:#111; }
+/* Ya votaste — ph4 */
+.ya-voto-wrap { text-align:center; padding:8px 0 20px; }
+.ya-voto-check {
+  width:54px; height:54px; border-radius:50%;
+  background:rgba(62,207,142,.14); border:2px solid rgba(62,207,142,.3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; color:#178a5b; margin:0 auto 14px;
+}
+.ya-voto-title { font-size:18px; font-weight:800; color:var(--dark); margin-bottom:8px; }
+.ya-voto-sub { font-size:12px; color:var(--mid); line-height:1.6; margin-bottom:12px; }
+.ya-voto-choice { font-size:13px; color:var(--mid); }
+.btn-cancelar-voto {
+  width:100%; padding:11px; border-radius:12px;
+  border:1.5px solid rgba(240,69,69,.35);
+  background:rgba(240,69,69,.05); color:#c0392b;
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:600; cursor:pointer;
+  transition:all .15s;
+}
+.btn-cancelar-voto:hover { background:rgba(240,69,69,.1); border-color:#c0392b; }
 .modal-foot {
   background:var(--bg); border-top:1px solid var(--border);
   padding:11px 18px; display:flex; align-items:center;
@@ -2124,6 +2143,20 @@ body.on-landing #social-footer.visible { display:flex; }
           <strong>Usá el mismo dispositivo.</strong> Te avisamos antes del cierre.
         </div>
         <button class="btn-full" onclick="cerrarModal()">Entendido — volver al congreso</button>
+      </div>
+
+      <!-- Phase 4: ya votaste -->
+      <div class="phase" id="ph4">
+        <div class="ya-voto-wrap">
+          <div class="ya-voto-check">✓</div>
+          <p class="ya-voto-title">Ya emitiste tu voto</p>
+          <p class="ya-voto-sub">Tu butaca registró un voto en esta votación. Podés cancelarlo y volver a votar, pero <strong>solo se cuenta un voto por butaca.</strong></p>
+          <p class="ya-voto-choice">Votaste: <strong id="ya-voto-lbl" style="color:var(--green)">SÍ</strong></p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+          <button class="btn-full" onclick="cerrarModal()">Volver al congreso</button>
+          <button class="btn-cancelar-voto" id="btn-cancelar-voto" onclick="cancelarVoto()">Cancelar mi voto y votar de nuevo</button>
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -6605,11 +6638,52 @@ function abrirModal() {
     showToast('Creá tu butaca para poder votar')
     return
   }
-  // Mostrar la pregunta real en el modal
   const txt = PREGUNTAS[qIdx] || 'Pregunta activa'
   document.getElementById('modal-title').textContent = txt
-  showPh(1)
+
+  // Verificar si ya votó esta pregunta (chequeo local rápido)
+  const qId = PREGUNTAS_IDS[qIdx]
+  const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+  if (qId && votos[qId]) {
+    const v = votos[qId].voto   // 'si' o 'no'
+    const lbl = document.getElementById('ya-voto-lbl')
+    if (lbl) {
+      lbl.textContent = v === 'si' ? 'SÍ' : 'NO'
+      lbl.style.color = v === 'si' ? '#178a5b' : '#c0392b'
+    }
+    showPh(4)
+  } else {
+    showPh(1)
+  }
   document.getElementById('modal-bd').classList.add('open')
+}
+
+async function cancelarVoto() {
+  const qId = PREGUNTAS_IDS[qIdx]
+  if (!qId) return
+  const btn = document.getElementById('btn-cancelar-voto')
+  if (btn) btn.disabled = true
+
+  // Eliminar de Supabase
+  const { error } = await sb.from('votes')
+    .delete()
+    .eq('question_id', qId)
+    .eq('seat_number', MY_SEAT)
+
+  if (error) {
+    console.error('cancelarVoto:', error)
+    if (btn) btn.disabled = false
+    showToast('Error al cancelar el voto')
+    return
+  }
+
+  // Eliminar de localStorage
+  const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+  delete votos[qId]
+  localStorage.setItem('cabildoos_votos', JSON.stringify(votos))
+
+  if (btn) btn.disabled = false
+  showPh(1) // volver a la votación
 }
 function cerrarModal() {
   document.getElementById('modal-bd').classList.remove('open')
@@ -6645,18 +6719,19 @@ async function confirmarVoto() {
   stored[qId]  = { voto, nonce, hash, ts: Date.now() }
   localStorage.setItem('cabildoos_votos', JSON.stringify(stored))
 
-  // Enviar hash a Supabase
+  // Enviar hash a Supabase (upsert por question_id + seat_number)
   const { error } = await sb.from('votes').upsert({
     question_id: qId,
     seat_number: MY_SEAT,
-    vote_hash:   hash
+    vote_hash:   hash,
+    vote_plain:  voto  // guardamos el voto para la fase de revelación
   }, { onConflict: 'question_id,seat_number' })
 
   if (error) console.error('Vote commit error:', error)
   showPh(3)
 }
 function showPh(n) {
-  document.querySelectorAll('.phase').forEach((p,i) => p.classList.toggle('active', i+1===n))
+  document.querySelectorAll('#modal-bd .phase').forEach((p,i) => p.classList.toggle('active', i+1===n))
 }
 
 // ══════════════════════════════════════════════════════════════
