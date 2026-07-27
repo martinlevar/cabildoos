@@ -452,30 +452,61 @@ html, body {
 }
 #sim-overlay.open { opacity:1; pointer-events:all; }
 
-#sim-top-bar {
-  flex-shrink:0; height:52px;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:0 24px;
-  background:rgba(255,255,255,.04);
-  border-bottom:1px solid rgba(255,255,255,.06);
-}
-#sim-status {
-  font-size:13px; font-weight:600; color:rgba(255,255,255,.7);
-  font-variant-numeric:tabular-nums;
-}
-#sim-cancel {
-  padding:7px 16px; border-radius:8px;
-  border:1px solid rgba(255,255,255,.15);
-  background:transparent; color:rgba(255,255,255,.5);
-  font-family:'Manrope',sans-serif;
-  font-size:12px; font-weight:600; cursor:pointer;
-  transition:all .15s;
-}
-#sim-cancel:hover { border-color:rgba(255,255,255,.4); color:#fff; }
+#sim-top-bar { display:none; }
 
 #sim-canvas {
   flex:1; width:100%; display:block;
 }
+
+/* Floating counting label */
+#sim-floating-status {
+  position:absolute; top:0; left:0; right:0;
+  display:flex; flex-direction:column; align-items:center;
+  padding-top:36px;
+  pointer-events:none;
+  z-index:10;
+}
+#sim-floating-label {
+  font-size:13px; font-weight:700; letter-spacing:.12em;
+  text-transform:uppercase; color:rgba(255,255,255,.45);
+  margin-bottom:8px;
+}
+#sim-floating-counter {
+  font-size:38px; font-weight:900; letter-spacing:-.02em;
+  color:#fff; font-variant-numeric:tabular-nums;
+  text-shadow:0 0 40px rgba(255,255,255,.25);
+}
+#sim-floating-counter span { color:rgba(255,255,255,.35); font-weight:600; font-size:24px; }
+@keyframes pulse-txt {
+  0%,100% { opacity:1; }
+  50%      { opacity:.55; }
+}
+#sim-floating-status.counting #sim-floating-label {
+  animation: pulse-txt 1.4s ease-in-out infinite;
+}
+
+/* Floating footer "Ver Datos" */
+#sim-footer-bar {
+  position:absolute; bottom:0; left:0; right:0;
+  display:flex; justify-content:center; align-items:center;
+  padding:0 24px 40px;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(16px);
+  transition:opacity .5s ease, transform .5s cubic-bezier(.34,1.4,.64,1);
+  z-index:10;
+}
+#sim-footer-bar.show { opacity:1; transform:translateY(0); pointer-events:all; }
+#sim-ver-datos-btn {
+  padding:14px 36px; border-radius:99px; border:none;
+  background:#fff; color:#1d1d1d;
+  font-family:'Manrope',sans-serif; font-size:15px; font-weight:800;
+  cursor:pointer; letter-spacing:.01em;
+  box-shadow:0 8px 32px rgba(0,0,0,.45);
+  transition:transform .15s, box-shadow .15s;
+}
+#sim-ver-datos-btn:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(0,0,0,.55); }
+#sim-ver-datos-btn:active { transform:translateY(0); }
 
 /* Winner banner */
 #sim-winner-banner {
@@ -2600,11 +2631,17 @@ body.on-landing #social-footer.visible { display:flex; }
 
 <!-- ══════════════ SIMULATION OVERLAY ══════════════ -->
 <div id="sim-overlay">
-  <div id="sim-top-bar">
-    <div id="sim-status">⚡ Revelando votos — <span id="sim-progress">0</span> / <span id="sim-total">0</span></div>
-    <button id="sim-cancel" onclick="terminarSimulacion()">Cancelar</button>
+  <div id="sim-top-bar"></div>
+  <!-- Floating status -->
+  <div id="sim-floating-status" class="counting">
+    <div id="sim-floating-label">Contando sobres…</div>
+    <div id="sim-floating-counter"><span id="sim-progress">0</span><span> / <span id="sim-total">0</span></span></div>
   </div>
   <canvas id="sim-canvas"></canvas>
+  <!-- Floating footer -->
+  <div id="sim-footer-bar">
+    <button id="sim-ver-datos-btn" onclick="mostrarBannerGanador()">Ver resultados →</button>
+  </div>
   <div id="sim-winner-banner">
     <div id="sim-winner-inner">
       <p class="sw-label">Resultado oficial</p>
@@ -2620,9 +2657,9 @@ body.on-landing #social-footer.visible { display:flex; }
           <div class="sw-bar-track"><div class="sw-bar-fill no" id="sw-bar-no"></div></div>
           <span class="sw-bar-num" id="sw-num-no">0</span>
         </div>
-        <div class="sw-bar-row" id="sw-row-abs" style="display:none">
-          <span class="sw-bar-lbl" style="color:#777">ABS</span>
-          <div class="sw-bar-track"><div class="sw-bar-fill" id="sw-bar-abs" style="background:#666"></div></div>
+        <div class="sw-bar-row" id="sw-row-abs">
+          <span class="sw-bar-lbl" style="color:#a16207;width:28px;text-align:right;font-size:11px">ABS</span>
+          <div class="sw-bar-track"><div class="sw-bar-fill" id="sw-bar-abs" style="background:#d97706"></div></div>
           <span class="sw-bar-num" id="sw-num-abs">0</span>
         </div>
       </div>
@@ -3852,6 +3889,13 @@ async function iniciarSimulacion() {
   SIM.active = true
   document.getElementById('sim-overlay').classList.add('open')
   document.getElementById('sim-winner-banner').classList.remove('show')
+  // Reset floating UI
+  const _fs = document.getElementById('sim-floating-status')
+  if (_fs) _fs.classList.add('counting')
+  const _lbl = document.getElementById('sim-floating-label')
+  if (_lbl) _lbl.textContent = 'Contando sobres…'
+  const _footer = document.getElementById('sim-footer-bar')
+  if (_footer) _footer.classList.remove('show')
 
   resizeSimCanvas()
 
@@ -3883,7 +3927,15 @@ async function iniciarSimulacion() {
       SIM.revealed.toLocaleString('es-AR')
     if (SIM.revealed >= simTotal) {
       clearInterval(SIM.ivId)
-      setTimeout(mostrarBannerGanador, 900)
+      // Terminar animación del label y mostrar footer
+      const fs = document.getElementById('sim-floating-status')
+      if (fs) fs.classList.remove('counting')
+      const lbl = document.getElementById('sim-floating-label')
+      if (lbl) lbl.textContent = '✓ Votos revelados'
+      setTimeout(() => {
+        const footer = document.getElementById('sim-footer-bar')
+        if (footer) footer.classList.add('show')
+      }, 600)
     }
   }, frameMs)
 
@@ -4004,9 +4056,6 @@ function mostrarBannerGanador() {
   document.getElementById('sw-num-si').textContent = cntSi.toLocaleString('es-AR')
   document.getElementById('sw-num-no').textContent = cntNo.toLocaleString('es-AR')
 
-  // Abstenciones — solo si hay
-  const rowAbs = document.getElementById('sw-row-abs')
-  if (rowAbs) rowAbs.style.display = cntAbs > 0 ? '' : 'none'
   const numAbs = document.getElementById('sw-num-abs')
   if (numAbs) numAbs.textContent = cntAbs.toLocaleString('es-AR')
 
