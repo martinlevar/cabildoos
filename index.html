@@ -4201,7 +4201,7 @@ let _authProfile = null  // perfil (alias, seat_number)
   else _onLogout()
 
   sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'SIGNED_IN' && session?.user) await _onLogin(session.user)
+    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) await _onLogin(session.user)
     if (event === 'SIGNED_OUT') _onLogout()
     if (event === 'PASSWORD_RECOVERY') {
       // El usuario llegó desde el link de reset → mostrar formulario de nueva contraseña
@@ -6840,7 +6840,10 @@ function elegir(v) {
 async function confirmarVoto() {
   const voto  = document.getElementById('voto-txt').textContent  // 'si' | 'no'
   const qId   = PREGUNTAS_IDS[qIdx]
-  if (!qId || !_authUser || !MY_SEAT) { showPh(3); return }
+  if (!qId || !_authUser || !MY_SEAT) {
+    showToast('Error: sesión no lista, recargá la página')
+    return
+  }
 
   // Generar nonce criptográfico
   const arr   = new Uint8Array(32)
@@ -6865,7 +6868,11 @@ async function confirmarVoto() {
     vote_plain:  voto  // guardamos el voto para la fase de revelación
   }, { onConflict: 'question_id,seat_number' })
 
-  if (error) console.error('Vote commit error:', error)
+  if (error) {
+    console.error('Vote commit error:', error)
+    showToast('Error al guardar voto: ' + (error.message || error.code || 'desconocido'))
+    return
+  }
   showPh(3)
 }
 function showPh(n) {
