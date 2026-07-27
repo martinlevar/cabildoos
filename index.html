@@ -3806,29 +3806,29 @@ async function iniciarSimulacion() {
 
   // ── Obtener votos reales POR BUTACA desde Supabase ──────────────────────
   const qId = PREGUNTAS_IDS[qIdx]
-  const voteMap = {}   // { seat_number → 'si' | 'no' | null }
+  const voteMap = {}   // { seat_number → 'si' | 'no' | 'abs' }  solo votantes
   SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
   if (qId) {
     try {
       const { data } = await sb.rpc('get_question_votes', { p_question_id: qId })
       if (data) {
         data.forEach(row => {
-          voteMap[row.seat_number] = row.vote_plain   // 'si' | 'no'
+          voteMap[row.seat_number] = row.vote_plain   // 'si' | 'no' | 'abs'
         })
       }
     } catch(e) { console.warn('get_question_votes:', e) }
   }
 
   // Asignar resultado por butaca:
-  //   'si' / 'no' → votó
-  //   null        → no votó (gris oscuro en la animación)
+  //   'si' → verde   'no' → rojo   'abs' → amarillo   undefined → gris (no votó)
   SIM.results = {}
   SEATS.forEach(s => {
-    const v = voteMap[s.num] || null
-    SIM.results[s.num] = v
-    if (v === 'si')       SIM.totalSi++
-    else if (v === 'no')  SIM.totalNo++
-    else                  SIM.totalAbs++
+    const v = voteMap[s.num]          // undefined si no votó — NO usar || null
+    SIM.results[s.num] = (v !== undefined) ? v : null   // null = no participó
+    if (v === 'si')        SIM.totalSi++
+    else if (v === 'no')   SIM.totalNo++
+    else if (v === 'abs')  SIM.totalAbs++
+    // null (no participó) no suma a ningún total
   })
   SIM._realSi  = SIM.totalSi
   SIM._realNo  = SIM.totalNo
@@ -3932,17 +3932,21 @@ function simDraw() {
     simCtx.fill()
   })
 
-  // Pass 2b: abstención explícita — gris oscuro
-  simCtx.shadowBlur = 0
+  // Pass 2b: abstención explícita — amarillo/ámbar
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
     if (SIM.results[s.num] !== 'abs') return
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
-    if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) return
+    if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
+    const phase = (s.num * 1.3) % (Math.PI * 2)
+    const pulse = (Math.sin(Date.now() / 800 + phase) + 1) / 2
+    simCtx.shadowColor = `rgba(250,204,21,${0.45 + pulse * 0.35})`
+    simCtx.shadowBlur  = dotR * (3 + pulse * 5)
     simCtx.beginPath()
-    simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
-    simCtx.fillStyle = '#4a4a4a'
+    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.15), 0, Math.PI * 2)
+    simCtx.fillStyle = `rgb(${200 + Math.round(pulse*30)},${160 + Math.round(pulse*30)},${20 + Math.round(pulse*10)})`
     simCtx.fill()
+    simCtx.shadowBlur = 0
   })
 
   // Pass 3: SÍ — green pulsing glow (traffic light)
@@ -3986,28 +3990,31 @@ function simDraw() {
 }
 
 function mostrarBannerGanador() {
-  const cntSi  = SIM._realSi  != null ? SIM._realSi  : SIM.totalSi
-  const cntNo  = SIM._realNo  != null ? SIM._realNo  : SIM.totalNo
-  const cntAbs = SIM._realAbs != null ? SIM._realAbs : SIM.totalAbs
-  // "total" = solo votantes (si+no+abs), excluyendo no-participantes
+  const cntSi  = SIM._realSi  ?? SIM.totalSi
+  const cntNo  = SIM._realNo  ?? SIM.totalNo
+  const cntAbs = SIM._realAbs ?? SIM.totalAbs
+  // Denominador = solo votantes (si+no+abs), NO incluye ausentes
   const totalVotos = cntSi + cntNo + cntAbs
   const pctSi  = totalVotos > 0 ? ((cntSi  / totalVotos) * 100).toFixed(1) : '0.0'
   const pctNo  = totalVotos > 0 ? ((cntNo  / totalVotos) * 100).toFixed(1) : '0.0'
   const pctAbs = totalVotos > 0 ? ((cntAbs / totalVotos) * 100).toFixed(1) : '0.0'
   const ganaSi = cntSi > cntNo
-  const empate = cntSi === cntNo && (cntSi + cntNo) > 0
+  const empate = cntSi === cntNo && totalVotos > 0
 
   document.getElementById('sw-num-si').textContent = cntSi.toLocaleString('es-AR')
   document.getElementById('sw-num-no').textContent = cntNo.toLocaleString('es-AR')
 
-  // Mostrar fila abstenciones solo si hay alguna
+  // Abstenciones — solo si hay
   const rowAbs = document.getElementById('sw-row-abs')
   if (rowAbs) rowAbs.style.display = cntAbs > 0 ? '' : 'none'
   const numAbs = document.getElementById('sw-num-abs')
   if (numAbs) numAbs.textContent = cntAbs.toLocaleString('es-AR')
 
   const wl = document.getElementById('sw-winner-line')
-  if (empate) {
+  if (totalVotos === 0) {
+    wl.textContent = 'Sin votos registrados'
+    wl.style.color = '#888'
+  } else if (empate) {
     wl.textContent = `Empate — ${pctSi}% SÍ · ${pctNo}% NO`
     wl.style.color = '#888'
   } else {
