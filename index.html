@@ -154,62 +154,100 @@ html, body {
 /* Question cards strip */
 #q-cards-strip {
   flex-shrink:0;
-  display:flex; gap:10px;
-  padding:12px 20px 10px;
+  display:flex; gap:12px;
+  padding:14px 20px 12px;
   overflow-x:auto; scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch; scrollbar-width:none;
   position:relative; z-index:5;
 }
 #q-cards-strip::-webkit-scrollbar { display:none; }
-#q-cards-strip.empty {
-  padding:16px 20px;
-  align-items:center;
-}
+#q-cards-strip.empty { padding:18px 20px; align-items:center; }
+
 .q-card {
-  min-width:280px; max-width:320px; flex-shrink:0;
-  background:#fff; border-radius:16px;
-  border:1px solid var(--border);
+  min-width:290px; max-width:330px; flex-shrink:0;
+  background:#fff;
+  border-radius:18px;
+  border:1px solid rgba(0,0,0,.09);
+  box-shadow:0 2px 12px rgba(0,0,0,.06), 0 0 0 0.5px rgba(0,0,0,.04);
   overflow:hidden; scroll-snap-align:start;
   display:flex; flex-direction:column;
+  transition:box-shadow .2s;
 }
-.q-card-inner { padding:14px 14px 10px; flex:1; }
+.q-card:hover { box-shadow:0 6px 24px rgba(0,0,0,.1), 0 0 0 0.5px rgba(0,0,0,.06); }
+
+/* Card header accent bar */
+.q-card-accent {
+  height:4px;
+  background:linear-gradient(90deg,var(--navy) 0%,rgba(26,31,60,.4) 100%);
+}
+.q-card-accent.ended { background:linear-gradient(90deg,#aaa 0%,#ccc 100%); }
+.q-card-accent.voted-si { background:linear-gradient(90deg,#178a5b 0%,#3ecf8e 100%); }
+.q-card-accent.voted-no { background:linear-gradient(90deg,#c41e1e 0%,#f05050 100%); }
+.q-card-accent.voted-abs { background:linear-gradient(90deg,#d97706 0%,#fbbf24 100%); }
+
+.q-card-inner { padding:14px 16px 10px; flex:1; }
 .q-label { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--mid); margin-bottom:5px; }
-.q-num   { font-weight:500; color:rgba(138,138,138,.7); letter-spacing:0; }
 .q-card-text {
-  font-size:14px; font-weight:600; color:var(--dark); line-height:1.4;
+  font-size:14px; font-weight:700; color:var(--dark); line-height:1.45; letter-spacing:-.1px;
   display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
 }
+
 .q-card-countdown {
   display:flex; align-items:center; justify-content:space-between;
-  padding:9px 14px; background:#fafaf8; border-top:1px solid var(--border);
+  padding:10px 16px; background:#f8f8f6;
+  border-top:1px solid rgba(0,0,0,.06);
 }
+.q-card-countdown-left { display:flex; flex-direction:column; gap:1px; }
+.q-card-cd-lbl { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#aaa; }
 .q-card-timer-val {
-  font-size:20px; font-weight:800; letter-spacing:-.03em;
-  font-variant-numeric:tabular-nums; color:var(--dark);
+  font-size:22px; font-weight:800; letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums; color:var(--dark); line-height:1.1;
 }
-.q-card-timer-val.ended { font-size:13px; font-weight:700; color:#888; background:#f0f0ee; border-radius:8px; padding:3px 10px; }
-.q-card-actions { padding:8px 10px 10px; display:flex; flex-direction:column; gap:6px; }
+.q-card-timer-val.ended {
+  font-size:12px; font-weight:700; color:#999;
+  background:#efefed; border-radius:6px; padding:3px 9px; letter-spacing:.02em;
+}
+.q-card-cd-badge {
+  font-size:11px; font-weight:700; padding:4px 10px; border-radius:8px;
+  background:rgba(23,138,91,.1); color:#178a5b; letter-spacing:.01em;
+}
+.q-card-cd-badge.ended { background:#f0f0ee; color:#999; }
+
+.q-card-actions { padding:10px 12px 12px; display:flex; flex-direction:column; gap:7px; }
+
 .q-card-debate-btn {
   width:100%; display:flex; align-items:center; justify-content:center; gap:7px;
-  padding:9px 12px; border-radius:10px;
-  border:1.5px solid rgba(62,207,142,.4); background:rgba(62,207,142,.06);
-  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; color:#1a7a52;
-  cursor:pointer; transition:all .15s;
+  padding:10px 14px; border-radius:11px;
+  border:1.5px solid rgba(62,207,142,.35);
+  background:rgba(62,207,142,.05);
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; color:#166534;
+  cursor:pointer; transition:background .15s, border-color .15s;
+  letter-spacing:.01em;
 }
-.q-card-debate-btn:hover { background:rgba(62,207,142,.12); }
+.q-card-debate-btn:hover { background:rgba(62,207,142,.12); border-color:rgba(62,207,142,.6); }
+
 .q-card-vote-btn {
-  width:100%; padding:10px 12px; border-radius:10px; border:none;
+  width:100%; padding:11px 14px; border-radius:11px; border:none;
   background:var(--dark); color:#fff;
-  font-family:'Manrope',sans-serif; font-size:13px; font-weight:700;
-  cursor:pointer; transition:background .15s;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:800;
+  cursor:pointer; transition:background .15s, transform .1s;
+  letter-spacing:.02em;
 }
-.q-card-vote-btn:hover { background:#000; }
-.q-card-vote-btn.ya-vote { background:#f0f0ee; color:#888; border:1.5px solid #e0e0e0; font-size:12px; }
-.q-empty-msg { font-size:13px; color:var(--mid); font-weight:500; }
-.debate-dot { width:6px; height:6px; border-radius:50%; background:var(--green); flex-shrink:0;
+.q-card-vote-btn:hover { background:#111; transform:translateY(-1px); }
+.q-card-vote-btn:active { transform:translateY(0); }
+.q-card-vote-btn.ya-vote {
+  background:#f2f2f0; color:#777; font-size:12px; font-weight:700;
+  border:1.5px solid #e4e4e2;
+}
+.q-card-vote-btn.reveal-btn {
+  background:linear-gradient(135deg,#1d1d1d 0%,#444 100%);
+  font-size:12px; letter-spacing:.03em;
+}
+
+.q-empty-msg { font-size:13px; color:var(--mid); font-weight:600; }
+.debate-dot { width:6px; height:6px; border-radius:50%; background:#22c55e; flex-shrink:0;
   animation:pulse-dot 1.4s ease-in-out infinite; }
 @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.75)} }
-/* compat — old refs */
 .q-body { flex:1; min-width:0; }
 
 /* ── DEBATE PANEL ── */
@@ -6639,6 +6677,8 @@ async function cargarPreguntasActivas() {
       qIdx = 0
     }
     renderQCards()
+    // El strip cambió de altura — recalcular canvas
+    requestAnimationFrame(resizeCanvas)
   } catch (e) { console.warn('cargarPreguntasActivas:', e) }
 }
 
@@ -6690,28 +6730,39 @@ function renderQCards() {
     const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
     const ended = remaining <= 0
     const yaVoto = votos[qdata.id]
-    const labels = { si:'✓ Voté SÍ', no:'✓ Voté NO', abs:'✓ Me abstuve' }
+    const votoVal = yaVoto?.voto
+    const voteLabels = { si:'✓ Voté SÍ', no:'✓ Voté NO', abs:'✓ Me abstuve' }
+    // Accent bar color
+    let accentCls = ended ? 'ended' : (votoVal ? `voted-${votoVal}` : '')
+    // Vote button label
+    let voteBtnTxt, voteBtnCls = 'q-card-vote-btn'
+    if (ended) { voteBtnTxt = '⚡ Ver revelación'; voteBtnCls += ' reveal-btn' }
+    else if (yaVoto) { voteBtnTxt = voteLabels[votoVal] || '✓ Ya voté'; voteBtnCls += ' ya-vote' }
+    else { voteBtnTxt = 'Votar' }
+    // Countdown badge
+    const badgeTxt = ended ? 'Cerrada' : 'En curso'
+    const badgeCls = ended ? 'ended' : ''
+
     const card = document.createElement('div')
     card.className = 'q-card'
     card.innerHTML = `
+      <div class="q-card-accent ${accentCls}"></div>
       <div class="q-card-inner">
-        <p class="q-label">Propuesta ${i + 1}</p>
+        <p class="q-label" style="margin-bottom:4px">Propuesta ${i + 1}</p>
         <p class="q-card-text">${qdata.text}</p>
       </div>
       <div class="q-card-countdown">
-        <div>
-          <p class="q-label" style="margin-bottom:2px">${ended ? 'Estado' : 'Tiempo activo'}</p>
-          <p class="q-card-timer-val${ended ? ' ended' : ''}" id="q-timer-${i}">${ended ? 'Finalizada' : fmtTime(remaining)}</p>
+        <div class="q-card-countdown-left">
+          <span class="q-card-cd-lbl">${ended ? 'Estado' : 'Tiempo restante'}</span>
+          <span class="q-card-timer-val${ended ? ' ended' : ''}" id="q-timer-${i}">${ended ? 'Finalizada' : fmtTime(remaining)}</span>
         </div>
-        ${ended ? '<span style="font-size:18px">🔓</span>' : ''}
+        <span class="q-card-cd-badge ${badgeCls}">${badgeTxt}</span>
       </div>
       <div class="q-card-actions">
         <button class="q-card-debate-btn" onclick="abrirDebateForQ(${i})">
           <span class="debate-dot"></span>Debate esta pregunta
         </button>
-        <button class="q-card-vote-btn${yaVoto ? ' ya-vote' : ''}" onclick="abrirVotoForQ(${i})">
-          ${ended ? '⚡ Ver revelación' : (yaVoto ? (labels[yaVoto.voto] || '✓ Ya voté') : 'Votar')}
-        </button>
+        <button class="${voteBtnCls}" onclick="abrirVotoForQ(${i})">${voteBtnTxt}</button>
       </div>`
     strip.appendChild(card)
   })
