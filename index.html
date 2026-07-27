@@ -3227,8 +3227,8 @@ function getProfile(num) {
   if (num === MY_SEAT && MY_SEAT > 0) {
     const _votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
     return {
-      isMe: true, isAnon: false,
-      name: 'Tú', displayName: _authProfile?.alias || `Butaca #${MY_SEAT}`,
+      isMe: true, isAnon: !perfilPublico,
+      name: 'Tú', displayName: perfilPublico ? (_authProfile?.alias || `Butaca #${MY_SEAT}`) : 'Ciudadano Anónimo',
       phrase: _authProfile?.phrase || 'Mi butaca en el hemiciclo libre de Venezuela.',
       votes: Object.keys(_votos).length, color: '#f76a1e',
       initials: String(MY_SEAT),
@@ -6407,7 +6407,7 @@ function volverALanding() {
 // ══════════════════════════════════════════════════════════════
 //  MI PERFIL
 // ══════════════════════════════════════════════════════════════
-let perfilPublico = false
+let perfilPublico = localStorage.getItem('cabildoos_perfil_publico') === '1'
 
 function abrirMiPerfil() {
   // Poblar con datos reales del perfil
@@ -6418,6 +6418,11 @@ function abrirMiPerfil() {
   if (_authUser) {
     document.getElementById('mp-strip-email').textContent = _authUser.email || ''
   }
+  // Sincronizar toggle con estado guardado
+  document.getElementById('mp-toggle').classList.toggle('on', perfilPublico)
+  document.getElementById('mp-toggle-sub').textContent = perfilPublico
+    ? 'Tu perfil es visible en el hemiciclo'
+    : 'Tu identidad está oculta (anónimo)'
   // Actualizar estadísticas de votaciones desde localStorage
   const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
   const vals = Object.values(votos)
@@ -6466,6 +6471,7 @@ function cerrarMiPerfil() {
 }
 function togglePerfilPublico() {
   perfilPublico = !perfilPublico
+  localStorage.setItem('cabildoos_perfil_publico', perfilPublico ? '1' : '0')
   document.getElementById('mp-toggle').classList.toggle('on', perfilPublico)
   document.getElementById('mp-toggle-sub').textContent = perfilPublico
     ? 'Tu perfil es visible en el hemiciclo'
