@@ -6699,16 +6699,11 @@ setInterval(() => {
     } else {
       timerEl.textContent = 'Finalizada'
       timerEl.className = 'q-card-timer-val ended'
-      // Reveal automático — una sola vez por pregunta por dispositivo
+      // Cuando recién termina, re-renderizar para que el badge cambie a "Revelación"
       if (!_revealTriggered[qdata.id]) {
         _revealTriggered[qdata.id] = true
-        const seenKey = `cabildoos_revealed_${qdata.id}`
-        const hoursSinceEnd = (Date.now() - new Date(qdata.ends_at).getTime()) / 3600000
-        if (!localStorage.getItem(seenKey) && hoursSinceEnd < 48) {
-          localStorage.setItem(seenKey, Date.now())
-          qIdx = i
-          setTimeout(() => { if (!SIM.active) iniciarSimulacion() }, 2500)
-        }
+        renderQCards()
+        requestAnimationFrame(resizeCanvas)
       }
     }
   })
