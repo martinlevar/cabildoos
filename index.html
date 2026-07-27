@@ -230,9 +230,15 @@ html, body {
   cursor:pointer; transition:background .15s; white-space:nowrap;
 }
 .q-card-vote-btn:hover { background:#111; }
-.q-card-vote-btn.ya-vote {
-  background:#f2f2f0; color:#777; font-size:11px; font-weight:700;
-  border:1.5px solid #e4e4e2;
+.q-card-vote-btn.ya-vote       { background:#f2f2f0; color:#777; font-size:11px; font-weight:700; border:1.5px solid #e4e4e2; }
+.q-card-vote-btn.ya-vote.si   { background:#dcfce7; color:#166534; border-color:#bbf7d0; }
+.q-card-vote-btn.ya-vote.no   { background:#fee2e2; color:#991b1b; border-color:#fecaca; }
+.q-card-vote-btn.ya-vote.abs  { background:#fef9c3; color:#854d0e; border-color:#fef08a; }
+/* Chip solo-lectura cuando la votación cerró */
+.q-vote-status-chip {
+  flex:1; padding:9px 10px; border-radius:11px;
+  font-family:'Manrope',sans-serif; font-size:11px; font-weight:700;
+  text-align:center; letter-spacing:.02em;
 }
 /* Badge revelación dentro del countdown */
 .q-card-reveal-badge {
@@ -6747,16 +6753,27 @@ function renderQCards() {
     const ended = remaining <= 0
     const yaVoto = votos[qdata.id]
     const votoVal = yaVoto?.voto
-    const voteLabels = { si:'✓ Voté SÍ', no:'✓ Voté NO', abs:'✓ Me abstuve' }
     const theme = CAT_THEME[qdata.category] || CAT_DEFAULT
 
-    // Botón de voto (solo en preguntas activas)
-    let voteBtnHTML = ''
-    if (!ended) {
+    // Chip de estado de voto (activo = clickeable para votar/cambiar, finalizado = solo lectura)
+    let voteAreaHTML = ''
+    if (ended) {
+      // Estado final — no clickeable
+      const statusMap = {
+        si:  { lbl:'Voté SÍ',     bg:'#dcfce7', color:'#166534' },
+        no:  { lbl:'Voté NO',     bg:'#fee2e2', color:'#991b1b' },
+        abs: { lbl:'Me abstuve',  bg:'#fef9c3', color:'#854d0e' },
+      }
+      const st = votoVal ? statusMap[votoVal] : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
+      voteAreaHTML = `<span class="q-vote-status-chip" style="background:${st.bg};color:${st.color}">${st.lbl}</span>`
+    } else {
+      // Activa — botón clickeable
       let voteBtnTxt, voteBtnCls = 'q-card-vote-btn'
-      if (yaVoto) { voteBtnTxt = voteLabels[votoVal] || '✓ Ya voté'; voteBtnCls += ' ya-vote' }
+      if (votoVal === 'si')  { voteBtnTxt = 'Voté SÍ';    voteBtnCls += ' ya-vote si' }
+      else if (votoVal === 'no')  { voteBtnTxt = 'Voté NO';    voteBtnCls += ' ya-vote no' }
+      else if (votoVal === 'abs') { voteBtnTxt = 'Me abstuve'; voteBtnCls += ' ya-vote abs' }
       else { voteBtnTxt = 'Votar' }
-      voteBtnHTML = `<button class="${voteBtnCls}" style="flex:1" onclick="abrirVotoForQ(${i})">${voteBtnTxt}</button>`
+      voteAreaHTML = `<button class="${voteBtnCls}" style="flex:1" onclick="abrirVotoForQ(${i})">${voteBtnTxt}</button>`
     }
 
     // Badge countdown: activa = "En curso", finalizada = botón revelación
@@ -6784,7 +6801,7 @@ function renderQCards() {
         <button class="q-card-debate-btn" style="flex:1" onclick="abrirDebateForQ(${i})">
           <span class="debate-dot"></span>Debate
         </button>
-        ${voteBtnHTML}
+        ${voteAreaHTML}
       </div>`
     strip.appendChild(card)
   })
@@ -7039,6 +7056,8 @@ async function confirmarVoto() {
     return
   }
   showPh(3)
+  // Actualizar card para reflejar el voto emitido
+  renderQCards()
 }
 function showPh(n) {
   document.querySelectorAll('#modal-bd .phase').forEach((p,i) => p.classList.toggle('active', i+1===n))
