@@ -1618,8 +1618,34 @@ html, body {
   z-index:600; display:none; flex-direction:column; align-items:center; gap:12px;
   pointer-events:none;
 }
-/* Only show on landing */
-body.on-landing #social-footer.visible { display:flex; }
+/* Show on landing AND congress */
+body.on-landing #social-footer.visible,
+body.on-congress #social-footer.visible { display:flex; }
+
+/* Mensajes panel — más alto para conversaciones */
+.sf-float-panel[data-tab="mensajes"] { max-height:420px; }
+.sf-msg-list { display:flex; flex-direction:column; gap:8px; padding-bottom:4px; }
+.sf-msg-row {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:10px 12px; border-radius:10px;
+  background:rgba(0,0,0,.03); cursor:pointer; transition:background .12s;
+}
+.sf-msg-row:hover { background:rgba(0,0,0,.06); }
+.sf-msg-row.unread { background:rgba(247,106,30,.07); }
+.sf-msg-av {
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  background:var(--navy); display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:#fff;
+}
+.sf-msg-body { flex:1; min-width:0; }
+.sf-msg-name { font-size:12px; font-weight:700; color:var(--dark); }
+.sf-msg-preview { font-size:11px; color:var(--mid); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.sf-msg-time { font-size:10px; color:var(--mid); flex-shrink:0; margin-top:2px; }
+.sf-msg-unread-dot {
+  width:7px; height:7px; border-radius:50%; background:var(--orange); flex-shrink:0; margin-top:4px;
+}
+.sf-empty-msg { text-align:center; padding:24px 16px; color:var(--mid); font-size:13px; }
+.sf-empty-msg svg { margin-bottom:10px; opacity:.3; }
 
 /* Floating panel above pill */
 .sf-float-panel {
@@ -1964,22 +1990,38 @@ body.on-landing #social-footer.visible { display:flex; }
         <button class="tog-sw" id="mp-toggle" onclick="togglePerfilPublico()"></button>
       </div>
 
-      <!-- Barras de votación — ocultas hasta que haya datos reales -->
-      <div id="mp-stats-wrap" style="display:none">
-        <div class="mp-stats-row">
-          <b id="mp-votes-n">0</b>&nbsp;votaciones —
-          <span style="color:var(--green);font-weight:700" id="mp-pct-si">0%</span>&nbsp;SÍ ·
-          <span style="color:#f04545;font-weight:700" id="mp-pct-no">0%</span>&nbsp;NO ·
-          <span style="color:#bbb;font-weight:700" id="mp-pct-abs">0%</span>&nbsp;Abs
-        </div>
-        <div style="height:5px;border-radius:3px;overflow:hidden;background:rgba(0,0,0,.07);margin-top:6px">
-          <div id="mp-bar-si" style="height:100%;width:0%;background:var(--green);display:inline-block;transition:width .55s"></div>
+      <!-- Votaciones — 3 tarjetas coloreadas -->
+      <div>
+        <p class="mp-field-label" style="margin-bottom:8px">Mis votaciones</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          <div style="background:rgba(62,207,142,.1);border:1.5px solid rgba(62,207,142,.25);border-radius:10px;padding:12px 10px;text-align:center">
+            <p style="font-size:22px;font-weight:800;color:#178a5b;line-height:1" id="mp-count-si">0</p>
+            <p style="font-size:10px;font-weight:700;color:#178a5b;margin-top:3px;letter-spacing:.04em;text-transform:uppercase">Positivas</p>
+          </div>
+          <div style="background:rgba(240,69,69,.08);border:1.5px solid rgba(240,69,69,.2);border-radius:10px;padding:12px 10px;text-align:center">
+            <p style="font-size:22px;font-weight:800;color:#c0392b;line-height:1" id="mp-count-no">0</p>
+            <p style="font-size:10px;font-weight:700;color:#c0392b;margin-top:3px;letter-spacing:.04em;text-transform:uppercase">Negativas</p>
+          </div>
+          <div style="background:rgba(250,204,21,.12);border:1.5px solid rgba(250,204,21,.35);border-radius:10px;padding:12px 10px;text-align:center">
+            <p style="font-size:22px;font-weight:800;color:#a16207;line-height:1" id="mp-count-abs">0</p>
+            <p style="font-size:10px;font-weight:700;color:#a16207;margin-top:3px;letter-spacing:.04em;text-transform:uppercase">Abstenciones</p>
+          </div>
         </div>
       </div>
-      <!-- Compat IDs invisibles para que el código existente no rompa -->
+
+      <!-- Bloque match -->
+      <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px">🔗</div>
+        <div>
+          <p style="font-size:13px;font-weight:700;color:var(--dark)">Todavía no hiciste ningún match</p>
+          <p style="font-size:11px;color:var(--mid);margin-top:2px">Votá preguntas para detectar ciudadanos con afinidad y formar un bloque</p>
+        </div>
+      </div>
+
+      <!-- IDs compat para código existente -->
       <div style="display:none">
-        <div id="mp-bar-no" style="width:0%"></div>
-        <div id="mp-bar-abs" style="width:0%"></div>
+        <div id="mp-bar-si"></div><div id="mp-bar-no"></div><div id="mp-bar-abs"></div>
+        <span id="mp-votes-n"></span>
       </div>
 
       <button class="mp-cta" onclick="cerrarMiPerfil();irACongreso()">Ir al hemiciclo →</button>
@@ -3148,8 +3190,8 @@ function lcg(seed) {
 function getProfile(num) {
   if (num === MY_SEAT && MY_SEAT > 0) return {
     isMe: true, isAnon: false,
-    name: 'Tú', displayName: `Tú — Butaca #${MY_SEAT}`,
-    phrase: 'Mi butaca en el hemiciclo libre de Venezuela.',
+    name: 'Tú', displayName: _authProfile?.alias || `Butaca #${MY_SEAT}`,
+    phrase: _authProfile?.phrase || 'Mi butaca en el hemiciclo libre de Venezuela.',
     votes: 0, color: '#f76a1e',
     initials: String(MY_SEAT),
   }
@@ -4004,8 +4046,11 @@ function toggleFollowList(num, btn) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
   document.getElementById(id).classList.add('active')
-  // Footer only floats on landing
-  document.body.classList.toggle('on-landing', id === 'landing')
+  document.body.classList.toggle('on-landing',  id === 'landing')
+  document.body.classList.toggle('on-congress', id === 'congress')
+  // Mostrar tab "Inicio" solo en congress
+  const btnInicio = document.querySelector('.sf-tab-inicio')
+  if (btnInicio) btnInicio.style.display = (id === 'congress') ? '' : 'none'
   // Collapse panel when leaving landing
   if (id !== 'landing') {
     sfActiveTab = null
@@ -6908,8 +6953,27 @@ function simularRespuestasSeguidores(propIdx) {
     </div>
   </div>
 
+  <!-- Panel mensajes -->
+  <div class="sf-float-panel" data-tab="mensajes">
+    <div class="sf-panel-inner">
+      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Mensajes directos</p>
+      <div id="sf-mensajes-list">
+        <div class="sf-empty-msg">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <p>No tenés mensajes directos aún</p>
+          <p style="font-size:11px;margin-top:4px;color:var(--mid)">Los mensajes de tus seguidores aparecerán aquí</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Separated pill tabs -->
   <div class="sf-tabs-row">
+    <!-- "Inicio" — solo visible en congress -->
+    <button class="sf-tab sf-tab-inicio" data-tab="inicio" onclick="volverALanding();sfSelectTab(null)" style="display:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>
+      Inicio
+    </button>
     <button class="sf-tab" data-tab="propuestas" onclick="sfSelectTab('propuestas')">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0">
         <rect x="1" y="1" width="12" height="2.5" rx="1" fill="currentColor" opacity=".5"/>
@@ -6940,6 +7004,10 @@ function simularRespuestasSeguidores(propIdx) {
         <circle cx="11.1" cy="11.1" r="1" fill="currentColor" opacity=".35"/>
       </svg>
       Seguidos
+    </button>
+    <button class="sf-tab" data-tab="mensajes" onclick="sfSelectTab('mensajes')" id="sf-tab-mensajes">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Mensajes
     </button>
   </div>
 </div>
