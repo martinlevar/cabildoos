@@ -6,7 +6,7 @@
 <title>cabildoOS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -272,33 +272,56 @@ html, body {
 }
 #debate-panel.open { right:0; }
 .dp-header {
-  flex-shrink:0; padding:16px 18px 14px;
-  border-bottom:1.5px solid #EFEFEC;
-  display:flex; align-items:flex-start; gap:10px;
-  background:#FAFAF8; transition:background .25s, border-color .25s;
+  flex-shrink:0;
+  padding:16px 18px 14px;
+  border-bottom:2px solid transparent;
+  display:flex; flex-direction:column; gap:10px;
+  background:#F9F9F7;
+  transition:background .3s, border-color .3s;
 }
-.dp-header-left { flex:1; min-width:0; }
-.dp-header-top-row {
-  display:flex; align-items:center; gap:7px; margin-bottom:6px; flex-wrap:wrap;
+.dp-header-meta {
+  display:flex; align-items:center; gap:7px;
 }
 .dp-cat-pill {
-  font-size:10px; font-weight:700; letter-spacing:.03em;
-  padding:2px 9px; border-radius:20px;
-  display:inline-flex; align-items:center;
-}
-.dp-subtitle {
-  font-size:12px; color:#444; font-weight:600; line-height:1.4;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
-  overflow:hidden;
+  font-size:10px; font-weight:700; letter-spacing:.04em;
+  padding:2px 10px; border-radius:20px;
+  display:inline-flex; align-items:center; flex-shrink:0;
 }
 .dp-live-badge {
   display:inline-flex; align-items:center; gap:5px;
   font-size:10px; font-weight:700; color:#1a7a52;
-  background:rgba(62,207,142,.15); padding:3px 9px; border-radius:20px; flex-shrink:0;
+  background:rgba(62,207,142,.15); padding:3px 9px; border-radius:20px;
 }
-.dp-live-badge.closed {
-  color:#888; background:rgba(0,0,0,.08);
+.dp-live-badge.closed { color:#999; background:rgba(0,0,0,.07); }
+.dp-close {
+  margin-left:auto; width:28px; height:28px; border-radius:50%;
+  border:none; background:rgba(0,0,0,.07); cursor:pointer;
+  font-size:17px; color:#888; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; transition:background .15s;
 }
+.dp-close:hover { background:rgba(0,0,0,.14); }
+.dp-question-text {
+  font-family:'Space Grotesk', 'Manrope', sans-serif;
+  font-size:17px; font-weight:700; line-height:1.35;
+  color:#1D1F3C; letter-spacing:-.01em;
+  margin:0;
+}
+.dp-header-footer {
+  display:flex; align-items:center; justify-content:space-between;
+}
+.dp-cd-block {
+  display:flex; align-items:center; gap:8px;
+}
+.dp-cd-lbl {
+  font-size:10px; font-weight:700; color:#AAADBE; letter-spacing:.05em; text-transform:uppercase;
+}
+.dp-cd-val {
+  font-family:'Space Grotesk', 'Manrope', sans-serif;
+  font-size:13px; font-weight:700; color:#1D1F3C;
+  background:rgba(0,0,0,.05); padding:2px 10px; border-radius:8px;
+}
+.dp-cd-val.ended { color:#ef4444; background:rgba(239,68,68,.08); }
+.dp-subtitle { display:none; } /* kept for compat, unused */
 .dp-close {
   width:28px; height:28px; border-radius:50%;
   border:none; background:rgba(0,0,0,.05); cursor:pointer;
@@ -2048,30 +2071,38 @@ body.on-landing #social-footer.visible { display:flex; }
 
 <!-- ══════════════ DEBATE PANEL ══════════════ -->
 <div id="debate-panel">
+  <!-- Hero header -->
   <div class="dp-header" id="dp-header">
-    <div class="dp-header-left">
-      <div class="dp-header-top-row">
-        <span class="dp-cat-pill" id="dp-cat-pill" style="display:none"></span>
-        <div class="dp-live-badge" id="dp-live-badge">
-          <span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo
-        </div>
+    <div class="dp-header-meta">
+      <span class="dp-cat-pill" id="dp-cat-pill" style="display:none"></span>
+      <div class="dp-live-badge" id="dp-live-badge">
+        <span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo
       </div>
-      <p class="dp-subtitle" id="dp-subtitle"></p>
+      <button class="dp-close" onclick="cerrarDebate()">×</button>
     </div>
-    <button class="dp-close" onclick="cerrarDebate()">×</button>
+    <p class="dp-question-text" id="dp-subtitle"></p>
+    <div class="dp-header-footer">
+      <div class="dp-cd-block">
+        <span class="dp-cd-lbl" id="dp-cd-lbl">Tiempo restante</span>
+        <span class="dp-cd-val" id="dp-cd-val">—</span>
+      </div>
+    </div>
   </div>
+  <!-- Messages -->
   <div class="dp-messages" id="dp-messages">
-    <div class="dp-loading" id="dp-loading">Cargando mensajes…</div>
+    <div class="dp-loading">Cargando mensajes…</div>
   </div>
+  <!-- Input -->
   <div class="dp-input-row" id="dp-input-row">
     <input class="dp-input" id="dp-input" placeholder="Escribí tu argumento..." maxlength="280" onkeydown="if(event.key==='Enter')dpEnviar()">
     <button class="dp-send" onclick="dpEnviar()" title="Enviar">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
+  <!-- Closed bar -->
   <div class="dp-closed-note" id="dp-closed-note">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-    Debate cerrado — la pregunta ha finalizado
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Debate cerrado
   </div>
 </div>
 
@@ -6833,41 +6864,48 @@ async function abrirDebateForQ(i) {
   const qdata = PREGUNTAS_DATA[i]
   if (!qdata) return
   qIdx = i
-  _debateQId  = qdata.id
+  _debateQId   = qdata.id
   _debateTheme = (window._CAT_THEME[qdata.category] || _CAT_DEFAULT)
-  const ended = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000) <= 0
+  const ended  = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000) <= 0
 
-  // Apply category theme to header
+  // Hero header — category color
   const hdr = document.getElementById('dp-header')
   if (hdr) {
-    hdr.style.background   = _debateTheme.cd
-    hdr.style.borderBottom = `1.5px solid ${_debateTheme.pill}`
+    hdr.style.background  = _debateTheme.bg
+    hdr.style.borderColor = _debateTheme.pill
   }
+
   // Category pill
   const pillEl = document.getElementById('dp-cat-pill')
-  if (pillEl) {
-    if (qdata.category) {
-      pillEl.textContent = qdata.category
-      pillEl.style.background = _debateTheme.pill
-      pillEl.style.color      = _debateTheme.txt
-      pillEl.style.display    = 'inline-flex'
-    } else {
-      pillEl.style.display = 'none'
-    }
+  if (pillEl && qdata.category) {
+    pillEl.textContent      = qdata.category
+    pillEl.style.background = _debateTheme.pill
+    pillEl.style.color      = _debateTheme.txt
+    pillEl.style.display    = 'inline-flex'
+  } else if (pillEl) {
+    pillEl.style.display = 'none'
   }
-  document.getElementById('dp-subtitle').textContent = qdata.text || PREGUNTAS[i] || ''
+
+  // Big question text
+  const qtEl = document.getElementById('dp-subtitle')
+  if (qtEl) qtEl.textContent = qdata.text || PREGUNTAS[i] || ''
+
+  // Countdown
+  _dpStartCountdown(ended ? null : qdata.ends_at)
+  if (ended) {
+    const valEl = document.getElementById('dp-cd-val')
+    const lblEl = document.getElementById('dp-cd-lbl')
+    if (valEl) { valEl.textContent = 'Finalizada'; valEl.className = 'dp-cd-val ended' }
+    if (lblEl) lblEl.textContent = 'Estado'
+  }
+
   _dpSetEndedUI(ended)
   abrirDebate()
   await _loadDebateMessages(qdata.id)
   if (!ended) _subscribeDebate(qdata.id)
 }
 
-function updateQDisplay() {
-  // compat: actualiza dp-subtitle para pregunta activa
-  if (PREGUNTAS.length > 0) {
-    document.getElementById('dp-subtitle').textContent = PREGUNTAS[qIdx]
-  }
-}
+function updateQDisplay() { /* compat — no-op, debate uses abrirDebateForQ */ }
 function prevPregunta() {
   if (PREGUNTAS.length === 0) return
   qIdx = (qIdx - 1 + PREGUNTAS.length) % PREGUNTAS.length
@@ -6901,6 +6939,34 @@ let _debateQId      = null   // question_id currently shown
 let _debateChannel  = null   // supabase realtime channel
 let _debateEnded    = false  // is the question ended?
 let _debateTheme    = _CAT_DEFAULT // active category theme
+let _debateEndsAt   = null   // Date of question end
+let _debateCdIv     = null   // countdown interval
+
+function _dpStartCountdown(endsAt) {
+  if (_debateCdIv) clearInterval(_debateCdIv)
+  _debateEndsAt = endsAt ? new Date(endsAt) : null
+  const valEl = document.getElementById('dp-cd-val')
+  const lblEl = document.getElementById('dp-cd-lbl')
+  function tick() {
+    if (!valEl) return
+    if (!_debateEndsAt) { valEl.textContent = '—'; return }
+    const rem = Math.floor((_debateEndsAt - Date.now()) / 1000)
+    if (rem <= 0) {
+      valEl.textContent = 'Finalizada'
+      valEl.className   = 'dp-cd-val ended'
+      if (lblEl) lblEl.textContent = 'Estado'
+      clearInterval(_debateCdIv)
+      _debateCdIv = null
+      _dpSetEndedUI(true)
+    } else {
+      valEl.textContent = fmtTime(rem)
+      valEl.className   = 'dp-cd-val'
+      if (lblEl) lblEl.textContent = 'Tiempo restante'
+    }
+  }
+  tick()
+  _debateCdIv = setInterval(tick, 1000)
+}
 
 function _dpTimeAgo(ts) {
   const diff = Math.floor((Date.now() - new Date(ts)) / 1000)
@@ -7010,10 +7076,8 @@ function cerrarDebate() {
   document.getElementById('debate-panel').classList.remove('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.remove('live')
   debateOpen = false
-  if (_debateChannel) {
-    sb.removeChannel(_debateChannel)
-    _debateChannel = null
-  }
+  if (_debateChannel) { sb.removeChannel(_debateChannel); _debateChannel = null }
+  if (_debateCdIv)    { clearInterval(_debateCdIv); _debateCdIv = null }
 }
 
 async function dpEnviar() {
