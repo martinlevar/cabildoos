@@ -730,6 +730,8 @@ html, body {
 .v-btn.si:hover { background:var(--green); color:#fff; transform:translateY(-2px); box-shadow:0 8px 24px rgba(62,207,142,.3); }
 .v-btn.no { background:rgba(240,69,69,.09); color:#c41e1e; }
 .v-btn.no:hover { background:var(--red); color:#fff; transform:translateY(-2px); box-shadow:0 8px 24px rgba(240,69,69,.3); }
+.v-btn.abs { background:rgba(0,0,0,.05); color:#777; font-size:13px; flex:unset; width:100%; padding:13px 12px; margin-top:4px; }
+.v-btn.abs:hover { background:rgba(0,0,0,.1); color:#444; transform:translateY(-1px); }
 .v-small { font-size:11px; color:#c8c8c8; text-align:center; }
 .conf-txt { font-size:14px; color:var(--mid); margin-bottom:14px; line-height:1.6; }
 .conf-txt strong { color:var(--dark); font-size:16px; }
@@ -2115,6 +2117,7 @@ body.on-landing #social-footer.visible { display:flex; }
           <button class="v-btn si" onclick="elegir('si')">SÍ</button>
           <button class="v-btn no" onclick="elegir('no')">NO</button>
         </div>
+        <button class="v-btn abs" onclick="elegir('abs')">Me abstengo</button>
         <p class="v-small">El voto es irrevocable una vez confirmado</p>
       </div>
       <div class="phase" id="ph2">
@@ -2598,7 +2601,7 @@ body.on-landing #social-footer.visible { display:flex; }
 <!-- ══════════════ SIMULATION OVERLAY ══════════════ -->
 <div id="sim-overlay">
   <div id="sim-top-bar">
-    <div id="sim-status">⚡ Revelando votos — <span id="sim-progress">0</span> / 2.847</div>
+    <div id="sim-status">⚡ Revelando votos — <span id="sim-progress">0</span> / <span id="sim-total">0</span></div>
     <button id="sim-cancel" onclick="terminarSimulacion()">Cancelar</button>
   </div>
   <canvas id="sim-canvas"></canvas>
@@ -2616,6 +2619,11 @@ body.on-landing #social-footer.visible { display:flex; }
           <span class="sw-bar-lbl no">NO</span>
           <div class="sw-bar-track"><div class="sw-bar-fill no" id="sw-bar-no"></div></div>
           <span class="sw-bar-num" id="sw-num-no">0</span>
+        </div>
+        <div class="sw-bar-row" id="sw-row-abs" style="display:none">
+          <span class="sw-bar-lbl" style="color:#777">ABS</span>
+          <div class="sw-bar-track"><div class="sw-bar-fill" id="sw-bar-abs" style="background:#666"></div></div>
+          <span class="sw-bar-num" id="sw-num-abs">0</span>
         </div>
       </div>
       <div id="sw-winner-line"></div>
@@ -3834,9 +3842,12 @@ async function iniciarSimulacion() {
   const simTotal = SIM.order.length
   SIM.revealedArr = new Uint8Array(TOTAL_SEATS + 1)
 
-  // Inyectar pregunta en el banner
+  // Inyectar pregunta en el banner y total real en el header
   const qEl = document.getElementById('sw-question-txt')
   if (qEl) qEl.textContent = PREGUNTAS[qIdx] || qEl.textContent
+  const simTotalEl = document.getElementById('sim-total')
+  if (simTotalEl) simTotalEl.textContent = simTotal.toLocaleString('es-AR')
+  document.getElementById('sim-progress').textContent = '0'
 
   SIM.active = true
   document.getElementById('sim-overlay').classList.add('open')
@@ -3845,10 +3856,13 @@ async function iniciarSimulacion() {
   resizeSimCanvas()
 
   // Cámara centrada en el hemiciclo real
-  const padX = (bx1 - bx0) * 0.05, padY = (by1 - by0) * 0.05
+  const rangeX = bx1 - bx0, rangeY = by1 - by0
+  const padX = Math.max(rangeX * 0.05, DOT_R * 4)
+  const padY = Math.max(rangeY * 0.05, DOT_R * 4)
   const sc = Math.min(
-    simCSSW / (bx1 - bx0 + padX * 2),
-    simCSSH / (by1 - by0 + padY * 2)
+    simCSSW  / (rangeX + padX * 2),
+    simCSSH  / (rangeY + padY * 2),
+    12        // zoom máximo — evita que 1 dot ocupe toda la pantalla
   ) * 0.92
   SIM.camS = sc
   SIM.camX = (bx0 + bx1) / 2
@@ -3905,16 +3919,29 @@ function simDraw() {
     simCtx.fill()
   })
 
-  // Pass 2: no votó / abstención — gris muy claro (luz apagada pero visible)
+  // Pass 2a: no votó — gris muy claro
   simCtx.shadowBlur = 0
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
-    if (SIM.results[s.num] !== null) return
+    if (SIM.results[s.num] !== null && SIM.results[s.num] !== undefined) return
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
     if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) return
     simCtx.beginPath()
     simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
     simCtx.fillStyle = '#888888'
+    simCtx.fill()
+  })
+
+  // Pass 2b: abstención explícita — gris oscuro
+  simCtx.shadowBlur = 0
+  SEATS.forEach(s => {
+    if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
+    if (SIM.results[s.num] !== 'abs') return
+    const { x: sx, y: sy } = simToScreen(s.x, s.y)
+    if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) return
+    simCtx.beginPath()
+    simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
+    simCtx.fillStyle = '#4a4a4a'
     simCtx.fill()
   })
 
@@ -3959,40 +3986,55 @@ function simDraw() {
 }
 
 function mostrarBannerGanador() {
-  // Usar conteos reales si están disponibles, sino los de la animación
   const cntSi  = SIM._realSi  != null ? SIM._realSi  : SIM.totalSi
   const cntNo  = SIM._realNo  != null ? SIM._realNo  : SIM.totalNo
   const cntAbs = SIM._realAbs != null ? SIM._realAbs : SIM.totalAbs
-  const total = cntSi + cntNo + cntAbs
-  const pctSi = total > 0 ? ((cntSi / total) * 100).toFixed(1) : '0.0'
-  const pctNo = total > 0 ? ((cntNo / total) * 100).toFixed(1) : '0.0'
-  const ganaSi = cntSi >= cntNo
+  // "total" = solo votantes (si+no+abs), excluyendo no-participantes
+  const totalVotos = cntSi + cntNo + cntAbs
+  const pctSi  = totalVotos > 0 ? ((cntSi  / totalVotos) * 100).toFixed(1) : '0.0'
+  const pctNo  = totalVotos > 0 ? ((cntNo  / totalVotos) * 100).toFixed(1) : '0.0'
+  const pctAbs = totalVotos > 0 ? ((cntAbs / totalVotos) * 100).toFixed(1) : '0.0'
+  const ganaSi = cntSi > cntNo
+  const empate = cntSi === cntNo && (cntSi + cntNo) > 0
 
   document.getElementById('sw-num-si').textContent = cntSi.toLocaleString('es-AR')
   document.getElementById('sw-num-no').textContent = cntNo.toLocaleString('es-AR')
 
+  // Mostrar fila abstenciones solo si hay alguna
+  const rowAbs = document.getElementById('sw-row-abs')
+  if (rowAbs) rowAbs.style.display = cntAbs > 0 ? '' : 'none'
+  const numAbs = document.getElementById('sw-num-abs')
+  if (numAbs) numAbs.textContent = cntAbs.toLocaleString('es-AR')
+
   const wl = document.getElementById('sw-winner-line')
-  wl.textContent = ganaSi
-    ? `✓ Gana el SÍ con ${pctSi}%`
-    : `✓ Gana el NO con ${pctNo}%`
-  wl.style.color = ganaSi ? '#178a5b' : '#c41e1e'
+  if (empate) {
+    wl.textContent = `Empate — ${pctSi}% SÍ · ${pctNo}% NO`
+    wl.style.color = '#888'
+  } else {
+    wl.textContent = ganaSi
+      ? `✓ Gana el SÍ con ${pctSi}%`
+      : `✓ Gana el NO con ${pctNo}%`
+    wl.style.color = ganaSi ? '#178a5b' : '#c41e1e'
+  }
   wl.classList.remove('show')
 
   document.getElementById('sim-winner-banner').classList.add('show')
 
-  // Animate bars after banner appears
   setTimeout(() => {
     document.getElementById('sw-bar-si').style.width = pctSi + '%'
     document.getElementById('sw-bar-no').style.width = pctNo + '%'
+    const barAbs = document.getElementById('sw-bar-abs')
+    if (barAbs) barAbs.style.width = pctAbs + '%'
   }, 80)
   setTimeout(() => { wl.classList.add('show') }, 900)
 }
 
 function cerrarBanner() {
-  // Hide banner but stay in sim — show the glowing hemiciclo
   document.getElementById('sim-winner-banner').classList.remove('show')
   document.getElementById('sw-bar-si').style.width = '0%'
   document.getElementById('sw-bar-no').style.width = '0%'
+  const barAbs = document.getElementById('sw-bar-abs')
+  if (barAbs) barAbs.style.width = '0%'
   // Change cancel button to "back to congress"
   const btn = document.getElementById('sim-cancel')
   btn.textContent = '← Volver al congreso'
@@ -4006,6 +4048,8 @@ function terminarSimulacion() {
   document.getElementById('sim-winner-banner').classList.remove('show')
   document.getElementById('sw-bar-si').style.width = '0%'
   document.getElementById('sw-bar-no').style.width = '0%'
+  const _barAbs = document.getElementById('sw-bar-abs')
+  if (_barAbs) _barAbs.style.width = '0%'
   // Reset cancel button text for next time
   const btn = document.getElementById('sim-cancel')
   btn.textContent = 'Cancelar'
@@ -6717,11 +6761,13 @@ function abrirModal() {
   const qId = PREGUNTAS_IDS[qIdx]
   const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
   if (qId && votos[qId]) {
-    const v = votos[qId].voto   // 'si' o 'no'
+    const v = votos[qId].voto   // 'si' | 'no' | 'abs'
     const lbl = document.getElementById('ya-voto-lbl')
     if (lbl) {
-      lbl.textContent = v === 'si' ? 'SÍ' : 'NO'
-      lbl.style.color = v === 'si' ? '#178a5b' : '#c0392b'
+      const labels = { si: 'SÍ', no: 'NO', abs: 'ABSTENCIÓN' }
+      const colors = { si: '#178a5b', no: '#c0392b', abs: '#888' }
+      lbl.textContent = labels[v] || v.toUpperCase()
+      lbl.style.color = colors[v] || '#555'
     }
     showPh(4)
   } else {
@@ -6766,8 +6812,10 @@ function checkBdClick(e) {
 }
 function elegir(v) {
   const lbl = document.getElementById('elec-lbl')
-  lbl.textContent = v.toUpperCase()
-  lbl.style.color = v === 'si' ? '#178a5b' : '#c41e1e'
+  const labels = { si: 'SÍ', no: 'NO', abs: 'ABSTENCIÓN' }
+  const colors = { si: '#178a5b', no: '#c41e1e', abs: '#888' }
+  lbl.textContent = labels[v] || v.toUpperCase()
+  lbl.style.color = colors[v] || '#555'
   document.getElementById('voto-txt').textContent = v
   showPh(2)
 }
