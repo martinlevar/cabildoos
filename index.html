@@ -3786,76 +3786,55 @@ const SIM = {
 }
 
 async function iniciarSimulacion() {
-  // Obtener conteos reales de votos desde Supabase ANTES de inflar el hemiciclo
-  const qId = PREGUNTAS_IDS[qIdx]
-  let realSi = 0, realNo = 0, realAbs = 0, useRealCounts = false
-  if (qId) {
-    try {
-      const { data } = await sb.rpc('get_vote_counts', { p_question_id: qId })
-      if (data && data.length > 0) {
-        data.forEach(row => {
-          if (row.vote_plain === 'si') realSi = Number(row.cnt)
-          else if (row.vote_plain === 'no') realNo = Number(row.cnt)
-          else realAbs += Number(row.cnt)
-        })
-        useRealCounts = true
-      }
-    } catch(e) { console.warn('get_vote_counts:', e) }
+  // Asegurar que las butacas reales están cargadas
+  if (SEATS.length === 0) {
+    await cargarConteoReal()
+    if (SEATS.length === 0) return
   }
 
   hideCard()
-  // Cerrar modal de votación si estuviera abierto
   const mbd = document.getElementById('modal-bd')
   if (mbd) mbd.classList.remove('open')
 
-  // ── Inflar hemiciclo al tamaño cinemático (igual que demo) ──────────────
-  // Guardamos el estado real para restaurarlo al cerrar la sim
-  const SIM_VISUAL_SEATS = 2847
-  SIM._savedTotal = TOTAL_SEATS
-  SIM._savedRIn   = R_IN
-  SIM._savedRStep = R_STEP
-  TOTAL_SEATS = SIM_VISUAL_SEATS
-  R_IN   = 320
-  R_STEP = 50
-  buildSeats()
+  // ── Obtener votos reales POR BUTACA desde Supabase ──────────────────────
+  const qId = PREGUNTAS_IDS[qIdx]
+  const voteMap = {}   // { seat_number → 'si' | 'no' | null }
+  SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
+  if (qId) {
+    try {
+      const { data } = await sb.rpc('get_question_votes', { p_question_id: qId })
+      if (data) {
+        data.forEach(row => {
+          voteMap[row.seat_number] = row.vote_plain   // 'si' | 'no'
+        })
+      }
+    } catch(e) { console.warn('get_question_votes:', e) }
+  }
+
+  // Asignar resultado por butaca:
+  //   'si' / 'no' → votó
+  //   null        → no votó (gris oscuro en la animación)
+  SIM.results = {}
+  SEATS.forEach(s => {
+    const v = voteMap[s.num] || null
+    SIM.results[s.num] = v
+    if (v === 'si')       SIM.totalSi++
+    else if (v === 'no')  SIM.totalNo++
+    else                  SIM.totalAbs++
+  })
+  SIM._realSi  = SIM.totalSi
+  SIM._realNo  = SIM.totalNo
+  SIM._realAbs = SIM.totalAbs
   // ────────────────────────────────────────────────────────────────────────
 
-  // Distribuir resultados en los 2847 dots con proporciones reales
-  SIM.totalSi = SIM.totalNo = SIM.totalAbs = 0
-  SIM.results = {}
-  if (useRealCounts && (realSi + realNo + realAbs) > 0) {
-    const realTotal = realSi + realNo + realAbs
-    const targetSi  = Math.round((realSi  / realTotal) * SEATS.length)
-    const targetNo  = Math.round((realNo  / realTotal) * SEATS.length)
-    const shuffled  = SEATS.map(s => s.num).sort(() => Math.random() - 0.5)
-    shuffled.forEach((num, i) => {
-      if (i < targetSi)               { SIM.results[num] = 'si';  SIM.totalSi++ }
-      else if (i < targetSi + targetNo){ SIM.results[num] = 'no';  SIM.totalNo++ }
-      else                             { SIM.results[num] = null;   SIM.totalAbs++ }
-    })
-    SIM._realSi  = realSi
-    SIM._realNo  = realNo
-    SIM._realAbs = realAbs
-  } else {
-    SEATS.forEach(s => {
-      const r = Math.random()
-      if (r < 0.62)      { SIM.results[s.num] = 'si';  SIM.totalSi++ }
-      else if (r < 0.85) { SIM.results[s.num] = 'no';  SIM.totalNo++ }
-      else               { SIM.results[s.num] = null;   SIM.totalAbs++ }
-    })
-    SIM._realSi = SIM._realNo = SIM._realAbs = null
-  }
   SIM.revealed = 0
 
-  // Fisher-Yates shuffle for random reveal order
-  SIM.order = Array.from({ length: TOTAL_SEATS }, (_, i) => i + 1)
-  for (let i = SIM.order.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [SIM.order[i], SIM.order[j]] = [SIM.order[j], SIM.order[i]]
-  }
+  // Orden aleatorio de revelación (Fisher-Yates sobre los seats reales)
+  SIM.order = SEATS.map(s => s.num).sort(() => Math.random() - 0.5)
+  const simTotal = SIM.order.length
   SIM.revealedArr = new Uint8Array(TOTAL_SEATS + 1)
 
-  // Inyectar pregunta real en el banner de resultados
+  // Inyectar pregunta en el banner
   const qEl = document.getElementById('sw-question-txt')
   if (qEl) qEl.textContent = PREGUNTAS[qIdx] || qEl.textContent
 
@@ -3863,10 +3842,9 @@ async function iniciarSimulacion() {
   document.getElementById('sim-overlay').classList.add('open')
   document.getElementById('sim-winner-banner').classList.remove('show')
 
-  // Resize first so simCSSW/H are correct before computing camera
   resizeSimCanvas()
 
-  // Now compute camera with correct CSS dimensions
+  // Cámara centrada en el hemiciclo real
   const padX = (bx1 - bx0) * 0.05, padY = (by1 - by0) * 0.05
   const sc = Math.min(
     simCSSW / (bx1 - bx0 + padX * 2),
@@ -3876,21 +3854,24 @@ async function iniciarSimulacion() {
   SIM.camX = (bx0 + bx1) / 2
   SIM.camY = (by0 + by1) / 2
 
-  // Reveal randomly ~9 per frame ≈ 5s cascade
-  const BATCH = 9
+  // Velocidad dinámica: siempre ~5s en total, dramático con pocas butacas
+  const TOTAL_MS   = 5000
+  const frameMs    = simTotal <= 50 ? Math.max(16, Math.round(TOTAL_MS / Math.max(simTotal, 1))) : 16
+  const batchSize  = simTotal <= 50 ? 1 : Math.max(1, Math.ceil(simTotal / (TOTAL_MS / 16)))
+
   SIM.ivId = setInterval(() => {
-    const end = Math.min(SIM.revealed + BATCH, TOTAL_SEATS)
+    const end = Math.min(SIM.revealed + batchSize, simTotal)
     while (SIM.revealed < end) {
       SIM.revealedArr[SIM.order[SIM.revealed]] = 1
       SIM.revealed++
     }
     document.getElementById('sim-progress').textContent =
       SIM.revealed.toLocaleString('es-AR')
-    if (SIM.revealed >= TOTAL_SEATS) {
+    if (SIM.revealed >= simTotal) {
       clearInterval(SIM.ivId)
       setTimeout(mostrarBannerGanador, 900)
     }
-  }, 16)
+  }, frameMs)
 
   simDraw()
 }
@@ -3924,7 +3905,7 @@ function simDraw() {
     simCtx.fill()
   })
 
-  // Pass 2: abstenciones — gray, no glow
+  // Pass 2: no votó / abstención — gris muy claro (luz apagada pero visible)
   simCtx.shadowBlur = 0
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
@@ -3933,7 +3914,7 @@ function simDraw() {
     if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) return
     simCtx.beginPath()
     simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
-    simCtx.fillStyle = '#4a4a4a'
+    simCtx.fillStyle = '#888888'
     simCtx.fill()
   })
 
@@ -4029,14 +4010,6 @@ function terminarSimulacion() {
   const btn = document.getElementById('sim-cancel')
   btn.textContent = 'Cancelar'
   btn.onclick = terminarSimulacion
-  // Restaurar hemiciclo real (desinflar del tamaño cinemático)
-  if (SIM._savedTotal != null) {
-    TOTAL_SEATS = SIM._savedTotal
-    R_IN        = SIM._savedRIn
-    R_STEP      = SIM._savedRStep
-    buildSeats()
-    SIM._savedTotal = null
-  }
 }
 
 function resizeSimCanvas() {
