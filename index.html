@@ -3782,17 +3782,63 @@ const SIM = {
   camX: 0, camY: 0, camS: 1,
 }
 
-function iniciarSimulacion() {
+async function iniciarSimulacion() {
+  // Si no hay butacas cargadas aún, esperarlas
+  if (SEATS.length === 0) {
+    await cargarConteoReal()
+    if (SEATS.length === 0) return // nada que mostrar
+  }
+
   hideCard()
-  // Generate random results
+  // Cerrar modal de votación si estuviera abierto
+  const mbd = document.getElementById('modal-bd')
+  if (mbd) mbd.classList.remove('open')
+
+  // Obtener conteos reales de votos desde Supabase
+  const qId = PREGUNTAS_IDS[qIdx]
+  let realSi = 0, realNo = 0, realAbs = 0, useRealCounts = false
+  if (qId) {
+    try {
+      const { data } = await sb.rpc('get_vote_counts', { p_question_id: qId })
+      if (data && data.length > 0) {
+        data.forEach(row => {
+          if (row.vote_plain === 'si') realSi = Number(row.cnt)
+          else if (row.vote_plain === 'no') realNo = Number(row.cnt)
+          else realAbs += Number(row.cnt)
+        })
+        useRealCounts = true
+      }
+    } catch(e) { console.warn('get_vote_counts:', e) }
+  }
+
+  // Distribuir resultados: proporciones reales (o aleatorio si no hay datos)
   SIM.totalSi = SIM.totalNo = SIM.totalAbs = 0
   SIM.results = {}
-  SEATS.forEach(s => {
-    const r = Math.random()
-    if (r < 0.62)      { SIM.results[s.num] = 'si';  SIM.totalSi++ }
-    else if (r < 0.85) { SIM.results[s.num] = 'no';  SIM.totalNo++ }
-    else               { SIM.results[s.num] = null;   SIM.totalAbs++ }
-  })
+  const total = SEATS.length
+  if (useRealCounts && (realSi + realNo + realAbs) > 0) {
+    const realTotal = realSi + realNo + realAbs
+    const targetSi  = Math.round((realSi  / realTotal) * total)
+    const targetNo  = Math.round((realNo  / realTotal) * total)
+    // Asignar proporcionalmente (shuffle → primeros targetSi = si, sig = no, resto = abs)
+    const shuffled = SEATS.map(s => s.num).sort(() => Math.random() - 0.5)
+    shuffled.forEach((num, i) => {
+      if (i < targetSi)              { SIM.results[num] = 'si';  SIM.totalSi++ }
+      else if (i < targetSi+targetNo){ SIM.results[num] = 'no';  SIM.totalNo++ }
+      else                           { SIM.results[num] = null;   SIM.totalAbs++ }
+    })
+    // Banner usará los conteos REALES (más precisos que los aproximados por seat)
+    SIM._realSi  = realSi
+    SIM._realNo  = realNo
+    SIM._realAbs = realAbs
+  } else {
+    SEATS.forEach(s => {
+      const r = Math.random()
+      if (r < 0.62)      { SIM.results[s.num] = 'si';  SIM.totalSi++ }
+      else if (r < 0.85) { SIM.results[s.num] = 'no';  SIM.totalNo++ }
+      else               { SIM.results[s.num] = null;   SIM.totalAbs++ }
+    })
+    SIM._realSi = SIM._realNo = SIM._realAbs = null
+  }
   SIM.revealed = 0
 
   // Fisher-Yates shuffle for random reveal order
@@ -3802,9 +3848,6 @@ function iniciarSimulacion() {
     [SIM.order[i], SIM.order[j]] = [SIM.order[j], SIM.order[i]]
   }
   SIM.revealedArr = new Uint8Array(TOTAL_SEATS + 1)
-
-  // Camera is set up AFTER resizeSimCanvas() — use CSS dimensions
-  // (camera block intentionally left here; will be applied after resize below)
 
   // Inyectar pregunta real en el banner de resultados
   const qEl = document.getElementById('sw-question-txt')
@@ -3929,13 +3972,17 @@ function simDraw() {
 }
 
 function mostrarBannerGanador() {
-  const total = SIM.totalSi + SIM.totalNo + SIM.totalAbs
-  const pctSi = ((SIM.totalSi / total) * 100).toFixed(1)
-  const pctNo = ((SIM.totalNo / total) * 100).toFixed(1)
-  const ganaSi = SIM.totalSi > SIM.totalNo
+  // Usar conteos reales si están disponibles, sino los de la animación
+  const cntSi  = SIM._realSi  != null ? SIM._realSi  : SIM.totalSi
+  const cntNo  = SIM._realNo  != null ? SIM._realNo  : SIM.totalNo
+  const cntAbs = SIM._realAbs != null ? SIM._realAbs : SIM.totalAbs
+  const total = cntSi + cntNo + cntAbs
+  const pctSi = total > 0 ? ((cntSi / total) * 100).toFixed(1) : '0.0'
+  const pctNo = total > 0 ? ((cntNo / total) * 100).toFixed(1) : '0.0'
+  const ganaSi = cntSi >= cntNo
 
-  document.getElementById('sw-num-si').textContent = SIM.totalSi.toLocaleString('es-AR')
-  document.getElementById('sw-num-no').textContent = SIM.totalNo.toLocaleString('es-AR')
+  document.getElementById('sw-num-si').textContent = cntSi.toLocaleString('es-AR')
+  document.getElementById('sw-num-no').textContent = cntNo.toLocaleString('es-AR')
 
   const wl = document.getElementById('sw-winner-line')
   wl.textContent = ganaSi
@@ -6368,6 +6415,18 @@ function abrirMiPerfil() {
   if (_authUser) {
     document.getElementById('mp-strip-email').textContent = _authUser.email || ''
   }
+  // Actualizar estadísticas de votaciones desde localStorage
+  const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+  const vals = Object.values(votos)
+  const cntSi  = vals.filter(v => v.voto === 'si').length
+  const cntNo  = vals.filter(v => v.voto === 'no').length
+  const cntAbs = vals.filter(v => v.voto !== 'si' && v.voto !== 'no').length
+  const elSi  = document.getElementById('mp-count-si')
+  const elNo  = document.getElementById('mp-count-no')
+  const elAbs = document.getElementById('mp-count-abs')
+  if (elSi)  elSi.textContent  = cntSi
+  if (elNo)  elNo.textContent  = cntNo
+  if (elAbs) elAbs.textContent = cntAbs
   document.getElementById('mi-perfil-overlay').classList.add('open')
 }
 
@@ -6489,6 +6548,9 @@ setInterval(() => {
   if (secs === 0 && !_revealTriggered) {
     _revealTriggered = true
     document.getElementById('timer').textContent = '00:00:00'
+    // Marcar como visto para no repetir al recargar
+    const qdata = PREGUNTAS_DATA[qIdx]
+    if (qdata?.id) localStorage.setItem(`cabildoos_revealed_${qdata.id}`, Date.now())
     // Breve pausa dramática antes de disparar la revelación
     setTimeout(() => { if (!SIM.active) iniciarSimulacion() }, 2500)
   }
@@ -6508,10 +6570,19 @@ function updateQDisplay() {
   if (qdata?.ends_at) {
     const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
     secs = Math.max(0, remaining)
-    _revealTriggered = (remaining <= 0) // ya expiró → no disparar de nuevo
+    _revealTriggered = (remaining <= 0)
+    // Pregunta expirada: mostrar reveal una sola vez por dispositivo
+    if (remaining <= 0) {
+      const seenKey = `cabildoos_revealed_${qdata.id}`
+      const hoursSinceEnd = (Date.now() - new Date(qdata.ends_at).getTime()) / 3600000
+      if (!localStorage.getItem(seenKey) && hoursSinceEnd < 48) {
+        localStorage.setItem(seenKey, Date.now())
+        setTimeout(() => { if (!SIM.active) iniciarSimulacion() }, 2000)
+      }
+    }
   } else {
     secs = 0
-    _revealTriggered = true // sin ends_at → no disparar reveal
+    _revealTriggered = true
   }
   document.getElementById('timer').textContent = secs > 0 ? fmtTime(secs) : (qdata?.ends_at ? 'Finalizada' : '--:--:--')
   resetDebateRoom()
