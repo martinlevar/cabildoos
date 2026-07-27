@@ -242,12 +242,13 @@ html, body {
 }
 /* Badge revelación dentro del countdown */
 .q-card-reveal-badge {
-  padding:5px 10px; border-radius:8px; border:none; cursor:pointer;
-  background:#1d1d1d; color:#fff;
+  padding:5px 12px; border-radius:8px; cursor:pointer;
+  background:transparent; color:#3b82f6;
+  border:1.5px solid #3b82f6;
   font-family:'Manrope',sans-serif; font-size:11px; font-weight:700;
-  white-space:nowrap; transition:background .15s;
+  white-space:nowrap; transition:background .18s, color .18s;
 }
-.q-card-reveal-badge:hover { background:#333; }
+.q-card-reveal-badge:hover { background:#3b82f6; color:#fff; }
 
 .q-empty-msg { font-size:13px; color:var(--mid); font-weight:600; }
 .debate-dot { width:6px; height:6px; border-radius:50%; background:#22c55e; flex-shrink:0;
@@ -6778,7 +6779,7 @@ function renderQCards() {
 
     // Badge countdown: activa = "En curso", finalizada = botón revelación
     const cdRight = ended
-      ? `<button class="q-card-reveal-badge" onclick="abrirVotoForQ(${i})">⚡ Revelación</button>`
+      ? `<button class="q-card-reveal-badge" onclick="abrirVotoForQ(${i})">Revelación</button>`
       : `<span class="q-card-cd-badge" style="background:${theme.pill};color:${theme.txt}">En curso</span>`
 
     const card = document.createElement('div')
