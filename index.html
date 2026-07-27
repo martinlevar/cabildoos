@@ -4116,16 +4116,15 @@ function terminarSimulacion() {
   document.getElementById('sw-bar-no').style.width = '0%'
   const _barAbs = document.getElementById('sw-bar-abs')
   if (_barAbs) _barAbs.style.width = '0%'
-  // Reset cancel button text for next time
-  const btn = document.getElementById('sim-cancel')
-  btn.textContent = 'Cancelar'
-  btn.onclick = terminarSimulacion
+  // Reset footer flotante
+  const _footer = document.getElementById('sim-footer-bar')
+  if (_footer) _footer.classList.remove('show')
 }
 
 function resizeSimCanvas() {
   const dpr = window.devicePixelRatio || 1
   simCSSW = window.innerWidth
-  simCSSH = window.innerHeight - 52  // minus top bar
+  simCSSH = window.innerHeight
   simCanvas.width  = simCSSW * dpr
   simCanvas.height = simCSSH * dpr
   simCanvas.style.width  = simCSSW + 'px'
