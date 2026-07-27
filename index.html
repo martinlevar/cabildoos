@@ -4245,17 +4245,12 @@ async function _onLogin(user) {
     ddButaca.textContent = ''
   }
 
-  // Landing: VaV — si tiene butaca verificada en localStorage, respetar ese estado
-  const _vavButaca = localStorage.getItem('cabildoos_butaca')
-  if (_vavButaca) {
-    // Ya aplicado por vpRestaurarEstado — no sobreescribir con "sin verificar"
-    vpAplicarButacaEnUI(_vavButaca)
-  } else if (profile?.seat_number) {
-    document.getElementById('st-noident').style.display = 'none'
-    document.getElementById('st-ident').style.display   = 'flex'
-    document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = profile.seat_number)
-    document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + profile.seat_number)
-    mostrarFooter()
+  // Landing: VaV — fuente de verdad es Supabase (profile.seat_number)
+  // localStorage es solo caché; si falta, lo reconstruimos desde el perfil
+  if (profile?.seat_number) {
+    // Siempre usar la butaca del perfil (sobrevive al borrado de localStorage)
+    vpAplicarButacaEnUI(profile.seat_number)
+    localStorage.setItem('cabildoos_butaca', profile.seat_number)
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
