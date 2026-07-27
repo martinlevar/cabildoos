@@ -488,7 +488,7 @@ html, body {
 /* Floating footer "Ver Datos" */
 #sim-footer-bar {
   position:absolute; bottom:0; left:0; right:0;
-  display:flex; justify-content:center; align-items:center;
+  display:flex; justify-content:center; align-items:center; gap:12px;
   padding:0 24px 40px;
   pointer-events:none;
   opacity:0;
@@ -497,15 +497,24 @@ html, body {
   z-index:10;
 }
 #sim-footer-bar.show { opacity:1; transform:translateY(0); pointer-events:all; }
-#sim-ver-datos-btn {
-  padding:14px 36px; border-radius:99px; border:none;
-  background:#fff; color:#1d1d1d;
-  font-family:'Manrope',sans-serif; font-size:15px; font-weight:800;
+#sim-volver-btn {
+  padding:11px 20px; border-radius:99px;
+  border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.08); color:rgba(255,255,255,.75);
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:700;
   cursor:pointer; letter-spacing:.01em;
-  box-shadow:0 8px 32px rgba(0,0,0,.45);
+  transition:background .15s, color .15s;
+}
+#sim-volver-btn:hover { background:rgba(255,255,255,.14); color:#fff; }
+#sim-ver-datos-btn {
+  padding:11px 22px; border-radius:99px; border:none;
+  background:#fff; color:#1d1d1d;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:800;
+  cursor:pointer; letter-spacing:.01em;
+  box-shadow:0 6px 24px rgba(0,0,0,.4);
   transition:transform .15s, box-shadow .15s;
 }
-#sim-ver-datos-btn:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(0,0,0,.55); }
+#sim-ver-datos-btn:hover { transform:translateY(-1px); box-shadow:0 10px 32px rgba(0,0,0,.5); }
 #sim-ver-datos-btn:active { transform:translateY(0); }
 
 /* Winner banner */
@@ -2640,7 +2649,8 @@ body.on-landing #social-footer.visible { display:flex; }
   <canvas id="sim-canvas"></canvas>
   <!-- Floating footer -->
   <div id="sim-footer-bar">
-    <button id="sim-ver-datos-btn" onclick="mostrarBannerGanador()">Ver resultados →</button>
+    <button id="sim-volver-btn" onclick="terminarSimulacion()">← Congreso</button>
+    <button id="sim-ver-datos-btn" onclick="mostrarBannerGanador()">Ver resultados</button>
   </div>
   <div id="sim-winner-banner">
     <div id="sim-winner-inner">
