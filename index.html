@@ -6729,6 +6729,14 @@ function abrirModal() {
     showToast('Creá tu butaca para poder votar')
     return
   }
+
+  // Si la votación ya cerró → repetir la experiencia de revelación
+  const qdata = PREGUNTAS_DATA[qIdx]
+  if (qdata?.ends_at && new Date(qdata.ends_at) <= new Date()) {
+    if (!SIM.active) iniciarSimulacion()
+    return
+  }
+
   const txt = PREGUNTAS[qIdx] || 'Pregunta activa'
   document.getElementById('modal-title').textContent = txt
 
