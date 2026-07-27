@@ -175,15 +175,12 @@ html, body {
 }
 .q-card:hover { box-shadow:0 6px 24px rgba(0,0,0,.1), 0 0 0 0.5px rgba(0,0,0,.06); }
 
-/* Card header accent bar */
-.q-card-accent {
-  height:4px;
-  background:linear-gradient(90deg,var(--navy) 0%,rgba(26,31,60,.4) 100%);
+/* Category pill on card */
+.q-cat-pill {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:3px 9px; border-radius:99px; margin-bottom:7px;
 }
-.q-card-accent.ended { background:linear-gradient(90deg,#aaa 0%,#ccc 100%); }
-.q-card-accent.voted-si { background:linear-gradient(90deg,#178a5b 0%,#3ecf8e 100%); }
-.q-card-accent.voted-no { background:linear-gradient(90deg,#c41e1e 0%,#f05050 100%); }
-.q-card-accent.voted-abs { background:linear-gradient(90deg,#d97706 0%,#fbbf24 100%); }
 
 .q-card-inner { padding:14px 16px 10px; flex:1; }
 .q-label { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--mid); margin-bottom:5px; }
@@ -6669,7 +6666,7 @@ let qIdx = 0, _revealTriggered = {}
 
 async function cargarPreguntasActivas() {
   try {
-    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes').eq('status', 'activa').order('created_at')
+    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category').eq('status', 'activa').order('created_at')
     if (data && data.length > 0) {
       PREGUNTAS      = data.map(q => q.text)
       PREGUNTAS_IDS  = data.map(q => q.id)
@@ -6725,6 +6722,18 @@ function renderQCards() {
     return
   }
   strip.classList.remove('empty')
+  // Paleta pastel por categoría — bg, pill-bg, pill-text, countdown-bg
+  const CAT_THEME = {
+    'Política':       { bg:'#EEF2FF', pill:'#C7D2FE', txt:'#3730A3', cd:'#E0E7FF' },
+    'Economía':       { bg:'#ECFDF5', pill:'#A7F3D0', txt:'#065F46', cd:'#D1FAE5' },
+    'Derechos':       { bg:'#FFF7ED', pill:'#FED7AA', txt:'#9A3412', cd:'#FFEDD5' },
+    'Social':         { bg:'#F5F3FF', pill:'#DDD6FE', txt:'#5B21B6', cd:'#EDE9FE' },
+    'Internacional':  { bg:'#F0F9FF', pill:'#BAE6FD', txt:'#0C4A6E', cd:'#E0F2FE' },
+    'Justicia':       { bg:'#FFF1F2', pill:'#FECDD3', txt:'#9F1239', cd:'#FFE4E6' },
+    'Electoral':      { bg:'#FFFBEB', pill:'#FDE68A', txt:'#92400E', cd:'#FEF3C7' },
+  }
+  const CAT_DEFAULT = { bg:'#F9F9F7', pill:'#E4E4E0', txt:'#555', cd:'#F2F2F0' }
+
   const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
   PREGUNTAS_DATA.forEach((qdata, i) => {
     const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
@@ -6732,33 +6741,30 @@ function renderQCards() {
     const yaVoto = votos[qdata.id]
     const votoVal = yaVoto?.voto
     const voteLabels = { si:'✓ Voté SÍ', no:'✓ Voté NO', abs:'✓ Me abstuve' }
-    // Accent bar color
-    let accentCls = ended ? 'ended' : (votoVal ? `voted-${votoVal}` : '')
-    // Vote button label
+    const theme = CAT_THEME[qdata.category] || CAT_DEFAULT
+
     let voteBtnTxt, voteBtnCls = 'q-card-vote-btn'
     if (ended) { voteBtnTxt = '⚡ Ver revelación'; voteBtnCls += ' reveal-btn' }
     else if (yaVoto) { voteBtnTxt = voteLabels[votoVal] || '✓ Ya voté'; voteBtnCls += ' ya-vote' }
     else { voteBtnTxt = 'Votar' }
-    // Countdown badge
-    const badgeTxt = ended ? 'Cerrada' : 'En curso'
-    const badgeCls = ended ? 'ended' : ''
 
     const card = document.createElement('div')
     card.className = 'q-card'
+    card.style.background = theme.bg
+    card.style.borderColor = theme.pill
     card.innerHTML = `
-      <div class="q-card-accent ${accentCls}"></div>
       <div class="q-card-inner">
-        <p class="q-label" style="margin-bottom:4px">Propuesta ${i + 1}</p>
+        ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${qdata.category}</span>` : ''}
         <p class="q-card-text">${qdata.text}</p>
       </div>
-      <div class="q-card-countdown">
+      <div class="q-card-countdown" style="background:${theme.cd};border-top-color:${theme.pill}">
         <div class="q-card-countdown-left">
           <span class="q-card-cd-lbl">${ended ? 'Estado' : 'Tiempo restante'}</span>
           <span class="q-card-timer-val${ended ? ' ended' : ''}" id="q-timer-${i}">${ended ? 'Finalizada' : fmtTime(remaining)}</span>
         </div>
-        <span class="q-card-cd-badge ${badgeCls}">${badgeTxt}</span>
+        <span class="q-card-cd-badge${ended ? ' ended' : ''}" style="${ended ? '' : `background:${theme.pill};color:${theme.txt}`}">${ended ? 'Cerrada' : 'En curso'}</span>
       </div>
-      <div class="q-card-actions">
+      <div class="q-card-actions" style="background:${theme.bg}">
         <button class="q-card-debate-btn" onclick="abrirDebateForQ(${i})">
           <span class="debate-dot"></span>Debate esta pregunta
         </button>
