@@ -210,36 +210,38 @@ html, body {
 }
 .q-card-cd-badge.ended { background:#f0f0ee; color:#999; }
 
-.q-card-actions { padding:10px 12px 12px; display:flex; flex-direction:column; gap:7px; }
+.q-card-actions { padding:8px 10px 10px; display:flex; flex-direction:row; gap:6px; }
 
 .q-card-debate-btn {
-  width:100%; display:flex; align-items:center; justify-content:center; gap:7px;
-  padding:10px 14px; border-radius:11px;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:9px 10px; border-radius:11px;
   border:1.5px solid rgba(62,207,142,.35);
   background:rgba(62,207,142,.05);
-  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; color:#166534;
+  font-family:'Manrope',sans-serif; font-size:11px; font-weight:700; color:#166534;
   cursor:pointer; transition:background .15s, border-color .15s;
-  letter-spacing:.01em;
+  white-space:nowrap;
 }
 .q-card-debate-btn:hover { background:rgba(62,207,142,.12); border-color:rgba(62,207,142,.6); }
 
 .q-card-vote-btn {
-  width:100%; padding:11px 14px; border-radius:11px; border:none;
+  padding:9px 10px; border-radius:11px; border:none;
   background:var(--dark); color:#fff;
-  font-family:'Manrope',sans-serif; font-size:13px; font-weight:800;
-  cursor:pointer; transition:background .15s, transform .1s;
-  letter-spacing:.02em;
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:800;
+  cursor:pointer; transition:background .15s; white-space:nowrap;
 }
-.q-card-vote-btn:hover { background:#111; transform:translateY(-1px); }
-.q-card-vote-btn:active { transform:translateY(0); }
+.q-card-vote-btn:hover { background:#111; }
 .q-card-vote-btn.ya-vote {
-  background:#f2f2f0; color:#777; font-size:12px; font-weight:700;
+  background:#f2f2f0; color:#777; font-size:11px; font-weight:700;
   border:1.5px solid #e4e4e2;
 }
-.q-card-vote-btn.reveal-btn {
-  background:linear-gradient(135deg,#1d1d1d 0%,#444 100%);
-  font-size:12px; letter-spacing:.03em;
+/* Badge revelación dentro del countdown */
+.q-card-reveal-badge {
+  padding:5px 10px; border-radius:8px; border:none; cursor:pointer;
+  background:#1d1d1d; color:#fff;
+  font-family:'Manrope',sans-serif; font-size:11px; font-weight:700;
+  white-space:nowrap; transition:background .15s;
 }
+.q-card-reveal-badge:hover { background:#333; }
 
 .q-empty-msg { font-size:13px; color:var(--mid); font-weight:600; }
 .debate-dot { width:6px; height:6px; border-radius:50%; background:#22c55e; flex-shrink:0;
@@ -6735,18 +6737,37 @@ function renderQCards() {
   const CAT_DEFAULT = { bg:'#F9F9F7', pill:'#E4E4E0', txt:'#555', cd:'#F2F2F0' }
 
   const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-  PREGUNTAS_DATA.forEach((qdata, i) => {
-    const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
+
+  // Ordenar: activas primero (por tiempo restante asc), finalizadas al fondo
+  const sorted = PREGUNTAS_DATA
+    .map((qdata, i) => ({ qdata, i, remaining: Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000) }))
+    .sort((a, b) => {
+      const aEnded = a.remaining <= 0, bEnded = b.remaining <= 0
+      if (aEnded !== bEnded) return aEnded ? 1 : -1   // activas primero
+      if (!aEnded) return a.remaining - b.remaining    // menor tiempo = más urgente = primero
+      return b.remaining - a.remaining                 // finalizadas: más reciente primero
+    })
+
+  sorted.forEach(({ qdata, i, remaining }) => {
     const ended = remaining <= 0
     const yaVoto = votos[qdata.id]
     const votoVal = yaVoto?.voto
     const voteLabels = { si:'✓ Voté SÍ', no:'✓ Voté NO', abs:'✓ Me abstuve' }
     const theme = CAT_THEME[qdata.category] || CAT_DEFAULT
 
-    let voteBtnTxt, voteBtnCls = 'q-card-vote-btn'
-    if (ended) { voteBtnTxt = '⚡ Ver revelación'; voteBtnCls += ' reveal-btn' }
-    else if (yaVoto) { voteBtnTxt = voteLabels[votoVal] || '✓ Ya voté'; voteBtnCls += ' ya-vote' }
-    else { voteBtnTxt = 'Votar' }
+    // Botón de voto (solo en preguntas activas)
+    let voteBtnHTML = ''
+    if (!ended) {
+      let voteBtnTxt, voteBtnCls = 'q-card-vote-btn'
+      if (yaVoto) { voteBtnTxt = voteLabels[votoVal] || '✓ Ya voté'; voteBtnCls += ' ya-vote' }
+      else { voteBtnTxt = 'Votar' }
+      voteBtnHTML = `<button class="${voteBtnCls}" style="flex:1" onclick="abrirVotoForQ(${i})">${voteBtnTxt}</button>`
+    }
+
+    // Badge countdown: activa = "En curso", finalizada = botón revelación
+    const cdRight = ended
+      ? `<button class="q-card-reveal-badge" onclick="abrirVotoForQ(${i})">⚡ Revelación</button>`
+      : `<span class="q-card-cd-badge" style="background:${theme.pill};color:${theme.txt}">En curso</span>`
 
     const card = document.createElement('div')
     card.className = 'q-card'
@@ -6762,13 +6783,13 @@ function renderQCards() {
           <span class="q-card-cd-lbl">${ended ? 'Estado' : 'Tiempo restante'}</span>
           <span class="q-card-timer-val${ended ? ' ended' : ''}" id="q-timer-${i}">${ended ? 'Finalizada' : fmtTime(remaining)}</span>
         </div>
-        <span class="q-card-cd-badge${ended ? ' ended' : ''}" style="${ended ? '' : `background:${theme.pill};color:${theme.txt}`}">${ended ? 'Cerrada' : 'En curso'}</span>
+        ${cdRight}
       </div>
       <div class="q-card-actions" style="background:${theme.bg}">
-        <button class="q-card-debate-btn" onclick="abrirDebateForQ(${i})">
-          <span class="debate-dot"></span>Debate esta pregunta
+        <button class="q-card-debate-btn" style="flex:1" onclick="abrirDebateForQ(${i})">
+          <span class="debate-dot"></span>Debate
         </button>
-        <button class="${voteBtnCls}" onclick="abrirVotoForQ(${i})">${voteBtnTxt}</button>
+        ${voteBtnHTML}
       </div>`
     strip.appendChild(card)
   })
