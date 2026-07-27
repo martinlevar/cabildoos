@@ -2086,7 +2086,7 @@ body.on-landing #social-footer.visible { display:flex; }
   <div class="modal">
     <div class="modal-head">
       <p class="modal-tag">Votación Activa — Sistema VaV</p>
-      <p class="modal-title">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</p>
+      <p class="modal-title" id="modal-title">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</p>
       <p class="modal-sub">Tu voto será anónimo y criptográficamente verificable</p>
     </div>
     <div class="modal-body">
@@ -2572,7 +2572,7 @@ body.on-landing #social-footer.visible { display:flex; }
   <div id="sim-winner-banner">
     <div id="sim-winner-inner">
       <p class="sw-label">Resultado oficial</p>
-      <p class="sw-question">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</p>
+      <p class="sw-question" id="sw-question-txt">¿Debería Venezuela convocar a una Asamblea Nacional Constituyente libre?</p>
       <div class="sw-bars">
         <div class="sw-bar-row">
           <span class="sw-bar-lbl si">SÍ</span>
@@ -3772,6 +3772,10 @@ function iniciarSimulacion() {
 
   // Camera is set up AFTER resizeSimCanvas() — use CSS dimensions
   // (camera block intentionally left here; will be applied after resize below)
+
+  // Inyectar pregunta real en el banner de resultados
+  const qEl = document.getElementById('sw-question-txt')
+  if (qEl) qEl.textContent = PREGUNTAS[qIdx] || qEl.textContent
 
   SIM.active = true
   document.getElementById('sim-overlay').classList.add('open')
@@ -6403,7 +6407,7 @@ function enviarPropuesta() {
 let PREGUNTAS = [] // cargadas desde Supabase — questions WHERE status='activa'
 let PREGUNTAS_IDS  = []
 let PREGUNTAS_DATA = []
-let qIdx = 0, secs = 0
+let qIdx = 0, secs = 0, _revealTriggered = false
 
 async function cargarPreguntasActivas() {
   try {
@@ -6428,8 +6432,15 @@ function fmtTime(s) {
   return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`
 }
 setInterval(() => {
-  if (document.getElementById('congress').classList.contains('active') && secs > 0) {
-    secs--; document.getElementById('timer').textContent = fmtTime(secs)
+  if (!document.getElementById('congress').classList.contains('active')) return
+  if (secs <= 0) return
+  secs--
+  document.getElementById('timer').textContent = fmtTime(secs)
+  if (secs === 0 && !_revealTriggered) {
+    _revealTriggered = true
+    document.getElementById('timer').textContent = '00:00:00'
+    // Breve pausa dramática antes de disparar la revelación
+    setTimeout(() => { if (!SIM.active) iniciarSimulacion() }, 2500)
   }
 }, 1000)
 
@@ -6442,15 +6453,17 @@ function updateQDisplay() {
   document.getElementById('q-text').textContent = PREGUNTAS[qIdx]
   document.getElementById('q-num').textContent  = `${qIdx + 1} / ${PREGUNTAS.length}`
   document.getElementById('dp-subtitle').textContent = PREGUNTAS[qIdx]
-  // Calcular tiempo restante desde ends_at (DB) o duration_minutes como fallback
+  // Calcular tiempo restante SIEMPRE desde ends_at — nunca del duration como fallback
   const qdata = PREGUNTAS_DATA[qIdx]
   if (qdata?.ends_at) {
-    secs = Math.max(0, Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000))
-  } else if (qdata?.duration_minutes) {
-    secs = qdata.duration_minutes * 60
+    const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
+    secs = Math.max(0, remaining)
+    _revealTriggered = (remaining <= 0) // ya expiró → no disparar de nuevo
   } else {
     secs = 0
+    _revealTriggered = true // sin ends_at → no disparar reveal
   }
+  document.getElementById('timer').textContent = secs > 0 ? fmtTime(secs) : (qdata?.ends_at ? 'Finalizada' : '--:--:--')
   resetDebateRoom()
 }
 function prevPregunta() {
@@ -6575,6 +6588,9 @@ function abrirModal() {
     showToast('Creá tu butaca para poder votar')
     return
   }
+  // Mostrar la pregunta real en el modal
+  const txt = PREGUNTAS[qIdx] || 'Pregunta activa'
+  document.getElementById('modal-title').textContent = txt
   showPh(1)
   document.getElementById('modal-bd').classList.add('open')
 }
@@ -6592,7 +6608,36 @@ function elegir(v) {
   document.getElementById('voto-txt').textContent = v
   showPh(2)
 }
-function confirmarVoto() { showPh(3) }
+async function confirmarVoto() {
+  const voto  = document.getElementById('voto-txt').textContent  // 'si' | 'no'
+  const qId   = PREGUNTAS_IDS[qIdx]
+  if (!qId || !_authUser || !MY_SEAT) { showPh(3); return }
+
+  // Generar nonce criptográfico
+  const arr   = new Uint8Array(32)
+  crypto.getRandomValues(arr)
+  const nonce = Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('')
+
+  // Hash(voto:nonce) — solo el hash viaja al servidor
+  const raw   = `${voto}:${nonce}`
+  const buf   = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  const hash  = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
+
+  // Guardar nonce localmente (para la fase de revelación)
+  const stored = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+  stored[qId]  = { voto, nonce, hash, ts: Date.now() }
+  localStorage.setItem('cabildoos_votos', JSON.stringify(stored))
+
+  // Enviar hash a Supabase
+  const { error } = await sb.from('votes').upsert({
+    question_id: qId,
+    seat_number: MY_SEAT,
+    vote_hash:   hash
+  }, { onConflict: 'question_id,seat_number' })
+
+  if (error) console.error('Vote commit error:', error)
+  showPh(3)
+}
 function showPh(n) {
   document.querySelectorAll('.phase').forEach((p,i) => p.classList.toggle('active', i+1===n))
 }

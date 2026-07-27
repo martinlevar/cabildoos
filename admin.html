@@ -2773,11 +2773,13 @@ async function crearPregunta() {
   const durUnit = document.getElementById('np-duracion-unit').value
   const durMin  = durUnit === 'minutes' ? durVal : durVal * 60
   if (!texto) { toast('Escribí el texto de la pregunta'); return }
+  const endsAt = estado === 'activa' ? new Date(Date.now() + durMin * 60 * 1000).toISOString() : null
   const { error } = await sb.from('questions').insert({
     text:             texto,
     duration_minutes: durMin,
     category:    cat,
     status:      estado === 'activa' ? 'activa' : 'revision',
+    ends_at:     endsAt,
     proposed_by: null,
   })
   if (error) { toast('Error: ' + error.message); return }
@@ -2789,7 +2791,11 @@ async function crearPregunta() {
 
 async function aprobarPregunta(id, btn) {
   btn.disabled = true
-  const { error } = await sb.from('questions').update({ status: 'activa' }).eq('id', id)
+  // Leer duration_minutes para calcular ends_at desde ahora
+  const { data: qdata } = await sb.from('questions').select('duration_minutes').eq('id', id).single()
+  const durMin = qdata?.duration_minutes || 1440
+  const endsAt = new Date(Date.now() + durMin * 60 * 1000).toISOString()
+  const { error } = await sb.from('questions').update({ status: 'activa', ends_at: endsAt }).eq('id', id)
   if (error) { toast('Error: ' + error.message); btn.disabled = false; return }
   toast('✓ Pregunta aprobada y activada en el hemiciclo')
   cargarPreguntas()
