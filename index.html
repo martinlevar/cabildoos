@@ -6439,7 +6439,7 @@ function volverALanding() {
 // ══════════════════════════════════════════════════════════════
 let perfilPublico = localStorage.getItem('cabildoos_perfil_publico') === '1'
 
-function abrirMiPerfil() {
+async function abrirMiPerfil() {
   // Poblar con datos reales del perfil
   if (_authProfile) {
     document.getElementById('mp-alias-input').value  = _authProfile.alias  || ''
@@ -6453,12 +6453,28 @@ function abrirMiPerfil() {
   document.getElementById('mp-toggle-sub').textContent = perfilPublico
     ? 'Tu perfil es visible en el hemiciclo'
     : 'Tu identidad está oculta (anónimo)'
-  // Actualizar estadísticas de votaciones desde localStorage
+
+  // Stats: intentar desde localStorage primero, luego Supabase
   const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-  const vals = Object.values(votos)
-  const cntSi  = vals.filter(v => v.voto === 'si').length
-  const cntNo  = vals.filter(v => v.voto === 'no').length
-  const cntAbs = vals.filter(v => v.voto !== 'si' && v.voto !== 'no').length
+  const vals  = Object.values(votos)
+  let cntSi  = vals.filter(v => v.voto === 'si').length
+  let cntNo  = vals.filter(v => v.voto === 'no').length
+  let cntAbs = vals.filter(v => v.voto === 'abs').length
+
+  // Si no hay datos locales y tenemos butaca, leer de Supabase
+  if (cntSi + cntNo + cntAbs === 0 && MY_SEAT > 0) {
+    try {
+      const { data } = await sb.rpc('get_my_vote_stats', { p_seat_number: MY_SEAT })
+      if (data) {
+        data.forEach(row => {
+          if (row.vote_plain === 'si')  cntSi  = Number(row.cnt)
+          if (row.vote_plain === 'no')  cntNo  = Number(row.cnt)
+          if (row.vote_plain === 'abs') cntAbs = Number(row.cnt)
+        })
+      }
+    } catch(e) { console.warn('get_my_vote_stats:', e) }
+  }
+
   const elSi  = document.getElementById('mp-count-si')
   const elNo  = document.getElementById('mp-count-no')
   const elAbs = document.getElementById('mp-count-abs')
