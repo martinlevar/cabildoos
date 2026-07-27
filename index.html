@@ -259,75 +259,106 @@ html, body {
 /* ── DEBATE PANEL ── */
 #debate-panel {
   position:fixed; right:-420px; top:58px; bottom:0;
-  width:380px; background:#fff;
-  border-left:1px solid var(--border);
+  width:390px; background:#fff;
+  border-left:1px solid #E8E8E4;
   display:flex; flex-direction:column;
   z-index:200; transition:right .32s cubic-bezier(.4,0,.2,1);
-  box-shadow:-8px 0 32px rgba(0,0,0,.07);
+  box-shadow:-12px 0 40px rgba(0,0,0,.08);
 }
 #debate-panel.open { right:0; }
 .dp-header {
-  flex-shrink:0; padding:16px 20px 14px;
-  border-bottom:1px solid var(--border);
+  flex-shrink:0; padding:18px 20px 14px;
+  border-bottom:1px solid #EFEFEC;
   display:flex; align-items:center; gap:10px;
+  background:#FAFAF8;
 }
 .dp-header-left { flex:1; min-width:0; }
-.dp-title { font-size:14px; font-weight:800; color:var(--dark); }
+.dp-title { font-size:13px; font-weight:800; color:#1D1F3C; letter-spacing:.01em; }
 .dp-subtitle {
-  font-size:11px; color:var(--mid); margin-top:1px;
+  font-size:11px; color:#8B8FA8; margin-top:2px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .dp-live-badge {
   display:flex; align-items:center; gap:5px;
   font-size:10px; font-weight:700; color:#1a7a52;
-  background:rgba(62,207,142,.12); padding:3px 8px; border-radius:20px; flex-shrink:0;
+  background:rgba(62,207,142,.12); padding:3px 9px; border-radius:20px; flex-shrink:0;
+}
+.dp-live-badge.closed {
+  color:#888; background:rgba(0,0,0,.06);
 }
 .dp-close {
   width:28px; height:28px; border-radius:50%;
-  border:none; background:rgba(0,0,0,.06); cursor:pointer;
-  font-size:16px; color:var(--mid); flex-shrink:0;
+  border:none; background:rgba(0,0,0,.05); cursor:pointer;
+  font-size:17px; color:#8B8FA8; flex-shrink:0;
   display:flex; align-items:center; justify-content:center; transition:background .15s;
 }
-.dp-close:hover { background:rgba(0,0,0,.12); }
-.dp-messages { flex:1; overflow-y:auto; padding:16px 16px 8px; display:flex; flex-direction:column; gap:12px; }
+.dp-close:hover { background:rgba(0,0,0,.11); }
+.dp-messages {
+  flex:1; overflow-y:auto; padding:16px 16px 8px;
+  display:flex; flex-direction:column; gap:10px;
+  scroll-behavior:smooth;
+}
+.dp-loading {
+  text-align:center; font-size:12px; color:#AAADBE;
+  padding:32px 0; font-style:italic;
+}
+.dp-empty {
+  text-align:center; font-size:12px; color:#AAADBE;
+  padding:40px 20px; line-height:1.6;
+}
 .dp-msg { display:flex; flex-direction:column; gap:3px; }
 .dp-msg-head { display:flex; align-items:center; gap:6px; }
-.dp-msg-seat { font-size:10px; font-weight:800; color:var(--orange); }
-.dp-msg-time { font-size:10px; color:var(--mid); }
-.dp-msg-text {
-  font-size:13px; color:var(--dark); line-height:1.5;
-  background:#f5f5f6; border-radius:0 12px 12px 12px;
-  padding:8px 12px; display:inline-block; max-width:90%;
+.dp-msg-seat {
+  font-size:10px; font-weight:800; color:#5C67E8;
+  background:#EEF2FF; padding:1px 6px; border-radius:6px;
 }
+.dp-msg.mine .dp-msg-seat {
+  color:#fff; background:#1D1F3C;
+}
+.dp-msg-time { font-size:10px; color:#AAADBE; }
+.dp-msg-alias { font-size:10px; color:#AAADBE; font-style:italic; }
+.dp-msg-text {
+  font-size:13px; color:#1D1F3C; line-height:1.5;
+  background:#F4F4F0; border-radius:2px 12px 12px 12px;
+  padding:8px 12px; display:inline-block; max-width:88%;
+}
+.dp-msg.mine { align-items:flex-end; }
 .dp-msg.mine .dp-msg-text {
-  background:var(--navy); color:#fff;
-  border-radius:12px 0 12px 12px; margin-left:auto;
+  background:#1D1F3C; color:#fff;
+  border-radius:12px 2px 12px 12px;
 }
 .dp-msg.mine .dp-msg-head { flex-direction:row-reverse; }
-.dp-msg.mine .dp-msg-seat { color:rgba(255,255,255,.6); }
 .dp-msg-divider {
   text-align:center; font-size:10px; font-weight:700;
-  letter-spacing:.08em; color:var(--mid); padding:4px 0;
+  letter-spacing:.08em; color:#CCCEDC; padding:4px 0;
 }
 .dp-input-row {
-  flex-shrink:0; padding:12px 16px;
-  border-top:1px solid var(--border);
+  flex-shrink:0; padding:12px 16px 14px;
+  border-top:1px solid #EFEFEC; background:#FAFAF8;
   display:flex; gap:8px; align-items:center;
 }
 .dp-input {
-  flex:1; padding:10px 14px; border-radius:20px;
-  border:1.5px solid var(--border); outline:none;
-  font-family:'Manrope',sans-serif; font-size:13px; color:var(--dark);
-  transition:border-color .15s; background:#fafafa;
+  flex:1; padding:10px 14px; border-radius:22px;
+  border:1.5px solid #E0E0DA; outline:none;
+  font-family:'Manrope',sans-serif; font-size:13px; color:#1D1F3C;
+  transition:border-color .15s; background:#fff;
 }
-.dp-input:focus { border-color:var(--navy); background:#fff; }
+.dp-input:focus { border-color:#5C67E8; background:#fff; }
 .dp-send {
   width:36px; height:36px; border-radius:50%;
-  background:var(--navy); border:none; cursor:pointer;
+  background:#1D1F3C; border:none; cursor:pointer;
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
-  transition:background .15s;
+  transition:background .15s; flex-shrink:0;
 }
-.dp-send:hover { background:#2a3060; }
+.dp-send:hover { background:#5C67E8; }
+.dp-closed-note {
+  display:none; flex-shrink:0;
+  padding:14px 20px; background:#FAFAF8;
+  border-top:1px solid #EFEFEC;
+  font-size:12px; color:#8B8FA8; font-weight:600;
+  align-items:center; gap:8px; letter-spacing:.01em;
+}
+.dp-closed-note.show { display:flex; }
 .dp-inactive-note {
   text-align:center; padding:16px; font-size:12px; color:var(--mid);
   background:rgba(0,0,0,.03); margin:8px 16px; border-radius:10px;
@@ -2006,48 +2037,26 @@ body.on-landing #social-footer.visible { display:flex; }
 <div id="debate-panel">
   <div class="dp-header">
     <div class="dp-header-left">
-      <p class="dp-title">Sala de debate</p>
-      <p class="dp-subtitle" id="dp-subtitle">¿Debería Venezuela convocar a una Asamblea Nacional...?</p>
+      <p class="dp-title" id="dp-title">Debate</p>
+      <p class="dp-subtitle" id="dp-subtitle"></p>
     </div>
-    <div class="dp-live-badge"><span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo</div>
+    <div class="dp-live-badge" id="dp-live-badge">
+      <span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo
+    </div>
     <button class="dp-close" onclick="cerrarDebate()">×</button>
   </div>
   <div class="dp-messages" id="dp-messages">
-    <div class="dp-msg-divider">— Sala abierta al comenzar la sesión —</div>
-    <div class="dp-msg">
-      <div class="dp-msg-head"><span class="dp-msg-seat">#341</span><span class="dp-msg-time">hace 47 min</span></div>
-      <span class="dp-msg-text">Esta pregunta es fundamental. Sin una constituyente libre no hay salida institucional real.</span>
-    </div>
-    <div class="dp-msg">
-      <div class="dp-msg-head"><span class="dp-msg-seat">#892</span><span class="dp-msg-time">hace 43 min</span></div>
-      <span class="dp-msg-text">Depende de quién la convoca. Una constituyente sin condiciones previas puede ser peor que lo que tenemos.</span>
-    </div>
-    <div class="dp-msg">
-      <div class="dp-msg-head"><span class="dp-msg-seat">#1204</span><span class="dp-msg-time">hace 38 min</span></div>
-      <span class="dp-msg-text">¿Cómo garantizamos que sea libre si el árbitro es el mismo régimen?</span>
-    </div>
-    <div class="dp-msg">
-      <div class="dp-msg-head"><span class="dp-msg-seat">#67</span><span class="dp-msg-time">hace 31 min</span></div>
-      <span class="dp-msg-text">Exactamente. La pregunta debería incluir condiciones mínimas. Así planteada es demasiado abierta.</span>
-    </div>
-    <div class="dp-msg">
-      <div class="dp-msg-head"><span class="dp-msg-seat">#2190</span><span class="dp-msg-time">hace 22 min</span></div>
-      <span class="dp-msg-text">Voté SÍ porque creo que el proceso puede ser presionado desde abajo. No hay cambio sin riesgo.</span>
-    </div>
-    <div class="dp-msg">
-      <div class="dp-msg-head"><span class="dp-msg-seat">#533</span><span class="dp-msg-time">hace 14 min</span></div>
-      <span class="dp-msg-text">La diáspora no tiene representación real hoy. Cualquier proceso que la incluya ya es un avance.</span>
-    </div>
-    <div class="dp-msg">
-      <div class="dp-msg-head"><span class="dp-msg-seat">#1788</span><span class="dp-msg-time">hace 6 min</span></div>
-      <span class="dp-msg-text">Abstenerse también es una postura legítima. Que quede registrado que no es apatía, es desconfianza fundada.</span>
-    </div>
+    <div class="dp-loading" id="dp-loading">Cargando mensajes…</div>
   </div>
-  <div class="dp-input-row">
+  <div class="dp-input-row" id="dp-input-row">
     <input class="dp-input" id="dp-input" placeholder="Escribí tu argumento..." maxlength="280" onkeydown="if(event.key==='Enter')dpEnviar()">
     <button class="dp-send" onclick="dpEnviar()" title="Enviar">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
+  </div>
+  <div class="dp-closed-note" id="dp-closed-note">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Debate cerrado — la pregunta ha finalizado
   </div>
 </div>
 
@@ -6711,6 +6720,8 @@ setInterval(() => {
         _revealTriggered[qdata.id] = true
         renderQCards()
         requestAnimationFrame(resizeCanvas)
+        // If this question is open in debate panel, close input
+        if (_debateQId === qdata.id) _dpSetEndedUI(true)
       }
     }
   })
@@ -6812,11 +6823,20 @@ function abrirVotoForQ(i) {
   qIdx = i
   abrirModal()
 }
-function abrirDebateForQ(i) {
+async function abrirDebateForQ(i) {
+  const qdata = PREGUNTAS_DATA[i]
+  if (!qdata) return
   qIdx = i
-  document.getElementById('dp-subtitle').textContent = PREGUNTAS[i] || ''
-  resetDebateRoom()
+  _debateQId = qdata.id
+  const ended = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000) <= 0
+  // Update header
+  document.getElementById('dp-subtitle').textContent = qdata.text || PREGUNTAS[i] || ''
+  _dpSetEndedUI(ended)
+  // Open panel first (feels faster)
   abrirDebate()
+  // Load messages + subscribe realtime
+  await _loadDebateMessages(qdata.id)
+  if (!ended) _subscribeDebate(qdata.id)
 }
 
 function updateQDisplay() {
@@ -6842,84 +6862,157 @@ function nextPregunta() {
 let debateOpen = false
 
 // Seed messages per question index (pre-loaded demo content)
-const DEBATE_SEEDS = [
-  // Q0 — already in HTML as initial messages
-  [],
-  // Q1 — elecciones OEA
-  [
-    { seat:'#112', time:'hace 50 min', text:'Sin observadores internacionales vinculantes, cualquier elección es teatro.' },
-    { seat:'#789', time:'hace 44 min', text:'La OEA tiene su propio historial. ¿Por qué no la ONU directamente?' },
-    { seat:'#2341', time:'hace 35 min', text:'Lo importante es el padrón. Con el padrón corrupto, no importa quién observe.' },
-    { seat:'#456', time:'hace 20 min', text:'Hay que votar SÍ aunque sea imperfecto. No puede ser peor que no intentarlo.' },
-  ],
-  // Q2 — estado de excepción
-  [
-    { seat:'#903', time:'hace 1h 2 min', text:'El estado de excepción lleva años siendo renovado sin debate real.' },
-    { seat:'#1567', time:'hace 55 min', text:'En la frontera la situación es distinta. Levantar sin plan puede ser peligroso.' },
-    { seat:'#234', time:'hace 40 min', text:'La cuestión humanitaria debe desvincularse de la seguridad. Son problemas distintos.' },
-    { seat:'#1890', time:'hace 28 min', text:'Exactamente. No votar SÍ o NO a todo junto. Necesitamos preguntas más específicas.' },
-  ],
-]
+// ── DEBATE REAL ──────────────────────────────────────────────
+let _debateQId      = null   // question_id currently shown
+let _debateChannel  = null   // supabase realtime channel
+let _debateEnded    = false  // is the question ended?
 
-function resetDebateRoom() {
+function _dpTimeAgo(ts) {
+  const diff = Math.floor((Date.now() - new Date(ts)) / 1000)
+  if (diff < 60)  return 'ahora'
+  if (diff < 3600) return `hace ${Math.floor(diff/60)} min`
+  return `hace ${Math.floor(diff/3600)}h ${Math.floor((diff%3600)/60)} min`
+}
+
+function _dpAppendMsg(msg, isMine) {
   const msgs = document.getElementById('dp-messages')
-  msgs.innerHTML = '<div class="dp-msg-divider">— Sala abierta al comenzar la sesión —</div>'
-  const seeds = DEBATE_SEEDS[qIdx] || []
-  seeds.forEach(m => {
-    const div = document.createElement('div')
-    div.className = 'dp-msg'
-    div.innerHTML = `<div class="dp-msg-head"><span class="dp-msg-seat">${m.seat}</span><span class="dp-msg-time">${m.time}</span></div><span class="dp-msg-text">${m.text}</span>`
-    msgs.appendChild(div)
-  })
-  if (qIdx === 0) {
-    // Restore default initial messages for q0
-    const defaults = [
-      { seat:'#341',  time:'hace 47 min', text:'Esta pregunta es fundamental. Sin una constituyente libre no hay salida institucional real.' },
-      { seat:'#892',  time:'hace 43 min', text:'Depende de quién la convoca. Una constituyente sin condiciones previas puede ser peor que lo que tenemos.' },
-      { seat:'#1204', time:'hace 38 min', text:'¿Cómo garantizamos que sea libre si el árbitro es el mismo régimen?' },
-      { seat:'#67',   time:'hace 31 min', text:'Exactamente. La pregunta debería incluir condiciones mínimas. Así planteada es demasiado abierta.' },
-      { seat:'#2190', time:'hace 22 min', text:'Voté SÍ porque creo que el proceso puede ser presionado desde abajo. No hay cambio sin riesgo.' },
-      { seat:'#533',  time:'hace 14 min', text:'La diáspora no tiene representación real hoy. Cualquier proceso que la incluya ya es un avance.' },
-      { seat:'#1788', time:'hace 6 min',  text:'Abstenerse también es una postura legítima. Que quede registrado que no es apatía, es desconfianza fundada.' },
-    ]
-    defaults.forEach(m => {
-      const div = document.createElement('div')
-      div.className = 'dp-msg'
-      div.innerHTML = `<div class="dp-msg-head"><span class="dp-msg-seat">${m.seat}</span><span class="dp-msg-time">${m.time}</span></div><span class="dp-msg-text">${m.text}</span>`
-      msgs.appendChild(div)
-    })
-  }
+  // Remove loading/empty placeholder
+  const ph = msgs.querySelector('.dp-loading,.dp-empty')
+  if (ph) ph.remove()
+  const div = document.createElement('div')
+  div.className = 'dp-msg' + (isMine ? ' mine' : '')
+  div.dataset.msgId = msg.id
+  const seatLabel = `#${msg.seat_number}`
+  const timeLabel = _dpTimeAgo(msg.created_at)
+  const aliasHtml = msg.alias ? `<span class="dp-msg-alias">${escapeHtml(msg.alias)}</span>` : ''
+  div.innerHTML = `
+    <div class="dp-msg-head">
+      <span class="dp-msg-seat">${seatLabel}</span>
+      ${aliasHtml}
+      <span class="dp-msg-time">${timeLabel}</span>
+    </div>
+    <span class="dp-msg-text">${escapeHtml(msg.text)}</span>`
+  msgs.appendChild(div)
   msgs.scrollTop = msgs.scrollHeight
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
+async function _loadDebateMessages(questionId) {
+  const msgs = document.getElementById('dp-messages')
+  msgs.innerHTML = '<div class="dp-loading">Cargando mensajes…</div>'
+  try {
+    const { data, error } = await sb.from('debate_messages')
+      .select('*').eq('question_id', questionId)
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    msgs.innerHTML = ''
+    if (!data || data.length === 0) {
+      msgs.innerHTML = '<div class="dp-empty">Sé el primero en debatir esta pregunta.</div>'
+      return
+    }
+    msgs.innerHTML = '<div class="dp-msg-divider">— inicio del debate —</div>'
+    data.forEach(m => _dpAppendMsg(m, m.seat_number === MY_SEAT))
+  } catch(e) {
+    msgs.innerHTML = '<div class="dp-empty">Error al cargar mensajes.</div>'
+    console.warn('_loadDebateMessages:', e)
+  }
+}
+
+function _subscribeDebate(questionId) {
+  // Unsubscribe previous
+  if (_debateChannel) {
+    sb.removeChannel(_debateChannel)
+    _debateChannel = null
+  }
+  _debateChannel = sb.channel(`debate:${questionId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'debate_messages',
+      filter: `question_id=eq.${questionId}`
+    }, payload => {
+      const msg = payload.new
+      // Avoid duplicates (we already appended own message optimistically)
+      if (document.querySelector(`[data-msg-id="${msg.id}"]`)) return
+      _dpAppendMsg(msg, msg.seat_number === MY_SEAT)
+    })
+    .subscribe()
+}
+
+function _dpSetEndedUI(ended) {
+  _debateEnded = ended
+  const inputRow    = document.getElementById('dp-input-row')
+  const closedNote  = document.getElementById('dp-closed-note')
+  const liveBadge   = document.getElementById('dp-live-badge')
+  if (ended) {
+    inputRow.style.display   = 'none'
+    closedNote.classList.add('show')
+    liveBadge.innerHTML      = 'Cerrado'
+    liveBadge.classList.add('closed')
+  } else {
+    inputRow.style.display   = ''
+    closedNote.classList.remove('show')
+    liveBadge.innerHTML      = '<span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo'
+    liveBadge.classList.remove('closed')
+  }
 }
 
 function toggleDebate() {
   debateOpen ? cerrarDebate() : abrirDebate()
 }
+
 function abrirDebate() {
   document.getElementById('debate-panel').classList.add('open')
-  document.getElementById('debate-btn').classList.add('live')
+  if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.add('live')
   debateOpen = true
-  setTimeout(() => {
-    const m = document.getElementById('dp-messages')
-    m.scrollTop = m.scrollHeight
-  }, 100)
 }
+
 function cerrarDebate() {
   document.getElementById('debate-panel').classList.remove('open')
+  if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.remove('live')
   debateOpen = false
+  if (_debateChannel) {
+    sb.removeChannel(_debateChannel)
+    _debateChannel = null
+  }
 }
-function dpEnviar() {
+
+async function dpEnviar() {
+  if (_debateEnded) return
   const inp = document.getElementById('dp-input')
   const txt = inp.value.trim()
-  if (!txt) return
-  const msgs = document.getElementById('dp-messages')
-  const div = document.createElement('div')
-  div.className = 'dp-msg mine'
-  div.innerHTML = `<div class="dp-msg-head"><span class="dp-msg-seat">#7</span><span class="dp-msg-time">ahora</span></div><span class="dp-msg-text">${txt}</span>`
-  msgs.appendChild(div)
-  msgs.scrollTop = msgs.scrollHeight
+  if (!txt || !_debateQId || !MY_SEAT) return
   inp.value = ''
+  // Optimistic UI
+  const tempMsg = {
+    id: 'tmp_' + Date.now(),
+    question_id: _debateQId,
+    seat_number: MY_SEAT,
+    alias: '',
+    text: txt,
+    created_at: new Date().toISOString()
+  }
+  _dpAppendMsg(tempMsg, true)
+  try {
+    const { error } = await sb.from('debate_messages').insert({
+      question_id: _debateQId,
+      seat_number: MY_SEAT,
+      alias: '',
+      text: txt
+    })
+    if (error) {
+      console.warn('dpEnviar error:', error)
+      showToast('Error al enviar mensaje')
+    }
+  } catch(e) {
+    console.warn('dpEnviar:', e)
+    showToast('Error al enviar mensaje')
+  }
 }
+
 // Close debate on outside click
 document.addEventListener('click', e => {
   if (!debateOpen) return
