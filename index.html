@@ -988,38 +988,82 @@ html, body {
 #mi-perfil-overlay.open { opacity:1; pointer-events:all; }
 #mi-perfil-panel {
   background:#fff; border-radius:14px;
-  width:420px; max-width:calc(100vw - 32px);
-  max-height:calc(100vh - 48px); overflow-y:auto;
-  padding:32px 32px 28px;
+  width:560px; max-width:calc(100vw - 32px);
+  padding:0;
   box-shadow:0 32px 80px rgba(0,0,0,.22), 0 2px 12px rgba(0,0,0,.08);
   transform:scale(0.88);
   transition:transform .28s cubic-bezier(0.34,1.28,0.64,1);
-  position:relative;
+  position:relative; overflow:hidden;
 }
 #mi-perfil-overlay.open #mi-perfil-panel { transform:scale(1); }
-/* Zoom out on close — añadido via JS */
 #mi-perfil-overlay.closing #mi-perfil-panel { transform:scale(0.88); transition-timing-function:cubic-bezier(0.4,0,1,1); transition-duration:.18s; }
-.mp-close {
-  position:absolute; top:14px; right:16px;
-  background:none; border:none; font-size:22px; color:var(--mid);
-  cursor:pointer; padding:4px; line-height:1;
-}
-.mp-close:hover { color:var(--dark); }
-.mp-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
-.mp-avatar {
-  width:52px; height:52px; border-radius:50%;
-  background:var(--navy); flex-shrink:0;
-  display:flex; align-items:center; justify-content:center;
-}
-.mp-avatar-text { font-size:17px; font-weight:800; color:#fff; }
-.mp-info-seat { font-size:11px; color:var(--mid); font-weight:600; letter-spacing:.04em; text-transform:uppercase; margin-bottom:3px; }
-.mp-info-name { font-size:16px; font-weight:700; color:var(--dark); }
-.mp-phrase { font-size:13px; color:var(--mid); line-height:1.55; font-style:italic; margin-bottom:18px; }
 
+/* Panel header strip */
+.mp-top-strip {
+  background:var(--navy); padding:24px 28px 20px;
+  display:flex; align-items:center; gap:16px;
+}
+.mp-avatar {
+  width:56px; height:56px; border-radius:12px;
+  background:rgba(255,255,255,.12); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  border:1.5px solid rgba(255,255,255,.2);
+}
+.mp-avatar-text { font-size:22px; font-weight:800; color:#fff; letter-spacing:-1px; }
+.mp-strip-info { flex:1; }
+.mp-verified-pill {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--green); background:rgba(62,207,142,.15);
+  padding:3px 8px; border-radius:20px; margin-bottom:5px;
+}
+.mp-strip-seat { font-size:22px; font-weight:800; color:#fff; letter-spacing:-.5px; line-height:1; }
+.mp-strip-email { font-size:12px; color:rgba(255,255,255,.45); margin-top:2px; }
+.mp-close {
+  background:rgba(255,255,255,.12); border:none; border-radius:50%;
+  width:30px; height:30px; font-size:18px; color:rgba(255,255,255,.7);
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:background .15s; flex-shrink:0; align-self:flex-start;
+}
+.mp-close:hover { background:rgba(255,255,255,.2); color:#fff; }
+
+/* Panel body */
+.mp-body { padding:24px 28px 28px; display:flex; flex-direction:column; gap:16px; }
+
+/* Editable field */
+.mp-field { display:flex; flex-direction:column; gap:6px; }
+.mp-field-label {
+  font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--mid);
+}
+.mp-field-row {
+  display:flex; align-items:center; gap:8px;
+  padding:11px 14px; border-radius:10px;
+  border:1.5px solid var(--border); background:var(--bg);
+  transition:border-color .15s;
+}
+.mp-field-row:focus-within { border-color:var(--navy); background:#fff; }
+.mp-field-value {
+  flex:1; font-size:14px; font-weight:500; color:var(--dark);
+  border:none; background:none; outline:none; font-family:'Manrope',sans-serif;
+}
+.mp-field-value::placeholder { color:var(--mid); font-weight:400; }
+.mp-field-save {
+  font-size:12px; font-weight:700; color:var(--navy);
+  background:none; border:none; cursor:pointer; padding:0 2px;
+  opacity:0; transition:opacity .15s; white-space:nowrap;
+}
+.mp-field-row:focus-within .mp-field-save { opacity:1; }
+.mp-field-save:hover { color:var(--orange); }
+
+/* Two-col fields */
+.mp-fields-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* Toggle */
 .mp-toggle-row {
   display:flex; align-items:center; justify-content:space-between;
-  background:var(--bg); border-radius:12px;
-  padding:12px 14px; margin-bottom:20px; gap:12px;
+  background:var(--bg); border-radius:10px;
+  padding:12px 14px; gap:12px;
 }
 .mp-toggle-lbl { font-size:13px; font-weight:700; color:var(--dark); }
 .mp-toggle-sub { font-size:11px; color:var(--mid); margin-top:2px; }
@@ -1037,23 +1081,31 @@ html, body {
 }
 .tog-sw.on::after { left:21px; }
 
-.mp-sec { font-size:11px; font-weight:700; color:var(--mid); letter-spacing:.06em; text-transform:uppercase; margin-bottom:8px; }
-.mp-total { font-size:12px; color:var(--mid); margin-bottom:12px; }
-.mp-total b { color:var(--dark); font-size:14px; }
-.mp-srow { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-.mp-slabel { font-size:11px; font-weight:700; width:28px; }
-.mp-slabel.si  { color:var(--green); }
-.mp-slabel.no  { color:#f04545; }
-.mp-slabel.abs { color:#bbb; }
-.mp-sbar-bg { flex:1; height:6px; border-radius:3px; background:rgba(0,0,0,.07); overflow:hidden; }
+/* Stats row — minimal, horizontal */
+.mp-stats-row {
+  display:flex; align-items:center; gap:6px;
+  padding:11px 14px; border-radius:10px;
+  background:var(--bg); font-size:12px; color:var(--mid);
+}
+.mp-stats-row b { color:var(--dark); font-size:14px; font-weight:700; }
+.mp-sbar-bg { flex:1; height:5px; border-radius:3px; background:rgba(0,0,0,.07); overflow:hidden; }
 .mp-sbar { height:100%; border-radius:3px; transition:width .55s cubic-bezier(.4,0,.2,1); }
 .mp-sbar.si  { background:var(--green); }
 .mp-sbar.no  { background:#f04545; }
 .mp-sbar.abs { background:#bbb; }
-.mp-spct { font-size:11px; font-weight:600; color:var(--mid); width:28px; text-align:right; }
+
+/* Old unused — keep for compat */
+.mp-header { display:none; }
+.mp-phrase { display:none; }
+.mp-sec { display:none; }
+.mp-total { display:none; }
+.mp-srow { display:none; }
+.mp-slabel { display:none; }
+.mp-spct { display:none; }
+
 .mp-cta {
-  display:block; width:100%; margin-top:20px; padding:13px;
-  background:var(--navy); color:#fff; border:none; border-radius:12px;
+  display:block; width:100%; padding:13px;
+  background:var(--navy); color:#fff; border:none; border-radius:10px;
   font-family:inherit; font-size:14px; font-weight:700;
   cursor:pointer; transition:opacity .15s; text-align:center;
 }
@@ -1870,81 +1922,68 @@ body.on-landing #social-footer.visible { display:flex; }
 <!-- ══════════════ MI PERFIL ══════════════ -->
 <div id="mi-perfil-overlay" onclick="if(event.target===this)cerrarMiPerfil()">
   <div id="mi-perfil-panel">
-    <button class="mp-close" onclick="cerrarMiPerfil()">×</button>
-    <div class="mp-header">
+    <!-- Header navy strip -->
+    <div class="mp-top-strip">
       <div class="mp-avatar">
-        <span class="mp-avatar-text">#7</span>
+        <span class="mp-avatar-text av-seat-num">—</span>
       </div>
-      <div>
-        <p class="mp-info-seat">Tu butaca</p>
-        <p class="mp-info-name">Ciudadano Verificado</p>
+      <div class="mp-strip-info">
+        <div class="mp-verified-pill">✓ Verificado · VaV activo</div>
+        <p class="mp-strip-seat">Butaca <span class="av-seat-num">—</span></p>
+        <p class="mp-strip-email" id="mp-strip-email"></p>
       </div>
-    </div>
-    <p class="mp-phrase">"Mi butaca en el hemiciclo libre de Venezuela."</p>
-
-    <div class="mp-toggle-row">
-      <div>
-        <p class="mp-toggle-lbl">Perfil público</p>
-        <p class="mp-toggle-sub" id="mp-toggle-sub">Tu identidad está oculta (anónimo)</p>
-      </div>
-      <button class="tog-sw" id="mp-toggle" onclick="togglePerfilPublico()"></button>
+      <button class="mp-close" onclick="cerrarMiPerfil()">×</button>
     </div>
 
-    <p class="mp-sec">Mis votaciones</p>
-    <p class="mp-total"><b>23</b> participaciones en el hemiciclo</p>
-    <div class="mp-srow">
-      <span class="mp-slabel si">SÍ</span>
-      <div class="mp-sbar-bg"><div class="mp-sbar si" id="mp-bar-si" style="width:0%"></div></div>
-      <span class="mp-spct">61%</span>
-    </div>
-    <div class="mp-srow">
-      <span class="mp-slabel no">NO</span>
-      <div class="mp-sbar-bg"><div class="mp-sbar no" id="mp-bar-no" style="width:0%"></div></div>
-      <span class="mp-spct">30%</span>
-    </div>
-    <div class="mp-srow">
-      <span class="mp-slabel abs">Abs</span>
-      <div class="mp-sbar-bg"><div class="mp-sbar abs" id="mp-bar-abs" style="width:0%"></div></div>
-      <span class="mp-spct">9%</span>
-    </div>
-
-    <!-- Bloque match — se muestra cuando SI > 10 votos -->
-    <div class="mp-bloque-wrap" id="mp-bloque-wrap">
-      <div class="mp-bloque-top">
-        <span class="mp-bloque-badge">🔗 Afinidad detectada</span>
-        <p class="mp-bloque-title">Bloque potencial</p>
-      </div>
-      <p class="mp-bloque-sub">Votaste SÍ en más de 10 preguntas. Hay ciudadanos con patrones similares — podrían coordinar postura antes de llegar al pleno.</p>
-      <div class="mp-bloque-list">
-        <div class="mp-bloque-row">
-          <div class="mp-bloque-av" style="background:#1a1f3c">M</div>
-          <div class="mp-bloque-info">
-            <p class="mp-bloque-seat">Butaca #341</p>
-            <p class="mp-bloque-pct">SÍ en 18 de 23 preguntas</p>
+    <!-- Body -->
+    <div class="mp-body">
+      <!-- Alias + Frase en grid 2 col -->
+      <div class="mp-fields-grid">
+        <div class="mp-field">
+          <p class="mp-field-label">Alias visible</p>
+          <div class="mp-field-row">
+            <input class="mp-field-value" id="mp-alias-input" placeholder="Tu alias público…" oninput="mpMarkDirty('alias')" onkeydown="if(event.key==='Enter')mpSaveField('alias')">
+            <button class="mp-field-save" onclick="mpSaveField('alias')">Guardar</button>
           </div>
-          <span class="mp-bloque-match-pct">94%</span>
         </div>
-        <div class="mp-bloque-row">
-          <div class="mp-bloque-av" style="background:#2d3561">A</div>
-          <div class="mp-bloque-info">
-            <p class="mp-bloque-seat">Butaca #1204</p>
-            <p class="mp-bloque-pct">SÍ en 15 de 21 preguntas</p>
+        <div class="mp-field">
+          <p class="mp-field-label">Frase visible</p>
+          <div class="mp-field-row">
+            <input class="mp-field-value" id="mp-phrase-input" placeholder="Tu frase en el hemiciclo…" oninput="mpMarkDirty('phrase')" onkeydown="if(event.key==='Enter')mpSaveField('phrase')">
+            <button class="mp-field-save" onclick="mpSaveField('phrase')">Guardar</button>
           </div>
-          <span class="mp-bloque-match-pct">88%</span>
-        </div>
-        <div class="mp-bloque-row">
-          <div class="mp-bloque-av" style="background:#4a4e69">S</div>
-          <div class="mp-bloque-info">
-            <p class="mp-bloque-seat">Butaca #2190</p>
-            <p class="mp-bloque-pct">SÍ en 14 de 22 preguntas</p>
-          </div>
-          <span class="mp-bloque-match-pct">82%</span>
         </div>
       </div>
-      <button class="mp-bloque-cta" onclick="showToast('Invitación enviada al bloque')">Unirse al bloque →</button>
-    </div>
 
-    <button class="mp-cta" onclick="cerrarMiPerfil();irACongreso()">Ir al hemiciclo →</button>
+      <!-- Toggle perfil público -->
+      <div class="mp-toggle-row">
+        <div>
+          <p class="mp-toggle-lbl">Perfil público</p>
+          <p class="mp-toggle-sub" id="mp-toggle-sub">Tu identidad está oculta (anónimo)</p>
+        </div>
+        <button class="tog-sw" id="mp-toggle" onclick="togglePerfilPublico()"></button>
+      </div>
+
+      <!-- Barras de votación — ocultas hasta que haya datos reales -->
+      <div id="mp-stats-wrap" style="display:none">
+        <div class="mp-stats-row">
+          <b id="mp-votes-n">0</b>&nbsp;votaciones —
+          <span style="color:var(--green);font-weight:700" id="mp-pct-si">0%</span>&nbsp;SÍ ·
+          <span style="color:#f04545;font-weight:700" id="mp-pct-no">0%</span>&nbsp;NO ·
+          <span style="color:#bbb;font-weight:700" id="mp-pct-abs">0%</span>&nbsp;Abs
+        </div>
+        <div style="height:5px;border-radius:3px;overflow:hidden;background:rgba(0,0,0,.07);margin-top:6px">
+          <div id="mp-bar-si" style="height:100%;width:0%;background:var(--green);display:inline-block;transition:width .55s"></div>
+        </div>
+      </div>
+      <!-- Compat IDs invisibles para que el código existente no rompa -->
+      <div style="display:none">
+        <div id="mp-bar-no" style="width:0%"></div>
+        <div id="mp-bar-abs" style="width:0%"></div>
+      </div>
+
+      <button class="mp-cta" onclick="cerrarMiPerfil();irACongreso()">Ir al hemiciclo →</button>
+    </div>
   </div>
 </div>
 
@@ -4049,6 +4088,7 @@ async function _onLogin(user) {
     document.getElementById('st-ident').style.display   = 'flex'
     document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = profile.seat_number)
     document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + profile.seat_number)
+    mostrarFooter()
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
@@ -6127,6 +6167,8 @@ function vpAplicarButacaEnUI(butacaNum) {
   if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
   const ddButaca = document.getElementById('nav-dd-butaca')
   if (ddButaca) ddButaca.textContent = '· Butaca #' + butacaNum
+  // Mostrar footer flotante
+  mostrarFooter()
   // Actualizar hemiciclo: mostrar mi dot naranja
   if (!IS_DEMO) {
     MY_SEAT = parseInt(butacaNum) || 0
@@ -6219,13 +6261,38 @@ function volverALanding() {
 let perfilPublico = false
 
 function abrirMiPerfil() {
+  // Poblar con datos reales del perfil
+  if (_authProfile) {
+    document.getElementById('mp-alias-input').value  = _authProfile.alias  || ''
+    document.getElementById('mp-phrase-input').value = _authProfile.phrase || ''
+  }
+  if (_authUser) {
+    document.getElementById('mp-strip-email').textContent = _authUser.email || ''
+  }
   document.getElementById('mi-perfil-overlay').classList.add('open')
-  checkBloqueMatch()
-  setTimeout(() => {
-    document.getElementById('mp-bar-si').style.width  = '61%'
-    document.getElementById('mp-bar-no').style.width  = '30%'
-    document.getElementById('mp-bar-abs').style.width = '9%'
-  }, 80)
+}
+
+function mpMarkDirty(field) {
+  // noop — save button becomes visible via CSS :focus-within
+}
+
+async function mpSaveField(field) {
+  if (!_authUser) return
+  const input = document.getElementById('mp-' + field + '-input')
+  const val = input.value.trim()
+  const update = {}
+  update[field] = val
+  const { error } = await sb.from('profiles').update(update).eq('id', _authUser.id)
+  if (error) { showToast('Error al guardar'); return }
+  // Actualizar cache local
+  if (!_authProfile) _authProfile = {}
+  _authProfile[field] = val
+  // Reflejar en nav si es alias
+  if (field === 'alias' && val) {
+    document.getElementById('nav-user-alias').textContent = val
+  }
+  input.blur()
+  showToast('✓ Guardado')
 }
 function cerrarMiPerfil() {
   const ov = document.getElementById('mi-perfil-overlay')
