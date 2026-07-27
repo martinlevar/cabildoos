@@ -6265,11 +6265,28 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); cargarPreguntasActivas() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); cargarPreguntasActivas(); initQuestionsRealtime() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
   cargarPreguntasActivas()
+  initQuestionsRealtime()
+}
+
+// ── Realtime: auto-actualiza preguntas cuando el admin crea/activa una ──
+function initQuestionsRealtime() {
+  try {
+    sb.channel('questions-live')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'questions'
+      }, () => {
+        // Recargar preguntas activas sin importar en qué pantalla esté el usuario
+        cargarPreguntasActivas()
+      })
+      .subscribe()
+  } catch(e) { console.warn('Realtime no disponible:', e) }
 }
 
 let observerMode = false
