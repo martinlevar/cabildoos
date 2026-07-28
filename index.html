@@ -1247,6 +1247,100 @@ html, body {
 .av-label-seat   { font-size:13px; font-weight:500; color:var(--dark); text-align:center; margin-top:10px; }
 .av-label-prop   { font-size:13px; font-weight:500; color:var(--mid);  text-align:center; margin-top:10px; }
 .av-label-congreso { font-size:13px; font-weight:500; color:var(--mid); text-align:center; margin-top:10px; }
+.av-label-stats  { font-size:13px; font-weight:500; color:var(--mid);  text-align:center; margin-top:10px; }
+
+/* ── STATS CIRCLE ── */
+.av-stats-btn {
+  width:108px; height:108px; border-radius:50%;
+  background:rgba(109,40,217,.07);
+  border:2px solid rgba(109,40,217,.18);
+  box-shadow:0 4px 24px rgba(109,40,217,.07);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:transform .2s, box-shadow .2s, background .2s;
+}
+.av-stats-btn:hover { transform:scale(1.04); background:rgba(109,40,217,.13); box-shadow:0 8px 32px rgba(109,40,217,.18); }
+.av-stats-icon { font-size:38px; line-height:1; }
+
+/* ── STATS PANEL ── */
+#stats-panel {
+  position:fixed; inset:0; z-index:600;
+  background:#F9F9F7;
+  transform:translateY(100%);
+  transition:transform .35s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+#stats-panel.open { transform:translateY(0); }
+
+.sp-header {
+  background:#fff;
+  border-bottom:1.5px solid #EEECEA;
+  padding:18px 20px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0;
+}
+.sp-title { font-size:17px; font-weight:700; color:var(--dark); }
+.sp-close { background:none; border:none; font-size:20px; color:var(--mid); cursor:pointer; padding:4px 8px; }
+
+.sp-summary {
+  background:#fff;
+  border-bottom:1.5px solid #EEECEA;
+  padding:14px 20px;
+  display:flex; gap:12px;
+  flex-shrink:0; overflow-x:auto;
+}
+.sp-sum-card {
+  flex:1; min-width:80px;
+  border-radius:10px; padding:10px 12px; text-align:center;
+}
+.sp-sum-num  { font-size:20px; font-weight:800; line-height:1; }
+.sp-sum-lbl  { font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-top:3px; }
+
+.sp-body { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+
+.sp-q-card {
+  background:#fff;
+  border:1.5px solid #EEECEA;
+  border-radius:14px;
+  padding:14px 16px;
+}
+.sp-q-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.sp-q-text { font-size:14px; font-weight:600; color:var(--dark); line-height:1.35; flex:1; }
+.sp-q-pill {
+  font-size:10px; font-weight:700; padding:3px 8px;
+  border-radius:20px; white-space:nowrap; flex-shrink:0;
+}
+.sp-bars { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+.sp-bar-row { display:flex; align-items:center; gap:8px; }
+.sp-bar-lbl { font-size:11px; font-weight:700; width:28px; text-align:right; }
+.sp-bar-lbl.si  { color:#178a5b; }
+.sp-bar-lbl.no  { color:#c0392b; }
+.sp-bar-lbl.abs { color:#a16207; }
+.sp-bar-track { flex:1; height:8px; background:#f0f0ee; border-radius:99px; overflow:hidden; }
+.sp-bar-fill { height:100%; border-radius:99px; transition:width .8s cubic-bezier(.4,0,.2,1); }
+.sp-bar-fill.si  { background:#3ecf8e; }
+.sp-bar-fill.no  { background:#f04545; }
+.sp-bar-fill.abs { background:#d97706; }
+.sp-bar-num { font-size:11px; font-weight:700; color:var(--mid); width:36px; }
+.sp-bar-pct { font-size:10px; color:var(--mid); width:40px; text-align:right; }
+.sp-q-footer { display:flex; align-items:center; justify-content:space-between; margin-top:4px; }
+.sp-my-vote {
+  font-size:11px; font-weight:700; padding:3px 10px;
+  border-radius:20px;
+}
+.sp-my-vote.si  { background:#dcfce7; color:#166534; }
+.sp-my-vote.no  { background:#fee2e2; color:#991b1b; }
+.sp-my-vote.abs { background:#fef9c3; color:#854d0e; }
+.sp-result-badge {
+  font-size:10px; font-weight:700; padding:3px 9px;
+  border-radius:20px; letter-spacing:.03em;
+}
+.sp-result-badge.won   { background:#dcfce7; color:#166534; }
+.sp-result-badge.lost  { background:#fee2e2; color:#991b1b; }
+.sp-result-badge.tie   { background:#f5f5f3; color:#666; }
+.sp-result-badge.open  { background:#eff6ff; color:#1d4ed8; }
+.sp-empty { text-align:center; padding:60px 20px; color:var(--mid); font-size:14px; }
+.sp-loading { text-align:center; padding:40px 20px; color:var(--mid); font-size:13px; }
 
 
 /* ── NAV USER DROPDOWN ── */
@@ -2234,6 +2328,12 @@ body.on-landing #social-footer.visible { display:flex; }
           </div>
           <p class="av-label-congreso">Ir al congreso</p>
         </div>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div class="av-stats-btn" onclick="abrirEstadisticas()" title="Mis estadísticas">
+            <span class="av-stats-icon">📊</span>
+          </div>
+          <p class="av-label-stats">Estadísticas</p>
+        </div>
       </div>
     </div>
   </div>
@@ -2413,6 +2513,18 @@ body.on-landing #social-footer.visible { display:flex; }
             <p style="font-size:10px;font-weight:700;color:#a16207;margin-top:3px;letter-spacing:.04em;text-transform:uppercase">Abstenciones</p>
           </div>
         </div>
+      </div>
+
+      <!-- Ganadoras -->
+      <div style="background:rgba(109,40,217,.06);border:1.5px solid rgba(109,40,217,.18);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">🏆</span>
+          <div>
+            <p style="font-size:12px;font-weight:700;color:#5b21b6">Decisiones ganadoras</p>
+            <p style="font-size:11px;color:#7c3aed;margin-top:1px">Veces que tu voto fue el mayoritario</p>
+          </div>
+        </div>
+        <p style="font-size:26px;font-weight:800;color:#5b21b6;line-height:1" id="mp-count-ganadora">—</p>
       </div>
 
       <!-- Bloque match -->
@@ -3018,6 +3130,39 @@ body.on-landing #social-footer.visible { display:flex; }
       <div id="sw-winner-line"></div>
       <button class="sw-close" onclick="cerrarBanner()">← Ver el recinto</button>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════ ESTADÍSTICAS PANEL ══════════════ -->
+<div id="stats-panel">
+  <div class="sp-header">
+    <span class="sp-title">📊 Mis estadísticas</span>
+    <button class="sp-close" onclick="cerrarEstadisticas()">✕</button>
+  </div>
+  <div class="sp-summary" id="sp-summary">
+    <div class="sp-sum-card" style="background:rgba(62,207,142,.1);border:1.5px solid rgba(62,207,142,.22)">
+      <p class="sp-sum-num" style="color:#178a5b" id="sp-total-si">—</p>
+      <p class="sp-sum-lbl" style="color:#178a5b">SÍ</p>
+    </div>
+    <div class="sp-sum-card" style="background:rgba(240,69,69,.08);border:1.5px solid rgba(240,69,69,.18)">
+      <p class="sp-sum-num" style="color:#c0392b" id="sp-total-no">—</p>
+      <p class="sp-sum-lbl" style="color:#c0392b">NO</p>
+    </div>
+    <div class="sp-sum-card" style="background:rgba(250,204,21,.12);border:1.5px solid rgba(250,204,21,.3)">
+      <p class="sp-sum-num" style="color:#a16207" id="sp-total-abs">—</p>
+      <p class="sp-sum-lbl" style="color:#a16207">ABSTENCIÓN</p>
+    </div>
+    <div class="sp-sum-card" style="background:rgba(109,40,217,.07);border:1.5px solid rgba(109,40,217,.16)">
+      <p class="sp-sum-num" style="color:#5b21b6" id="sp-total-gan">—</p>
+      <p class="sp-sum-lbl" style="color:#5b21b6">GANADORAS</p>
+    </div>
+    <div class="sp-sum-card" style="background:#f5f5f3;border:1.5px solid #e8e8e4">
+      <p class="sp-sum-num" style="color:var(--dark)" id="sp-total-part">—</p>
+      <p class="sp-sum-lbl" style="color:var(--mid)">TOTAL</p>
+    </div>
+  </div>
+  <div class="sp-body" id="sp-body">
+    <div class="sp-loading">Cargando estadísticas…</div>
   </div>
 </div>
 
@@ -6901,6 +7046,142 @@ async function abrirMiPerfil() {
   if (elNo)  elNo.textContent  = cntNo
   if (elAbs) elAbs.textContent = cntAbs
   document.getElementById('mi-perfil-overlay').classList.add('open')
+
+  // Cargar ganadoras de forma asíncrona
+  const elGan = document.getElementById('mp-count-ganadora')
+  if (elGan) elGan.textContent = '…'
+  if (MY_SEAT > 0) {
+    try {
+      const { data } = await sb.rpc('get_my_winning_decisions', { p_seat_number: MY_SEAT })
+      if (elGan) elGan.textContent = (data ?? 0)
+    } catch(e) {
+      if (elGan) elGan.textContent = '—'
+    }
+  } else {
+    if (elGan) elGan.textContent = '0'
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ESTADÍSTICAS
+// ══════════════════════════════════════════════════════════════
+async function abrirEstadisticas() {
+  document.getElementById('stats-panel').classList.add('open')
+  const body = document.getElementById('sp-body')
+  body.innerHTML = '<div class="sp-loading">Cargando estadísticas…</div>'
+  ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '…'
+  })
+
+  if (!MY_SEAT || MY_SEAT <= 0) {
+    body.innerHTML = '<div class="sp-empty">Necesitás una butaca para ver tus estadísticas.</div>'
+    return
+  }
+
+  try {
+    const { data, error } = await sb.rpc('get_my_vote_history', { p_seat_number: MY_SEAT })
+    if (error || !data) throw error || new Error('sin datos')
+    _renderStatsPanel(data)
+  } catch(e) {
+    body.innerHTML = '<div class="sp-empty">Error al cargar estadísticas.<br>Intentá de nuevo.</div>'
+  }
+}
+
+function cerrarEstadisticas() {
+  document.getElementById('stats-panel').classList.remove('open')
+}
+
+function _renderStatsPanel(rows) {
+  const body = document.getElementById('sp-body')
+  if (!rows || rows.length === 0) {
+    body.innerHTML = '<div class="sp-empty">Todavía no participaste en ninguna pregunta.</div>'
+    ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = '0'
+    })
+    return
+  }
+
+  let totSi = 0, totNo = 0, totAbs = 0, totGan = 0
+  rows.forEach(r => {
+    if (r.my_vote === 'si')  totSi++
+    if (r.my_vote === 'no')  totNo++
+    if (r.my_vote === 'abs') totAbs++
+    const ended = new Date(r.ends_at) < new Date()
+    if (ended) {
+      const si = Number(r.cnt_si), no = Number(r.cnt_no)
+      if ((r.my_vote === 'si' && si > no) || (r.my_vote === 'no' && no > si)) totGan++
+    }
+  })
+
+  document.getElementById('sp-total-si').textContent   = totSi
+  document.getElementById('sp-total-no').textContent   = totNo
+  document.getElementById('sp-total-abs').textContent  = totAbs
+  document.getElementById('sp-total-gan').textContent  = totGan
+  document.getElementById('sp-total-part').textContent = rows.length
+
+  const html = rows.map(r => {
+    const theme   = (window._CAT_THEME[r.category] || _CAT_DEFAULT)
+    const si      = Number(r.cnt_si), no = Number(r.cnt_no), abs = Number(r.cnt_abs)
+    const total   = si + no + abs
+    const pctSi   = total > 0 ? ((si  / total) * 100).toFixed(0) : 0
+    const pctNo   = total > 0 ? ((no  / total) * 100).toFixed(0) : 0
+    const pctAbs  = total > 0 ? ((abs / total) * 100).toFixed(0) : 0
+    const ended   = new Date(r.ends_at) < new Date()
+    const ganaSi  = si > no
+    const empate  = si === no && total > 0
+
+    let resultBadge = ''
+    if (!ended) {
+      resultBadge = '<span class="sp-result-badge open">En curso</span>'
+    } else if (empate) {
+      resultBadge = '<span class="sp-result-badge tie">Empate</span>'
+    } else {
+      const iWon = (r.my_vote === 'si' && ganaSi) || (r.my_vote === 'no' && !ganaSi && !empate)
+      resultBadge = iWon
+        ? '<span class="sp-result-badge won">✓ Ganaste</span>'
+        : '<span class="sp-result-badge lost">✗ Perdiste</span>'
+    }
+
+    const myVoteLabels = { si:'Voté SÍ', no:'Voté NO', abs:'Me abstuve' }
+    const myVoteLbl    = myVoteLabels[r.my_vote] || r.my_vote
+
+    const catPill = r.category
+      ? `<span class="sp-q-pill" style="background:${theme.pill};color:${theme.txt}">${r.category}</span>`
+      : ''
+
+    return `<div class="sp-q-card">
+      <div class="sp-q-top">
+        <p class="sp-q-text">${r.question_text}</p>
+        ${catPill}
+      </div>
+      <div class="sp-bars">
+        <div class="sp-bar-row">
+          <span class="sp-bar-lbl si">SÍ</span>
+          <div class="sp-bar-track"><div class="sp-bar-fill si" style="width:${pctSi}%"></div></div>
+          <span class="sp-bar-num">${si}</span>
+          <span class="sp-bar-pct">${pctSi}%</span>
+        </div>
+        <div class="sp-bar-row">
+          <span class="sp-bar-lbl no">NO</span>
+          <div class="sp-bar-track"><div class="sp-bar-fill no" style="width:${pctNo}%"></div></div>
+          <span class="sp-bar-num">${no}</span>
+          <span class="sp-bar-pct">${pctNo}%</span>
+        </div>
+        <div class="sp-bar-row">
+          <span class="sp-bar-lbl abs">ABS</span>
+          <div class="sp-bar-track"><div class="sp-bar-fill abs" style="width:${pctAbs}%"></div></div>
+          <span class="sp-bar-num">${abs}</span>
+          <span class="sp-bar-pct">${pctAbs}%</span>
+        </div>
+      </div>
+      <div class="sp-q-footer">
+        <span class="sp-my-vote ${r.my_vote}">${myVoteLbl}</span>
+        ${resultBadge}
+      </div>
+    </div>`
+  }).join('')
+
+  body.innerHTML = html
 }
 
 function mpMarkDirty(field) {
