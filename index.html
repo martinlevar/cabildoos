@@ -401,96 +401,73 @@ html, body {
   background:rgba(0,0,0,.03); margin:8px 16px; border-radius:10px;
 }
 
-/* ── CABILDO TAB BAR ── */
-#cabildo-tab-bar {
-  flex-shrink:0; display:flex; align-items:center;
-  background:#fff; border-top:1px solid #EFEFEC;
-  padding:6px 16px 10px; gap:6px;
-  z-index:10;
-}
-.ctb-tab {
-  flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
-  padding:7px 10px; border-radius:12px; border:none; background:transparent;
-  font-family:'Manrope',sans-serif; font-size:10px; font-weight:700;
-  color:#AAADBE; cursor:pointer; transition:background .15s, color .15s;
-  letter-spacing:.03em;
-}
-.ctb-tab svg { opacity:.5; transition:opacity .15s; }
-.ctb-tab.active { color:#1D1F3C; background:#F0F0EC; }
-.ctb-tab.active svg { opacity:1; }
-.ctb-tab-badge {
-  display:inline-flex; align-items:center; justify-content:center;
-  min-width:16px; height:16px; border-radius:8px;
-  background:#1D1F3C; color:#fff; font-size:9px; font-weight:800;
-  padding:0 4px; margin-left:4px; vertical-align:middle;
-}
-
-/* ── PREGUNTAS PANEL ── */
+/* ── PREGUNTAS PANEL (same style as #citizens-panel) ── */
 #preguntas-panel {
-  flex:1; overflow-y:auto; display:none;
-  flex-direction:column; background:#F7F7F5;
-  padding:0;
+  position:fixed; inset:0; z-index:400;
+  display:flex; flex-direction:column;
+  background:var(--bg);
+  opacity:0; pointer-events:none;
+  transform:translateY(100%);
+  transition:opacity .3s ease, transform .38s cubic-bezier(.4,0,.2,1);
 }
-#preguntas-panel.active { display:flex; }
-.pq-section-label {
-  font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
-  color:#AAADBE; padding:18px 20px 8px; position:sticky; top:0;
-  background:#F7F7F5; z-index:2;
-}
-.pq-list { display:flex; flex-direction:column; gap:0; }
+#preguntas-panel.open { opacity:1; pointer-events:all; transform:translateY(0); }
+.pq-list { display:flex; flex-direction:column; }
 .pq-item {
   display:flex; align-items:center; gap:12px;
-  padding:14px 20px; background:#fff;
-  border-bottom:1px solid #F0F0EC;
+  padding:16px 28px; background:#fff;
+  border-bottom:1px solid var(--border);
   transition:background .15s;
 }
 .pq-item:hover { background:#FAFAF8; }
-.pq-item-dot {
-  width:8px; height:8px; border-radius:50%; flex-shrink:0;
-}
+.pq-item-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 .pq-item-body { flex:1; min-width:0; }
 .pq-item-cat {
-  font-size:9px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  font-size:9px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
   color:#AAADBE; margin-bottom:3px;
 }
 .pq-item-text {
-  font-size:13px; font-weight:600; color:#1D1F3C; line-height:1.35;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size:14px; font-weight:600; color:#1D1F3C; line-height:1.35;
+  overflow:hidden; text-overflow:ellipsis;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
 }
-.pq-item-sub {
-  font-size:10px; color:#AAADBE; margin-top:2px;
-}
+.pq-item-sub { font-size:11px; color:#AAADBE; margin-top:3px; }
 .pq-insert-btn {
-  flex-shrink:0; padding:6px 14px; border-radius:9px;
+  flex-shrink:0; padding:7px 16px; border-radius:10px;
   border:1.5px solid #1D1F3C; background:transparent;
   font-family:'Manrope',sans-serif; font-size:11px; font-weight:700; color:#1D1F3C;
   cursor:pointer; transition:background .15s, color .15s;
 }
 .pq-insert-btn:hover { background:#1D1F3C; color:#fff; }
 .pq-empty {
-  flex:1; display:flex; align-items:center; justify-content:center;
-  font-size:13px; color:#AAADBE; font-style:italic; padding:40px;
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:14px; color:#AAADBE; text-align:center; line-height:1.6; padding:40px;
 }
 
-/* ── CONTRACT BUTTON en card ── */
-.q-card-contract-btn {
-  position:absolute; top:10px; left:10px;
-  width:24px; height:24px; border-radius:7px;
-  border:1.5px solid rgba(0,0,0,.12); background:rgba(255,255,255,.85);
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer; color:#888; opacity:0; transition:opacity .18s;
+/* ── CARD BUTTON GROUP (contract + expand, top-right) ── */
+.q-card-btn-group {
+  position:absolute; top:10px; right:10px;
+  display:flex; gap:4px; opacity:0; transition:opacity .18s;
   pointer-events:none;
 }
-.q-card-inner:hover .q-card-contract-btn { opacity:1; pointer-events:all; }
-.q-card-contract-btn:hover { background:#1D1F3C; color:#fff; border-color:#1D1F3C; }
+.q-card-inner:hover .q-card-btn-group { opacity:1; pointer-events:all; }
+.q-card-btn-group button {
+  width:24px; height:24px; border-radius:7px;
+  border:1.5px solid rgba(0,0,0,.12); background:rgba(255,255,255,.88);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:#888; transition:background .15s, color .15s, border-color .15s;
+  padding:0;
+}
+.q-card-btn-group button:hover { background:#1D1F3C; color:#fff; border-color:#1D1F3C; }
 
 /* ── EXPAND — top zone del card es clickeable ── */
 .q-card-inner {
   position:relative; cursor:pointer;
-  transition:background .15s;
+  transition:filter .15s;
 }
 .q-card-inner:hover { filter:brightness(.97); }
+/* legacy hint — replaced by .q-card-btn-group */
 .q-card-expand-hint {
+  display:none;
   position:absolute; top:10px; right:10px;
   width:24px; height:24px; border-radius:7px;
   border:1.5px solid rgba(0,0,0,.12); background:rgba(255,255,255,.85);
@@ -2276,8 +2253,7 @@ body.on-landing #social-footer.visible { display:flex; }
     <p class="ob-text"><b>Modo observador</b> — Podés explorar el hemiciclo pero no votar</p>
     <button class="ob-cta" onclick="volverALanding();setTimeout(abrirVerificacion,200)">Crear mi butaca →</button>
   </div>
-  <!-- Cabildo tab content -->
-  <div class="body" id="cabildo-body">
+  <div class="body">
     <div id="q-cards-strip"></div>
     <div class="canvas-area" id="canvas-area">
       <canvas id="hemiciclo"></canvas>
@@ -2292,27 +2268,11 @@ body.on-landing #social-footer.visible { display:flex; }
         <button class="map-btn orange" onclick="resetCamera()">↵ Mi butaca</button>
         <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">0</b> ciudadanos</div>
         <button class="map-btn" onclick="zoomOut()">Ver todo</button>
+        <button class="map-btn" onclick="abrirPreguntas()" id="btn-preguntas">📋 Preguntas<span id="ctb-badge" style="display:none;margin-left:4px;background:#1D1F3C;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px"></span></button>
         <button class="map-btn" onclick="iniciarSimulacion()" id="btn-simular" style="border-color:rgba(247,106,30,.4);color:var(--orange)">⚡ Simular votación</button>
         <button class="map-btn" onclick="abrirHemiConfig()" id="btn-hemi-config" style="border-color:rgba(0,0,0,.15)">◈ Hemiciclo</button>
       </div>
     </div>
-  </div>
-  <!-- Preguntas tab content -->
-  <div id="preguntas-panel">
-    <p class="pq-section-label">Archivadas</p>
-    <div class="pq-list" id="pq-list"></div>
-    <div class="pq-empty" id="pq-empty" style="display:none">No hay preguntas archivadas todavía.</div>
-  </div>
-  <!-- Bottom tab bar -->
-  <div id="cabildo-tab-bar">
-    <button class="ctb-tab active" id="ctb-cabildo" onclick="switchCabildoTab('cabildo')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      Cabildo
-    </button>
-    <button class="ctb-tab" id="ctb-preguntas" onclick="switchCabildoTab('preguntas')">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Preguntas<span class="ctb-tab-badge" id="ctb-badge" style="display:none">0</span>
-    </button>
   </div>
 </div>
 
@@ -3057,6 +3017,23 @@ body.on-landing #social-footer.visible { display:flex; }
       </div>
       <div id="sw-winner-line"></div>
       <button class="sw-close" onclick="cerrarBanner()">← Ver el recinto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PREGUNTAS PANEL ══════════════ -->
+<div id="preguntas-panel">
+  <div class="cl-header">
+    <div>
+      <span class="cl-title">Preguntas</span>
+      <span class="cl-sub" id="pq-sub">— archivadas</span>
+    </div>
+    <button class="cl-close" onclick="cerrarPreguntas()">← Volver al congreso</button>
+  </div>
+  <div class="cl-body">
+    <div class="pq-list" id="pq-list"></div>
+    <div class="pq-empty" id="pq-empty" style="display:none">
+      <p>No hay preguntas archivadas todavía.<br>Usá el botón — en las tarjetas para archivarlas.</p>
     </div>
   </div>
 </div>
@@ -4739,7 +4716,7 @@ function irAlCongreso() {
   }
   if (typeof cargarPreguntasActivas === 'function') cargarPreguntasActivas()
   if (typeof initHemiciclo === 'function') initHemiciclo()
-  _updatePqBadge()
+  if (typeof _updatePqBadge === 'function') _updatePqBadge()
 }
 
 // ── Abrir / cerrar modal ──
@@ -7130,12 +7107,14 @@ function renderQCards() {
     card.innerHTML = `
       <div class="q-card-inner" onclick="abrirInfoModal(${i})">
         ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${qdata.category}</span>` : ''}
-        <span class="q-card-contract-btn" onclick="event.stopPropagation();archivarPregunta('${qdata.id}')" title="Archivar">
-          <svg width="11" height="3" viewBox="0 0 14 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1.5" x2="13" y2="1.5"/></svg>
-        </span>
-        <span class="q-card-expand-hint">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        </span>
+        <div class="q-card-btn-group">
+          <button onclick="event.stopPropagation();archivarPregunta('${qdata.id}')" title="Archivar">
+            <svg width="11" height="3" viewBox="0 0 14 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1.5" x2="13" y2="1.5"/></svg>
+          </button>
+          <button onclick="event.stopPropagation();abrirInfoModal(${i})" title="Expandir">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
         <p class="q-card-text">${qdata.text}</p>
       </div>
       <div class="q-card-countdown" style="background:${theme.cd};border-top-color:${theme.pill}">
@@ -7256,8 +7235,7 @@ function insertarPregunta(qId) {
   renderQCards()
   renderQuestionsTab()
   _updatePqBadge()
-  // Switch to Cabildo so user sees the card reappear
-  switchCabildoTab('cabildo')
+  cerrarPreguntas()
 }
 
 function marcarRevelada(qId) {
@@ -7286,31 +7264,21 @@ function _updatePqBadge() {
   badge.style.display = n > 0 ? 'inline-flex' : 'none'
 }
 
-function switchCabildoTab(tab) {
-  const body     = document.getElementById('cabildo-body')
-  const panel    = document.getElementById('preguntas-panel')
-  const tabCab   = document.getElementById('ctb-cabildo')
-  const tabPq    = document.getElementById('ctb-preguntas')
-  if (tab === 'cabildo') {
-    body.style.display  = ''
-    panel.classList.remove('active')
-    tabCab.classList.add('active')
-    tabPq.classList.remove('active')
-  } else {
-    body.style.display  = 'none'
-    panel.classList.add('active')
-    tabCab.classList.remove('active')
-    tabPq.classList.add('active')
-    renderQuestionsTab()
-  }
+function abrirPreguntas() {
+  renderQuestionsTab()
+  document.getElementById('preguntas-panel').classList.add('open')
+}
+function cerrarPreguntas() {
+  document.getElementById('preguntas-panel').classList.remove('open')
 }
 
 function renderQuestionsTab() {
   const list  = document.getElementById('pq-list')
   const empty = document.getElementById('pq-empty')
+  const sub   = document.getElementById('pq-sub')
   if (!list) return
-  // Build list from PREGUNTAS_DATA — only archived ones
   const archived = PREGUNTAS_DATA.filter(q => _archivadas.has(q.id))
+  if (sub) sub.textContent = `— ${archived.length} archivada${archived.length !== 1 ? 's' : ''}`
   list.innerHTML = ''
   if (archived.length === 0) {
     if (empty) empty.style.display = 'flex'
@@ -7319,9 +7287,9 @@ function renderQuestionsTab() {
   if (empty) empty.style.display = 'none'
   const CAT_THEME = window._CAT_THEME || {}
   archived.forEach(qdata => {
-    const theme  = CAT_THEME[qdata.category] || _CAT_DEFAULT
-    const ended  = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000) <= 0
-    const row    = document.createElement('div')
+    const theme = CAT_THEME[qdata.category] || _CAT_DEFAULT
+    const ended = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000) <= 0
+    const row   = document.createElement('div')
     row.className = 'pq-item'
     row.innerHTML = `
       <div class="pq-item-dot" style="background:${theme.pill}"></div>
