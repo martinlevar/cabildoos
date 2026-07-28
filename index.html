@@ -7252,6 +7252,7 @@ function marcarRevelada(qId) {
       _archivadas.add(qId)
       _saveArchivadas(_archivadas)
       renderQCards()
+      requestAnimationFrame(resizeCanvas)
       _updatePqBadge()
     }
   }
