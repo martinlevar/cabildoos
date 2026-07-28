@@ -2912,16 +2912,19 @@ function _renderAgenda() {
   tbAgenda.innerHTML = filtered.length === 0
     ? '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">Sin preguntas con este filtro</td></tr>'
     : filtered.map((q, i) => {
-        const statusBadge = q.status === 'activa'
+        // Si está "activa" pero ya venció en tiempo → mostrar como cerrada visualmente
+        const isExpired = q.status === 'activa' && q.ends_at && new Date(q.ends_at) < new Date()
+        const effectiveStatus = isExpired ? 'cerrada' : q.status
+        const statusBadge = effectiveStatus === 'activa'
           ? '<span class="badge active">● Activa</span>'
-          : q.status === 'cerrada'
+          : effectiveStatus === 'cerrada'
           ? '<span class="badge closed">Cerrada</span>'
-          : q.status === 'pleno'
+          : effectiveStatus === 'pleno'
           ? '<span class="badge">En pleno</span>'
           : '<span class="badge pending">En agenda</span>'
-        const accionBtn = q.status === 'activa'
+        const accionBtn = effectiveStatus === 'activa'
           ? `<button class="btn btn-ghost btn-sm" onclick="cerrarPregunta('${q.id}',this)">■ Cerrar</button>`
-          : q.status === 'revision'
+          : effectiveStatus === 'revision'
           ? `<button class="btn btn-green btn-sm" onclick="activarPreguntaDB('${q.id}',this)">▶ Activar</button>`
           : ''
         const durMin = q.duration_minutes || 1440
@@ -2950,6 +2953,12 @@ function _renderAgenda() {
 
 // ── PREGUNTAS — Carga desde Supabase ──
 async function cargarPreguntas() {
+  // Auto-cerrar preguntas vencidas en DB antes de cargar
+  await sb.from('questions')
+    .update({ status: 'cerrada' })
+    .eq('status', 'activa')
+    .lt('ends_at', new Date().toISOString())
+
   const { data, error } = await sb.from('questions').select('*').order('created_at', { ascending: false })
   if (error) { console.error('cargarPreguntas:', error); return }
   const rows = data || []
