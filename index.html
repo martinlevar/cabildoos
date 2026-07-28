@@ -2370,7 +2370,7 @@ body.on-landing #social-footer.visible { display:flex; }
         <span id="mp-votes-n"></span>
       </div>
 
-      <button class="mp-cta" onclick="cerrarMiPerfil();irACongreso()">Ir al hemiciclo →</button>
+      <button class="mp-cta" onclick="cerrarMiPerfil();irACongreso()">Ir al Cabildo →</button>
     </div>
   </div>
 </div>
@@ -2773,7 +2773,7 @@ body.on-landing #social-footer.visible { display:flex; }
       </div>
       <p class="vp-seat-sub" style="text-align:center">Ciudadano verificado · identidad oculta · VaV activo</p>
       <p style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;font-family:monospace" id="vp-hash-display"></p>
-      <button class="vp-btn-main" onclick="vpFinalizar()">Ir al hemiciclo →</button>
+      <button class="vp-btn-main" onclick="vpFinalizar()">Ir al Cabildo →</button>
     </div>
 
   </div>
@@ -6964,7 +6964,7 @@ function renderQCards() {
   strip.innerHTML = ''
   if (PREGUNTAS_DATA.length === 0) {
     strip.classList.add('empty')
-    strip.innerHTML = '<p class="q-empty-msg">El admin activará una pregunta pronto…</p>'
+    strip.innerHTML = '<p class="q-empty-msg">Sin preguntas activas…</p>'
     return
   }
   strip.classList.remove('empty')
