@@ -7073,16 +7073,49 @@ async function abrirEstadisticas() {
     const el = document.getElementById(id); if (el) el.textContent = '…'
   })
 
-  if (!MY_SEAT || MY_SEAT <= 0) {
-    body.innerHTML = '<div class="sp-empty">Necesitás una butaca para ver tus estadísticas.</div>'
+  // Fuente de verdad para votos propios: localStorage
+  const storedVotos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+  const votedIds    = Object.keys(storedVotos).filter(k => storedVotos[k]?.voto)
+
+  if (votedIds.length === 0) {
+    body.innerHTML = '<div class="sp-empty">Todavía no participaste en ninguna pregunta.</div>'
+    ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = '0'
+    })
     return
   }
 
   try {
-    const { data, error } = await sb.rpc('get_my_vote_history', { p_seat_number: MY_SEAT })
-    if (error || !data) throw error || new Error('sin datos')
-    _renderStatsPanel(data)
+    // Metadatos de preguntas (incluye eliminadas del admin — quedan sin texto)
+    const { data: qRows } = await sb.from('questions')
+      .select('id, text, category, ends_at')
+      .in('id', votedIds)
+    const qMap = Object.fromEntries((qRows || []).map(q => [q.id, q]))
+
+    // Conteos agregados de todos los votantes por pregunta
+    const { data: cRows } = await sb.rpc('get_question_vote_counts', { p_question_ids: votedIds })
+    const cMap = Object.fromEntries((cRows || []).map(c => [c.question_id, c]))
+
+    // Armar filas combinando localStorage + Supabase
+    const rows = votedIds.map(qId => {
+      const q = qMap[qId] || {}
+      const c = cMap[qId] || { cnt_si:0, cnt_no:0, cnt_abs:0, total_votes:0 }
+      return {
+        question_id:   qId,
+        question_text: q.text     || '(pregunta eliminada)',
+        category:      q.category || null,
+        ends_at:       q.ends_at  || null,
+        my_vote:       storedVotos[qId].voto,
+        cnt_si:        Number(c.cnt_si),
+        cnt_no:        Number(c.cnt_no),
+        cnt_abs:       Number(c.cnt_abs),
+        total_votes:   Number(c.total_votes),
+      }
+    })
+
+    _renderStatsPanel(rows)
   } catch(e) {
+    console.error('abrirEstadisticas:', e)
     body.innerHTML = '<div class="sp-empty">Error al cargar estadísticas.<br>Intentá de nuevo.</div>'
   }
 }
@@ -7122,10 +7155,11 @@ function _renderStatsPanel(rows) {
   const html = rows.map(r => {
     const theme   = (window._CAT_THEME[r.category] || _CAT_DEFAULT)
     const si      = Number(r.cnt_si), no = Number(r.cnt_no), abs = Number(r.cnt_abs)
-    const total   = si + no + abs
-    const pctSi   = total > 0 ? ((si  / total) * 100).toFixed(0) : 0
-    const pctNo   = total > 0 ? ((no  / total) * 100).toFixed(0) : 0
-    const pctAbs  = total > 0 ? ((abs / total) * 100).toFixed(0) : 0
+    const total   = Number(r.total_votes) || (si + no + abs)
+    const revealed = si + no + abs
+    const pctSi   = revealed > 0 ? ((si  / revealed) * 100).toFixed(0) : 0
+    const pctNo   = revealed > 0 ? ((no  / revealed) * 100).toFixed(0) : 0
+    const pctAbs  = revealed > 0 ? ((abs / revealed) * 100).toFixed(0) : 0
     const ended   = new Date(r.ends_at) < new Date()
     const ganaSi  = si > no
     const empate  = si === no && total > 0
@@ -7543,7 +7577,8 @@ function marcarRevelada(qId) {
 function _updatePqBadge() {
   const badge = document.getElementById('ctb-badge')
   if (!badge) return
-  const n = _archivadas.size
+  // Contar solo las que existen en PREGUNTAS_DATA (las borradas del admin desaparecen)
+  const n = PREGUNTAS_DATA.filter(q => _archivadas.has(q.id)).length
   badge.textContent = n
   badge.style.display = n > 0 ? 'inline-flex' : 'none'
 }
