@@ -1241,8 +1241,10 @@ html, body {
   box-shadow:0 4px 24px rgba(26,31,60,.07);
 }
 .av-congress-btn:hover { transform:scale(1.04); background:var(--navy); border-color:var(--navy); box-shadow:0 8px 32px rgba(26,31,60,.22); }
-.av-congress-btn:hover .av-hemi-icon { opacity:1; filter:brightness(0) invert(1); }
-.av-hemi-icon { opacity:.55; transition:opacity .2s, filter .2s; }
+.av-congress-btn:hover .av-hemi-icon ellipse { fill:#fff; transition:fill .2s; }
+.av-congress-btn:hover .av-hemi-icon ellipse:last-child { fill:#f76a1e; }
+.av-hemi-icon { opacity:.9; transition:opacity .2s; }
+.av-hemi-icon ellipse { transition:fill .2s; }
 
 .av-label-seat   { font-size:13px; font-weight:500; color:var(--dark); text-align:center; margin-top:10px; }
 .av-label-prop   { font-size:13px; font-weight:500; color:var(--mid);  text-align:center; margin-top:10px; }
@@ -2329,24 +2331,32 @@ body.on-landing #social-footer.visible { display:flex; }
         </div>
         <div style="display:flex;flex-direction:column;align-items:center">
           <div class="av-congress-btn" onclick="irAlCongreso()" title="Ir al congreso">
-            <!-- Hemiciclo mini SVG -->
-            <svg class="av-hemi-icon" width="46" height="36" viewBox="0 0 460 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M230 290 L50 290" stroke="#1a1f3c" stroke-width="20" stroke-linecap="round"/>
-              <path d="M230 290 L410 290" stroke="#1a1f3c" stroke-width="20" stroke-linecap="round"/>
-              <!-- filas del hemiciclo -->
-              <path d="M90 270 A145 145 0 0 1 370 270" stroke="#1a1f3c" stroke-width="14" stroke-linecap="round" fill="none"/>
-              <path d="M120 240 A115 115 0 0 1 340 240" stroke="#1a1f3c" stroke-width="11" stroke-linecap="round" fill="none"/>
-              <path d="M150 210 A84 84 0 0 1 310 210" stroke="#1a1f3c" stroke-width="9" stroke-linecap="round" fill="none"/>
-              <path d="M180 185 A54 54 0 0 1 280 185" stroke="#1a1f3c" stroke-width="7" stroke-linecap="round" fill="none"/>
-              <!-- dot naranja = mi asiento -->
-              <circle cx="230" cy="270" r="16" fill="#f76a1e"/>
+            <svg class="av-hemi-icon" width="44" height="44" viewBox="0 0 611.48 611.63" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="305.77" cy="305.84" rx="72.76" ry="72.78" fill="#1a1f3c"/>
+              <ellipse cx="305.77" cy="538.8"  rx="72.76" ry="72.78" fill="#1a1f3c"/>
+              <ellipse cx="538.67" cy="538.8"  rx="72.76" ry="72.78" fill="#1a1f3c"/>
+              <ellipse cx="305.72" cy="72.78"  rx="72.76" ry="72.78" fill="#1a1f3c"/>
+              <ellipse cx="538.71" cy="72.78"  rx="72.76" ry="72.78" fill="#1a1f3c"/>
+              <ellipse cx="72.76"  cy="305.8"  rx="72.76" ry="72.78" fill="#1a1f3c"/>
+              <ellipse cx="72.76"  cy="538.85" rx="72.76" ry="72.78" fill="#1a1f3c"/>
+              <ellipse cx="72.86"  cy="72.88"  rx="72.78" ry="72.8"  fill="#1a1f3c"/>
+              <ellipse cx="538.7"  cy="305.82" rx="72.65" ry="72.67" fill="#f76a1e"/>
             </svg>
           </div>
           <p class="av-label-congreso">Ir al congreso</p>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center">
           <div class="av-stats-btn" onclick="abrirEstadisticas()" title="Mis estadísticas">
-            <span class="av-stats-icon">📊</span>
+            <svg width="42" height="42" viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- barra izquierda -->
+              <rect x="5"  y="22" width="8" height="14" rx="2.5" fill="#6d28d9" opacity=".55"/>
+              <!-- barra centro -->
+              <rect x="17" y="12" width="8" height="24" rx="2.5" fill="#6d28d9"/>
+              <!-- barra derecha -->
+              <rect x="29" y="17" width="8" height="19" rx="2.5" fill="#6d28d9" opacity=".75"/>
+              <!-- punto naranja arriba de barra centro -->
+              <circle cx="21" cy="8" r="3.5" fill="#f76a1e"/>
+            </svg>
           </div>
           <p class="av-label-stats">Estadísticas</p>
         </div>
