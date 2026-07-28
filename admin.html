@@ -1724,6 +1724,14 @@ select option { background: var(--surface); }
         </select>
       </div>
     </div>
+    <div class="field">
+      <div class="field-label">Contexto / Lectura adicional <span style="font-weight:400;color:#aaa">(opcional)</span></div>
+      <textarea id="np-descripcion" placeholder="Agregá más contexto, antecedentes o argumentos relevantes para esta pregunta…" rows="4"></textarea>
+    </div>
+    <div class="field">
+      <div class="field-label">Video explicativo <span style="font-weight:400;color:#aaa">(URL de YouTube o video directo — opcional)</span></div>
+      <input type="url" id="np-video" placeholder="https://youtube.com/watch?v=... o https://...mp4">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="cerrarModal('nueva-pregunta')">Cancelar</button>
       <button class="btn btn-primary" onclick="crearPregunta()">Crear pregunta</button>
@@ -2772,19 +2780,25 @@ async function crearPregunta() {
   const durVal  = parseInt(document.getElementById('np-duracion-val').value) || 24
   const durUnit = document.getElementById('np-duracion-unit').value
   const durMin  = durUnit === 'minutes' ? durVal : durVal * 60
+  const desc    = document.getElementById('np-descripcion').value.trim()
+  const video   = document.getElementById('np-video').value.trim()
   if (!texto) { toast('Escribí el texto de la pregunta'); return }
   const endsAt = estado === 'activa' ? new Date(Date.now() + durMin * 60 * 1000).toISOString() : null
   const { error } = await sb.from('questions').insert({
     text:             texto,
     duration_minutes: durMin,
-    category:    cat,
-    status:      estado === 'activa' ? 'activa' : 'revision',
-    ends_at:     endsAt,
-    proposed_by: null,
+    category:         cat,
+    status:           estado === 'activa' ? 'activa' : 'revision',
+    ends_at:          endsAt,
+    proposed_by:      null,
+    description:      desc || '',
+    video_url:        video || '',
   })
   if (error) { toast('Error: ' + error.message); return }
   cerrarModal('nueva-pregunta')
-  document.getElementById('np-texto').value = ''
+  document.getElementById('np-texto').value       = ''
+  document.getElementById('np-descripcion').value = ''
+  document.getElementById('np-video').value       = ''
   toast('Pregunta creada')
   cargarPreguntas()
 }
