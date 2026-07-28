@@ -165,8 +165,7 @@ html, body {
 
 .q-card {
   min-width:290px; max-width:330px; flex-shrink:0;
-  background:#fff;
-  border-radius:18px;
+  background:#fff; border-radius:18px;
   border:1px solid rgba(0,0,0,.09);
   box-shadow:0 2px 12px rgba(0,0,0,.06), 0 0 0 0.5px rgba(0,0,0,.04);
   overflow:hidden; scroll-snap-align:start;
@@ -174,6 +173,8 @@ html, body {
   transition:box-shadow .2s;
 }
 .q-card:hover { box-shadow:0 6px 24px rgba(0,0,0,.1), 0 0 0 0.5px rgba(0,0,0,.06); }
+.q-card.ended { opacity:.45; filter:grayscale(.35); transition:opacity .25s, filter .25s, box-shadow .2s; }
+.q-card.ended:hover { opacity:1; filter:grayscale(0); }
 
 /* Category pill on card */
 .q-cat-pill {
@@ -7015,7 +7016,7 @@ function renderQCards() {
       : `<span class="q-card-cd-badge" style="background:${theme.pill};color:${theme.txt}">En curso</span>`
 
     const card = document.createElement('div')
-    card.className = 'q-card'
+    card.className = ended ? 'q-card ended' : 'q-card'
     card.style.background = theme.bg
     card.style.borderColor = theme.pill
     card.innerHTML = `
