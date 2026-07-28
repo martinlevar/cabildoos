@@ -400,63 +400,133 @@ html, body {
   background:rgba(0,0,0,.03); margin:8px 16px; border-radius:10px;
 }
 
-/* ── EXPAND BUTTON en card ── */
-.q-card-inner { position:relative; }
-.q-card-expand-btn {
-  position:absolute; top:0; right:0;
-  width:26px; height:26px; border-radius:8px;
-  border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.7);
-  backdrop-filter:blur(4px);
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer; color:#666; transition:background .15s, color .15s, border-color .15s;
+/* ── EXPAND — top zone del card es clickeable ── */
+.q-card-inner {
+  position:relative; cursor:pointer;
+  transition:background .15s;
 }
-.q-card-expand-btn:hover { background:#1D1F3C; color:#fff; border-color:#1D1F3C; }
+.q-card-inner:hover { filter:brightness(.97); }
+.q-card-expand-hint {
+  position:absolute; top:10px; right:10px;
+  width:24px; height:24px; border-radius:7px;
+  border:1.5px solid rgba(0,0,0,.12); background:rgba(255,255,255,.85);
+  display:flex; align-items:center; justify-content:center;
+  color:#888; opacity:0; transition:opacity .18s;
+  pointer-events:none;
+}
+.q-card-inner:hover .q-card-expand-hint { opacity:1; }
 
 /* ── INFO MODAL ── */
 #info-modal-overlay {
   position:fixed; inset:0; z-index:500;
-  background:rgba(15,15,30,.55); backdrop-filter:blur(6px);
+  background:rgba(10,10,25,.6); backdrop-filter:blur(8px);
   display:flex; align-items:center; justify-content:center;
   padding:20px; opacity:0; pointer-events:none;
-  transition:opacity .22s;
+  transition:opacity .2s;
 }
 #info-modal-overlay.open { opacity:1; pointer-events:all; }
 #info-modal {
-  width:100%; max-width:560px; max-height:88vh;
-  background:#fff; border-radius:20px;
-  overflow:hidden; display:flex; flex-direction:column;
-  box-shadow:0 24px 80px rgba(0,0,0,.22);
-  transform:translateY(16px) scale(.97);
-  transition:transform .22s cubic-bezier(.34,1.56,.64,1);
+  width:100%; max-width:580px; max-height:90vh;
+  border-radius:22px; overflow:hidden;
+  display:flex; flex-direction:column;
+  box-shadow:0 32px 100px rgba(0,0,0,.3);
+  transform:translateY(20px) scale(.96);
+  transition:transform .24s cubic-bezier(.34,1.56,.64,1);
 }
 #info-modal-overlay.open #info-modal { transform:translateY(0) scale(1); }
-#im-header {
+
+/* ── Hero section (mirrors card inner) ── */
+#im-hero {
   flex-shrink:0; padding:22px 22px 18px;
-  border-bottom:1.5px solid #EFEFEC;
-  transition:background .3s;
+  transition:background .3s, border-color .3s;
 }
-#im-header-top {
-  display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;
+#im-hero-top {
+  display:flex; align-items:center; gap:8px; margin-bottom:14px;
 }
 #im-cat-pill {
-  font-size:10px; font-weight:700; letter-spacing:.04em;
-  padding:3px 12px; border-radius:20px;
+  font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+  padding:3px 12px; border-radius:99px;
 }
 .im-close {
-  width:30px; height:30px; border-radius:50%;
-  border:none; background:rgba(0,0,0,.07); cursor:pointer;
-  font-size:18px; color:#888; display:flex; align-items:center; justify-content:center;
-  transition:background .15s;
+  margin-left:auto; width:30px; height:30px; border-radius:50%;
+  border:none; background:rgba(0,0,0,.08); cursor:pointer;
+  font-size:18px; color:#666; display:flex; align-items:center; justify-content:center;
+  transition:background .15s; flex-shrink:0;
 }
-.im-close:hover { background:rgba(0,0,0,.14); }
+.im-close:hover { background:rgba(0,0,0,.15); }
 #im-question-text {
   font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-  font-size:19px; font-weight:700; line-height:1.35;
-  color:#1D1F3C; letter-spacing:-.02em; margin:0;
+  font-size:20px; font-weight:700; line-height:1.38;
+  color:#1D1F3C; letter-spacing:-.025em; margin:0;
 }
+
+/* ── Countdown bar (mirrors card countdown) ── */
+#im-countdown {
+  flex-shrink:0; padding:12px 22px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-top:1.5px solid transparent; border-bottom:1.5px solid transparent;
+  transition:background .3s, border-color .3s;
+}
+#im-countdown-left { display:flex; flex-direction:column; gap:1px; }
+.im-cd-lbl { font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#AAA; }
+#im-cd-val {
+  font-size:28px; font-weight:800; letter-spacing:-.05em;
+  font-variant-numeric:tabular-nums; color:#1D1F3C; line-height:1.1;
+}
+#im-cd-val.ended {
+  font-size:13px; font-weight:700; color:#999;
+  background:#efefed; border-radius:6px; padding:3px 10px; letter-spacing:.02em;
+}
+#im-cd-right {} /* badge or revelacion btn */
+.im-reveal-btn {
+  padding:6px 14px; border-radius:9px; cursor:pointer;
+  background:transparent; color:#3b82f6;
+  border:1.5px solid #3b82f6;
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700;
+  transition:background .18s, color .18s;
+}
+.im-reveal-btn:hover { background:#3b82f6; color:#fff; }
+.im-status-badge {
+  font-size:10px; font-weight:700; letter-spacing:.05em;
+  padding:4px 12px; border-radius:99px;
+}
+
+/* ── Actions bar (mirrors card actions) ── */
+#im-actions {
+  flex-shrink:0; padding:12px 22px 14px;
+  display:flex; gap:8px;
+  border-bottom:1.5px solid #EFEFEC;
+}
+.im-debate-btn {
+  flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:11px 12px; border-radius:12px;
+  border:1.5px solid rgba(62,207,142,.35); background:rgba(62,207,142,.06);
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700; color:#166534;
+  cursor:pointer; transition:background .15s;
+}
+.im-debate-btn:hover { background:rgba(62,207,142,.14); }
+.im-debate-btn.off { border-color:rgba(180,0,0,.2); background:rgba(180,0,0,.04); color:#9B1C1C; }
+.im-vote-btn {
+  flex:1; padding:11px 12px; border-radius:12px; border:none;
+  background:#1D1F3C; color:#fff;
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700;
+  cursor:pointer; transition:background .15s;
+}
+.im-vote-btn:hover { background:#3b3d6a; }
+.im-vote-btn.ya-vote { cursor:default; }
+.im-vote-btn.ya-vote.si  { background:#dcfce7; color:#166534; }
+.im-vote-btn.ya-vote.no  { background:#fee2e2; color:#991b1b; }
+.im-vote-btn.ya-vote.abs { background:#fef9c3; color:#854d0e; }
+.im-vote-status {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; border-radius:12px; padding:11px 12px;
+}
+
+/* ── Extra content (description + video) ── */
 #im-body {
   flex:1; overflow-y:auto; padding:20px 22px 24px;
-  display:flex; flex-direction:column; gap:20px;
+  display:flex; flex-direction:column; gap:18px;
+  background:#FAFAFA;
 }
 #im-video-container {
   position:relative; padding-bottom:56.25%; height:0; border-radius:12px; overflow:hidden;
@@ -468,16 +538,13 @@ html, body {
 }
 .im-section-label {
   font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
-  color:#AAADBE; margin:0 0 10px;
+  color:#AAADBE; margin:0 0 8px;
 }
 #im-description {
-  font-size:14px; color:#333; line-height:1.7;
+  font-size:14px; color:#333; line-height:1.75;
   white-space:pre-wrap;
 }
-#im-empty {
-  text-align:center; font-size:13px; color:#AAADBE;
-  padding:30px 0; font-style:italic;
-}
+#im-empty { display:none; }
 
 /* ── BLOQUE MATCH (en Mi Perfil) ── */
 .mp-bloque-wrap {
@@ -2187,13 +2254,30 @@ body.on-landing #social-footer.visible { display:flex; }
 <!-- ══════════════ INFO MODAL ══════════════ -->
 <div id="info-modal-overlay" onclick="if(event.target===this)cerrarInfoModal()">
   <div id="info-modal">
-    <div id="im-header">
-      <div id="im-header-top">
+    <!-- Hero: category + question text -->
+    <div id="im-hero">
+      <div id="im-hero-top">
         <span id="im-cat-pill"></span>
         <button class="im-close" onclick="cerrarInfoModal()">×</button>
       </div>
       <p id="im-question-text"></p>
     </div>
+    <!-- Countdown bar -->
+    <div id="im-countdown">
+      <div id="im-countdown-left">
+        <span class="im-cd-lbl" id="im-cd-lbl">Tiempo restante</span>
+        <span id="im-cd-val">—</span>
+      </div>
+      <div id="im-cd-right"></div>
+    </div>
+    <!-- Action buttons -->
+    <div id="im-actions">
+      <button class="im-debate-btn" id="im-debate-btn" onclick="imAbrirDebate()">
+        <span class="debate-dot"></span><span id="im-debate-lbl">Debate</span>
+      </button>
+      <div id="im-vote-area"></div>
+    </div>
+    <!-- Extra content -->
     <div id="im-body">
       <div id="im-video-wrap" style="display:none">
         <div id="im-video-container"></div>
@@ -2201,9 +2285,6 @@ body.on-landing #social-footer.visible { display:flex; }
       <div id="im-description-wrap" style="display:none">
         <p class="im-section-label">Contexto</p>
         <div id="im-description"></div>
-      </div>
-      <div id="im-empty" style="display:none">
-        <p>No hay información adicional para esta pregunta.</p>
       </div>
     </div>
   </div>
@@ -6938,11 +7019,11 @@ function renderQCards() {
     card.style.background = theme.bg
     card.style.borderColor = theme.pill
     card.innerHTML = `
-      <div class="q-card-inner">
+      <div class="q-card-inner" onclick="abrirInfoModal(${i})">
         ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${qdata.category}</span>` : ''}
-        <button class="q-card-expand-btn" onclick="abrirInfoModal(${i})" title="Expandir pregunta">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-        </button>
+        <span class="q-card-expand-hint">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </span>
         <p class="q-card-text">${qdata.text}</p>
       </div>
       <div class="q-card-countdown" style="background:${theme.cd};border-top-color:${theme.pill}">
@@ -7224,87 +7305,145 @@ document.addEventListener('click', e => {
 // ══════════════════════════════════════════════════════════════
 //  INFO MODAL
 // ══════════════════════════════════════════════════════════════
+let _infoModalIdx = -1
+let _infoModalIv  = null
+
 function _imYoutubeEmbed(url) {
-  // Handles youtu.be/ID and youtube.com/watch?v=ID and /embed/ID
   try {
     const u = new URL(url)
     let id = null
     if (u.hostname === 'youtu.be') id = u.pathname.slice(1)
-    else if (u.hostname.includes('youtube.com')) {
-      id = u.searchParams.get('v') || u.pathname.split('/').pop()
-    }
+    else if (u.hostname.includes('youtube.com')) id = u.searchParams.get('v') || u.pathname.split('/').pop()
     if (id) return `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`
   } catch(e) {}
   return null
 }
 
+function _imBuildVoteArea(qdata, ended) {
+  const votos    = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+  const votoVal  = votos[qdata.id]?.voto
+  const voteArea = document.getElementById('im-vote-area')
+  if (!voteArea) return
+  if (ended) {
+    const statusMap = {
+      si:  { lbl:'Voté SÍ',    bg:'#dcfce7', color:'#166534' },
+      no:  { lbl:'Voté NO',    bg:'#fee2e2', color:'#991b1b' },
+      abs: { lbl:'Me abstuve', bg:'#fef9c3', color:'#854d0e' },
+    }
+    const st = votoVal ? statusMap[votoVal] : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
+    voteArea.innerHTML = `<span class="im-vote-status" style="background:${st.bg};color:${st.color};flex:1">${st.lbl}</span>`
+  } else {
+    let cls = 'im-vote-btn', lbl = 'Votar'
+    if (votoVal === 'si')       { cls += ' ya-vote si';  lbl = 'Voté SÍ' }
+    else if (votoVal === 'no')  { cls += ' ya-vote no';  lbl = 'Voté NO' }
+    else if (votoVal === 'abs') { cls += ' ya-vote abs'; lbl = 'Me abstuve' }
+    const onclick = votoVal ? '' : `onclick="abrirVotoForQ(${_infoModalIdx})"`
+    voteArea.innerHTML = `<button class="${cls}" style="flex:1" ${onclick}>${lbl}</button>`
+  }
+}
+
+function _imSetEnded(ended, qdata) {
+  const cdVal  = document.getElementById('im-cd-val')
+  const cdLbl  = document.getElementById('im-cd-lbl')
+  const cdRight = document.getElementById('im-cd-right')
+  if (ended) {
+    if (cdVal) { cdVal.textContent = 'Finalizada'; cdVal.className = 'ended' }
+    if (cdLbl) cdLbl.textContent = 'Estado'
+    if (cdRight) cdRight.innerHTML = `<button class="im-reveal-btn" onclick="cerrarInfoModal();abrirVotoForQ(${_infoModalIdx})">Revelación</button>`
+  } else {
+    if (cdVal) cdVal.className = ''
+    if (cdLbl) cdLbl.textContent = 'Tiempo restante'
+    if (cdRight) cdRight.innerHTML = `<span class="im-status-badge" id="im-status-badge" style="background:${(window._CAT_THEME[qdata.category]||_CAT_DEFAULT).pill};color:${(window._CAT_THEME[qdata.category]||_CAT_DEFAULT).txt}">En curso</span>`
+  }
+  // Debate button
+  const debBtn = document.getElementById('im-debate-btn')
+  const debLbl = document.getElementById('im-debate-lbl')
+  if (debBtn) debBtn.className = 'im-debate-btn' + (ended ? ' off' : '')
+  if (debLbl) debLbl.textContent = ended ? 'Debate OFF' : 'Debate'
+  _imBuildVoteArea(qdata, ended)
+}
+
 function abrirInfoModal(i) {
   const qdata = PREGUNTAS_DATA[i]
   if (!qdata) return
-  const theme = (window._CAT_THEME[qdata.category] || _CAT_DEFAULT)
+  _infoModalIdx = i
+  const theme   = (window._CAT_THEME[qdata.category] || _CAT_DEFAULT)
+  const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
+  const ended   = remaining <= 0
 
-  // Header colors
-  const hdr = document.getElementById('im-header')
-  if (hdr) { hdr.style.background = theme.bg; hdr.style.borderColor = theme.pill }
+  // Hero colors
+  const hero = document.getElementById('im-hero')
+  if (hero) { hero.style.background = theme.bg }
+
+  // Countdown bar colors
+  const cdBar = document.getElementById('im-countdown')
+  if (cdBar) { cdBar.style.background = theme.cd; cdBar.style.borderColor = theme.pill }
+
+  // Actions bar
+  const actBar = document.getElementById('im-actions')
+  if (actBar) { actBar.style.background = theme.bg; actBar.style.borderColor = theme.pill }
 
   // Category pill
   const pill = document.getElementById('im-cat-pill')
-  if (pill) {
-    if (qdata.category) {
-      pill.textContent = qdata.category
-      pill.style.background = theme.pill
-      pill.style.color      = theme.txt
-      pill.style.display    = 'inline-block'
-    } else {
-      pill.style.display = 'none'
-    }
-  }
+  if (pill && qdata.category) {
+    pill.textContent = qdata.category; pill.style.background = theme.pill; pill.style.color = theme.txt; pill.style.display = 'inline-block'
+  } else if (pill) { pill.style.display = 'none' }
 
   // Question text
   document.getElementById('im-question-text').textContent = qdata.text || ''
+
+  // Countdown live tick
+  if (_infoModalIv) clearInterval(_infoModalIv)
+  const cdVal = document.getElementById('im-cd-val')
+  function imTick() {
+    const rem = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
+    if (rem <= 0) {
+      clearInterval(_infoModalIv); _infoModalIv = null
+      _imSetEnded(true, qdata)
+    } else {
+      if (cdVal) cdVal.textContent = fmtTime(rem)
+    }
+  }
+  _imSetEnded(ended, qdata)
+  if (!ended) {
+    if (cdVal) cdVal.textContent = fmtTime(remaining)
+    _infoModalIv = setInterval(imTick, 1000)
+  }
 
   // Video
   const videoWrap = document.getElementById('im-video-wrap')
   const videoCont = document.getElementById('im-video-container')
   if (qdata.video_url) {
-    videoCont.innerHTML = ''
     const ytEmbed = _imYoutubeEmbed(qdata.video_url)
-    if (ytEmbed) {
-      videoCont.innerHTML = `<iframe src="${ytEmbed}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
-    } else {
-      // Treat as direct video file
-      videoCont.innerHTML = `<video src="${qdata.video_url}" controls></video>`
-    }
+    videoCont.innerHTML = ytEmbed
+      ? `<iframe src="${ytEmbed}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
+      : `<video src="${qdata.video_url}" controls></video>`
     videoWrap.style.display = ''
   } else {
-    videoWrap.style.display = 'none'
-    videoCont.innerHTML = ''
+    videoWrap.style.display = 'none'; videoCont.innerHTML = ''
   }
 
   // Description
   const descWrap = document.getElementById('im-description-wrap')
   const descEl   = document.getElementById('im-description')
-  if (qdata.description) {
-    descEl.textContent    = qdata.description
-    descWrap.style.display = ''
-  } else {
-    descWrap.style.display = 'none'
-  }
+  if (qdata.description) { descEl.textContent = qdata.description; descWrap.style.display = '' }
+  else descWrap.style.display = 'none'
 
-  // Empty state — hide it; the question text is always the hero
-  document.getElementById('im-empty').style.display = 'none'
+  // Hide im-body if no content at all
+  document.getElementById('im-body').style.display = (qdata.video_url || qdata.description) ? '' : 'none'
 
-  // Open
   document.getElementById('info-modal-overlay').classList.add('open')
 }
 
 function cerrarInfoModal() {
   document.getElementById('info-modal-overlay').classList.remove('open')
-  // Pause video on close
-  setTimeout(() => {
-    const videoCont = document.getElementById('im-video-container')
-    if (videoCont) videoCont.innerHTML = ''
-  }, 250)
+  if (_infoModalIv) { clearInterval(_infoModalIv); _infoModalIv = null }
+  setTimeout(() => { document.getElementById('im-video-container').innerHTML = '' }, 250)
+}
+
+function imAbrirDebate() {
+  cerrarInfoModal()
+  abrirDebateForQ(_infoModalIdx)
 }
 
 // ══════════════════════════════════════════════════════════════
