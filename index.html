@@ -7534,7 +7534,7 @@ function _imBuildVoteArea(qdata, ended) {
     if (votoVal === 'si')       { cls += ' ya-vote si';  lbl = 'Voté SÍ' }
     else if (votoVal === 'no')  { cls += ' ya-vote no';  lbl = 'Voté NO' }
     else if (votoVal === 'abs') { cls += ' ya-vote abs'; lbl = 'Me abstuve' }
-    const onclick = votoVal ? '' : `onclick="abrirVotoForQ(${_infoModalIdx})"`
+    const onclick = votoVal ? '' : `onclick="cerrarInfoModal();abrirVotoForQ(${_infoModalIdx})"`
     voteArea.innerHTML = `<button class="${cls}" style="flex:1" ${onclick}>${lbl}</button>`
   }
 }
