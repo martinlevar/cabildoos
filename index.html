@@ -7493,7 +7493,7 @@ async function dpEnviar() {
 // Close debate on outside click
 document.addEventListener('click', e => {
   if (!debateOpen) return
-  if (e.target.closest('#debate-panel') || e.target.closest('#debate-btn') || e.target.closest('.q-card-debate-btn')) return
+  if (e.target.closest('#debate-panel') || e.target.closest('#debate-btn') || e.target.closest('.q-card-debate-btn') || e.target.closest('#info-modal-overlay')) return
   cerrarDebate()
 })
 
