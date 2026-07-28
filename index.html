@@ -7225,6 +7225,7 @@ function archivarPregunta(qId) {
   _archivadas.add(qId)
   _saveArchivadas(_archivadas)
   renderQCards()
+  requestAnimationFrame(resizeCanvas)
   renderQuestionsTab()
   _updatePqBadge()
 }
@@ -7233,6 +7234,7 @@ function insertarPregunta(qId) {
   _archivadas.delete(qId)
   _saveArchivadas(_archivadas)
   renderQCards()
+  requestAnimationFrame(resizeCanvas)
   renderQuestionsTab()
   _updatePqBadge()
   cerrarPreguntas()
