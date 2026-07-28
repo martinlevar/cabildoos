@@ -53,6 +53,10 @@
   }
   .hero-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #F76A1E; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.85)} }
+  @keyframes live-blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .live-badge { display:inline-flex;align-items:center;gap:5px;background:rgba(239,68,68,.18);border:1px solid rgba(239,68,68,.35);border-radius:6px;padding:2px 7px; }
+  .live-dot { width:6px;height:6px;border-radius:50%;background:#ef4444;animation:pulse 1.4s infinite; }
+  .live-text { font-size:11px;font-weight:800;color:#ef4444;letter-spacing:.1em;animation:live-blink 1.4s infinite; }
   .hero-badge span { font-size: 12px; font-weight: 700; color: #F76A1E; letter-spacing: .06em; text-transform: uppercase; }
   .hero h1 { font-size: 58px; font-weight: 800; color: #fff; line-height: 1.06; letter-spacing: -2px; margin-bottom: 20px; max-width: 700px; margin-left: auto; margin-right: auto; }
   .hero h1 em { color: #F76A1E; font-style: normal; }
@@ -199,7 +203,10 @@
 <section class="hero">
   <div style="position:relative;z-index:2">
     <div class="hero-badge">
-      <div class="dot"></div>
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        <span class="live-text">LIVE</span>
+      </div>
       <span>2.847 butacas activas · sesión en curso</span>
     </div>
     <h1>El Cabildo<br>de <em>Venezuela</em></h1>
