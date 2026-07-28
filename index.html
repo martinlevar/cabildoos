@@ -7065,33 +7065,18 @@ async function abrirMiPerfil() {
   if (elAbs) elAbs.textContent = cntAbs
   document.getElementById('mi-perfil-overlay').classList.add('open')
 
-  // Cargar ganadoras — misma lógica que estadísticas (localStorage + conteos reales)
+  // Ganadoras: directo desde Supabase
   const elGan = document.getElementById('mp-count-ganadora')
   if (elGan) elGan.textContent = '…'
-  try {
-    const storedVotos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-    const votedIds    = Object.keys(storedVotos).filter(k => storedVotos[k]?.voto)
-    if (votedIds.length === 0) {
-      if (elGan) elGan.textContent = '0'
-    } else {
-      const { data: cRows } = await sb.rpc('get_question_vote_counts', { p_question_ids: votedIds })
-      const cMap = Object.fromEntries((cRows || []).map(c => [c.question_id, c]))
-      // Necesitamos ends_at para saber si terminó
-      const { data: qRows } = await sb.from('questions').select('id, ends_at').in('id', votedIds)
-      const qMap = Object.fromEntries((qRows || []).map(q => [q.id, q]))
-      let ganadas = 0
-      votedIds.forEach(qId => {
-        const q = qMap[qId]; if (!q) return
-        const ended = new Date(q.ends_at) < new Date(); if (!ended) return
-        const c  = cMap[qId] || { cnt_si:0, cnt_no:0 }
-        const si = Number(c.cnt_si), no = Number(c.cnt_no)
-        const mv = storedVotos[qId].voto
-        if ((mv === 'si' && si > no) || (mv === 'no' && no > si)) ganadas++
-      })
-      if (elGan) elGan.textContent = ganadas
+  if (MY_SEAT > 0) {
+    try {
+      const { data } = await sb.rpc('get_my_winning_decisions', { p_seat_number: MY_SEAT })
+      if (elGan) elGan.textContent = (data ?? 0)
+    } catch(e) {
+      if (elGan) elGan.textContent = '—'
     }
-  } catch(e) {
-    if (elGan) elGan.textContent = '—'
+  } else {
+    if (elGan) elGan.textContent = '0'
   }
 }
 
@@ -7106,12 +7091,8 @@ async function abrirEstadisticas() {
     const el = document.getElementById(id); if (el) el.textContent = '…'
   })
 
-  // Fuente de verdad para votos propios: localStorage
-  const storedVotos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-  const votedIds    = Object.keys(storedVotos).filter(k => storedVotos[k]?.voto)
-
-  if (votedIds.length === 0) {
-    body.innerHTML = '<div class="sp-empty">Todavía no participaste en ninguna pregunta.</div>'
+  if (!MY_SEAT || MY_SEAT <= 0) {
+    body.innerHTML = '<div class="sp-empty">Necesitás una butaca para ver tus estadísticas.</div>'
     ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
       const el = document.getElementById(id); if (el) el.textContent = '0'
     })
@@ -7119,34 +7100,10 @@ async function abrirEstadisticas() {
   }
 
   try {
-    // Metadatos de preguntas (incluye eliminadas del admin — quedan sin texto)
-    const { data: qRows } = await sb.from('questions')
-      .select('id, text, category, ends_at')
-      .in('id', votedIds)
-    const qMap = Object.fromEntries((qRows || []).map(q => [q.id, q]))
-
-    // Conteos agregados de todos los votantes por pregunta
-    const { data: cRows } = await sb.rpc('get_question_vote_counts', { p_question_ids: votedIds })
-    const cMap = Object.fromEntries((cRows || []).map(c => [c.question_id, c]))
-
-    // Armar filas combinando localStorage + Supabase
-    const rows = votedIds.map(qId => {
-      const q = qMap[qId] || {}
-      const c = cMap[qId] || { cnt_si:0, cnt_no:0, cnt_abs:0, total_votes:0 }
-      return {
-        question_id:   qId,
-        question_text: q.text     || '(pregunta eliminada)',
-        category:      q.category || null,
-        ends_at:       q.ends_at  || null,
-        my_vote:       storedVotos[qId].voto,
-        cnt_si:        Number(c.cnt_si),
-        cnt_no:        Number(c.cnt_no),
-        cnt_abs:       Number(c.cnt_abs),
-        total_votes:   Number(c.total_votes),
-      }
-    })
-
-    _renderStatsPanel(rows)
+    // Fuente de verdad: Supabase (vote_plain se guarda en el commit)
+    const { data, error } = await sb.rpc('get_my_vote_history', { p_seat_number: MY_SEAT })
+    if (error) throw error
+    _renderStatsPanel(data || [])
   } catch(e) {
     console.error('abrirEstadisticas:', e)
     body.innerHTML = '<div class="sp-empty">Error al cargar estadísticas.<br>Intentá de nuevo.</div>'
