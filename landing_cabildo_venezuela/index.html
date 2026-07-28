@@ -22,148 +22,147 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .nav-logo { display: flex; align-items: center; gap: 12px; }
-  .nav-logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .nav-logo-text { display: flex; flex-direction: column; line-height: 1.15; }
   .nav-logo-main { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: -.3px; }
-  .nav-logo-sub { font-size: 10px; font-weight: 600; color: #888; letter-spacing: .05em; text-transform: uppercase; }
+  .nav-logo-sub { font-size: 10px; font-weight: 600; color: #888; letter-spacing: .06em; text-transform: uppercase; }
   .nav-links { display: flex; align-items: center; gap: 4px; }
-  .nav-links a { font-size: 13px; font-weight: 600; color: #555; padding: 7px 14px; border-radius: 8px; transition: background .15s; }
+  .nav-links a { font-size: 13px; font-weight: 600; color: #555; padding: 7px 14px; border-radius: 8px; transition: background .15s, color .15s; }
   .nav-links a:hover { background: #F0EFed; color: #1D1F3C; }
   .nav-cta { background: #F76A1E !important; color: #fff !important; border-radius: 8px; }
   .nav-cta:hover { background: #e05a10 !important; }
 
   /* HERO */
-  .hero { background: #1D1F3C; padding: 90px 48px 72px; position: relative; overflow: hidden; }
+  .hero {
+    background: #1D1F3C;
+    padding: 90px 48px 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
   .hero::before {
     content: '';
-    position: absolute; bottom: -120px; right: -80px;
-    width: 480px; height: 480px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(247,106,30,.1) 0%, transparent 70%);
+    position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 700px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(247,106,30,.12) 0%, transparent 70%);
     pointer-events: none;
   }
-  .hero-inner { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
   .hero-badge {
     display: inline-flex; align-items: center; gap: 8px;
     background: rgba(247,106,30,.15); border: 1px solid rgba(247,106,30,.3);
-    border-radius: 20px; padding: 5px 14px; margin-bottom: 24px;
+    border-radius: 20px; padding: 5px 14px; margin-bottom: 28px;
   }
   .hero-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #F76A1E; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.85)} }
   .hero-badge span { font-size: 12px; font-weight: 700; color: #F76A1E; letter-spacing: .06em; text-transform: uppercase; }
-  .hero h1 { font-size: 50px; font-weight: 800; color: #fff; line-height: 1.08; letter-spacing: -1.5px; margin-bottom: 18px; }
+  .hero h1 { font-size: 58px; font-weight: 800; color: #fff; line-height: 1.06; letter-spacing: -2px; margin-bottom: 20px; max-width: 700px; margin-left: auto; margin-right: auto; }
   .hero h1 em { color: #F76A1E; font-style: normal; }
-  .hero p { font-size: 17px; color: rgba(255,255,255,.6); line-height: 1.65; max-width: 440px; margin-bottom: 32px; }
-  .btn-primary { background: #F76A1E; color: #fff; border: none; border-radius: 10px; padding: 14px 28px; font-size: 15px; font-weight: 700; font-family: 'Manrope', sans-serif; cursor: pointer; transition: transform .15s, box-shadow .15s; display: inline-block; }
-  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(247,106,30,.4); }
-  .btn-ghost { background: transparent; color: rgba(255,255,255,.75); border: 1.5px solid rgba(255,255,255,.22); border-radius: 10px; padding: 14px 28px; font-size: 15px; font-weight: 600; font-family: 'Manrope', sans-serif; cursor: pointer; margin-left: 10px; }
-  .hero-note { font-size: 12px; color: rgba(255,255,255,.3); margin-top: 14px; }
+  .hero p { font-size: 18px; color: rgba(255,255,255,.6); max-width: 540px; margin: 0 auto 36px; line-height: 1.65; }
+  .hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 64px; }
+  .btn-primary { background: #F76A1E; color: #fff; border: none; border-radius: 10px; padding: 14px 28px; font-size: 15px; font-weight: 700; font-family: 'Manrope', sans-serif; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(247,106,30,.4); }
+  .btn-ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.22); border-radius: 10px; padding: 14px 28px; font-size: 15px; font-weight: 600; font-family: 'Manrope', sans-serif; cursor: pointer; transition: border-color .15s, background .15s; }
+  .btn-ghost:hover { border-color: rgba(255,255,255,.45); background: rgba(255,255,255,.06); }
+  .hero-label { font-size: 11px; color: rgba(255,255,255,.28); letter-spacing: .1em; text-transform: uppercase; font-weight: 600; margin-top: 10px; }
 
-  /* COUNTER WIDGET */
-  .hero-counter { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 20px; padding: 28px; }
-  .hc-title { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.4); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 20px; }
-  .hc-stats { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
-  .hc-stat { display: flex; align-items: center; justify-content: space-between; }
-  .hc-stat-label { font-size: 13px; color: rgba(255,255,255,.55); }
-  .hc-stat-val { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 800; color: #fff; }
-  .hc-stat-val.orange { color: #F76A1E; }
-  .hc-divider { height: 1px; background: rgba(255,255,255,.08); margin: 4px 0; }
-  .hc-bar-wrap { margin-top: 16px; }
-  .hc-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.4); margin-bottom: 6px; font-weight: 600; }
-  .hc-bar-track { height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; }
-  .hc-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #F76A1E, #ff9a5e); }
-
-  /* STATS ROW */
-  .stats-row { background: #fff; border-bottom: 1px solid #EEECEA; padding: 22px 48px; display: flex; justify-content: center; gap: 64px; flex-wrap: wrap; }
+  /* STATS BAR */
+  .stats-bar {
+    background: #fff; border-bottom: 1px solid #EEECEA;
+    padding: 22px 48px; display: flex; justify-content: center; gap: 64px; flex-wrap: wrap;
+  }
   .stat { text-align: center; }
   .stat-num { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 800; color: #1D1F3C; line-height: 1; }
+  .stat-num.orange { color: #F76A1E; }
   .stat-label { font-size: 11px; font-weight: 700; color: #AAA; margin-top: 3px; letter-spacing: .06em; text-transform: uppercase; }
-  .stat-div { width: 1px; background: #EEECEA; }
+  .stat-divider { width: 1px; background: #EEECEA; }
 
   /* SECTIONS */
   .section { padding: 80px 48px; max-width: 1000px; margin: 0 auto; }
-  .section-center { text-align: center; }
   .section-tag { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #F76A1E; }
   .section-title { font-size: 36px; font-weight: 800; margin-top: 10px; letter-spacing: -.5px; line-height: 1.15; }
-  .section-sub { font-size: 16px; color: #6B6B80; margin-top: 12px; line-height: 1.65; }
+  .section-sub { font-size: 16px; color: #6B6B80; margin-top: 12px; max-width: 500px; line-height: 1.65; }
 
   /* STEPS */
-  .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 48px; }
-  .step { background: #fff; border: 1.5px solid #EEECEA; border-radius: 16px; padding: 26px 22px; }
-  .step.highlight { border-color: #F76A1E; }
-  .step-n { width: 40px; height: 40px; border-radius: 11px; background: #1D1F3C; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 18px; }
-  .step.highlight .step-n { background: #F76A1E; }
-  .step h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-  .step p { font-size: 13px; color: #6B6B80; line-height: 1.6; }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 48px; }
+  .step-card { background: #fff; border: 1.5px solid #EEECEA; border-radius: 16px; padding: 26px 22px; transition: box-shadow .2s, border-color .2s; }
+  .step-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.08); border-color: #D8D8D4; }
+  .step-card.accent { border-color: #F76A1E; }
+  .step-num { width: 40px; height: 40px; border-radius: 11px; background: #1D1F3C; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 18px; }
+  .step-card.accent .step-num { background: #F76A1E; }
+  .step-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .step-card p { font-size: 13px; color: #6B6B80; line-height: 1.6; }
 
-  /* VERIFICACION */
-  .verif-section { background: #fff; border-top: 1.5px solid #EEECEA; border-bottom: 1.5px solid #EEECEA; padding: 80px 48px; }
-  .verif-inner { max-width: 960px; margin: 0 auto; }
-  .verif-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px; }
-  .verif-card { border: 1.5px solid #EEECEA; border-radius: 16px; padding: 28px 22px; }
-  .verif-card .emoji { font-size: 28px; margin-bottom: 14px; }
-  .verif-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-  .verif-card p { font-size: 13px; color: #6B6B80; line-height: 1.6; }
-  .verif-card .info-box { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+  /* VAV SECTION */
+  .vav-section { background: #1D1F3C; padding: 80px 48px; }
+  .vav-inner { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+  .vav-section .section-tag { color: #F76A1E; }
+  .vav-section .section-title { color: #fff; }
+  .vav-section .section-sub { color: rgba(255,255,255,.55); max-width: 100%; }
+  .vav-bullets { margin-top: 28px; display: flex; flex-direction: column; gap: 12px; }
+  .vav-bullet { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; color: rgba(255,255,255,.75); line-height: 1.5; }
+  .vav-bullet .dot { width: 8px; height: 8px; border-radius: 50%; background: #F76A1E; flex-shrink: 0; margin-top: 4px; }
+  .vav-cards { display: flex; flex-direction: column; gap: 10px; }
+  .vav-card { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 18px 20px; display: flex; align-items: center; gap: 16px; }
+  .vav-card-num { width: 38px; height: 38px; border-radius: 10px; background: #F76A1E; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .vav-card-num.muted { background: rgba(255,255,255,.12); color: #fff; }
+  .vav-card-num.green { background: rgba(62,207,142,.18); border: 1px solid rgba(62,207,142,.35); color: #3ecf8e; }
+  .vav-card h4 { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+  .vav-card p { font-size: 12px; color: rgba(255,255,255,.45); line-height: 1.5; }
+  .vav-card .badge { margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: .08em; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
+  .badge-orange { background: rgba(247,106,30,.18); color: #F76A1E; }
+  .badge-muted { background: rgba(255,255,255,.07); color: rgba(255,255,255,.4); }
+  .badge-green { background: rgba(62,207,142,.12); color: #3ecf8e; }
+
+  /* VERIFICACIÓN */
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 48px; }
+  .feature-card { background: #fff; border: 1.5px solid #EEECEA; border-radius: 16px; padding: 28px 24px; }
+  .feature-icon { font-size: 26px; margin-bottom: 14px; }
+  .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .feature-card p { font-size: 13px; color: #6B6B80; line-height: 1.6; }
+  .feature-card .info-box { margin-top: 14px; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
   .info-orange { background: #FFF5F0; border: 1px solid #FFD4BC; color: #C0390B; }
   .info-green { background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; }
   .info-neutral { background: #F5F5F3; color: #666; }
 
-  /* VAV SIMPLE */
-  .vav-simple { background: #1D1F3C; padding: 80px 48px; }
-  .vav-inner { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr 1fr; gap: 64px; align-items: center; }
-  .vav-simple .section-tag { color: #F76A1E; }
-  .vav-simple .section-title { color: #fff; }
-  .vav-simple .section-sub { color: rgba(255,255,255,.55); max-width: 100%; }
-  .vav-bullets { margin-top: 28px; display: flex; flex-direction: column; gap: 12px; }
-  .vav-bullet { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; color: rgba(255,255,255,.72); line-height: 1.5; }
-  .vav-bullet .dot { width: 8px; height: 8px; border-radius: 50%; background: #F76A1E; flex-shrink: 0; margin-top: 4px; }
-  .vav-qa { display: flex; flex-direction: column; gap: 12px; }
-  .qa-item { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); border-radius: 12px; padding: 16px 18px; }
-  .qa-q { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.4); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
-  .qa-a { font-size: 13px; color: rgba(255,255,255,.7); line-height: 1.5; }
+  /* PREVIEW */
+  .preview-section { padding: 80px 48px; background: #fff; border-top: 1.5px solid #EEECEA; border-bottom: 1.5px solid #EEECEA; }
+  .preview-inner { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  .preview-list { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+  .preview-item { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #444; }
+  .preview-item::before { content: '→'; color: #F76A1E; font-weight: 800; }
+  .mock-screen { background: #F9F9F7; border: 1.5px solid #EEECEA; border-radius: 18px; padding: 20px; box-shadow: 0 8px 40px rgba(0,0,0,.08); }
+  .mock-q { background: #EEF2FF; border-radius: 12px; padding: 18px; margin-bottom: 12px; }
+  .mock-q-tag { display: inline-block; font-size: 10px; font-weight: 700; background: #C7D2FE; color: #3730A3; padding: 3px 9px; border-radius: 20px; margin-bottom: 10px; }
+  .mock-q-timer { font-size: 11px; color: #3730A3; font-weight: 600; float: right; margin-top: -22px; }
+  .mock-q p { font-size: 14px; font-weight: 700; color: #1D1F3C; line-height: 1.4; }
+  .mock-q-btns { display: flex; gap: 8px; margin-top: 14px; }
+  .mock-q-btns button { flex: 1; padding: 9px; font-size: 12px; font-weight: 700; border-radius: 8px; border: none; font-family: 'Manrope', sans-serif; cursor: pointer; }
+  .mock-q-btns .si { background: #1D1F3C; color: #fff; }
+  .mock-q-btns .no, .mock-q-btns .abs { background: #fff; color: #1D1F3C; border: 1.5px solid #D4D4D0; }
+  .mock-q2 { background: #FFFBEB; border-radius: 12px; padding: 14px; opacity: .7; }
+  .privacy-box { margin-top: 32px; padding: 20px 24px; background: #FFF5F0; border: 1.5px solid #FFD4BC; border-radius: 14px; display: flex; align-items: flex-start; gap: 14px; max-width: 960px; margin-left: auto; margin-right: auto; }
 
-  /* PREGUNTAS ACTUALES */
-  .preguntas-section { padding: 80px 48px; max-width: 960px; margin: 0 auto; }
-  .preguntas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 44px; }
-  .pq-card { border: 1.5px solid #EEECEA; border-radius: 14px; padding: 20px; background: #fff; transition: box-shadow .2s; }
-  .pq-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.07); }
-  .pq-card.active { border-color: rgba(247,106,30,.4); background: #FFFAF7; }
-  .pq-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .pq-tag { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
-  .tag-pol { background: #C7D2FE; color: #3730A3; }
-  .tag-eco { background: #D1FAE5; color: #065F46; }
-  .tag-soc { background: #FDE68A; color: #92400E; }
-  .tag-int { background: #FCE7F3; color: #9D174D; }
-  .pq-status { font-size: 11px; font-weight: 700; }
-  .status-active { color: #F76A1E; }
-  .status-closed { color: #888; }
-  .pq-card p { font-size: 14px; font-weight: 600; color: #1D1F3C; line-height: 1.4; margin-bottom: 12px; }
-  .pq-bar { height: 5px; background: #EEECEA; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
-  .pq-bar-fill { height: 100%; border-radius: 3px; background: #1D1F3C; }
-  .pq-counts { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #888; }
-
-  /* CTA BUTACA -->
-  .cta-section { background: #1D1F3C; padding: 88px 48px; text-align: center; }
-  .cta-section h2 { font-size: 42px; font-weight: 800; color: #fff; letter-spacing: -1px; margin-bottom: 14px; }
+  /* CTA */
+  .cta-section { background: #1D1F3C; padding: 80px 48px; text-align: center; }
+  .cta-section h2 { font-size: 40px; font-weight: 800; color: #fff; letter-spacing: -.8px; margin-bottom: 14px; }
   .cta-section h2 em { color: #F76A1E; font-style: normal; }
-  .cta-section p { font-size: 17px; color: rgba(255,255,255,.5); max-width: 440px; margin: 0 auto 36px; line-height: 1.65; }
-  .cta-note { font-size: 12px; color: rgba(255,255,255,.22); margin-top: 16px; }
+  .cta-section p { font-size: 16px; color: rgba(255,255,255,.5); max-width: 420px; margin: 0 auto 34px; line-height: 1.65; }
+  .cta-note { font-size: 12px; color: rgba(255,255,255,.25); margin-top: 16px; }
 
   /* FOOTER */
   footer { background: #0E1020; padding: 28px 48px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-  footer .logo { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; color: rgba(255,255,255,.35); }
+  footer .logo { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 800; color: rgba(255,255,255,.35); }
   footer .links { display: flex; gap: 20px; }
-  footer .links a { font-size: 12px; color: rgba(255,255,255,.22); }
+  footer .links a { font-size: 12px; color: rgba(255,255,255,.25); }
   footer .copy { font-size: 12px; color: rgba(255,255,255,.18); }
 
   @media (max-width: 768px) {
     nav { padding: 0 20px; }
     .hero { padding: 60px 20px; }
-    .hero-inner { grid-template-columns: 1fr; gap: 32px; }
     .hero h1 { font-size: 36px; }
-    .steps-grid { grid-template-columns: 1fr 1fr; }
-    .verif-cards, .preguntas-grid, .vav-inner { grid-template-columns: 1fr; }
-    .section { padding: 56px 20px; }
-    nav .nav-links { display: none; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    .vav-inner, .features-grid, .preview-inner { grid-template-columns: 1fr; }
+    .section { padding: 60px 20px; }
+    nav .nav-links a:not(.nav-cta) { display: none; }
   }
 </style>
 </head>
@@ -191,236 +190,224 @@
   <div class="nav-links">
     <a href="#como-funciona">Cómo funciona</a>
     <a href="#verificacion">Verificación</a>
-    <a href="#preguntas">Preguntas activas</a>
+    <a href="#vav">Privacidad</a>
     <a href="#solicitar" class="nav-cta">Solicitar butaca</a>
   </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-inner">
-    <div style="position:relative;z-index:2">
-      <div class="hero-badge">
-        <div class="dot"></div>
-        <span>Sistema activo — sesión en curso</span>
-      </div>
-      <h1>El Cabildo Digital<br>de <em>Venezuela</em></h1>
-      <p>Una plataforma de participación ciudadana donde cada venezolano tiene una butaca verificada, voto anónimo y voz real en las decisiones que importan.</p>
-      <div>
-        <button class="btn-primary">Solicitar mi butaca →</button>
-        <button class="btn-ghost">Ver cómo funciona</button>
-      </div>
-      <p class="hero-note">Verificación gratuita · Solo venezolanos · Identidad protegida</p>
+  <div style="position:relative;z-index:2">
+    <div class="hero-badge">
+      <div class="dot"></div>
+      <span>2.847 butacas activas · sesión en curso</span>
     </div>
-    <!-- Live counter widget -->
-    <div class="hero-counter" style="position:relative;z-index:2">
-      <div class="hc-title">Estado del hemiciclo</div>
-      <div class="hc-stats">
-        <div class="hc-stat">
-          <span class="hc-stat-label">Butacas activas</span>
-          <span class="hc-stat-val">2.847</span>
-        </div>
-        <div class="hc-divider"></div>
-        <div class="hc-stat">
-          <span class="hc-stat-label">Preguntas votadas</span>
-          <span class="hc-stat-val">47</span>
-        </div>
-        <div class="hc-divider"></div>
-        <div class="hc-stat">
-          <span class="hc-stat-label">Votos emitidos</span>
-          <span class="hc-stat-val orange">138.294</span>
-        </div>
-      </div>
-      <div class="hc-bar-wrap">
-        <div class="hc-bar-label">
-          <span>Afluencia esta sesión</span>
-          <span>73%</span>
-        </div>
-        <div class="hc-bar-track"><div class="hc-bar-fill" style="width:73%"></div></div>
-      </div>
+    <h1>El Cabildo Digital<br>de <em>Venezuela</em></h1>
+    <p>Una plataforma de participación ciudadana donde cada venezolano tiene una butaca verificada, voto anónimo y voz real en las decisiones que importan.</p>
+    <div class="hero-actions">
+      <button class="btn-primary">Solicitar mi butaca →</button>
+      <button class="btn-ghost">Cómo funciona</button>
+    </div>
+    <div style="position:relative;z-index:2">
+      <svg width="480" height="170" viewBox="0 0 480 170" fill="none">
+        <path d="M40 155 A200 200 0 0 1 440 155" stroke="rgba(255,255,255,.07)" stroke-width="30" stroke-linecap="round" fill="none"/>
+        <path d="M72 155 A168 168 0 0 1 408 155" stroke="rgba(255,255,255,.05)" stroke-width="24" stroke-linecap="round" fill="none"/>
+        <path d="M105 152 A135 135 0 0 1 375 152" stroke="rgba(255,255,255,.04)" stroke-width="18" stroke-linecap="round" fill="none"/>
+        <circle cx="40"  cy="155" r="5.5" fill="rgba(255,255,255,.28)"/>
+        <circle cx="92"  cy="106" r="5.5" fill="rgba(255,255,255,.22)"/>
+        <circle cx="160" cy="68"  r="5.5" fill="rgba(255,255,255,.22)"/>
+        <circle cx="240" cy="55"  r="6"   fill="#F76A1E"/>
+        <circle cx="320" cy="68"  r="5.5" fill="rgba(255,255,255,.22)"/>
+        <circle cx="388" cy="106" r="5.5" fill="rgba(255,255,255,.22)"/>
+        <circle cx="440" cy="155" r="5.5" fill="rgba(255,255,255,.28)"/>
+        <circle cx="108" cy="132" r="4.5" fill="rgba(255,255,255,.18)"/>
+        <circle cx="163" cy="100" r="4.5" fill="rgba(255,255,255,.18)"/>
+        <circle cx="207" cy="79"  r="4.5" fill="rgba(255,255,255,.18)"/>
+        <circle cx="240" cy="72"  r="4.5" fill="rgba(255,255,255,.16)"/>
+        <circle cx="273" cy="79"  r="4.5" fill="rgba(255,255,255,.18)"/>
+        <circle cx="317" cy="100" r="4.5" fill="rgba(255,255,255,.18)"/>
+        <circle cx="372" cy="132" r="4.5" fill="rgba(255,255,255,.18)"/>
+        <circle cx="140" cy="152" r="4"   fill="rgba(255,255,255,.13)"/>
+        <circle cx="188" cy="130" r="4"   fill="rgba(255,255,255,.13)"/>
+        <circle cx="240" cy="122" r="4"   fill="rgba(255,255,255,.13)"/>
+        <circle cx="292" cy="130" r="4"   fill="rgba(255,255,255,.13)"/>
+        <circle cx="340" cy="152" r="4"   fill="rgba(255,255,255,.13)"/>
+        <line x1="40" y1="155" x2="440" y2="155" stroke="rgba(255,255,255,.1)" stroke-width="1.5"/>
+      </svg>
+      <p class="hero-label">Hemiciclo digital · 2.847 butacas activas</p>
     </div>
   </div>
 </section>
 
 <!-- STATS -->
-<div class="stats-row">
-  <div class="stat"><div class="stat-num">2.847</div><div class="stat-label">Butacas asignadas</div></div>
-  <div class="stat-div"></div>
+<div class="stats-bar">
+  <div class="stat"><div class="stat-num">2.847</div><div class="stat-label">Butacas activas</div></div>
+  <div class="stat-divider"></div>
   <div class="stat"><div class="stat-num">47</div><div class="stat-label">Preguntas debatidas</div></div>
-  <div class="stat-div"></div>
-  <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Votos anónimos</div></div>
-  <div class="stat-div"></div>
-  <div class="stat"><div class="stat-num" style="color:#F76A1E">VaV</div><div class="stat-label">Votos verificables</div></div>
+  <div class="stat-divider"></div>
+  <div class="stat"><div class="stat-num orange">100%</div><div class="stat-label">Votos anónimos</div></div>
+  <div class="stat-divider"></div>
+  <div class="stat"><div class="stat-num">VEN 🇻🇪</div><div class="stat-label">Solo venezolanos</div></div>
 </div>
 
 <!-- CÓMO FUNCIONA -->
 <section class="section" id="como-funciona">
-  <div class="section-center">
+  <div style="text-align:center">
     <div class="section-tag">El proceso</div>
     <h2 class="section-title">De ciudadano a participante en 4 pasos</h2>
-    <p class="section-sub" style="max-width:500px;margin:12px auto 0">El acceso al Cabildo Digital es por verificación humana, no por algoritmo. Una persona, una butaca, para siempre.</p>
+    <p class="section-sub" style="margin-left:auto;margin-right:auto;text-align:center">El acceso al Cabildo Digital es por verificación humana, no por algoritmo. Una persona, una butaca, para siempre.</p>
   </div>
-  <div class="steps-grid">
-    <div class="step">
-      <div class="step-n">01</div>
+  <div class="steps">
+    <div class="step-card">
+      <div class="step-num">01</div>
       <h3>Verificate</h3>
       <p>Enviá tu cédula venezolana y una selfie de verificación. Un revisor humano valida tu identidad en 24–48 horas.</p>
     </div>
-    <div class="step">
-      <div class="step-n">02</div>
+    <div class="step-card">
+      <div class="step-num">02</div>
       <h3>Recibí tu butaca</h3>
-      <p>Te asignamos un número de butaca único y permanente en el hemiciclo. Nadie más puede tener ese número.</p>
+      <p>Se te asigna un número de butaca único y permanente en el hemiciclo. Nadie más puede tener ese número.</p>
     </div>
-    <div class="step highlight">
-      <div class="step-n">03</div>
+    <div class="step-card accent">
+      <div class="step-num">03</div>
       <h3>Votá en secreto</h3>
       <p>Tus votos son anónimos y verificables. Con tecnología VaV, nadie sabe cómo votaste, pero el resultado es auditable.</p>
     </div>
-    <div class="step">
-      <div class="step-n">04</div>
+    <div class="step-card">
+      <div class="step-num">04</div>
       <h3>Debatí y seguí</h3>
-      <p>Cada pregunta tiene su sala de debate. Argumentá, leé otras posiciones y formá criterio antes del cierre.</p>
-    </div>
-  </div>
-</section>
-
-<!-- VERIFICACIÓN DETALLADA -->
-<section class="verif-section" id="verificacion">
-  <div class="verif-inner">
-    <div class="section-center">
-      <div class="section-tag">Ingreso</div>
-      <h2 class="section-title">Cómo verificarse</h2>
-      <p class="section-sub" style="max-width:480px;margin:12px auto 0">La verificación garantiza que cada butaca pertenece a una persona real venezolana. El proceso es breve, gratuito y tu identidad queda protegida.</p>
-    </div>
-    <div class="verif-cards">
-      <div class="verif-card">
-        <div class="emoji">📄</div>
-        <h3>1 · Documento de identidad</h3>
-        <p>Fotografiá tu cédula venezolana por ambos lados con buena iluminación. También se acepta pasaporte venezolano vigente.</p>
-        <div class="info-box info-neutral">
-          Aceptado: Cédula VEN · Pasaporte VEN
-        </div>
-      </div>
-      <div class="verif-card">
-        <div class="emoji">🤳</div>
-        <h3>2 · Selfie de verificación</h3>
-        <p>Una foto de tu rostro junto a tu documento confirma que la cédula te pertenece. La imagen no se almacena una vez verificada.</p>
-        <div class="info-box info-orange">
-          Tu imagen no queda registrada tras la revisión
-        </div>
-      </div>
-      <div class="verif-card">
-        <div class="emoji">✅</div>
-        <h3>3 · Revisión humana</h3>
-        <p>Un revisor del equipo CabildoOS valida tu solicitud. En 24–48 horas recibís tu número de butaca por email y podés ingresar.</p>
-        <div class="info-box info-green">
-          Aprobación en 24–48 horas hábiles
-        </div>
-      </div>
-    </div>
-    <div style="margin-top:32px;padding:20px 24px;background:#FFF5F0;border:1.5px solid #FFD4BC;border-radius:14px;display:flex;align-items:flex-start;gap:14px">
-      <span style="font-size:20px;flex-shrink:0">🛡</span>
-      <div>
-        <p style="font-size:14px;font-weight:700;color:#C0390B;margin-bottom:4px">Tu privacidad es prioridad</p>
-        <p style="font-size:13px;color:#7C2D12;line-height:1.55">Los datos de verificación se usan exclusivamente para confirmar que sos una persona real venezolana. Tu identidad nunca se vincula públicamente a tus votos. El sistema VaV garantiza que nadie — ni el equipo de CabildoOS — puede saber cómo votaste.</p>
-      </div>
+      <p>Cada pregunta tiene su sala de debate en tiempo real. Argumentá, leé otras posiciones y formá criterio.</p>
     </div>
   </div>
 </section>
 
 <!-- VAV -->
-<section class="vav-simple" id="vav">
+<section class="vav-section" id="vav">
   <div class="vav-inner">
     <div>
-      <div class="section-tag">Seguridad</div>
-      <h2 class="section-title">¿Por qué tu voto<br>es <em style="color:#F76A1E;font-style:normal">verdaderamente</em> secreto?</h2>
-      <p class="section-sub">CabildoOS usa una tecnología propia llamada VaV (Voto Anónimo Verificable). Es un sistema criptográfico donde el voto queda sellado en un hash matemático antes del cierre, y nadie puede verlo hasta que se revele.</p>
+      <div class="section-tag">Privacidad y seguridad</div>
+      <h2 class="section-title">Tu voto es<br><em style="color:#F76A1E;font-style:normal">verdaderamente</em> secreto</h2>
+      <p class="section-sub">CabildoOS usa VaV (Voto Anónimo Verificable), un sistema criptográfico donde tu voto queda sellado en un hash matemático antes del cierre. Nadie puede verlo ni modificarlo.</p>
       <div class="vav-bullets">
-        <div class="vav-bullet"><div class="dot"></div><span>Tu voto se cifra localmente antes de enviarse al servidor</span></div>
-        <div class="vav-bullet"><div class="dot"></div><span>Ni el equipo de CabildoOS puede ver cómo votaste</span></div>
-        <div class="vav-bullet"><div class="dot"></div><span>Al revelarse, cualquier ciudadano puede verificar que el recuento es correcto</span></div>
+        <div class="vav-bullet"><div class="dot"></div><span>Tu identidad nunca se vincula públicamente a tu voto</span></div>
+        <div class="vav-bullet"><div class="dot"></div><span>Ni el equipo de CabildoOS puede saber cómo votaste</span></div>
+        <div class="vav-bullet"><div class="dot"></div><span>El resultado es auditable por cualquier ciudadano</span></div>
         <div class="vav-bullet"><div class="dot"></div><span>Un voto comprometido no puede modificarse ni borrarse</span></div>
       </div>
     </div>
-    <div class="vav-qa">
-      <div class="qa-item">
-        <div class="qa-q">Pregunta frecuente</div>
-        <div class="qa-a"><strong style="color:#fff">¿El gobierno puede saber cómo voté?</strong><br>No. Tu voto está cifrado y tu identidad no está vinculada a él en ningún registro público.</div>
+    <div class="vav-cards">
+      <div class="vav-card">
+        <div class="vav-card-num">1</div>
+        <div>
+          <h4>Commit</h4>
+          <p>Tu voto se cifra en hash SHA-256 + nonce. Se envía sellado al servidor.</p>
+        </div>
+        <span class="badge badge-orange">SHA-256</span>
       </div>
-      <div class="qa-item">
-        <div class="qa-q">Pregunta frecuente</div>
-        <div class="qa-a"><strong style="color:#fff">¿Puedo votar desde el exterior?</strong><br>Sí, siempre que tengas cédula venezolana vigente o pasaporte venezolano. El Cabildo es para todos los venezolanos.</div>
+      <div style="text-align:center;color:rgba(255,255,255,.18);font-size:20px">↓</div>
+      <div class="vav-card">
+        <div class="vav-card-num muted">2</div>
+        <div>
+          <h4>Cierre</h4>
+          <p>La pregunta cierra. Nadie puede votar ni ver resultados parciales.</p>
+        </div>
+        <span class="badge badge-muted">LOCKED</span>
       </div>
-      <div class="qa-item">
-        <div class="qa-q">Pregunta frecuente</div>
-        <div class="qa-a"><strong style="color:#fff">¿Qué pasa si manipulan los votos?</strong><br>Es imposible. El hash de cada voto es público e inmutable. Cualquier ciudadano puede verificar la integridad del recuento.</div>
+      <div style="text-align:center;color:rgba(255,255,255,.18);font-size:20px">↓</div>
+      <div class="vav-card">
+        <div class="vav-card-num green">3</div>
+        <div>
+          <h4>Reveal</h4>
+          <p>Se revelan los votos. Cualquiera puede verificar el cómputo.</p>
+        </div>
+        <span class="badge badge-green">PÚBLICO</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- PREGUNTAS ACTIVAS -->
-<section class="preguntas-section" id="preguntas">
-  <div class="section-center">
-    <div class="section-tag">Hemiciclo</div>
-    <h2 class="section-title">Preguntas recientes</h2>
-    <p class="section-sub" style="max-width:460px;margin:12px auto 0">Estas son algunas de las preguntas que el hemiciclo ha debatido y votado. Con tu butaca, participás en todas las sesiones activas.</p>
+<!-- VERIFICACIÓN -->
+<section class="section" id="verificacion">
+  <div style="text-align:center">
+    <div class="section-tag">Ingreso</div>
+    <h2 class="section-title">Cómo verificarse</h2>
+    <p class="section-sub" style="margin-left:auto;margin-right:auto;text-align:center">La verificación garantiza que cada butaca pertenece a una persona real venezolana. El proceso es gratuito y tu identidad queda protegida.</p>
   </div>
-  <div class="preguntas-grid">
-    <div class="pq-card active">
-      <div class="pq-header">
-        <span class="pq-tag tag-pol">Política</span>
-        <span class="pq-status status-active">● Activa</span>
-      </div>
-      <p>¿Debería Venezuela convocar una Asamblea Nacional Constituyente en 2025?</p>
-      <div class="pq-bar"><div class="pq-bar-fill" style="width:62%"></div></div>
-      <div class="pq-counts"><span>SÍ 62%</span><span>NO 31%</span><span>ABS 7%</span></div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📄</div>
+      <h3>1 · Documento de identidad</h3>
+      <p>Fotografiá tu cédula venezolana por ambos lados con buena iluminación. También se acepta pasaporte venezolano vigente.</p>
+      <div class="info-box info-neutral">Aceptado: Cédula VEN · Pasaporte VEN</div>
     </div>
-    <div class="pq-card">
-      <div class="pq-header">
-        <span class="pq-tag tag-eco">Economía</span>
-        <span class="pq-status status-closed">Cerrada</span>
-      </div>
-      <p>¿Apoyás la dolarización formal de la economía venezolana?</p>
-      <div class="pq-bar"><div class="pq-bar-fill" style="width:78%"></div></div>
-      <div class="pq-counts"><span>SÍ 78%</span><span>NO 18%</span><span>ABS 4%</span></div>
+    <div class="feature-card">
+      <div class="feature-icon">🤳</div>
+      <h3>2 · Selfie de verificación</h3>
+      <p>Una foto de tu rostro junto a tu documento confirma que la cédula te pertenece. La imagen no se almacena una vez verificada.</p>
+      <div class="info-box info-orange">Tu imagen no queda registrada tras la revisión</div>
     </div>
-    <div class="pq-card">
-      <div class="pq-header">
-        <span class="pq-tag tag-soc">Social</span>
-        <span class="pq-status status-closed">Cerrada</span>
-      </div>
-      <p>¿Debería existir un sistema nacional de pensiones contributivo independiente del Estado?</p>
-      <div class="pq-bar"><div class="pq-bar-fill" style="width:85%"></div></div>
-      <div class="pq-counts"><span>SÍ 85%</span><span>NO 11%</span><span>ABS 4%</span></div>
-    </div>
-    <div class="pq-card active">
-      <div class="pq-header">
-        <span class="pq-tag tag-int">Internacional</span>
-        <span class="pq-status status-active">● Activa</span>
-      </div>
-      <p>¿Debería Venezuela solicitar observación electoral internacional vinculante para las próximas elecciones?</p>
-      <div class="pq-bar"><div class="pq-bar-fill" style="width:91%"></div></div>
-      <div class="pq-counts"><span>SÍ 91%</span><span>NO 7%</span><span>ABS 2%</span></div>
+    <div class="feature-card">
+      <div class="feature-icon">✅</div>
+      <h3>3 · Revisión humana</h3>
+      <p>Un revisor del equipo valida tu solicitud. En 24–48 horas recibís tu número de butaca y podés ingresar al hemiciclo.</p>
+      <div class="info-box info-green">Aprobación en 24–48 horas hábiles</div>
     </div>
   </div>
-  <div style="text-align:center;margin-top:28px">
-    <p style="font-size:13px;color:#888">Para participar en estas preguntas, necesitás tu butaca.</p>
+  <div class="privacy-box" style="margin-top:28px">
+    <span style="font-size:20px;flex-shrink:0">🛡</span>
+    <div>
+      <p style="font-size:14px;font-weight:700;color:#C0390B;margin-bottom:4px">Tu privacidad es prioridad</p>
+      <p style="font-size:13px;color:#7C2D12;line-height:1.55">Los datos de verificación se usan exclusivamente para confirmar que sos venezolano. Tu identidad nunca se vincula públicamente a tus votos. El sistema VaV garantiza que nadie — ni el equipo de CabildoOS — puede saber cómo votaste.</p>
+    </div>
   </div>
 </section>
 
-<!-- CTA FINAL -->
+<!-- PREVIEW -->
+<section class="preview-section">
+  <div class="preview-inner">
+    <div>
+      <div class="section-tag">Experiencia ciudadana</div>
+      <h2 class="section-title">Votá, debatí y seguí los resultados</h2>
+      <p class="section-sub">Una UI limpia y minimalista diseñada para la participación masiva. En tres toques, votás, debatís y ves el resultado en tiempo real.</p>
+      <div class="preview-list">
+        <div class="preview-item">Votá Sí, No o Abstención en cada pregunta</div>
+        <div class="preview-item">Participá en el debate de cada tema</div>
+        <div class="preview-item">Mirá tu historial y decisiones ganadoras</div>
+        <div class="preview-item">Seguí los resultados en vivo al cierre</div>
+      </div>
+    </div>
+    <div class="mock-screen">
+      <div class="mock-q">
+        <span class="mock-q-tag">Política</span>
+        <span class="mock-q-timer">⏱ 2h 14m</span>
+        <p>¿Debería Venezuela convocar una Asamblea Nacional Constituyente?</p>
+        <div class="mock-q-btns">
+          <button class="si">SÍ</button>
+          <button class="no">NO</button>
+          <button class="abs">ABS</button>
+        </div>
+      </div>
+      <div class="mock-q2">
+        <span style="font-size:10px;font-weight:700;background:#FDE68A;color:#92400E;padding:3px 9px;border-radius:20px">Electoral</span>
+        <p style="font-size:13px;font-weight:600;color:#1D1F3C;margin-top:8px;line-height:1.4">¿Deben las primarias incluir veedores internacionales?</p>
+        <span style="font-size:11px;color:#B45309;font-weight:600">Cerrada · Ver resultado →</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
 <section class="cta-section" id="solicitar">
-  <svg width="54" height="54" viewBox="0 0 611.48 611.63" fill="none" style="margin-bottom:20px">
-    <ellipse cx="305.77" cy="305.84" rx="72.76" ry="72.78" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="305.77" cy="538.8" rx="72.76" ry="72.78" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="538.67" cy="538.8" rx="72.76" ry="72.78" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="305.72" cy="72.78" rx="72.76" ry="72.78" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="538.71" cy="72.78" rx="72.76" ry="72.78" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="72.76" cy="305.8" rx="72.76" ry="72.78" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="72.76" cy="538.85" rx="72.76" ry="72.78" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="72.86" cy="72.88" rx="72.78" ry="72.8" fill="rgba(255,255,255,.4)"/>
-    <ellipse cx="538.7" cy="305.82" rx="72.65" ry="72.67" fill="#f76a1e"/>
+  <svg width="52" height="52" viewBox="0 0 611.48 611.63" fill="none" style="margin-bottom:20px">
+    <ellipse cx="305.77" cy="305.84" rx="72.76" ry="72.78" fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="305.77" cy="538.8"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="538.67" cy="538.8"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="305.72" cy="72.78"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="538.71" cy="72.78"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="72.76"  cy="305.8"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="72.76"  cy="538.85" rx="72.76" ry="72.78" fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="72.86"  cy="72.88"  rx="72.78" ry="72.8"  fill="rgba(255,255,255,.45)"/>
+    <ellipse cx="538.7"  cy="305.82" rx="72.65" ry="72.67" fill="#f76a1e"/>
   </svg>
   <h2>Tu butaca<br><em>te espera</em></h2>
   <p>Más de 2.000 venezolanos ya tienen su asiento en el hemiciclo. El proceso de verificación es gratuito y toma menos de 5 minutos.</p>
@@ -433,14 +420,14 @@
   <div style="display:flex;align-items:center;gap:10px">
     <svg width="16" height="16" viewBox="0 0 611.48 611.63" fill="none">
       <ellipse cx="305.77" cy="305.84" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="305.77" cy="538.8" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="538.67" cy="538.8" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="305.72" cy="72.78" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="538.71" cy="72.78" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="72.76" cy="305.8" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="72.76" cy="538.85" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="72.86" cy="72.88" rx="72.78" ry="72.8" fill="rgba(255,255,255,.3)"/>
-      <ellipse cx="538.7" cy="305.82" rx="72.65" ry="72.67" fill="#f76a1e"/>
+      <ellipse cx="305.77" cy="538.8"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
+      <ellipse cx="538.67" cy="538.8"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
+      <ellipse cx="305.72" cy="72.78"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
+      <ellipse cx="538.71" cy="72.78"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
+      <ellipse cx="72.76"  cy="305.8"  rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
+      <ellipse cx="72.76"  cy="538.85" rx="72.76" ry="72.78" fill="rgba(255,255,255,.3)"/>
+      <ellipse cx="72.86"  cy="72.88"  rx="72.78" ry="72.8"  fill="rgba(255,255,255,.3)"/>
+      <ellipse cx="538.7"  cy="305.82" rx="72.65" ry="72.67" fill="#f76a1e"/>
     </svg>
     <span class="logo">Cabildo Digital · Venezuela</span>
   </div>
