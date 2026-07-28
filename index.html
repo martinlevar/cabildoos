@@ -6970,10 +6970,11 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); cargarPreguntasActivas(); initQuestionsRealtime() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
+  _cargarCatTheme()
   cargarPreguntasActivas()
   initQuestionsRealtime()
 }
@@ -7623,6 +7624,7 @@ function renderQuestionsTab() {
 }
 
 // ── PALETA CATEGORÍAS (global) ────────────────────────────────
+// Valores iniciales hardcoded como fallback mientras carga Supabase
 window._CAT_THEME = {
   'Política':       { bg:'#EEF2FF', pill:'#C7D2FE', txt:'#3730A3', cd:'#E0E7FF' },
   'Economía':       { bg:'#ECFDF5', pill:'#A7F3D0', txt:'#065F46', cd:'#D1FAE5' },
@@ -7633,6 +7635,37 @@ window._CAT_THEME = {
   'Electoral':      { bg:'#FFFBEB', pill:'#FDE68A', txt:'#92400E', cd:'#FEF3C7' },
 }
 const _CAT_DEFAULT = { bg:'#F9F9F7', pill:'#E4E4E0', txt:'#555', cd:'#F2F2F0' }
+
+// Deriva tema completo desde un color hex (mismo algoritmo que admin.html)
+function _catThemeFromHex(hex) {
+  const r=parseInt(hex.slice(1,3),16)||0, g=parseInt(hex.slice(3,5),16)||0, b=parseInt(hex.slice(5,7),16)||0
+  const rf=r/255, gf=g/255, bf=b/255
+  const mx=Math.max(rf,gf,bf), mn=Math.min(rf,gf,bf)
+  const l=(mx+mn)/2, d=mx-mn
+  const s=d===0?0:d/(1-Math.abs(2*l-1))
+  let h=0
+  if(d!==0){
+    if(mx===rf)      h=((gf-bf)/d)%6
+    else if(mx===gf) h=(bf-rf)/d+2
+    else             h=(rf-gf)/d+4
+    h=Math.round(h*60); if(h<0) h+=360
+  }
+  const hsl=(hh,ss,ll)=>`hsl(${hh},${Math.round(ss*100)}%,${Math.round(ll*100)}%)`
+  return { bg:hsl(h,.60,.96), pill:hsl(h,.70,.82), txt:hsl(h,.75,.28), cd:hsl(h,.45,.93) }
+}
+
+// Carga categorías desde Supabase y sobreescribe _CAT_THEME
+async function _cargarCatTheme() {
+  try {
+    const { data } = await sb.from('categories').select('name,color').order('sort_order')
+    if (!data) return
+    data.forEach(cat => {
+      if (cat.name && cat.color) window._CAT_THEME[cat.name] = _catThemeFromHex(cat.color)
+    })
+    // Re-renderizar cards si ya están cargadas
+    if (typeof renderQCards === 'function') renderQCards()
+  } catch(e) { /* usa fallback hardcoded */ }
+}
 
 // ── DEBATE REAL ──────────────────────────────────────────────
 let _debateQId      = null   // question_id currently shown
