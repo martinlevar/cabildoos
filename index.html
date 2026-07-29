@@ -2191,6 +2191,34 @@ html, body {
 /* Show on congress */
 body.on-congress #social-footer.visible { display:flex; }
 
+/* ── SOCIAL FOOTER — ocultar pill, solo paneles ── */
+#social-footer .sf-tabs-row { display:none !important; }
+/* El contenedor sigue siendo el anchor para los paneles */
+#social-footer { bottom:0; }
+/* Panel con borde arriba redondeado */
+.sf-float-panel {
+  border-radius:18px 18px 0 0 !important;
+  border-bottom:none !important;
+}
+.sf-float-panel.open { border-bottom:none !important; }
+/* Botón cerrar panel */
+.sf-panel-close {
+  position:absolute; top:12px; right:14px;
+  width:26px; height:26px; border-radius:50%;
+  background:var(--bg); border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:15px; color:var(--mid); transition:background .12s;
+}
+.sf-panel-close:hover { background:var(--border); }
+.sf-panel-inner { position:relative; }
+/* Dropdown separator + section label */
+.nav-umenu-sep { height:1px; background:var(--border); margin:4px 0; }
+.nav-umenu-section { padding:6px 14px 3px; font-size:10px; font-weight:700; color:var(--mid); letter-spacing:.07em; text-transform:uppercase; }
+/* Flag small para el pill de congresos */
+.cong-flag-sm { font-size:15px; line-height:1; flex-shrink:0; }
+/* Nav umenu wider for social section */
+.nav-umenu { width:220px; }
+
 /* ── CONGRESS NAV — flex layout ─────────────────────────────────────── */
 #congress .nav {
   display:flex; align-items:center; gap:0; padding:0 18px;
@@ -2559,7 +2587,7 @@ body.on-congress #social-footer.visible { display:flex; }
     <!-- Congresos dropdown -->
     <div class="cong-sel" id="cong-sel">
       <button class="cong-pill" onclick="toggleCongDD()">
-        <span class="cong-green-dot"></span>Venezuela<span class="cong-chev">▾</span>
+        <span class="cong-flag-sm">🇻🇪</span>Venezuela<span class="cong-chev">▾</span>
       </button>
       <div class="cong-dd" id="cong-dd">
         <div class="cong-dd-lbl">Mis cabildos</div>
@@ -2619,6 +2647,25 @@ body.on-congress #social-footer.visible { display:flex; }
           <span id="nav-umenu-butaca">Sin verificar</span>
         </div>
         <button class="nav-umenu-item" onclick="abrirMiPerfil();closeUserPill()">👤 Mi perfil</button>
+        <div class="nav-umenu-sep"></div>
+        <div class="nav-umenu-section">Mi comunidad</div>
+        <button class="nav-umenu-item" id="nav-umenu-propuestas" onclick="abrirSocialTab('propuestas')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0;opacity:.7"><rect x="1" y="1" width="12" height="2.5" rx="1" fill="currentColor" opacity=".5"/><rect x="1" y="5.5" width="9" height="2" rx="1" fill="currentColor"/><rect x="1" y="9.5" width="7" height="2" rx="1" fill="currentColor" opacity=".7"/></svg>
+          Mis propuestas
+        </button>
+        <button class="nav-umenu-item" id="nav-umenu-seguidores" onclick="abrirSocialTab('seguidores')">
+          <svg width="15" height="14" viewBox="0 0 15 14" fill="none" style="flex-shrink:0;opacity:.7"><circle cx="3.5" cy="7" r="1.8" fill="currentColor"/><path d="M7 4 A4.2 4.2 0 0 1 7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M9.8 2 A7 7 0 0 1 9.8 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+          Seguidores
+        </button>
+        <button class="nav-umenu-item" id="nav-umenu-seguidos" onclick="abrirSocialTab('seguidos')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0;opacity:.7"><circle cx="7" cy="7" r="2.2" fill="currentColor"/><circle cx="7" cy="1.5" r="1.2" fill="currentColor" opacity=".6"/><circle cx="7" cy="12.5" r="1.2" fill="currentColor" opacity=".6"/><circle cx="1.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/><circle cx="12.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/></svg>
+          Seguidos
+        </button>
+        <button class="nav-umenu-item" id="nav-umenu-mensajes" onclick="abrirSocialTab('mensajes')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;opacity:.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Mensajes
+        </button>
+        <div class="nav-umenu-sep"></div>
         <button class="nav-umenu-item danger" onclick="cerrarSesion();closeUserPill()">↩ Salir</button>
       </div>
     </div>
@@ -8702,12 +8749,15 @@ function mostrarFooter() {
 document.addEventListener('click', (e) => {
   if (!sfActiveTab) return
   if (e.target.closest('#social-footer')) return
+  if (e.target.closest('#nav-umenu')) return   // no cerrar cuando se abre desde el dropdown
   sfActiveTab = null
   document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
   document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
 })
 
 function sfSelectTab(tab) {
+  // Asegurar que el contenedor está visible (para los paneles)
+  document.getElementById('social-footer').classList.add('visible')
   // Toggle: same tab collapses
   if (sfActiveTab === tab) {
     sfActiveTab = null
@@ -8719,9 +8769,21 @@ function sfSelectTab(tab) {
   document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
   document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.toggle('open', p.dataset.tab === tab))
 
-  if (tab === 'propuestas') renderPropuestas()   // async, fire-and-forget
+  if (tab === 'propuestas') renderPropuestas()
   if (tab === 'seguidores') renderSocial('seguidores')
   if (tab === 'seguidos')   renderSocial('seguidos')
+}
+
+// ── Abrir social tab desde el user pill dropdown ──
+function abrirSocialTab(tab) {
+  closeUserPill()
+  sfSelectTab(tab)
+}
+
+// ── Cerrar panel social (botón ×) ──
+function cerrarSocialPanel() {
+  sfActiveTab = null
+  document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
 }
 
 async function renderPropuestas() {
@@ -8819,18 +8881,21 @@ function simularRespuestasSeguidores(propIdx) {
   <!-- Floating panels (appear above pill) -->
   <div class="sf-float-panel" data-tab="propuestas">
     <div class="sf-panel-inner">
+      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
       <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Mis propuestas</p>
       <div id="sf-propuestas-list"></div>
     </div>
   </div>
   <div class="sf-float-panel" data-tab="seguidores">
     <div class="sf-panel-inner">
+      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
       <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Seguidores</p>
       <div id="sf-seguidores-list"></div>
     </div>
   </div>
   <div class="sf-float-panel" data-tab="seguidos">
     <div class="sf-panel-inner">
+      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
       <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Seguidos</p>
       <div id="sf-seguidos-list"></div>
     </div>
@@ -8839,6 +8904,7 @@ function simularRespuestasSeguidores(propIdx) {
   <!-- Panel mensajes -->
   <div class="sf-float-panel" data-tab="mensajes">
     <div class="sf-panel-inner">
+      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
       <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Mensajes directos</p>
       <div id="sf-mensajes-list">
         <div class="sf-empty-msg">
