@@ -2931,38 +2931,8 @@ async function cargarPreguntas() {
   if (error) { console.error('cargarPreguntas:', error); return }
   const rows = data || []
 
-  const pendientes = rows.filter(q => q.status === 'revision')
-  _agendaCache     = rows.filter(q => q.status !== 'revision')
-
-  // Tabla propuestas pendientes
-  const tbPend = document.getElementById('tb-prop-pendientes')
-  if (tbPend) {
-    tbPend.innerHTML = pendientes.length === 0
-      ? '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Sin propuestas pendientes</td></tr>'
-      : pendientes.map(q => `
-          <tr>
-            <td style="max-width:360px">${q.text}</td>
-            <td><span class="tag">${q.category || '—'}</span></td>
-            <td class="mono">${q.proposed_by ? '#' + q.proposed_by : '—'}</td>
-            <td class="mono text-muted">${new Date(q.created_at).toLocaleDateString('es-VE',{day:'numeric',month:'short'})}</td>
-            <td>
-              <div class="action-row">
-                <button class="btn btn-green btn-sm" onclick="aprobarPregunta('${q.id}',this)">✓ Aprobar</button>
-                <button class="btn btn-red btn-sm"   onclick="eliminarPregunta('${q.id}',this)">✗ Rechazar</button>
-              </div>
-            </td>
-          </tr>`).join('')
-    const badge = document.getElementById('badge-preguntas')
-    const badgeLabel = document.getElementById('badge-pend-label')
-    if (badge) {
-      badge.textContent = pendientes.length
-      badge.style.display = pendientes.length > 0 ? '' : 'none'
-    }
-    if (badgeLabel) {
-      badgeLabel.textContent = pendientes.length + ' pendientes'
-      badgeLabel.style.display = pendientes.length > 0 ? '' : 'none'
-    }
-  }
+  // Solo carga la agenda; las propuestas ciudadanas las maneja cargarPropuestasCiudadanas()
+  _agendaCache = rows.filter(q => q.status !== 'revision')
 
   // Tabla agenda — delegar al renderer filtrable
   _renderAgenda()
