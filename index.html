@@ -7047,15 +7047,9 @@ async function abrirMiPerfil() {
     ? 'Tu perfil es visible en el hemiciclo'
     : 'Tu identidad está oculta (anónimo)'
 
-  // Stats: intentar desde localStorage primero, luego Supabase
-  const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-  const vals  = Object.values(votos)
-  let cntSi  = vals.filter(v => v.voto === 'si').length
-  let cntNo  = vals.filter(v => v.voto === 'no').length
-  let cntAbs = vals.filter(v => v.voto === 'abs').length
-
-  // Si no hay datos locales y tenemos butaca, leer de Supabase
-  if (cntSi + cntNo + cntAbs === 0 && MY_SEAT > 0) {
+  // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
+  let cntSi = 0, cntNo = 0, cntAbs = 0
+  if (MY_SEAT > 0) {
     try {
       const { data } = await sb.rpc('get_my_vote_stats', { p_seat_number: MY_SEAT })
       if (data) {
@@ -7065,7 +7059,15 @@ async function abrirMiPerfil() {
           if (row.vote_plain === 'abs') cntAbs = Number(row.cnt)
         })
       }
-    } catch(e) { console.warn('get_my_vote_stats:', e) }
+    } catch(e) {
+      // Fallback a localStorage si Supabase falla
+      console.warn('get_my_vote_stats fallback a localStorage:', e)
+      const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+      const vals  = Object.values(votos)
+      cntSi  = vals.filter(v => v.voto === 'si').length
+      cntNo  = vals.filter(v => v.voto === 'no').length
+      cntAbs = vals.filter(v => v.voto === 'abs').length
+    }
   }
 
   const elSi  = document.getElementById('mp-count-si')
@@ -8415,19 +8417,14 @@ function compartirPropuesta(i) {
   showToast('🔗 Link copiado al portapapeles')
 }
 
-// Mock social data
-const mockSocial = [
-  { seat: 142, phrase: 'Venezolano libre donde sea que esté.' },
-  { seat: 891, phrase: 'Democracia participativa ya.' },
-  { seat: 33,  phrase: 'Votando por el futuro.' },
-  { seat: 514, phrase: 'La diáspora también cuenta.' },
-]
+// Mock social data — vacío: no mostrar datos de ejemplo
+const mockSocial = []
 
 function renderSocial(type) {
   const el = document.getElementById(`sf-${type}-list`)
   const source = type === 'seguidos'
     ? [...following].map(n => ({ seat: n, phrase: getProfile(n).phrase }))
-    : mockSocial.slice(0, 3)
+    : mockSocial
 
   if (!source.length) {
     el.innerHTML = '<p class="sf-empty">' + (type === 'seguidos' ? 'No seguís a nadie aún.' : 'Nadie te sigue aún.') + '</p>'
