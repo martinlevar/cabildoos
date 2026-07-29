@@ -1408,55 +1408,99 @@ html, body {
 /* ── AUTH MODAL ── */
 #auth-overlay {
   position:fixed; inset:0; z-index:950;
-  background:rgba(15,15,20,.72); backdrop-filter:blur(8px);
+  background:rgba(4,12,30,.78); backdrop-filter:blur(14px);
   display:flex; align-items:center; justify-content:center;
-  opacity:0; pointer-events:none; transition:opacity .25s;
+  opacity:0; pointer-events:none; transition:opacity .22s;
 }
 #auth-overlay.open { opacity:1; pointer-events:all; }
 #auth-panel {
-  background:#fff; border-radius:24px;
-  width:min(400px,92vw); padding:32px 28px 28px;
-  box-shadow:0 24px 60px rgba(0,0,0,.22);
+  background:#0D1B2E;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:22px;
+  width:min(420px,92vw); padding:36px 30px 30px;
+  box-shadow:0 32px 80px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.05) inset;
   position:relative;
-  transform:translateY(16px); transition:transform .28s cubic-bezier(.34,1.4,.64,1);
+  transform:translateY(20px) scale(.97);
+  transition:transform .3s cubic-bezier(.34,1.3,.64,1);
 }
-#auth-overlay.open #auth-panel { transform:translateY(0); }
+#auth-overlay.open #auth-panel { transform:translateY(0) scale(1); }
+/* Logo dentro del modal */
+.auth-modal-logo {
+  text-align:center; margin-bottom:28px;
+}
+.auth-modal-logo span {
+  font-size:20px; font-weight:800; letter-spacing:-.5px; color:#fff;
+}
+.auth-modal-logo small {
+  display:block; font-size:11px; font-weight:500;
+  color:rgba(255,255,255,.3); letter-spacing:.06em; margin-top:2px;
+}
+/* Tabs */
 .auth-tabs {
-  display:flex; gap:4px; background:#f4f4f6; border-radius:12px;
-  padding:4px; margin-bottom:24px;
+  display:flex; gap:3px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; padding:4px; margin-bottom:26px;
 }
 .auth-tab {
   flex:1; padding:9px 0; border:none; border-radius:9px;
   background:transparent; font-size:13px; font-weight:600;
-  color:var(--mid); cursor:pointer; transition:all .18s;
+  color:rgba(255,255,255,.35); cursor:pointer; transition:all .18s;
+  font-family:inherit;
 }
 .auth-tab.active {
-  background:#fff; color:var(--dark);
-  box-shadow:0 1px 4px rgba(0,0,0,.10);
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.25);
 }
-.auth-sub { font-size:13px; color:var(--mid); margin-bottom:20px; line-height:1.5; }
+/* Sub texto */
+.auth-sub { font-size:13px; color:rgba(255,255,255,.38); margin-bottom:20px; line-height:1.55; }
+/* Fields */
 .auth-field { margin-bottom:14px; }
-.auth-field label { display:block; font-size:12px; font-weight:600; color:var(--mid); margin-bottom:5px; text-transform:uppercase; letter-spacing:.4px; }
+.auth-field label {
+  display:block; font-size:11px; font-weight:700;
+  color:rgba(255,255,255,.38); margin-bottom:6px;
+  text-transform:uppercase; letter-spacing:.5px;
+}
 .auth-field input {
-  width:100%; padding:11px 13px; border:1.5px solid #e8e8ec;
-  border-radius:10px; font-size:14px; outline:none;
-  transition:border-color .15s;
+  width:100%; padding:12px 14px;
+  background:rgba(255,255,255,.06);
+  border:1.5px solid rgba(255,255,255,.10);
+  border-radius:11px; font-size:14px;
+  color:#fff; font-family:inherit;
+  outline:none; transition:all .15s;
 }
-.auth-field input:focus { border-color:var(--navy); }
-.auth-field-hint { display:block; font-size:11px; margin-top:4px; color:var(--mid); min-height:14px; }
-.auth-field-hint.ok  { color:#16a34a; }
-.auth-field-hint.err { color:#dc2626; }
+.auth-field input::placeholder { color:rgba(255,255,255,.22); }
+.auth-field input:focus {
+  border-color:rgba(247,106,30,.55);
+  background:rgba(255,255,255,.09);
+}
+.auth-field-hint { display:block; font-size:11px; margin-top:4px; min-height:14px; color:rgba(255,255,255,.3); }
+.auth-field-hint.ok  { color:#4ade80; }
+.auth-field-hint.err { color:#f87171; }
+/* CTA Button */
 .auth-btn {
-  width:100%; margin-top:6px; padding:13px;
-  background:var(--navy); color:#fff;
-  border:none; border-radius:12px; font-size:14px; font-weight:700;
-  cursor:pointer; transition:opacity .15s;
+  width:100%; margin-top:8px; padding:14px;
+  background:linear-gradient(135deg,#f76a1e 0%,#e2560c 100%);
+  color:#fff; border:none; border-radius:12px;
+  font-size:14px; font-weight:700; font-family:inherit;
+  cursor:pointer; transition:opacity .15s, transform .15s;
+  box-shadow:0 2px 20px rgba(247,106,30,.3);
 }
-.auth-btn:disabled { opacity:.4; cursor:not-allowed; }
-.auth-btn:not(:disabled):hover { opacity:.88; }
-.auth-msg { font-size:13px; margin-top:10px; text-align:center; min-height:18px; }
-.auth-msg.ok  { color:#16a34a; }
-.auth-msg.err { color:#dc2626; }
+.auth-btn:disabled { opacity:.35; cursor:not-allowed; box-shadow:none; }
+.auth-btn:not(:disabled):hover { opacity:.88; transform:translateY(-1px); }
+/* Messages */
+.auth-msg { font-size:13px; margin-top:10px; text-align:center; min-height:18px; color:rgba(255,255,255,.4); }
+.auth-msg.ok  { color:#4ade80; }
+.auth-msg.err { color:#f87171; }
+/* Forgot / back links */
+.auth-link-btn {
+  background:none; border:none;
+  color:rgba(255,255,255,.28); font-size:12px; font-family:inherit;
+  cursor:pointer; margin-top:10px; text-decoration:underline;
+  padding:0; transition:color .15s;
+}
+.auth-link-btn:hover { color:rgba(255,255,255,.6); }
 
 /* Botón de cuenta en nav landing */
 #btn-auth-nav {
@@ -2691,7 +2735,7 @@ body.on-congress #social-footer.visible { display:flex; }
       <h1 class="intro-title">cabildoOS</h1>
       <p class="intro-subtitle">Democracia participativa, anónima y verificada</p>
       <div class="intro-ctas">
-        <button class="intro-btn-primary" onclick="abrirAuth('registro')">Crear mi butaca →</button>
+        <button class="intro-btn-primary" onclick="abrirAuth('registro')">Crear usuario →</button>
         <button class="intro-btn-ghost" onclick="abrirAuth('login')">Ya tengo cuenta</button>
       </div>
     </div>
@@ -3534,9 +3578,17 @@ body.on-congress #social-footer.visible { display:flex; }
 <!-- ══════════════ AUTH MODAL (REGISTRO / LOGIN) ══════════════ -->
 <div id="auth-overlay" onclick="if(event.target===this)cerrarAuth()">
   <div id="auth-panel">
-    <button class="vp-close" onclick="cerrarAuth()">✕</button>
+    <button class="vp-close" onclick="cerrarAuth()" style="color:rgba(255,255,255,.4);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)">✕</button>
+
+    <!-- Logo -->
+    <div class="auth-modal-logo">
+      <span>cabildoOS</span>
+      <small>🇻🇪 Venezuela · Cabildo digital</small>
+    </div>
+
+    <!-- Tabs -->
     <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-registro" onclick="authSetTab('registro')">Crear cuenta</button>
+      <button class="auth-tab active" id="tab-registro" onclick="authSetTab('registro')">Crear usuario</button>
       <button class="auth-tab" id="tab-login" onclick="authSetTab('login')">Iniciar sesión</button>
     </div>
 
@@ -3556,7 +3608,7 @@ body.on-congress #social-footer.visible { display:flex; }
         <label>Contraseña</label>
         <input type="password" id="reg-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckRegistro()" autocomplete="new-password">
       </div>
-      <button class="auth-btn" id="reg-btn" onclick="registrarse()" disabled>Crear cuenta →</button>
+      <button class="auth-btn" id="reg-btn" onclick="registrarse()" disabled>Crear usuario →</button>
       <p class="auth-msg" id="reg-msg"></p>
     </div>
 
@@ -3573,7 +3625,9 @@ body.on-congress #social-footer.visible { display:flex; }
       </div>
       <button class="auth-btn" id="login-btn" onclick="iniciarSesion()" disabled>Entrar →</button>
       <p class="auth-msg" id="login-msg"></p>
-      <button type="button" onclick="authSetTab('forgot')" style="background:none;border:none;color:var(--muted,#888);font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;padding:0">¿Olvidaste tu contraseña?</button>
+      <div style="text-align:center">
+        <button type="button" onclick="authSetTab('forgot')" class="auth-link-btn">¿Olvidaste tu contraseña?</button>
+      </div>
     </div>
 
     <!-- OLVIDÉ MI CONTRASEÑA -->
@@ -3585,10 +3639,12 @@ body.on-congress #social-footer.visible { display:flex; }
       </div>
       <button class="auth-btn" id="forgot-btn" onclick="enviarResetEmail()" disabled>Enviar link →</button>
       <p class="auth-msg" id="forgot-msg"></p>
-      <button type="button" onclick="authSetTab('login')" style="background:none;border:none;color:var(--muted,#888);font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline;padding:0">← Volver al login</button>
+      <div style="text-align:center">
+        <button type="button" onclick="authSetTab('login')" class="auth-link-btn">← Volver al login</button>
+      </div>
     </div>
 
-    <!-- RESET PASSWORD (se muestra automáticamente al llegar desde el link del email) -->
+    <!-- RESET PASSWORD -->
     <div id="auth-form-reset" style="display:none">
       <p class="auth-sub">Elegí una contraseña nueva para tu cuenta.</p>
       <div class="auth-field">
@@ -3601,7 +3657,7 @@ body.on-congress #social-footer.visible { display:flex; }
         <input type="password" id="reset-pass2" placeholder="Repetí la contraseña" oninput="authCheckReset()" autocomplete="new-password">
         <span class="auth-field-hint" id="reset-pass2-hint"></span>
       </div>
-      <button class="auth-btn" id="reset-btn" onclick="cambiarContrasena()" disabled>Guardar nueva contraseña →</button>
+      <button class="auth-btn" id="reset-btn" onclick="cambiarContrasena()" disabled>Guardar contraseña →</button>
       <p class="auth-msg" id="reset-msg"></p>
     </div>
   </div>
