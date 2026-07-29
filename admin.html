@@ -2931,8 +2931,9 @@ async function cargarPreguntas() {
   if (error) { console.error('cargarPreguntas:', error); return }
   const rows = data || []
 
-  // Solo carga la agenda; las propuestas ciudadanas las maneja cargarPropuestasCiudadanas()
-  _agendaCache = rows.filter(q => q.status !== 'revision')
+  // Todas las preguntas van a la agenda (el tab "En revisión" las muestra)
+  // Las propuestas ciudadanas (tabla proposals) las maneja cargarPropuestasCiudadanas()
+  _agendaCache = rows
 
   // Tabla agenda — delegar al renderer filtrable
   _renderAgenda()
