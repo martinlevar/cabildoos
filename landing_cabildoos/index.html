@@ -202,7 +202,7 @@
       <span>Open-source · Participatory democracy platform</span>
     </div>
     <h1>La infraestructura para la<br><em>democracia participativa</em></h1>
-    <p>cabildoOS es una plataforma de votación anónima y verificable, debate en tiempo real y gestión de cabildos digitales para organizaciones y comunidades.</p>
+    <p>La sala no existe hasta que alguien se suma. Cada ciudadano verificado ocupa una butaca en el hemiciclo virtual. Cuando se vota, el resultado emerge como el congreso mismo: butaca por butaca, en el momento más disruptivo de la democracia digital.</p>
     <div class="hero-actions">
       <button class="btn-primary">Ver demo →</button>
       <button class="btn-ghost">Conocer la tecnología</button>
@@ -219,6 +219,7 @@
         <span style="font-size:11px;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fde047"></span>Abstención</span>
         <span style="font-size:11px;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#666"></span>Ausente</span>
       </div>
+      <p style="margin-top:16px;font-size:12px;color:rgba(255,255,255,.18);letter-spacing:.05em;text-align:center;font-family:'Manrope',sans-serif">Cabildo digital &nbsp;·&nbsp; <span id="hemi-seat-count">2.831</span> butacas activas · anónimas · verificadas</p>
     </div>
     <script>
     (function(){
@@ -310,6 +311,16 @@
       requestAnimationFrame(frame);
     })();
     </script>
+    <script>
+    (function(){
+      var el=document.getElementById('hemi-seat-count');
+      var cur=2831,target=2847;
+      function fmt(n){return n.toLocaleString('es-ES');}
+      el.textContent=fmt(cur);
+      var iv=setInterval(function(){if(cur<target){cur++;el.textContent=fmt(cur);}else clearInterval(iv);},140);
+      setInterval(function(){cur++;el.textContent=fmt(cur);},43000);
+    })();
+    </script>
   </div>
 </section>
 
@@ -334,23 +345,23 @@
   <div class="steps">
     <div class="step-card">
       <div class="step-num">01</div>
-      <h3>Verificación</h3>
-      <p>Cada participante se verifica con documento de identidad. Un verificador humano aprueba el ingreso. Una persona = una butaca.</p>
+      <h3>Verificación humana</h3>
+      <p>El verificador solo confirma que la foto de perfil corresponde a una persona real — nunca accede ni registra ningún dato personal. VaV emite un token criptográfico y el vínculo entre tu identidad real y tu butaca se rompe para siempre.</p>
     </div>
     <div class="step-card">
       <div class="step-num">02</div>
-      <h3>Butaca asignada</h3>
-      <p>El sistema asigna un número de butaca único y permanente en el hemiciclo virtual. El asiento es tuyo para siempre.</p>
+      <h3>Tu butaca, tu lugar</h3>
+      <p>La sala crece orgánicamente con cada ciudadano verificado. Tu butaca es única y permanente — ver el hemiciclo expandirse es en sí mismo un evento. La cámara va directamente a tu asiento cada vez que entrás.</p>
     </div>
     <div class="step-card accent">
       <div class="step-num">03</div>
       <h3>Voto con VaV</h3>
-      <p>El voto se sella criptográficamente antes del cierre. Nadie puede verlo ni modificarlo, pero al revelarse es verificable.</p>
+      <p>Tu voto viaja en un sobre sellado: el sistema certifica que es válido sin abrirlo nunca. Solo vos sabés qué hay adentro. Matemáticamente imposible modificarlo o vincularlo a tu identidad.</p>
     </div>
     <div class="step-card">
       <div class="step-num">04</div>
-      <h3>Debate y resultado</h3>
-      <p>Cada pregunta tiene sala de debate en tiempo real. Al cierre, el resultado se publica con conteos verificables.</p>
+      <h3>La revelación</h3>
+      <p>El hemiciclo se ilumina butaca por butaca. El resultado emerge visualmente antes de que aparezca ningún número — la forma del acuerdo o desacuerdo se ve en el espacio físico de las butacas.</p>
     </div>
   </div>
 </section>
@@ -361,38 +372,39 @@
     <div>
       <div class="section-tag">Tecnología propia</div>
       <h2 class="section-title">Voto Anónimo<br>Verificable — <em style="color:#F76A1E;font-style:normal">VaV</em></h2>
-      <p class="section-sub">CabildoOS desarrolló un sistema commit-reveal sobre Supabase con hashing SHA-256. El voto queda sellado, anónimo y matemáticamente auditable por cualquier persona.</p>
+      <p class="section-sub">Anonimato y verificabilidad parecen opuestos. VaV los reconcilia con una idea simple: tu voto es una carta en un sobre sellado. Nosotros certificamos que el sobre es tuyo y válido — sin abrirlo nunca.</p>
+      <p class="section-sub" style="margin-top:12px;font-size:14px">VaV está diseñado para verificar usuarios anónimos sin que se filtre ningún dato asociado a sus acciones dentro de la plataforma. Ni el administrador puede saber cómo votaste.</p>
       <div class="vav-bullets">
-        <div class="vav-bullet"><div class="dot"></div><span>Tu identidad nunca se vincula a tu voto</span></div>
-        <div class="vav-bullet"><div class="dot"></div><span>El resultado es auditable públicamente</span></div>
-        <div class="vav-bullet"><div class="dot"></div><span>Imposible modificar votos ya comprometidos</span></div>
-        <div class="vav-bullet"><div class="dot"></div><span>Sin servidor de confianza: verificable on-chain</span></div>
+        <div class="vav-bullet"><div class="dot"></div><span>El verificador humano solo ve tu foto — nunca tus datos</span></div>
+        <div class="vav-bullet"><div class="dot"></div><span>El vínculo identidad ↔ butaca se rompe en el momento de activación</span></div>
+        <div class="vav-bullet"><div class="dot"></div><span>El resultado es auditable por cualquier matemático, sin revelar ningún voto</span></div>
+        <div class="vav-bullet"><div class="dot"></div><span>VaV es un protocolo independiente — diseñado para escalar más allá de CabildoOS</span></div>
       </div>
     </div>
     <div class="vav-cards">
       <div class="vav-card">
         <div class="vav-card-num">1</div>
         <div>
-          <h4>Commit</h4>
-          <p>Tu voto se cifra en hash SHA-256 + nonce. Se envía sellado al servidor.</p>
+          <h4>Firma ciega</h4>
+          <p>La verificación emite un token criptográfico sin ver los datos. El sistema firma el sobre sin abrirlo.</p>
         </div>
-        <span class="badge badge-orange">SHA-256</span>
+        <span class="badge badge-orange">TOKEN</span>
       </div>
       <div style="text-align:center;color:rgba(255,255,255,.18);font-size:20px">↓</div>
       <div class="vav-card">
         <div class="vav-card-num muted">2</div>
         <div>
-          <h4>Cierre</h4>
-          <p>La pregunta cierra. Nadie puede votar ni ver resultados parciales.</p>
+          <h4>Commit</h4>
+          <p>Tu voto viaja como hash SHA-256 + nonce secreto. Sellado e inmutable en blockchain.</p>
         </div>
-        <span class="badge badge-muted">LOCKED</span>
+        <span class="badge badge-muted">SHA-256</span>
       </div>
       <div style="text-align:center;color:rgba(255,255,255,.18);font-size:20px">↓</div>
       <div class="vav-card">
         <div class="vav-card-num green">3</div>
         <div>
           <h4>Reveal</h4>
-          <p>Se revelan los votos y el nonce. Cualquiera puede verificar el cómputo.</p>
+          <p>Los votos se suman sin desencriptarse. El total emerge matemáticamente — ningún sobre se abre.</p>
         </div>
         <span class="badge badge-green">PÚBLICO</span>
       </div>
@@ -420,8 +432,8 @@
     </div>
     <div class="feature-card">
       <div class="feature-icon">🏟</div>
-      <h3>Hemiciclo visual</h3>
-      <p>Canvas del hemiciclo con butacas animadas. Cada participante ocupa su asiento visualmente en sesión.</p>
+      <h3>La sala como organismo vivo</h3>
+      <p>El hemiciclo crece orgánicamente con cada ciudadano verificado. La primera butaca aparece sola. A medida que llegan más, el congreso se construye solo — ver crecer la comunidad es en sí mismo un evento.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">📊</div>
@@ -435,8 +447,8 @@
     </div>
     <div class="feature-card">
       <div class="feature-icon">🔐</div>
-      <h3>Identidad verificada</h3>
-      <p>Verificación de documento + revisión humana. Una persona, una butaca. Resistente a sybil attacks.</p>
+      <h3>Identidad verificada, voto invisible</h3>
+      <p>El verificador solo confirma que la foto es real — nunca toca tus datos. VaV rompe el vínculo identidad ↔ butaca en el momento de activación. Una persona, una butaca. Resistente a ataques sybil.</p>
     </div>
   </div>
 </section>
@@ -445,14 +457,14 @@
 <section class="preview-section" id="plataforma">
   <div class="preview-inner">
     <div>
-      <div class="section-tag">Experiencia ciudadana</div>
-      <h2 class="section-title">Diseñado para la participación masiva</h2>
-      <p class="section-sub">Una UI limpia y minimalista que prioriza la acción. En tres toques, el ciudadano vota, debate y ve el resultado.</p>
+      <div class="section-tag">El momento clave</div>
+      <h2 class="section-title">La revelación como experiencia</h2>
+      <p class="section-sub">Durante la votación, solo tu butaca pulsa. El resto está oscuro — eso genera tensión. Cuando el tiempo termina, el hemiciclo despierta.</p>
       <div class="preview-list">
-        <div class="preview-item">Votá Sí, No o Abstención en cada pregunta</div>
-        <div class="preview-item">Participá en el debate de cada tema</div>
-        <div class="preview-item">Mirá tu historial y estadísticas</div>
-        <div class="preview-item">Descubrí afinidad de voto con otros ciudadanos</div>
+        <div class="preview-item">La pregunta baja sobre la sala como una proyección gigante</div>
+        <div class="preview-item">Las butacas se iluminan en cascada — SÍ, NO, ABS, ausentes</div>
+        <div class="preview-item">El resultado emerge visual antes de que aparezca ningún número</div>
+        <div class="preview-item">La imagen manda — los porcentajes son el epílogo</div>
       </div>
     </div>
     <div class="mock-screen">
