@@ -2188,8 +2188,130 @@ html, body {
   z-index:600; display:none; flex-direction:column; align-items:center; gap:12px;
   pointer-events:none;
 }
-/* Show on landing only */
-body.on-landing #social-footer.visible { display:flex; }
+/* Show on congress */
+body.on-congress #social-footer.visible { display:flex; }
+
+/* ── CONGRESS NAV — flex layout ─────────────────────────────────────── */
+#congress .nav {
+  display:flex; align-items:center; gap:0; padding:0 18px;
+}
+/* Vertical divider */
+.nav-vdiv { width:1px; height:18px; background:var(--border); margin:0 14px; flex-shrink:0; }
+/* Congresos selector */
+.cong-sel { position:relative; }
+.cong-pill {
+  display:flex; align-items:center; gap:7px;
+  padding:6px 10px; border-radius:8px;
+  border:1px solid var(--border); background:transparent;
+  font-family:inherit; font-size:13px; font-weight:600; color:var(--dark);
+  cursor:pointer; transition:background .12s; white-space:nowrap;
+}
+.cong-pill:hover { background:var(--bg); }
+.cong-green-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; flex-shrink:0; }
+.cong-chev { font-size:9px; color:var(--mid); margin-left:1px; }
+.cong-dd {
+  position:absolute; top:calc(100% + 6px); left:0;
+  width:240px; background:#fff; border:1px solid var(--border);
+  border-radius:14px; overflow:hidden;
+  box-shadow:0 8px 24px rgba(0,0,0,.1);
+  display:none; z-index:200;
+}
+.cong-dd.open { display:block; }
+.cong-dd-lbl {
+  padding:8px 14px 6px; font-size:10px; font-weight:700;
+  color:var(--mid); letter-spacing:.07em; text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+.cong-dd-item {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 14px; border-bottom:1px solid var(--border);
+  transition:background .1s; cursor:pointer;
+}
+.cong-dd-item:last-child { border-bottom:none; }
+.cong-dd-item:hover:not(.cong-disabled) { background:var(--bg); }
+.cong-dd-item.cong-disabled { opacity:.4; pointer-events:none; }
+.cong-flag-ic { width:24px; height:24px; border-radius:5px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:14px; background:var(--bg); flex-shrink:0; }
+.cong-item-txt p  { font-size:13px; font-weight:600; color:var(--dark); line-height:1.2; }
+.cong-item-txt span { font-size:11px; color:var(--mid); }
+.cong-badge { margin-left:auto; font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
+.cong-badge-on  { background:rgba(34,197,94,.12); color:#15803d; }
+.cong-badge-off { background:rgba(0,0,0,.06); color:var(--mid); }
+/* Nav action buttons (shown when seat verified) */
+.nav-action-btns {
+  display:flex; align-items:center; gap:2px;
+}
+.nav-act-btn {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:5px 9px; border-radius:8px; background:none; border:none;
+  cursor:pointer; transition:background .12s; font-family:inherit;
+}
+.nav-act-btn:hover { background:var(--bg); }
+.nav-act-ic {
+  width:28px; height:28px; border-radius:7px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:800;
+}
+.nav-ic-seat  { background:#1D1F3C; color:#fff; font-size:11px; }
+.nav-ic-prop  { background:rgba(247,106,30,.12); color:var(--orange); font-size:15px; }
+.nav-ic-stats { background:rgba(109,40,217,.1); color:#7c3aed; }
+.nav-act-lbl  { font-size:9px; font-weight:600; color:var(--mid); letter-spacing:.02em; }
+/* User pill */
+.nav-upill-wrap { position:relative; flex-shrink:0; }
+.nav-upill {
+  display:flex; align-items:center; gap:7px;
+  padding:5px 10px; border-radius:8px;
+  border:1px solid var(--border); background:transparent;
+  font-family:inherit; font-size:13px; font-weight:600; color:var(--dark);
+  cursor:pointer; transition:background .12s;
+}
+.nav-upill:hover { background:var(--bg); }
+.nav-upill-av {
+  width:22px; height:22px; border-radius:50%;
+  background:#1D1F3C; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; flex-shrink:0;
+}
+.nav-umenu {
+  position:absolute; top:calc(100% + 6px); right:0;
+  width:200px; background:#fff; border:1px solid var(--border);
+  border-radius:14px; overflow:hidden;
+  box-shadow:0 8px 24px rgba(0,0,0,.1);
+  display:none; z-index:200;
+}
+.nav-umenu.open { display:block; }
+.nav-umenu-hd { padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+.nav-umenu-hd p { font-size:13px; font-weight:700; color:var(--dark); line-height:1.3; }
+.nav-umenu-hd span { font-size:11px; color:var(--mid); }
+.nav-umenu-item {
+  display:flex; align-items:center; gap:9px;
+  width:100%; padding:9px 14px; font-size:13px; color:var(--dark);
+  border:none; border-bottom:1px solid var(--border);
+  background:none; font-family:inherit; text-align:left; cursor:pointer;
+  transition:background .1s;
+}
+.nav-umenu-item:last-child { border-bottom:none; }
+.nav-umenu-item:hover { background:var(--bg); }
+.nav-umenu-item.danger { color:#dc2626; }
+/* Create account button (logged out) */
+.nav-creat-btn {
+  padding:7px 16px; border-radius:8px;
+  background:#1D1F3C; color:#fff; border:none;
+  font-family:inherit; font-size:13px; font-weight:700;
+  cursor:pointer; transition:opacity .15s; flex-shrink:0;
+}
+.nav-creat-btn:hover { opacity:.88; }
+/* Congress footer */
+.cong-footer {
+  flex-shrink:0; height:40px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px; border-top:1px solid var(--border);
+  background:rgba(245,245,246,.92);
+}
+.cf-brand { font-size:12px; font-weight:800; color:rgba(0,0,0,.25); letter-spacing:-.3px; }
+.cf-links { display:flex; gap:16px; }
+.cf-links a { font-size:11px; color:var(--mid); cursor:pointer; text-decoration:none; }
+.cf-links a:hover { color:var(--dark); }
+.cf-copy { font-size:11px; color:var(--mid); }
 
 /* Mensajes panel — más alto para conversaciones */
 .sf-float-panel[data-tab="mensajes"] { max-height:420px; }
@@ -2320,7 +2442,7 @@ body.on-landing #social-footer.visible { display:flex; }
 </div>
 
 <!-- ══════════════ LANDING ══════════════ -->
-<div class="screen active" id="landing">
+<div class="screen" id="landing">
   <nav class="nav">
     <span class="nav-logo">cabildoOS</span>
     <div class="nav-center">
@@ -2428,20 +2550,88 @@ body.on-landing #social-footer.visible { display:flex; }
 </div>
 
 <!-- ══════════════ CONGRESS ══════════════ -->
-<div class="screen" id="congress">
+<div class="screen active" id="congress">
   <nav class="nav">
-    <span class="nav-logo" onclick="volverALanding()">cabildoOS</span>
-    <div class="nav-center">
-      <div class="nav-butaca" title="Tu butaca #7" onclick="abrirMiPerfil()" style="font-size:11px;gap:0;width:38px">#7</div>
+    <!-- Logo -->
+    <span class="nav-logo">cabildoOS</span>
+    <div class="nav-vdiv"></div>
+
+    <!-- Congresos dropdown -->
+    <div class="cong-sel" id="cong-sel">
+      <button class="cong-pill" onclick="toggleCongDD()">
+        <span class="cong-green-dot"></span>Venezuela<span class="cong-chev">▾</span>
+      </button>
+      <div class="cong-dd" id="cong-dd">
+        <div class="cong-dd-lbl">Mis cabildos</div>
+        <div class="cong-dd-item">
+          <div class="cong-flag-ic">🇻🇪</div>
+          <div class="cong-item-txt"><p>Venezuela</p><span>Activo</span></div>
+          <span class="cong-badge cong-badge-on">● Activo</span>
+        </div>
+        <div class="cong-dd-item cong-disabled">
+          <div class="cong-flag-ic">🇦🇷</div>
+          <div class="cong-item-txt"><p>Argentina</p><span>Próximamente</span></div>
+          <span class="cong-badge cong-badge-off">Aplicar</span>
+        </div>
+        <div class="cong-dd-item cong-disabled">
+          <div class="cong-flag-ic">🇨🇴</div>
+          <div class="cong-item-txt"><p>Colombia</p><span>Próximamente</span></div>
+          <span class="cong-badge cong-badge-off">Aplicar</span>
+        </div>
+        <div class="cong-dd-item cong-disabled">
+          <div class="cong-flag-ic">🌐</div>
+          <div class="cong-item-txt"><p>Diáspora</p><span>Próximamente</span></div>
+          <span class="cong-badge cong-badge-off">Aplicar</span>
+        </div>
+      </div>
     </div>
-    <div class="nav-right"></div>
+
+    <!-- Spacer -->
+    <div style="flex:1"></div>
+
+    <!-- Action buttons (seat verified) -->
+    <div class="nav-action-btns" id="nav-action-btns" style="display:none">
+      <button class="nav-act-btn" onclick="abrirMiPerfil()">
+        <div class="nav-act-ic nav-ic-seat"><span id="nav-seat-lbl">#—</span></div>
+        <span class="nav-act-lbl">Mi butaca</span>
+      </button>
+      <button class="nav-act-btn" onclick="abrirPropuesta()">
+        <div class="nav-act-ic nav-ic-prop">+</div>
+        <span class="nav-act-lbl">Proponer</span>
+      </button>
+      <button class="nav-act-btn" onclick="abrirEstadisticas()">
+        <div class="nav-act-ic nav-ic-stats">📊</div>
+        <span class="nav-act-lbl">Estadísticas</span>
+      </button>
+    </div>
+
+    <!-- Divider + User pill (logged in) -->
+    <div class="nav-vdiv" id="nav-user-divider" style="display:none"></div>
+    <div class="nav-upill-wrap" id="nav-upill-wrap" style="display:none">
+      <button class="nav-upill" id="nav-upill-btn" onclick="toggleUserPill()">
+        <div class="nav-upill-av" id="nav-upill-av">?</div>
+        <span id="nav-upill-alias"></span>
+        <span class="cong-chev">▾</span>
+      </button>
+      <div class="nav-umenu" id="nav-umenu">
+        <div class="nav-umenu-hd">
+          <p id="nav-umenu-alias">–</p>
+          <span id="nav-umenu-butaca">Sin verificar</span>
+        </div>
+        <button class="nav-umenu-item" onclick="abrirMiPerfil();closeUserPill()">👤 Mi perfil</button>
+        <button class="nav-umenu-item danger" onclick="cerrarSesion();closeUserPill()">↩ Salir</button>
+      </div>
+    </div>
+
+    <!-- Create account button (logged out) -->
+    <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()">Crear cuenta</button>
   </nav>
   <div id="observer-banner">
     <div class="ob-dot"></div>
     <p class="ob-text"><b>Modo observador</b> — Podés explorar el hemiciclo pero no votar</p>
-    <button class="ob-cta" onclick="volverALanding();setTimeout(abrirVerificacion,200)">Crear mi butaca →</button>
+    <button class="ob-cta" onclick="abrirAuth()">Crear mi butaca →</button>
   </div>
-  <div class="body">
+  <div class="body" style="flex:1;min-height:0">
     <div id="q-cards-strip"></div>
     <div class="canvas-area" id="canvas-area">
       <canvas id="hemiciclo"></canvas>
@@ -2449,10 +2639,6 @@ body.on-landing #social-footer.visible { display:flex; }
         <p>Usá la rueda del mouse para explorar<br>el hemiciclo completo</p>
       </div>
       <div class="map-controls" id="map-controls">
-        <button class="map-btn" onclick="volverALanding()" style="border-color:rgba(26,31,60,.2);color:var(--navy)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="display:inline;vertical-align:middle;margin-right:3px"><path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/></svg>
-          Inicio
-        </button>
         <button class="map-btn orange" onclick="resetCamera()">↵ Mi butaca</button>
         <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">0</b> ciudadanos</div>
         <button class="map-btn" onclick="zoomOut()">Ver todo</button>
@@ -2462,6 +2648,15 @@ body.on-landing #social-footer.visible { display:flex; }
       </div>
     </div>
   </div>
+  <footer class="cong-footer">
+    <span class="cf-brand">cabildoOS</span>
+    <div class="cf-links">
+      <a>Privacidad</a>
+      <a>Términos</a>
+      <a href="https://github.com" target="_blank">GitHub</a>
+    </div>
+    <span class="cf-copy">© 2025 CabildoOS</span>
+  </footer>
 </div>
 
 <!-- ══════════════ DEBATE PANEL ══════════════ -->
@@ -4863,7 +5058,7 @@ let _authProfile = null  // perfil (alias, seat_number)
 ;(async () => {
   const { data: { session } } = await sb.auth.getSession()
   if (session?.user) await _onLogin(session.user)
-  else _onLogout()
+  else { _onLogout() } // _onLogout ya activa observer banner + oculta social footer
 
   sb.auth.onAuthStateChange(async (event, session) => {
     if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) await _onLogin(session.user)
@@ -4881,34 +5076,51 @@ async function _onLogin(user) {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
   _authProfile = profile
 
-  // Nav — mostrar nombre, dropdown con estado
-  document.getElementById('btn-auth-nav').style.display = 'none'
+  // Nav landing — legacy (la pantalla landing sigue en DOM pero oculta)
+  const btnAuthNav = document.getElementById('btn-auth-nav')
+  if (btnAuthNav) btnAuthNav.style.display = 'none'
   const navInfo = document.getElementById('nav-user-info')
-  navInfo.style.display = 'flex'
+  if (navInfo) navInfo.style.display = 'flex'
   // Nombre: alias o parte antes del @ del email
   const displayName = profile?.alias || user.email?.split('@')[0] || 'Usuario'
-  document.getElementById('nav-user-alias').textContent = displayName
+  const navUserAlias = document.getElementById('nav-user-alias')
+  if (navUserAlias) navUserAlias.textContent = displayName
 
-  // Badge de verificación en el dropdown
+  // Badge de verificación en el dropdown (landing)
   const ddBadge = document.getElementById('nav-dd-status-badge')
   const ddButaca = document.getElementById('nav-dd-butaca')
   if (profile?.seat_number) {
-    ddBadge.textContent = 'Verificado'
-    ddBadge.className = 'nav-dd-verified'
-    ddButaca.textContent = '· Butaca #' + profile.seat_number
+    if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
+    if (ddButaca) ddButaca.textContent = '· Butaca #' + profile.seat_number
   } else {
     // Verificar si tiene solicitud pending
     const { data: req } = await sb.from('verification_requests')
       .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
-    if (req?.status === 'pending') {
-      ddBadge.textContent = 'En revisión'
-      ddBadge.className = 'nav-dd-pending'
-    } else {
-      ddBadge.textContent = 'Sin verificar'
-      ddBadge.className = 'nav-dd-pending'
+    if (ddBadge) {
+      if (req?.status === 'pending') {
+        ddBadge.textContent = 'En revisión'; ddBadge.className = 'nav-dd-pending'
+      } else {
+        ddBadge.textContent = 'Sin verificar'; ddBadge.className = 'nav-dd-pending'
+      }
     }
-    ddButaca.textContent = ''
+    if (ddButaca) ddButaca.textContent = ''
   }
+
+  // ── Congress nav — nuevo UI ──
+  const initial = displayName.charAt(0).toUpperCase()
+  // Ocultar "Crear cuenta", mostrar pill de usuario
+  const creatBtn = document.getElementById('nav-creat-btn')
+  if (creatBtn) creatBtn.style.display = 'none'
+  const upillWrap = document.getElementById('nav-upill-wrap')
+  if (upillWrap) upillWrap.style.display = 'flex'
+  const udiv = document.getElementById('nav-user-divider')
+  if (udiv) udiv.style.display = 'block'
+  const aliasEl = document.getElementById('nav-upill-alias')
+  if (aliasEl) aliasEl.textContent = displayName
+  const menuAliasEl = document.getElementById('nav-umenu-alias')
+  if (menuAliasEl) menuAliasEl.textContent = displayName
+  const avEl = document.getElementById('nav-upill-av')
+  if (avEl) avEl.textContent = initial
 
   // Landing: VaV — fuente de verdad es Supabase (profile.seat_number)
   // localStorage es solo caché; si falta, lo reconstruimos desde el perfil
@@ -4916,23 +5128,85 @@ async function _onLogin(user) {
     // Siempre usar la butaca del perfil (sobrevive al borrado de localStorage)
     vpAplicarButacaEnUI(profile.seat_number)
     localStorage.setItem('cabildoos_butaca', profile.seat_number)
+    // Mostrar action buttons + quitar observer mode
+    const actBtns = document.getElementById('nav-action-btns')
+    if (actBtns) actBtns.style.display = 'flex'
+    const seatLbl = document.getElementById('nav-seat-lbl')
+    if (seatLbl) seatLbl.textContent = '#' + profile.seat_number
+    const butacaInfo = document.getElementById('nav-umenu-butaca')
+    if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
+    // Salir del modo observador
+    observerMode = false
+    document.getElementById('observer-banner').classList.remove('show')
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
     const lbl = document.getElementById('st-noident-label')
     if (lbl) lbl.textContent = 'Verificar identidad'
+    // Sin butaca: ocultar action buttons, mostrar banner
+    document.getElementById('observer-banner').classList.add('show')
   }
 }
 
 function _onLogout() {
   _authUser = null
   _authProfile = null
-  document.getElementById('btn-auth-nav').style.display = 'block'
-  document.getElementById('nav-user-info').style.display = 'none'
-  document.getElementById('st-noident').style.display = 'flex'
-  document.getElementById('st-ident').style.display   = 'none'
+  // Legacy landing nav
+  const btnAuthNav = document.getElementById('btn-auth-nav')
+  if (btnAuthNav) btnAuthNav.style.display = 'block'
+  const navUserInfo = document.getElementById('nav-user-info')
+  if (navUserInfo) navUserInfo.style.display = 'none'
+  const stNoident = document.getElementById('st-noident')
+  if (stNoident) stNoident.style.display = 'flex'
+  const stIdent = document.getElementById('st-ident')
+  if (stIdent) stIdent.style.display = 'none'
   const lbl = document.getElementById('st-noident-label')
   if (lbl) lbl.textContent = 'Crear cuenta'
+  // Congress nav — nuevo UI
+  const creatBtn = document.getElementById('nav-creat-btn')
+  if (creatBtn) creatBtn.style.display = 'block'
+  const upillWrap = document.getElementById('nav-upill-wrap')
+  if (upillWrap) upillWrap.style.display = 'none'
+  const udiv = document.getElementById('nav-user-divider')
+  if (udiv) udiv.style.display = 'none'
+  const actBtns = document.getElementById('nav-action-btns')
+  if (actBtns) actBtns.style.display = 'none'
+  // Observer mode
+  observerMode = true
+  document.getElementById('observer-banner').classList.add('show')
+  // Ocultar social footer
+  document.getElementById('social-footer').classList.remove('visible')
+}
+
+// ── Congress nav — dropdown de congresos ──
+function toggleCongDD() {
+  const dd = document.getElementById('cong-dd')
+  if (!dd) return
+  dd.classList.toggle('open')
+  if (dd.classList.contains('open')) {
+    setTimeout(() => document.addEventListener('click', _closeCongDD, { once: true }), 0)
+  }
+}
+function _closeCongDD(e) {
+  if (!document.getElementById('cong-sel')?.contains(e.target)) {
+    document.getElementById('cong-dd')?.classList.remove('open')
+  }
+}
+
+// ── Congress nav — user pill ──
+function toggleUserPill() {
+  const menu = document.getElementById('nav-umenu')
+  if (!menu) return
+  menu.classList.toggle('open')
+  if (menu.classList.contains('open')) {
+    setTimeout(() => document.addEventListener('click', _closeUserPillOutside, { once: true }), 0)
+  }
+}
+function closeUserPill() {
+  document.getElementById('nav-umenu')?.classList.remove('open')
+}
+function _closeUserPillOutside(e) {
+  if (!document.getElementById('nav-upill-btn')?.contains(e.target)) closeUserPill()
 }
 
 // ── Nav dropdown ──
@@ -6991,7 +7265,12 @@ function vpAplicarButacaEnUI(butacaNum) {
   document.getElementById('st-ident').style.display   = 'flex'
   document.querySelectorAll('.av-seat-num').forEach(el => el.textContent = butacaNum)
   document.querySelectorAll('.nav-butaca').forEach(el => el.textContent = '#' + butacaNum)
-  // Actualizar dropdown badge
+  // Congress nav — nuevo seat label
+  const seatLbl = document.getElementById('nav-seat-lbl')
+  if (seatLbl) seatLbl.textContent = '#' + butacaNum
+  const umenuButaca = document.getElementById('nav-umenu-butaca')
+  if (umenuButaca) umenuButaca.textContent = 'Butaca #' + butacaNum
+  // Actualizar dropdown badge (landing legacy)
   const ddBadge = document.getElementById('nav-dd-status-badge')
   if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
   const ddButaca = document.getElementById('nav-dd-butaca')
@@ -7075,30 +7354,27 @@ let observerMode = false
 function entrarComoObservador() {
   observerMode = true
   document.getElementById('observer-banner').classList.add('show')
-  // Ocultar el botón de butaca en la nav (no tiene butaca asignada)
-  document.querySelector('#congress .nav-butaca').style.display = 'none'
   showScreen('congress'); resizeCanvas(); resetCamera()
 }
 
 function irACongreso() {
-  const registered = document.getElementById('st-ident').style.display === 'flex'
-  if (!registered) {
-    abrirVerificacion()
+  if (!_authUser) {
+    // Sin sesión: modo observador
+    entrarComoObservador()
   } else {
     observerMode = false
     document.getElementById('observer-banner').classList.remove('show')
-    document.querySelector('#congress .nav-butaca').style.display = ''
     showScreen('congress'); resizeCanvas(); resetCamera()
   }
 }
 
 function volverALanding() {
-  showScreen('landing')
-  // Si vuelve desde observador, limpiar estado
+  // Landing ya no es el default — permanecemos en congress
+  // Mantenemos la función para compatibilidad con código legacy
+  showScreen('congress')
   if (observerMode) {
     observerMode = false
     document.getElementById('observer-banner').classList.remove('show')
-    document.querySelector('#congress .nav-butaca').style.display = ''
   }
 }
 
@@ -8238,7 +8514,7 @@ function showToast(msg) {
 // ══════════════════════════════════════════════════════════════
 resizeCanvas()
 draw()
-document.body.classList.add('on-landing')
+document.body.classList.add('on-congress')
 
 // ══════════════════════════════════════════════════════════════
 //  VENEZUELAN FLAG — generated via canvas for HD crispness
