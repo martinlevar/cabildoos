@@ -5297,7 +5297,9 @@ async function _onLogin(user) {
   _authUser = user
   // Ir al congress inmediatamente
   showScreen('congress')
-  resizeCanvas(); resetCamera()
+  resizeCanvas()
+  if (MY_SEAT_POS) resetCamera()  // solo si ya se calculó la posición
+  cargarPreguntasActivas()
   // Cargar perfil
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
   _authProfile = profile
