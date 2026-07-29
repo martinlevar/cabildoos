@@ -5333,20 +5333,38 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 let _authUser = null     // usuario logueado actual
 let _authProfile = null  // perfil (alias, seat_number)
 
+// Detectar flujo de recovery desde el hash de la URL (sincrónico, antes del await)
+let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
+
 // Inicializar auth al cargar
 ;(async () => {
   const { data: { session } } = await sb.auth.getSession()
-  if (session?.user) await _onLogin(session.user)
-  else { _onLogout() } // _onLogout ya activa observer banner + oculta social footer
 
   sb.auth.onAuthStateChange(async (event, session) => {
-    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) await _onLogin(session.user)
-    if (event === 'SIGNED_OUT') _onLogout()
     if (event === 'PASSWORD_RECOVERY') {
-      // El usuario llegó desde el link de reset → mostrar formulario de nueva contraseña
-      abrirAuth('reset')
+      _isPasswordRecovery = true
+      // Mostrar congress como fondo y abrir el modal de reset
+      showScreen('congress')
+      setTimeout(() => abrirAuth('reset'), 80)
+      return
     }
+    if (event === 'SIGNED_OUT') {
+      _isPasswordRecovery = false
+      _onLogout()
+      return
+    }
+    if (_isPasswordRecovery) return  // ignorar SIGNED_IN/INITIAL_SESSION durante recovery
+    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) await _onLogin(session.user)
   })
+
+  if (_isPasswordRecovery) {
+    // Llegó desde link de reset — mostrar congress de fondo, PASSWORD_RECOVERY abrirá el modal
+    showScreen('congress')
+  } else if (session?.user) {
+    await _onLogin(session.user)
+  } else {
+    _onLogout()
+  }
 })()
 
 async function _onLogin(user) {
@@ -5599,11 +5617,16 @@ async function cambiarContrasena() {
     btn.disabled = false
     return
   }
-  msg.textContent = '✓ Contraseña actualizada. Redirigiendo...'
+  msg.textContent = '✓ Contraseña actualizada. Ingresando...'
   msg.className = 'auth-msg ok'
-  // Limpiar el hash de la URL
   history.replaceState(null, '', window.location.pathname)
-  setTimeout(() => cerrarAuth(), 1800)
+  _isPasswordRecovery = false
+  setTimeout(async () => {
+    cerrarAuth()
+    // El usuario ya tiene sesión activa — hacer login normal
+    const { data: { session } } = await sb.auth.getSession()
+    if (session?.user) await _onLogin(session.user)
+  }, 1400)
 }
 
 // ── Validaciones en tiempo real ──
@@ -5662,15 +5685,24 @@ async function registrarse() {
   })
 
   if (error) {
-    msg.textContent = error.message.includes('already') ? 'Email ya registrado. ¿Querés iniciar sesión?' : error.message
+    const isExisting = error.message?.toLowerCase().includes('already') || error.status === 422
+    msg.textContent = isExisting ? 'Ese email ya tiene una cuenta. ¿Querés iniciar sesión?' : error.message
     msg.className = 'auth-msg err'
     btn.disabled = false
-    btn.textContent = 'Crear cuenta →'
+    btn.textContent = 'Crear usuario →'
     return
   }
 
-  // El trigger en Supabase crea el perfil automáticamente
-  btn.textContent = 'Crear cuenta →'
+  // Supabase v2: email existente devuelve identities:[] en vez de error
+  if (!data.user || (data.user.identities && data.user.identities.length === 0)) {
+    msg.innerHTML = 'Ese email ya tiene una cuenta. <button type="button" onclick="authSetTab(\'login\')" style="background:none;border:none;color:#f97316;font-weight:700;cursor:pointer;font-size:inherit;padding:0;text-decoration:underline">Iniciar sesión →</button>'
+    msg.className = 'auth-msg err'
+    btn.disabled = false
+    btn.textContent = 'Crear usuario →'
+    return
+  }
+
+  btn.textContent = 'Crear usuario →'
   btn.disabled = false
 
   if (data.user?.email_confirmed_at) {
