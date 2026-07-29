@@ -2221,15 +2221,21 @@ body.on-congress #social-footer.visible { display:flex; }
 
 /* ── CONGRESS NAV — flex layout ─────────────────────────────────────── */
 #congress .nav {
-  display:flex; align-items:center; gap:0; padding:0 18px;
+  display:flex; align-items:center; gap:0; padding:0 20px;
+  height:72px;
 }
-/* Vertical divider */
-.nav-vdiv { width:1px; height:18px; background:var(--border); margin:0 14px; flex-shrink:0; }
+/* Thin vertical divider (logo | venezuela) */
+.nav-vdiv { width:1px; height:20px; background:var(--border); margin:0 14px; flex-shrink:0; }
+/* Group separator (between action groups) — gradient fade */
+.nav-group-sep {
+  width:1px; height:44px; flex-shrink:0; margin:0 12px;
+  background:linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.12) 25%, rgba(0,0,0,.12) 75%, transparent 100%);
+}
 /* Congresos selector */
 .cong-sel { position:relative; }
 .cong-pill {
   display:flex; align-items:center; gap:7px;
-  padding:6px 10px; border-radius:8px;
+  padding:6px 11px; border-radius:9px;
   border:1px solid var(--border); background:transparent;
   font-family:inherit; font-size:13px; font-weight:600; color:var(--dark);
   cursor:pointer; transition:background .12s; white-space:nowrap;
@@ -2238,7 +2244,7 @@ body.on-congress #social-footer.visible { display:flex; }
 .cong-green-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; flex-shrink:0; }
 .cong-chev { font-size:9px; color:var(--mid); margin-left:1px; }
 .cong-dd {
-  position:absolute; top:calc(100% + 6px); left:0;
+  position:absolute; top:calc(100% + 8px); left:0;
   width:240px; background:#fff; border:1px solid var(--border);
   border-radius:14px; overflow:hidden;
   box-shadow:0 8px 24px rgba(0,0,0,.1);
@@ -2264,50 +2270,60 @@ body.on-congress #social-footer.visible { display:flex; }
 .cong-badge { margin-left:auto; font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
 .cong-badge-on  { background:rgba(34,197,94,.12); color:#15803d; }
 .cong-badge-off { background:rgba(0,0,0,.06); color:var(--mid); }
-/* Nav action buttons (shown when seat verified) */
-.nav-action-btns {
-  display:flex; align-items:center; gap:2px;
-}
+/* ── Button groups ── */
+.nav-btn-group { display:flex; align-items:center; gap:2px; }
+/* Individual icon button */
 .nav-act-btn {
-  display:flex; flex-direction:column; align-items:center; gap:2px;
-  padding:5px 9px; border-radius:8px; background:none; border:none;
-  cursor:pointer; transition:background .12s; font-family:inherit;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:7px 10px; border-radius:10px; background:none; border:none;
+  cursor:pointer; transition:background .14s; font-family:inherit;
+  position:relative;
 }
-.nav-act-btn:hover { background:var(--bg); }
+.nav-act-btn:hover { background:rgba(0,0,0,.05); }
+.nav-act-btn.active-tab { background:rgba(0,0,0,.06); }
+/* Icon box */
 .nav-act-ic {
-  width:28px; height:28px; border-radius:7px;
+  width:36px; height:36px; border-radius:10px;
   display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:800;
+  font-size:13px; font-weight:800; transition:transform .14s;
 }
-.nav-ic-seat  { background:#1D1F3C; color:#fff; font-size:11px; }
-.nav-ic-prop  { background:rgba(247,106,30,.12); color:var(--orange); font-size:15px; }
-.nav-ic-stats { background:rgba(109,40,217,.1); color:#7c3aed; }
-.nav-act-lbl  { font-size:9px; font-weight:600; color:var(--mid); letter-spacing:.02em; }
+.nav-act-btn:hover .nav-act-ic { transform:translateY(-1px); }
+/* Icon colors — Participación */
+.nav-ic-seat    { background:#1D1F3C; color:#fff; font-size:12px; letter-spacing:-.5px; }
+.nav-ic-prop    { background:rgba(247,106,30,.13); color:var(--orange); }
+.nav-ic-stats   { background:rgba(109,40,217,.1);  color:#7c3aed; }
+/* Icon colors — Comunidad */
+.nav-ic-props   { background:rgba(16,185,129,.11); color:#059669; }
+.nav-ic-segs    { background:rgba(59,130,246,.11); color:#2563eb; }
+.nav-ic-seguidos{ background:rgba(99,102,241,.11); color:#4f46e5; }
+.nav-ic-msgs    { background:rgba(236,72,153,.11); color:#db2777; }
+/* Label below icon */
+.nav-act-lbl { font-size:9.5px; font-weight:600; color:var(--mid); letter-spacing:.01em; white-space:nowrap; }
 /* User pill */
 .nav-upill-wrap { position:relative; flex-shrink:0; }
 .nav-upill {
-  display:flex; align-items:center; gap:7px;
-  padding:5px 10px; border-radius:8px;
+  display:flex; align-items:center; gap:8px;
+  padding:7px 12px; border-radius:10px;
   border:1px solid var(--border); background:transparent;
   font-family:inherit; font-size:13px; font-weight:600; color:var(--dark);
   cursor:pointer; transition:background .12s;
 }
 .nav-upill:hover { background:var(--bg); }
 .nav-upill-av {
-  width:22px; height:22px; border-radius:50%;
+  width:26px; height:26px; border-radius:50%;
   background:#1D1F3C; color:#fff;
   display:flex; align-items:center; justify-content:center;
-  font-size:10px; font-weight:700; flex-shrink:0;
+  font-size:11px; font-weight:700; flex-shrink:0;
 }
 .nav-umenu {
-  position:absolute; top:calc(100% + 6px); right:0;
-  width:200px; background:#fff; border:1px solid var(--border);
+  position:absolute; top:calc(100% + 8px); right:0;
+  width:190px; background:#fff; border:1px solid var(--border);
   border-radius:14px; overflow:hidden;
   box-shadow:0 8px 24px rgba(0,0,0,.1);
   display:none; z-index:200;
 }
 .nav-umenu.open { display:block; }
-.nav-umenu-hd { padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+.nav-umenu-hd { padding:11px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
 .nav-umenu-hd p { font-size:13px; font-weight:700; color:var(--dark); line-height:1.3; }
 .nav-umenu-hd span { font-size:11px; color:var(--mid); }
 .nav-umenu-item {
@@ -2322,12 +2338,12 @@ body.on-congress #social-footer.visible { display:flex; }
 .nav-umenu-item.danger { color:#dc2626; }
 /* Create account button (logged out) */
 .nav-creat-btn {
-  padding:7px 16px; border-radius:8px;
+  padding:8px 18px; border-radius:9px;
   background:#1D1F3C; color:#fff; border:none;
   font-family:inherit; font-size:13px; font-weight:700;
   cursor:pointer; transition:opacity .15s; flex-shrink:0;
 }
-.nav-creat-btn:hover { opacity:.88; }
+.nav-creat-btn:hover { opacity:.86; }
 /* Congress footer */
 .cong-footer {
   flex-shrink:0; height:40px;
@@ -2584,7 +2600,7 @@ body.on-congress #social-footer.visible { display:flex; }
     <span class="nav-logo">cabildoOS</span>
     <div class="nav-vdiv"></div>
 
-    <!-- Congresos dropdown -->
+    <!-- Cabildo activo — Congresos dropdown -->
     <div class="cong-sel" id="cong-sel">
       <button class="cong-pill" onclick="toggleCongDD()">
         <span class="cong-flag-sm">🇻🇪</span>Venezuela<span class="cong-chev">▾</span>
@@ -2617,19 +2633,89 @@ body.on-congress #social-footer.visible { display:flex; }
     <!-- Spacer -->
     <div style="flex:1"></div>
 
-    <!-- Action buttons (seat verified) -->
-    <div class="nav-action-btns" id="nav-action-btns" style="display:none">
-      <button class="nav-act-btn" onclick="abrirMiPerfil()">
+    <!-- ── Grupo: Participación ── -->
+    <div class="nav-btn-group" id="nav-action-btns" style="display:none">
+      <!-- Mi butaca -->
+      <button class="nav-act-btn" onclick="abrirMiPerfil()" title="Mi butaca">
         <div class="nav-act-ic nav-ic-seat"><span id="nav-seat-lbl">#—</span></div>
         <span class="nav-act-lbl">Mi butaca</span>
       </button>
-      <button class="nav-act-btn" onclick="abrirPropuesta()">
-        <div class="nav-act-ic nav-ic-prop">+</div>
+      <!-- Proponer -->
+      <button class="nav-act-btn" onclick="abrirPropuesta()" title="Proponer pregunta">
+        <div class="nav-act-ic nav-ic-prop">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
         <span class="nav-act-lbl">Proponer</span>
       </button>
-      <button class="nav-act-btn" onclick="abrirEstadisticas()">
-        <div class="nav-act-ic nav-ic-stats">📊</div>
+      <!-- Estadísticas -->
+      <button class="nav-act-btn" onclick="abrirEstadisticas()" title="Estadísticas de votación">
+        <div class="nav-act-ic nav-ic-stats">
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="14" y="2" width="4" height="16" rx="1.2"/>
+            <rect x="8"  y="7" width="4" height="11" rx="1.2"/>
+            <rect x="2"  y="11" width="4" height="7"  rx="1.2"/>
+          </svg>
+        </div>
         <span class="nav-act-lbl">Estadísticas</span>
+      </button>
+    </div>
+
+    <!-- Separador de grupo (gradiente) -->
+    <div class="nav-group-sep" id="nav-group-sep" style="display:none"></div>
+
+    <!-- ── Grupo: Comunidad ── -->
+    <div class="nav-btn-group" id="nav-social-btns" style="display:none">
+      <!-- Mis propuestas -->
+      <button class="nav-act-btn" onclick="sfSelectTab('propuestas')" title="Mis propuestas">
+        <div class="nav-act-ic nav-ic-props">
+          <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+            <rect x="1" y="1"   width="12" height="2.5" rx="1" fill="currentColor" opacity=".5"/>
+            <rect x="1" y="5.5" width="9"  height="2"   rx="1" fill="currentColor"/>
+            <rect x="1" y="9.5" width="6"  height="2"   rx="1" fill="currentColor" opacity=".6"/>
+            <circle cx="12" cy="10.5" r="2.2" fill="currentColor" opacity=".9"/>
+            <line x1="12" y1="9.3" x2="12" y2="11.7" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="10.8" y1="10.5" x2="13.2" y2="10.5" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="nav-act-lbl">Propuestas</span>
+      </button>
+      <!-- Seguidores -->
+      <button class="nav-act-btn" onclick="sfSelectTab('seguidores')" title="Seguidores">
+        <div class="nav-act-ic nav-ic-segs">
+          <svg width="17" height="15" viewBox="0 0 15 14" fill="none">
+            <circle cx="3.5" cy="7" r="1.8" fill="currentColor"/>
+            <path d="M7 4 A4.2 4.2 0 0 1 7 10"      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            <path d="M9.8 2 A7 7 0 0 1 9.8 12"      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+            <path d="M12.5 0.5 A9.8 9.8 0 0 1 12.5 13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".45"/>
+          </svg>
+        </div>
+        <span class="nav-act-lbl">Seguidores</span>
+      </button>
+      <!-- Seguidos -->
+      <button class="nav-act-btn" onclick="sfSelectTab('seguidos')" title="Seguidos">
+        <div class="nav-act-ic nav-ic-seguidos">
+          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7"    r="2.2" fill="currentColor"/>
+            <circle cx="7" cy="1.5"  r="1.1" fill="currentColor" opacity=".55"/>
+            <circle cx="7" cy="12.5" r="1.1" fill="currentColor" opacity=".55"/>
+            <circle cx="1.5" cy="7"  r="1.1" fill="currentColor" opacity=".55"/>
+            <circle cx="12.5" cy="7" r="1.1" fill="currentColor" opacity=".55"/>
+            <circle cx="3"  cy="3"   r=".9"  fill="currentColor" opacity=".3"/>
+            <circle cx="11" cy="3"   r=".9"  fill="currentColor" opacity=".3"/>
+            <circle cx="3"  cy="11"  r=".9"  fill="currentColor" opacity=".3"/>
+            <circle cx="11" cy="11"  r=".9"  fill="currentColor" opacity=".3"/>
+          </svg>
+        </div>
+        <span class="nav-act-lbl">Seguidos</span>
+      </button>
+      <!-- Mensajes -->
+      <button class="nav-act-btn" onclick="sfSelectTab('mensajes')" title="Mensajes directos">
+        <div class="nav-act-ic nav-ic-msgs">
+          <svg width="16" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </div>
+        <span class="nav-act-lbl">Mensajes</span>
       </button>
     </div>
 
@@ -2647,25 +2733,6 @@ body.on-congress #social-footer.visible { display:flex; }
           <span id="nav-umenu-butaca">Sin verificar</span>
         </div>
         <button class="nav-umenu-item" onclick="abrirMiPerfil();closeUserPill()">👤 Mi perfil</button>
-        <div class="nav-umenu-sep"></div>
-        <div class="nav-umenu-section">Mi comunidad</div>
-        <button class="nav-umenu-item" id="nav-umenu-propuestas" onclick="abrirSocialTab('propuestas')">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0;opacity:.7"><rect x="1" y="1" width="12" height="2.5" rx="1" fill="currentColor" opacity=".5"/><rect x="1" y="5.5" width="9" height="2" rx="1" fill="currentColor"/><rect x="1" y="9.5" width="7" height="2" rx="1" fill="currentColor" opacity=".7"/></svg>
-          Mis propuestas
-        </button>
-        <button class="nav-umenu-item" id="nav-umenu-seguidores" onclick="abrirSocialTab('seguidores')">
-          <svg width="15" height="14" viewBox="0 0 15 14" fill="none" style="flex-shrink:0;opacity:.7"><circle cx="3.5" cy="7" r="1.8" fill="currentColor"/><path d="M7 4 A4.2 4.2 0 0 1 7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M9.8 2 A7 7 0 0 1 9.8 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
-          Seguidores
-        </button>
-        <button class="nav-umenu-item" id="nav-umenu-seguidos" onclick="abrirSocialTab('seguidos')">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0;opacity:.7"><circle cx="7" cy="7" r="2.2" fill="currentColor"/><circle cx="7" cy="1.5" r="1.2" fill="currentColor" opacity=".6"/><circle cx="7" cy="12.5" r="1.2" fill="currentColor" opacity=".6"/><circle cx="1.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/><circle cx="12.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/></svg>
-          Seguidos
-        </button>
-        <button class="nav-umenu-item" id="nav-umenu-mensajes" onclick="abrirSocialTab('mensajes')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0;opacity:.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Mensajes
-        </button>
-        <div class="nav-umenu-sep"></div>
         <button class="nav-umenu-item danger" onclick="cerrarSesion();closeUserPill()">↩ Salir</button>
       </div>
     </div>
@@ -5175,9 +5242,13 @@ async function _onLogin(user) {
     // Siempre usar la butaca del perfil (sobrevive al borrado de localStorage)
     vpAplicarButacaEnUI(profile.seat_number)
     localStorage.setItem('cabildoos_butaca', profile.seat_number)
-    // Mostrar action buttons + quitar observer mode
+    // Mostrar action buttons, grupo separador y social buttons
     const actBtns = document.getElementById('nav-action-btns')
     if (actBtns) actBtns.style.display = 'flex'
+    const grpSep = document.getElementById('nav-group-sep')
+    if (grpSep) grpSep.style.display = 'block'
+    const socBtns = document.getElementById('nav-social-btns')
+    if (socBtns) socBtns.style.display = 'flex'
     const seatLbl = document.getElementById('nav-seat-lbl')
     if (seatLbl) seatLbl.textContent = '#' + profile.seat_number
     const butacaInfo = document.getElementById('nav-umenu-butaca')
@@ -5218,6 +5289,10 @@ function _onLogout() {
   if (udiv) udiv.style.display = 'none'
   const actBtns = document.getElementById('nav-action-btns')
   if (actBtns) actBtns.style.display = 'none'
+  const grpSep2 = document.getElementById('nav-group-sep')
+  if (grpSep2) grpSep2.style.display = 'none'
+  const socBtns2 = document.getElementById('nav-social-btns')
+  if (socBtns2) socBtns2.style.display = 'none'
   // Observer mode
   observerMode = true
   document.getElementById('observer-banner').classList.add('show')
@@ -8749,10 +8824,12 @@ function mostrarFooter() {
 document.addEventListener('click', (e) => {
   if (!sfActiveTab) return
   if (e.target.closest('#social-footer')) return
-  if (e.target.closest('#nav-umenu')) return   // no cerrar cuando se abre desde el dropdown
+  if (e.target.closest('#nav-umenu')) return      // no cerrar cuando se abre desde el dropdown
+  if (e.target.closest('.nav-act-btn')) return   // no cerrar al clickear un botón del nav
   sfActiveTab = null
   document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
   document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
+  document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
 })
 
 function sfSelectTab(tab) {
@@ -8768,6 +8845,13 @@ function sfSelectTab(tab) {
   sfActiveTab = tab
   document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
   document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.toggle('open', p.dataset.tab === tab))
+  // Resaltar botón del nav correspondiente
+  document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
+  const activeNavBtn = document.querySelector(`#nav-social-btns .nav-act-btn[title]`)
+  document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => {
+    const titleMap = { propuestas:'Mis propuestas', seguidores:'Seguidores', seguidos:'Seguidos', mensajes:'Mensajes directos' }
+    b.classList.toggle('active-tab', b.title === titleMap[tab])
+  })
 
   if (tab === 'propuestas') renderPropuestas()
   if (tab === 'seguidores') renderSocial('seguidores')
@@ -8784,6 +8868,7 @@ function abrirSocialTab(tab) {
 function cerrarSocialPanel() {
   sfActiveTab = null
   document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
+  document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
 }
 
 async function renderPropuestas() {
