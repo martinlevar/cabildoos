@@ -1275,8 +1275,11 @@ select option { background: var(--surface); }
       <!-- Pendientes de aprobación -->
       <div class="table-card" style="margin-bottom:20px">
         <div class="table-header">
-          <span class="table-title">Propuestas ciudadanas <span class="table-count">pendientes de revisión</span></span>
-          <span class="badge pending" id="badge-pend-label" style="display:none"></span>
+          <span>
+            <span class="table-title">Propuestas ciudadanas</span>
+            <span class="table-count" id="prop-count-label">cargando…</span>
+          </span>
+          <button class="btn btn-ghost btn-sm" onclick="cargarPropuestasCiudadanas()">↺ Actualizar</button>
         </div>
         <table>
           <thead>
@@ -1284,50 +1287,13 @@ select option { background: var(--surface); }
               <th>Propuesta</th>
               <th>Categoría</th>
               <th>Butaca</th>
+              <th style="text-align:center">♥ Likes</th>
               <th>Fecha</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody id="tb-prop-pendientes">
-            <tr>
-              <td style="max-width:360px">¿Debería garantizarse el derecho a internet como servicio público universal en Venezuela?</td>
-              <td><span class="tag">Derechos</span></td>
-              <td class="mono">#892</td>
-              <td class="mono text-muted">23 jul</td>
-              <td>
-                <div class="action-row">
-                  <button class="btn btn-green btn-sm" onclick="accionPregunta(this, 'aprobar')">✓ Aprobar</button>
-                  <button class="btn btn-ghost btn-sm" onclick="accionPregunta(this, 'editar')">✎ Editar</button>
-                  <button class="btn btn-red btn-sm" onclick="accionPregunta(this, 'rechazar')">✗ Rechazar</button>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="max-width:360px">¿Considera necesaria la amnistía total como condición para una transición pacífica?</td>
-              <td><span class="tag">Justicia</span></td>
-              <td class="mono">#1204</td>
-              <td class="mono text-muted">22 jul</td>
-              <td>
-                <div class="action-row">
-                  <button class="btn btn-green btn-sm" onclick="accionPregunta(this, 'aprobar')">✓ Aprobar</button>
-                  <button class="btn btn-ghost btn-sm" onclick="accionPregunta(this, 'editar')">✎ Editar</button>
-                  <button class="btn btn-red btn-sm" onclick="accionPregunta(this, 'rechazar')">✗ Rechazar</button>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="max-width:360px">¿Debería la diáspora venezolana tener representación proporcional en la AN?</td>
-              <td><span class="tag">Política</span></td>
-              <td class="mono">#533</td>
-              <td class="mono text-muted">21 jul</td>
-              <td>
-                <div class="action-row">
-                  <button class="btn btn-green btn-sm" onclick="accionPregunta(this, 'aprobar')">✓ Aprobar</button>
-                  <button class="btn btn-ghost btn-sm" onclick="accionPregunta(this, 'editar')">✎ Editar</button>
-                  <button class="btn btn-red btn-sm" onclick="accionPregunta(this, 'rechazar')">✗ Rechazar</button>
-                </div>
-              </td>
-            </tr>
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Cargando propuestas…</td></tr>
           </tbody>
         </table>
       </div>
@@ -2012,7 +1978,7 @@ function navTo(id, el) {
   if (id === 'hemiciclo')     setTimeout(drawAdminHemi, 50)
   if (id === 'verificadores') cargarVerificadores()
   if (id === 'identidades')   cargarIdentidades()
-  if (id === 'preguntas')     cargarPreguntas()
+  if (id === 'preguntas')     { cargarPreguntas(); cargarPropuestasCiudadanas(); }
   if (id === 'categorias')    cargarCategorias()
   if (id === 'dashboard')     cargarStats()
   if (id === 'seguimiento')   cargarSeguimiento()
@@ -2931,7 +2897,9 @@ function _renderAgenda() {
         const durDisplay = durMin < 60 ? `${durMin}min` : durMin % 60 === 0 ? `${durMin/60}h` : `${Math.floor(durMin/60)}h ${durMin%60}min`
         return `<tr>
           <td class="mono text-muted">${String(i+1).padStart(2,'0')}</td>
-          <td style="max-width:320px">${q.text}</td>
+          <td style="max-width:320px">
+            ${q.proposed_by_seat ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;background:rgba(245,166,35,.12);color:var(--accent);border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:2px 7px;margin-bottom:5px">💡 Propuesta · Butaca #${q.proposed_by_seat}</span><br>` : ''}${q.text}
+          </td>
           <td><span class="tag">${q.category || '—'}</span></td>
           <td>
             <div style="display:flex;align-items:center;gap:6px">
@@ -2998,6 +2966,83 @@ async function cargarPreguntas() {
 
   // Tabla agenda — delegar al renderer filtrable
   _renderAgenda()
+}
+
+// ── PROPUESTAS CIUDADANAS (tabla proposals) ──
+async function cargarPropuestasCiudadanas() {
+  const tbody = document.getElementById('tb-prop-pendientes')
+  const countLabel = document.getElementById('prop-count-label')
+  if (!tbody) return
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Cargando…</td></tr>'
+
+  const { data, error } = await sb.from('proposals')
+    .select('*')
+    .eq('status', 'pending')
+    .order('likes', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:16px">${error.message}</td></tr>`
+    return
+  }
+
+  if (countLabel) countLabel.textContent = (data?.length || 0) + ' pendientes'
+
+  const badge = document.getElementById('badge-preguntas')
+  if (badge) {
+    badge.textContent = data?.length || 0
+    badge.style.display = (data?.length > 0) ? '' : 'none'
+  }
+
+  if (!data?.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sin propuestas pendientes</td></tr>'
+    return
+  }
+
+  tbody.innerHTML = data.map(p => {
+    const date = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    return `<tr>
+      <td style="max-width:340px">${p.text}</td>
+      <td><span class="tag">${p.cat || '—'}</span></td>
+      <td class="mono">#${p.seat_number}</td>
+      <td style="text-align:center;font-weight:700;color:${p.likes > 0 ? 'var(--accent)' : 'var(--muted)'}">${p.likes}</td>
+      <td class="mono text-muted">${date}</td>
+      <td>
+        <div class="action-row">
+          <button class="btn btn-green btn-sm" onclick="aprobarPropuestaDB('${p.id}',${p.seat_number},this)">✓ Aprobar</button>
+          <button class="btn btn-red btn-sm"   onclick="rechazarPropuestaDB('${p.id}',this)">✗ Rechazar</button>
+        </div>
+      </td>
+    </tr>`
+  }).join('')
+}
+
+async function aprobarPropuestaDB(id, seatNum, btn) {
+  btn.disabled = true
+  btn.textContent = '…'
+  try {
+    const { data: qId, error } = await sb.rpc('approve_proposal', {
+      p_proposal_id: id,
+      p_duration_min: 1440
+    })
+    if (error) throw error
+    toast(`Propuesta de Butaca #${seatNum} aprobada → agregada a agenda`)
+    cargarPropuestasCiudadanas()
+    cargarPreguntas()
+  } catch(e) {
+    toast('Error: ' + (e.message || 'intente de nuevo'))
+    btn.disabled = false
+    btn.textContent = '✓ Aprobar'
+  }
+}
+
+async function rechazarPropuestaDB(id, btn) {
+  btn.disabled = true
+  btn.textContent = '…'
+  const { error } = await sb.from('proposals').update({ status: 'rejected' }).eq('id', id)
+  if (error) { toast('Error: ' + error.message); btn.disabled = false; btn.textContent = '✗ Rechazar'; return }
+  toast('Propuesta rechazada')
+  cargarPropuestasCiudadanas()
 }
 
 async function crearPregunta() {

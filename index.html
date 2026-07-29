@@ -1622,66 +1622,128 @@ html, body {
 /* ── PROPONER PREGUNTA MODAL ── */
 #propuesta-overlay {
   position:fixed; inset:0; z-index:900;
-  background:rgba(29,29,29,.42); backdrop-filter:blur(5px);
+  background:rgba(4,4,10,.7); backdrop-filter:blur(10px);
   display:flex; align-items:center; justify-content:center;
-  opacity:0; pointer-events:none; transition:opacity .2s;
+  opacity:0; pointer-events:none; transition:opacity .22s;
 }
 #propuesta-overlay.open { opacity:1; pointer-events:all; }
 #propuesta-panel {
-  background:#fff; border-radius:22px;
-  width:420px; padding:28px 28px 24px;
-  box-shadow:0 24px 64px rgba(0,0,0,.18);
-  transform:translateY(14px);
-  transition:transform .26s cubic-bezier(.4,0,.2,1);
-  position:relative;
+  background:#0D0D16;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:22px;
+  width:480px; max-width:calc(100vw - 32px);
+  box-shadow:0 40px 100px rgba(0,0,0,.75);
+  transform:translateY(18px) scale(.98);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  position:relative; overflow:hidden;
 }
-#propuesta-overlay.open #propuesta-panel { transform:translateY(0); }
-.pp-title { font-size:18px; font-weight:700; color:var(--dark); margin-bottom:4px; }
-.pp-sub   { font-size:13px; color:var(--mid); margin-bottom:20px; line-height:1.45; }
+#propuesta-overlay.open #propuesta-panel { transform:translateY(0) scale(1); }
+
+.pp-header {
+  padding:22px 24px 18px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+}
+.pp-eyebrow {
+  font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--orange); margin-bottom:6px;
+  display:flex; align-items:center; gap:7px;
+}
+.pp-eyebrow::before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--orange); animation:pp-pulse 2s infinite; }
+@keyframes pp-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.pp-title { font-size:21px; font-weight:800; color:#f0f0f5; letter-spacing:-.5px; font-family:'Space Grotesk',sans-serif; margin:0; }
+.pp-close {
+  width:32px; height:32px; border-radius:50%;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.45); font-size:18px; line-height:1;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:all .15s;
+}
+.pp-close:hover { background:rgba(255,255,255,.12); color:#f0f0f5; }
+
+.pp-body { padding:20px 24px 18px; }
+.pp-area-wrap { position:relative; }
 .pp-area {
   width:100%; box-sizing:border-box;
-  border:1.5px solid rgba(0,0,0,.11); border-radius:12px;
-  padding:14px 14px 10px; background:var(--bg);
-  font-family:inherit; font-size:14px; line-height:1.55; color:var(--dark);
-  resize:none; min-height:110px; outline:none;
+  border:1.5px solid rgba(255,255,255,.09); border-radius:14px;
+  padding:14px 14px 38px; background:rgba(255,255,255,.04);
+  font-family:'Manrope',sans-serif; font-size:14px; line-height:1.6;
+  color:#e0e0ea; resize:none; min-height:120px; outline:none;
   transition:border-color .2s, background .2s;
 }
-.pp-area:focus { border-color:var(--orange); background:#fff; }
-.pp-char { text-align:right; font-size:11px; color:var(--mid); margin:5px 0 18px; }
-.pp-cat-lbl { font-size:11px; font-weight:700; color:var(--mid); letter-spacing:.06em; text-transform:uppercase; margin-bottom:10px; }
-.pp-cats  { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+.pp-area::placeholder { color:rgba(255,255,255,.2); }
+.pp-area:focus { border-color:rgba(247,106,30,.5); background:rgba(247,106,30,.025); }
+.pp-char-badge {
+  position:absolute; bottom:12px; right:14px;
+  font-size:11px; font-weight:700; font-family:'Space Grotesk',sans-serif;
+  color:rgba(255,255,255,.25); transition:color .2s; pointer-events:none;
+}
+.pp-char-badge.warn { color:var(--orange); }
+.pp-char-badge.over { color:#ef4444; }
+
+.pp-section-lbl {
+  font-size:11px; font-weight:700; color:rgba(255,255,255,.3);
+  letter-spacing:.08em; text-transform:uppercase; margin:18px 0 10px;
+}
+.pp-cats { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:0; }
 .pp-cat {
-  padding:5px 13px; border-radius:20px;
-  border:1.5px solid rgba(0,0,0,.11);
-  font-family:inherit; font-size:12px; font-weight:600; color:var(--mid);
-  background:none; cursor:pointer; transition:all .15s;
+  padding:5px 14px; border-radius:20px;
+  border:1.5px solid rgba(255,255,255,.1);
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:600;
+  color:rgba(255,255,255,.4); background:none; cursor:pointer; transition:all .15s;
 }
-.pp-cat:hover { border-color:var(--orange); color:var(--orange); }
-.pp-cat.sel { border-color:var(--orange); color:var(--orange); background:rgba(247,106,30,.08); }
-.pp-note {
-  background:rgba(247,106,30,.07);
-  border-left:3px solid var(--orange);
-  border-radius:0 10px 10px 0;
-  padding:11px 14px; margin-bottom:20px;
-  font-size:12px; color:var(--mid); line-height:1.55;
+.pp-cat:hover { border-color:rgba(247,106,30,.4); color:rgba(247,106,30,.8); }
+.pp-cat.sel { border-color:var(--orange); color:var(--orange); background:rgba(247,106,30,.1); }
+
+.pp-note-bar {
+  margin-top:18px; padding:11px 14px;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; font-size:12px; color:rgba(255,255,255,.32); line-height:1.55;
+  display:flex; align-items:flex-start; gap:9px;
 }
-.pp-note b { color:var(--orange); }
-.pp-footer { display:flex; gap:10px; }
+.pp-note-bar .pp-note-icon { font-size:14px; flex-shrink:0; margin-top:1px; opacity:.6; }
+
+.pp-footer {
+  padding:14px 24px 20px;
+  border-top:1px solid rgba(255,255,255,.06);
+  display:flex; gap:10px;
+}
 .pp-btn-cancel {
-  flex:1; padding:12px; background:none;
-  border:1.5px solid rgba(0,0,0,.12); border-radius:12px;
-  font-family:inherit; font-size:14px; font-weight:600; color:var(--mid);
-  cursor:pointer; transition:all .15s;
+  padding:11px 20px; background:none;
+  border:1.5px solid rgba(255,255,255,.1); border-radius:12px;
+  font-family:'Manrope',sans-serif; font-size:14px; font-weight:600;
+  color:rgba(255,255,255,.35); cursor:pointer; transition:all .15s;
 }
-.pp-btn-cancel:hover { border-color:var(--dark); color:var(--dark); }
+.pp-btn-cancel:hover { border-color:rgba(255,255,255,.25); color:rgba(255,255,255,.65); }
 .pp-btn-send {
-  flex:2; padding:12px;
+  flex:1; padding:11px;
   background:var(--orange); color:#fff; border:none; border-radius:12px;
-  font-family:inherit; font-size:14px; font-weight:700;
-  cursor:pointer; transition:opacity .15s;
+  font-family:'Manrope',sans-serif; font-size:14px; font-weight:700;
+  cursor:pointer; transition:opacity .15s, transform .12s;
+  display:flex; align-items:center; justify-content:center; gap:8px;
 }
-.pp-btn-send:hover { opacity:.88; }
-.pp-btn-send:disabled { opacity:.35; cursor:not-allowed; }
+.pp-btn-send:hover:not(:disabled) { opacity:.9; transform:translateY(-1px); }
+.pp-btn-send:disabled { opacity:.28; cursor:not-allowed; transform:none; }
+
+/* Prop cards en social footer */
+.prop-card-v2 {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:12px; padding:12px 14px; margin-bottom:10px;
+}
+.prop-card-v2:last-child { margin-bottom:0; }
+.prop-card-v2-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.prop-card-v2-text { font-size:13px; font-weight:600; color:var(--dark); line-height:1.45; flex:1; }
+.prop-status-pill {
+  flex-shrink:0; font-size:10px; font-weight:700; letter-spacing:.05em;
+  padding:3px 9px; border-radius:20px; white-space:nowrap;
+}
+.prop-status-pill.pending  { background:rgba(247,106,30,.15); color:var(--orange); }
+.prop-status-pill.approved { background:rgba(34,197,94,.12); color:#16a34a; }
+.prop-status-pill.rejected { background:rgba(239,68,68,.1); color:#dc2626; }
+.prop-card-v2-meta { display:flex; align-items:center; gap:12px; }
+.prop-cat-tag { font-size:11px; color:var(--mid); font-weight:600; }
+.prop-likes { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--mid); font-weight:600; }
+.prop-likes svg { color:rgba(247,106,30,.7); }
 
 /* ══════════════════════════════════════════════════════════════
    VERIFY IDENTITY OVERLAY
@@ -2576,31 +2638,44 @@ body.on-landing #social-footer.visible { display:flex; }
 <!-- ══════════════ PROPONER PREGUNTA ══════════════ -->
 <div id="propuesta-overlay" onclick="if(event.target===this)cerrarPropuesta()">
   <div id="propuesta-panel">
-    <button class="mp-close" onclick="cerrarPropuesta()">×</button>
-    <p class="pp-title">Proponer pregunta</p>
-    <p class="pp-sub">Tu propuesta llega al comité del hemiciclo. Tus seguidores también podrán responderla como micro-encuesta antes de que llegue al pleno.</p>
 
-    <textarea class="pp-area" id="pp-text" placeholder="¿Debería Venezuela...?" maxlength="280" oninput="actualizarPropuesta()"></textarea>
-    <p class="pp-char"><span id="pp-char-n">0</span> / 280</p>
-
-    <p class="pp-cat-lbl">Categoría</p>
-    <div class="pp-cats">
-      <button class="pp-cat" onclick="selCat(this)">Política</button>
-      <button class="pp-cat" onclick="selCat(this)">Economía</button>
-      <button class="pp-cat" onclick="selCat(this)">Derechos</button>
-      <button class="pp-cat" onclick="selCat(this)">Social</button>
-      <button class="pp-cat" onclick="selCat(this)">Internacional</button>
-      <button class="pp-cat" onclick="selCat(this)">Justicia</button>
+    <div class="pp-header">
+      <div>
+        <div class="pp-eyebrow">Hemiciclo · Pleno</div>
+        <p class="pp-title">Proponer pregunta</p>
+      </div>
+      <button class="pp-close" onclick="cerrarPropuesta()">×</button>
     </div>
 
-    <div class="pp-note">
-      <b>Micro-encuesta para tus seguidores:</b> quienes te siguen podrán votar esta pregunta en su perfil, generando señal antes de llegar al pleno.
+    <div class="pp-body">
+      <div class="pp-area-wrap">
+        <textarea class="pp-area" id="pp-text" placeholder="¿Debería...?" maxlength="280" oninput="actualizarPropuesta()"></textarea>
+        <span class="pp-char-badge" id="pp-char-badge">0/280</span>
+      </div>
+
+      <p class="pp-section-lbl">Categoría</p>
+      <div class="pp-cats">
+        <button class="pp-cat" onclick="selCat(this)">Política</button>
+        <button class="pp-cat" onclick="selCat(this)">Economía</button>
+        <button class="pp-cat" onclick="selCat(this)">Derechos</button>
+        <button class="pp-cat" onclick="selCat(this)">Social</button>
+        <button class="pp-cat" onclick="selCat(this)">Internacional</button>
+        <button class="pp-cat" onclick="selCat(this)">Justicia</button>
+      </div>
+
+      <div class="pp-note-bar">
+        <span class="pp-note-icon">♡</span>
+        <span>Tus seguidores podrán darle ♥ a tu propuesta. El admin las ve ordenadas por apoyo — más likes, más arriba.</span>
+      </div>
     </div>
 
     <div class="pp-footer">
       <button class="pp-btn-cancel" onclick="cerrarPropuesta()">Cancelar</button>
-      <button class="pp-btn-send" id="pp-submit" onclick="enviarPropuesta()" disabled>Proponer →</button>
+      <button class="pp-btn-send" id="pp-submit" onclick="enviarPropuesta()" disabled>
+        Proponer al pleno →
+      </button>
     </div>
+
   </div>
 </div>
 
@@ -7274,32 +7349,50 @@ function cerrarPropuesta() {
 }
 function actualizarPropuesta() {
   const n = document.getElementById('pp-text').value.length
-  document.getElementById('pp-char-n').textContent = n
+  const badge = document.getElementById('pp-char-badge')
+  if (badge) {
+    badge.textContent = n + '/280'
+    badge.className = 'pp-char-badge' + (n > 250 ? ' warn' : '') + (n >= 280 ? ' over' : '')
+  }
   document.getElementById('pp-submit').disabled = n < 10
 }
 function selCat(btn) {
   document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
   btn.classList.add('sel')
 }
-function enviarPropuesta() {
+async function enviarPropuesta() {
   const text = document.getElementById('pp-text').value.trim()
   const catEl = document.querySelector('.pp-cat.sel')
   const cat = catEl ? catEl.textContent : 'General'
 
-  const idx = proposals.length
-  proposals.push({ text, cat, si: 0, no: 0, abs: 0, status: 'En revisión' })
+  if (!text || text.length < 10) return
+  if (!MY_SEAT || MY_SEAT <= 0) { showToast('Necesitás una butaca verificada para proponer'); return }
+
+  const btn = document.getElementById('pp-submit')
+  btn.disabled = true
+  btn.textContent = 'Enviando…'
+
+  const { error } = await sb.from('proposals').insert({
+    seat_number: MY_SEAT,
+    text,
+    cat,
+    likes: 0,
+    status: 'pending'
+  })
+
+  if (error) {
+    showToast('Error al enviar: ' + (error.message || 'intente de nuevo'))
+    btn.disabled = false
+    btn.textContent = 'Proponer al pleno →'
+    return
+  }
 
   cerrarPropuesta()
   document.getElementById('pp-text').value = ''
-  document.getElementById('pp-char-n').textContent = '0'
-  document.getElementById('pp-submit').disabled = true
+  actualizarPropuesta()
   document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
-
   mostrarFooter()
   showToast('✓ Propuesta enviada al comité')
-
-  // Simulate followers responding over next ~15s
-  setTimeout(() => simularRespuestasSeguidores(idx), 2000)
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -8350,64 +8443,50 @@ function sfSelectTab(tab) {
   document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
   document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.toggle('open', p.dataset.tab === tab))
 
-  if (tab === 'propuestas') renderPropuestas()
+  if (tab === 'propuestas') renderPropuestas()   // async, fire-and-forget
   if (tab === 'seguidores') renderSocial('seguidores')
   if (tab === 'seguidos')   renderSocial('seguidos')
 }
 
-function renderPropuestas() {
+async function renderPropuestas() {
   const el = document.getElementById('sf-propuestas-list')
-  if (!proposals.length) {
-    el.innerHTML = '<p class="sf-empty">Todavía no tenés propuestas.</p>'
+  el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
+
+  if (!MY_SEAT || MY_SEAT <= 0) {
+    el.innerHTML = '<p class="sf-empty">Necesitás una butaca para proponer preguntas.</p>'
     return
   }
-  el.innerHTML = proposals.map((p, i) => {
-    const total = p.si + p.no + p.abs || 1
-    const psi = Math.round(p.si / total * 100)
-    const pno = Math.round(p.no / total * 100)
-    const statusClass = p.status === 'En revisión' ? 'revision' : p.status === 'Activa' ? 'activa' : 'pleno'
-    return `
-    <div class="prop-card" id="prop-card-${i}">
-      <div class="prop-card-top">
-        <p class="prop-q">${p.text}</p>
-        <span class="prop-status ${statusClass}">${p.status}</span>
+
+  const { data, error } = await sb.from('proposals')
+    .select('*')
+    .eq('seat_number', MY_SEAT)
+    .order('created_at', { ascending: false })
+
+  if (error || !data?.length) {
+    el.innerHTML = '<p class="sf-empty">Todavía no tenés propuestas.<br><span style="font-size:11px;opacity:.55">Hacé click en "Proponer" para enviar una pregunta al pleno.</span></p>'
+    return
+  }
+
+  const statusLabel = { pending: 'En revisión', approved: '✓ Aprobada', rejected: 'Rechazada' }
+  const statusClass = { pending: 'pending', approved: 'approved', rejected: 'rejected' }
+
+  el.innerHTML = data.map(p => {
+    const date = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    return `<div class="prop-card-v2">
+      <div class="prop-card-v2-top">
+        <p class="prop-card-v2-text">${p.text.length > 90 ? p.text.slice(0,90) + '…' : p.text}</p>
+        <span class="prop-status-pill ${statusClass[p.status] || 'pending'}">${statusLabel[p.status] || 'En revisión'}</span>
       </div>
-      <div class="prop-poll">
-        <div class="prop-poll-row">
-          <span class="prop-poll-lbl si">SÍ</span>
-          <div class="prop-poll-bar-bg"><div class="prop-poll-bar si" id="pb-si-${i}" style="width:0%"></div></div>
-          <span class="prop-poll-pct">${psi}%</span>
-        </div>
-        <div class="prop-poll-row">
-          <span class="prop-poll-lbl no">NO</span>
-          <div class="prop-poll-bar-bg"><div class="prop-poll-bar no" id="pb-no-${i}" style="width:0%"></div></div>
-          <span class="prop-poll-pct">${pno}%</span>
-        </div>
-        <p class="prop-poll-total">${p.si + p.no + p.abs} respuestas de tus seguidores</p>
+      <div class="prop-card-v2-meta">
+        <span class="prop-cat-tag">${p.cat}</span>
+        <span class="prop-likes">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          ${p.likes}
+        </span>
+        <span style="font-size:11px;color:var(--mid);margin-left:auto">${date}</span>
       </div>
-      <button class="prop-share" onclick="compartirPropuesta(${i})">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-          <polyline points="16 6 12 2 8 6"/>
-          <line x1="12" y1="2" x2="12" y2="15"/>
-        </svg>
-        Compartir micro-encuesta
-      </button>
     </div>`
   }).join('')
-
-  // Animate bars after render
-  setTimeout(() => {
-    proposals.forEach((p, i) => {
-      const total = p.si + p.no + p.abs || 1
-      const psi = Math.round(p.si / total * 100)
-      const pno = Math.round(p.no / total * 100)
-      const bsi = document.getElementById(`pb-si-${i}`)
-      const bno = document.getElementById(`pb-no-${i}`)
-      if (bsi) bsi.style.width = psi + '%'
-      if (bno) bno.style.width = pno + '%'
-    })
-  }, 60)
 }
 
 function compartirPropuesta(i) {
