@@ -2263,7 +2263,7 @@ body.on-congress #social-footer.visible { display:flex; }
 }
 .cong-dd-item:last-child { border-bottom:none; }
 .cong-dd-item:hover:not(.cong-disabled) { background:var(--bg); }
-.cong-dd-item.cong-disabled { opacity:.4; pointer-events:none; }
+.cong-dd-item.cong-disabled { opacity:.42; cursor:default; }
 .cong-flag-ic { width:24px; height:24px; border-radius:5px; overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:14px; background:var(--bg); flex-shrink:0; }
 .cong-item-txt p  { font-size:13px; font-weight:600; color:var(--dark); line-height:1.2; }
 .cong-item-txt span { font-size:11px; color:var(--mid); }
@@ -2475,6 +2475,81 @@ body.on-congress #social-footer.visible { display:flex; }
   background:none; cursor:pointer; flex-shrink:0; transition:all .15s;
 }
 .sf-soc-btn:hover { border-color:var(--orange); color:var(--orange); }
+
+/* ══════════════════════════════════════════════════════════
+   INTRO SCREEN — fondo azul + hemiciclo votando
+══════════════════════════════════════════════════════════ */
+#intro {
+  background: #040C1E;
+  overflow: hidden;
+}
+#intro-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
+.intro-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 90% 70% at 50% 108%,
+    rgba(37,99,235,.20) 0%,
+    rgba(30,64,175,.07) 45%,
+    transparent 70%);
+}
+.intro-ui {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  pointer-events: none;
+}
+.intro-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 22px 28px;
+}
+.intro-logo {
+  font-size: 18px; font-weight: 800; letter-spacing: -.5px;
+  color: #fff; opacity: .92;
+}
+.intro-flag-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 13px; border-radius: 20px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  font-size: 12px; font-weight: 600; color: rgba(255,255,255,.5);
+  pointer-events: all; cursor: default;
+}
+.intro-bottom {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding-bottom: clamp(36px, 8vh, 72px);
+  gap: 18px; pointer-events: all;
+}
+.intro-tagline {
+  font-size: 11.5px; font-weight: 600;
+  color: rgba(255,255,255,.28);
+  letter-spacing: .12em; text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.intro-ctas {
+  display: flex; gap: 10px; align-items: center;
+}
+.intro-btn-primary {
+  padding: 13px 28px; border-radius: 11px;
+  background: linear-gradient(135deg, #f76a1e 0%, #e2560c 100%);
+  color: #fff; font-family: inherit; font-size: 14px; font-weight: 700;
+  border: none; cursor: pointer;
+  box-shadow: 0 2px 24px rgba(247,106,30,.35);
+  transition: opacity .15s, transform .15s;
+}
+.intro-btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+.intro-btn-ghost {
+  padding: 13px 22px; border-radius: 11px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.75); font-family: inherit;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; backdrop-filter: blur(8px);
+  transition: all .15s;
+}
+.intro-btn-ghost:hover { background: rgba(255,255,255,.13); color: #fff; }
 </style>
 </head>
 <body>
@@ -2593,8 +2668,27 @@ body.on-congress #social-footer.visible { display:flex; }
   </div>
 </div>
 
+<!-- ══════════════ INTRO ══════════════ -->
+<div class="screen active" id="intro">
+  <canvas id="intro-canvas"></canvas>
+  <div class="intro-glow"></div>
+  <div class="intro-ui">
+    <div class="intro-topbar">
+      <span class="intro-logo">cabildoOS</span>
+      <div class="intro-flag-pill">🇻🇪 Venezuela</div>
+    </div>
+    <div class="intro-bottom">
+      <p class="intro-tagline">Cabildo digital · Anónimo · Verificado</p>
+      <div class="intro-ctas">
+        <button class="intro-btn-primary" onclick="abrirAuth('registro')">Crear mi butaca →</button>
+        <button class="intro-btn-ghost" onclick="abrirAuth('login')">Ya tengo cuenta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ CONGRESS ══════════════ -->
-<div class="screen active" id="congress">
+<div class="screen" id="congress">
   <nav class="nav">
     <!-- Logo -->
     <span class="nav-logo">cabildoOS</span>
@@ -2612,17 +2706,17 @@ body.on-congress #social-footer.visible { display:flex; }
           <div class="cong-item-txt"><p>Venezuela</p><span>Activo</span></div>
           <span class="cong-badge cong-badge-on">● Activo</span>
         </div>
-        <div class="cong-dd-item cong-disabled">
+        <div class="cong-dd-item cong-disabled" onclick="showToast('🇦🇷 Argentina — próximamente · inscribite para ser notificado')">
           <div class="cong-flag-ic">🇦🇷</div>
           <div class="cong-item-txt"><p>Argentina</p><span>Próximamente</span></div>
           <span class="cong-badge cong-badge-off">Aplicar</span>
         </div>
-        <div class="cong-dd-item cong-disabled">
+        <div class="cong-dd-item cong-disabled" onclick="showToast('🇨🇴 Colombia — próximamente · inscribite para ser notificado')">
           <div class="cong-flag-ic">🇨🇴</div>
           <div class="cong-item-txt"><p>Colombia</p><span>Próximamente</span></div>
           <span class="cong-badge cong-badge-off">Aplicar</span>
         </div>
-        <div class="cong-dd-item cong-disabled">
+        <div class="cong-dd-item cong-disabled" onclick="showToast('🌐 Diáspora — próximamente · inscribite para ser notificado')">
           <div class="cong-flag-ic">🌐</div>
           <div class="cong-item-txt"><p>Diáspora</p><span>Próximamente</span></div>
           <span class="cong-badge cong-badge-off">Aplicar</span>
@@ -5147,12 +5241,16 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active')
   document.body.classList.toggle('on-landing',  id === 'landing')
   document.body.classList.toggle('on-congress', id === 'congress')
+  document.body.classList.toggle('on-intro',    id === 'intro')
   // Collapse panel when leaving landing
   if (id !== 'landing') {
     sfActiveTab = null
     document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
     document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
   }
+  // Intro animation lifecycle
+  if (id === 'intro') _startIntroAnim()
+  else               _stopIntroAnim()
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -5186,6 +5284,9 @@ let _authProfile = null  // perfil (alias, seat_number)
 
 async function _onLogin(user) {
   _authUser = user
+  // Ir al congress inmediatamente
+  showScreen('congress')
+  resizeCanvas(); resetCamera()
   // Cargar perfil
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
   _authProfile = profile
@@ -5298,6 +5399,8 @@ function _onLogout() {
   document.getElementById('observer-banner').classList.add('show')
   // Ocultar social footer
   document.getElementById('social-footer').classList.remove('visible')
+  // Volver a la pantalla intro
+  showScreen('intro')
 }
 
 // ── Congress nav — dropdown de congresos ──
@@ -8632,11 +8735,183 @@ function showToast(msg) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  INTRO SCREEN — hemiciclo animado sobre fondo azul
+// ══════════════════════════════════════════════════════════════
+let _introRaf = null
+let _introRevealTimer = null
+let _introSeats = []
+let _introFrame = 0
+let _introCtx = null
+let _introCv = null
+
+function _initIntroCanvas() {
+  if (_introCv) return  // ya inicializado
+  _introCv = document.getElementById('intro-canvas')
+  if (!_introCv) return
+  _introCtx = _introCv.getContext('2d')
+  _resizeIntro()
+  window.addEventListener('resize', _resizeIntro)
+}
+
+function _resizeIntro() {
+  if (!_introCv) return
+  _introCv.width  = window.innerWidth
+  _introCv.height = window.innerHeight
+  _buildIntroSeats()
+}
+
+function _buildIntroSeats() {
+  _introSeats = []
+  const W = _introCv.width, H = _introCv.height
+  const cx = W / 2
+  const cy = H + H * 0.05        // centro del arco debajo de la pantalla
+  const scale = Math.min(W * 0.54, H * 0.84)
+  const innerR = scale * 0.40
+  const outerR = scale * 0.98
+  const nRows  = 9
+  const dotSp  = Math.max(10, W / 130)
+
+  for (let row = 0; row < nRows; row++) {
+    const t = row / (nRows - 1)
+    const r = innerR + t * (outerR - innerR)
+    const arcLen = Math.PI * r
+    const n = Math.round(arcLen / dotSp)
+    for (let i = 0; i < n; i++) {
+      const angle = Math.PI * i / (n - 1)
+      const x = cx - r * Math.cos(angle)
+      const y = cy - r * Math.sin(angle)
+      if (y > H * 0.02 && y < H * 0.97) {
+        _introSeats.push({ x, y, row, vote: 'neutral', revealed: false, glow: 0 })
+      }
+    }
+  }
+  // Marcar un asiento central como "mi butaca"
+  const midRow = Math.floor(nRows / 2)
+  const midSeats = _introSeats.filter(s => s.row === midRow)
+  const myS = midSeats[Math.floor(midSeats.length / 2)]
+  if (myS) myS.vote = 'me'
+}
+
+function _introAssignAndReveal() {
+  if (!_introRaf) return  // ya fue detenida
+  _introSeats.forEach(s => {
+    if (s.vote === 'me') return
+    const r = Math.random()
+    s.vote     = r < .56 ? 'si' : r < .82 ? 'no' : r < .94 ? 'abs' : 'neutral'
+    s.revealed = false
+    s.glow     = 0
+  })
+  const W = _introCv.width, H = _introCv.height
+  const cx = W / 2, cy = H + H * 0.05
+  const ordered = _introSeats
+    .filter(s => s.vote !== 'me')
+    .sort((a, b) => ((a.x-cx)**2+(a.y-cy)**2) - ((b.x-cx)**2+(b.y-cy)**2))
+  let i = 0
+  const batchSize = Math.max(6, Math.round(ordered.length / 90))
+  function tick() {
+    if (!_introRaf) return
+    for (let j = 0; j < batchSize && i < ordered.length; j++, i++) {
+      ordered[i].revealed = true
+      ordered[i].glow = 2.2
+    }
+    if (i < ordered.length) {
+      _introRevealTimer = setTimeout(tick, 28)
+    } else {
+      // Pausa 3.8 s y reinicia
+      _introRevealTimer = setTimeout(() => {
+        _introSeats.forEach(s => {
+          if (s.vote !== 'me') { s.vote = 'neutral'; s.revealed = false; s.glow = 0 }
+        })
+        _introRevealTimer = setTimeout(_introAssignAndReveal, 1400)
+      }, 3800)
+    }
+  }
+  tick()
+}
+
+const _IVOTE_FILL = {
+  si:      '#22c55e',
+  no:      '#ef4444',
+  abs:     '#f59e0b',
+  neutral: 'rgba(255,255,255,0.07)',
+  me:      '#f76a1e'
+}
+const _IVOTE_GLOW = {
+  si:      'rgba(34,197,94,',
+  no:      'rgba(239,68,68,',
+  abs:     'rgba(245,158,11,',
+  neutral: 'rgba(255,255,255,',
+  me:      'rgba(247,106,30,'
+}
+
+function _introDrawFrame() {
+  if (!_introCtx || !_introCv) return
+  _introFrame++
+  const W = _introCv.width, H = _introCv.height
+  const ctx = _introCtx
+
+  // Fondo azul profundo
+  ctx.fillStyle = '#040C1E'
+  ctx.fillRect(0, 0, W, H)
+
+  // Resplandor radial azul desde abajo-centro
+  const g = ctx.createRadialGradient(W/2, H*1.04, 0, W/2, H*1.04, W * 0.65)
+  g.addColorStop(0,   'rgba(37,99,235,0.24)')
+  g.addColorStop(0.4, 'rgba(30,64,175,0.10)')
+  g.addColorStop(1,   'transparent')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, W, H)
+
+  // Dots
+  _introSeats.forEach(s => {
+    const isMine = s.vote === 'me'
+    if (!isMine && !s.revealed) return
+
+    // Decay del glow
+    if (s.glow > 0) s.glow = Math.max(0, s.glow - 0.048)
+
+    const pulse = isMine ? (Math.sin(_introFrame / 30) * 0.5 + 0.5) : 0
+    const baseR = isMine ? 5.5 : 4.0
+    const r     = baseR + (s.glow > 0.4 ? s.glow * 1.2 : 0) + (isMine ? pulse * 1.8 : 0)
+    const gl    = isMine ? 12 + pulse * 20 : s.glow * 18
+
+    if (gl > 0.5) {
+      const alpha = isMine ? 0.6 + pulse * 0.35 : Math.min(0.85, s.glow * 0.6)
+      ctx.shadowColor = _IVOTE_GLOW[s.vote] + alpha + ')'
+      ctx.shadowBlur  = gl
+    }
+
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, Math.max(0.5, r), 0, Math.PI * 2)
+    ctx.fillStyle = _IVOTE_FILL[s.vote]
+    ctx.fill()
+    ctx.shadowBlur = 0
+  })
+
+  _introRaf = requestAnimationFrame(_introDrawFrame)
+}
+
+function _startIntroAnim() {
+  _initIntroCanvas()
+  if (_introRaf) return  // ya corriendo
+  _introFrame = 0
+  _introRaf = requestAnimationFrame(_introDrawFrame)
+  setTimeout(_introAssignAndReveal, 800)
+}
+
+function _stopIntroAnim() {
+  if (_introRaf) { cancelAnimationFrame(_introRaf); _introRaf = null }
+  if (_introRevealTimer) { clearTimeout(_introRevealTimer); _introRevealTimer = null }
+}
+
+// ══════════════════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════════════════
 resizeCanvas()
 draw()
-document.body.classList.add('on-congress')
+document.body.classList.add('on-intro')
+// Arrancar la animación de intro inmediatamente
+_startIntroAnim()
 
 // ══════════════════════════════════════════════════════════════
 //  VENEZUELAN FLAG — generated via canvas for HD crispness
