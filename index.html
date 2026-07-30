@@ -2296,6 +2296,14 @@ html, body {
 /* Show on congress */
 body.on-congress #social-footer.visible { display:flex; }
 
+/* ══ BLOQUEO TOTAL fuera de congress ══
+   .map-controls tiene pointer-events:all propio que sobreescribe al .screen padre.
+   Cuando no estamos en congress, los ocultamos completamente. */
+body:not(.on-congress) .map-controls       { display:none !important; pointer-events:none !important; }
+body:not(.on-congress) #social-footer      { display:none !important; pointer-events:none !important; }
+body:not(.on-congress) #citizens-panel     { display:none !important; pointer-events:none !important; }
+body:not(.on-congress) #q-cards-strip      { display:none !important; pointer-events:none !important; }
+
 /* ── SOCIAL FOOTER — ocultar pill, solo paneles ── */
 #social-footer .sf-tabs-row { display:none !important; }
 /* El contenedor sigue siendo el anchor para los paneles */
