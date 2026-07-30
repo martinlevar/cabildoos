@@ -2980,12 +2980,6 @@ body.on-congress #social-footer.visible { display:flex; }
 </div>
 
 <!-- ══════════════ CONGRESS ══════════════ -->
-<!-- Shield para modo observador: bloquea clicks hasta que el usuario verifique -->
-<div id="observador-shield" onclick="showScreen('verify-onboard')" title="Verificá tu identidad para interactuar" style="
-  display:none; position:fixed; inset:0; z-index:490;
-  cursor:pointer; background:transparent;
-"></div>
-
 <div class="screen" id="congress">
   <nav class="nav">
     <!-- Logo -->
@@ -3463,9 +3457,9 @@ body.on-congress #social-footer.visible { display:flex; }
 </div>
 
 <!-- ══════════════ VERIFY IDENTITY OVERLAY ══════════════ -->
-<div id="verify-overlay" onclick="if(event.target===this)cerrarVerificacion()">
+<div id="verify-overlay" onclick="if(event.target===this&&MY_SEAT>0&&Date.now()-_verifyOverlayOpenedAt>500)cerrarVerificacion()">
   <div id="verify-panel">
-    <button class="vp-close" onclick="cerrarVerificacion()">×</button>
+    <button class="vp-close" onclick="if(MY_SEAT>0)cerrarVerificacion()" id="vp-close-btn">×</button>
 
     <!-- Progress indicator -->
     <div class="vp-progress" id="vp-progress">
@@ -5590,9 +5584,9 @@ function toggleFollowList(num, btn) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
   document.getElementById(id).classList.add('active')
-  document.body.classList.toggle('on-landing',       id === 'landing')
-  document.body.classList.toggle('on-congress',      id === 'congress')
-  document.body.classList.toggle('on-intro',         id === 'intro')
+  document.body.classList.toggle('on-landing',        id === 'landing')
+  document.body.classList.toggle('on-congress',       id === 'congress')
+  document.body.classList.toggle('on-intro',          id === 'intro')
   document.body.classList.toggle('on-verify-onboard', id === 'verify-onboard')
   // Collapse panel when leaving landing
   if (id !== 'landing') {
@@ -5604,6 +5598,11 @@ function showScreen(id) {
   if (id === 'intro') _startIntroAnim('intro-canvas')
   else if (id === 'verify-onboard') _startIntroAnim('vo-canvas')
   else _stopIntroAnim()
+
+  // Bloquear pointer events brevemente para eliminar ghost clicks
+  // que ocurren cuando el DOM cambia de pantalla durante un evento click
+  document.body.style.pointerEvents = 'none'
+  setTimeout(() => { document.body.style.pointerEvents = '' }, 380)
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -5740,7 +5739,6 @@ async function _onLogin(user) {
     if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
     voActualizarAlias(displayName)
     _actualizarBtnButaca()  // "↵ Mi butaca"
-    _shieldOff()            // usuario verificado — habilitar interacciones
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
@@ -5757,7 +5755,6 @@ async function _onLogin(user) {
 function _onLogout() {
   _authUser = null
   _authProfile = null
-  _shieldOff()  // reset shield al hacer logout
   // Legacy landing nav
   const btnAuthNav = document.getElementById('btn-auth-nav')
   if (btnAuthNav) btnAuthNav.style.display = 'block'
@@ -7574,7 +7571,10 @@ function crearIdentidad() {
   abrirVerificacion()
 }
 
+let _verifyOverlayOpenedAt = 0
+
 function abrirVerificacion() {
+  _verifyOverlayOpenedAt = Date.now()   // time-gate: bloquea ghost clicks del primer segundo
   vpCurrentStep = 1
   vpAnonBlob = null
   vpBarcodeData = null
@@ -7599,6 +7599,10 @@ function abrirVerificacion() {
   const selects = ['vp-tipo-doc','vp-pais']
   selects.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
   document.getElementById('vp-btn-s1').disabled = true
+  // Mostrar botón × solo para usuarios ya verificados (pueden cerrar el overlay)
+  // Usuarios no verificados no pueden escapar del overlay hasta completar el flujo
+  const closeBtn = document.getElementById('vp-close-btn')
+  if (closeBtn) closeBtn.style.display = MY_SEAT > 0 ? '' : 'none'
   vpShowStep(1)
   document.getElementById('verify-overlay').classList.add('open')
 }
@@ -8008,13 +8012,9 @@ function voIniciarVerificacion() {
   abrirVerificacion()
 }
 
-function _shieldOn()  { const s = document.getElementById('observador-shield'); if (s) s.style.display = 'block' }
-function _shieldOff() { const s = document.getElementById('observador-shield'); if (s) s.style.display = 'none'  }
-
 function voExplorar() {
   showScreen('congress')
   resizeCanvas()
-  _shieldOn()  // bloquear interacciones mientras sea observador
   // Cargar datos reales: conteo + perfiles + preguntas
   cargarConteoReal().then(() => {
     // Centrar la cámara en el primer seat real visible
