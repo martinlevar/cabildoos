@@ -2505,11 +2505,11 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
   border-radius:20px;
   box-shadow:0 20px 60px rgba(0,0,0,.13), 0 4px 16px rgba(0,0,0,.06);
   max-height:0; overflow:hidden;
-  pointer-events:all;
+  pointer-events:none;
   transition:max-height .32s cubic-bezier(.4,0,.2,1), opacity .22s;
   opacity:0;
 }
-.sf-float-panel.open { max-height:380px; overflow-y:auto; opacity:1; }
+.sf-float-panel.open { max-height:380px; overflow-y:auto; opacity:1; pointer-events:all; }
 .sf-panel-inner { padding:20px 20px 16px; }
 
 /* Separated individual pill tabs */
