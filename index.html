@@ -7879,8 +7879,8 @@ async function cargarConteoReal() {
   try {
     const count = await sb.rpc('get_butaca_count')
     const n = count.data ?? 0
-    // Sincronizar MY_SEAT desde localStorage
-    MY_SEAT = parseInt(localStorage.getItem('cabildoos_butaca')) || 0
+    // NO modificar MY_SEAT aquí — es responsabilidad exclusiva de _onLogin/_onLogout
+    // para evitar race conditions con la limpieza de localStorage
     TOTAL_SEATS = Math.max(n, MY_SEAT) // mínimo: que mi butaca exista
     buildSeats()
     const fmt = n.toLocaleString('es-VE').replace(',', '.')
@@ -7947,6 +7947,9 @@ function voIniciarVerificacion() {
 function voExplorar() {
   showScreen('congress')
   resizeCanvas()
+  // Cargar datos reales para que el hemiciclo muestre los miembros verificados
+  cargarConteoReal()
+  cargarPreguntasActivas()
 }
 
 function voActualizarAlias(alias) {
