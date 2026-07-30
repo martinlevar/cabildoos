@@ -5302,20 +5302,25 @@ function showCard(seat, cx, cy) {
   document.getElementById('pc-phrase').textContent  = `"${p.phrase}"`
   document.getElementById('pc-votes-n').textContent = p.votes
 
-  const fbtn = document.getElementById('pc-follow-btn')
-  const hideVote = document.getElementById('profile-card').querySelector('.pc-vote-btn')
+  const fbtn    = document.getElementById('pc-follow-btn')
+  const voteBtn = document.getElementById('profile-card').querySelector('.pc-vote-btn')
+
   if (p.isMe) {
-    fbtn.textContent = 'Es tu butaca'
-    fbtn.className = 'pc-follow disabled'
-    hideVote.style.display = 'none'
-  } else if (following.has(seat.num)) {
-    fbtn.textContent = 'Siguiendo'
-    fbtn.className = 'pc-follow following'
-    hideVote.style.display = ''
+    // Propio dot: solo mostrar Votar, sin Seguir
+    fbtn.style.display  = 'none'
+    voteBtn.style.display = ''
   } else {
-    fbtn.textContent = 'Seguir'
-    fbtn.className = 'pc-follow'
-    hideVote.style.display = ''
+    // Dot ajeno: nunca mostrar Votar
+    voteBtn.style.display = 'none'
+    if (MY_SEAT > 0) {
+      // Solo usuarios verificados pueden seguir
+      fbtn.style.display = ''
+      fbtn.textContent   = following.has(seat.num) ? 'Siguiendo' : 'Seguir'
+      fbtn.className     = following.has(seat.num) ? 'pc-follow following' : 'pc-follow'
+    } else {
+      // Modo observador: solo lectura
+      fbtn.style.display = 'none'
+    }
   }
 
   // Position card near cursor, flip if near edge
