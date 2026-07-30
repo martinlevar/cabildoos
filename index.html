@@ -5759,19 +5759,23 @@ async function enviarResetEmail() {
   btn.textContent = 'Enviando…'
   msg.textContent = ''
 
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/',
-  })
+  // Construir redirectTo solo si estamos en http/https (no file://)
+  const origin = window.location.origin
+  const redirectOpts = (origin && origin.startsWith('http'))
+    ? { redirectTo: origin + window.location.pathname }
+    : {}
+
+  const { error } = await sb.auth.resetPasswordForEmail(email, redirectOpts)
 
   btn.textContent = 'Enviar link →'
   if (error) {
-    msg.textContent = 'Error al enviar. Revisá el email ingresado.'
+    msg.textContent = 'Error: ' + (error.message || 'No se pudo enviar. Revisá el email.')
     msg.className = 'auth-msg err'
     btn.disabled = false
   } else {
     msg.innerHTML = `
       <span style="display:block;margin-bottom:4px">✓ Email enviado a <strong>${email}</strong></span>
-      <span style="font-size:12px;opacity:.8">Revisá tu bandeja (y la carpeta de spam). El link expira en 1 hora.</span>`
+      <span style="font-size:12px;opacity:.8">Revisá tu bandeja de entrada y la carpeta de spam. El link expira en 1 hora.</span>`
     msg.className = 'auth-msg ok'
   }
 }
