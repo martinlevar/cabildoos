@@ -7876,11 +7876,16 @@ function vpFinalizar() {
   const butaca = localStorage.getItem('cabildoos_butaca')
   if (butaca) {
     vpAplicarButacaEnUI(butaca)
+    showScreen('congress')
+    resizeCanvas()
+    if (MY_SEAT_POS) resetCamera()
   } else {
-    // Aún en revisión
+    // Solicitud enviada — en revisión
     const lbl = document.getElementById('st-noident-label')
     if (lbl) lbl.textContent = 'Verificación en revisión…'
     showToast('Solicitud enviada — se actualizará cuando el admin apruebe')
+    // Volver a verify-onboard (cerrarVerificacion ya lo hace, pero lo confirmamos)
+    showScreen('verify-onboard')
   }
 }
 
@@ -7990,9 +7995,9 @@ function volverALanding() {
 }
 
 function voIniciarVerificacion() {
-  showScreen('congress')
-  resizeCanvas()
-  setTimeout(() => abrirVerificacion(), 150)
+  // Abrir el overlay directo sobre verify-onboard — evita el ghost click
+  // que ocurría al cambiar de pantalla con setTimeout antes de abrir el panel
+  abrirVerificacion()
 }
 
 function voExplorar() {
