@@ -5790,6 +5790,11 @@ function mostrarSelectorCabildos() {
 function entrarCabildo(id) {
   if (id === 'venezuela') {
     localStorage.setItem('cabildoos_cabildo', 'venezuela')
+    // Limpiar cualquier inline pointer-events que haya quedado de la verificación
+    const mc = document.getElementById('map-controls')
+    if (mc) mc.style.pointerEvents = ''
+    const cng = document.getElementById('congress')
+    if (cng) cng.style.pointerEvents = ''
     _stopIntroAnim()
     showScreen('congress')
     resizeCanvas()
@@ -6303,6 +6308,13 @@ async function enviarResetEmail() {
 
 // ── Cerrar sesión ──
 async function cerrarSesion() {
+  // Limpiar el overlay de verificación si estaba abierto (inline style pointer-events)
+  try { cerrarVerificacion() } catch(e) {}
+  // Restaurar map-controls por si quedó bloqueado
+  const mc = document.getElementById('map-controls')
+  if (mc) mc.style.pointerEvents = ''
+  const cng = document.getElementById('congress')
+  if (cng) cng.style.pointerEvents = ''
   localStorage.removeItem('cabildoos_cabildo')
   _myVoteCount = null
   await sb.auth.signOut()
