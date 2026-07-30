@@ -4773,14 +4773,25 @@ const AVATAR_COLORS = [
 function lcg(seed) {
   return ((seed * 1664525 + 1013904223) & 0x7fffffff) >>> 0
 }
+let _myVoteCount = null   // null = todavía no cargado desde Supabase
+
+async function _refreshMyVoteCount() {
+  if (!MY_SEAT || MY_SEAT <= 0) return
+  try {
+    const { data } = await sb.rpc('get_my_vote_stats', { p_seat_number: MY_SEAT })
+    if (data) _myVoteCount = data.reduce((sum, r) => sum + Number(r.cnt || 0), 0)
+  } catch(e) {}
+}
+
 function getProfile(num) {
   if (num === MY_SEAT && MY_SEAT > 0) {
     const _votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+    const votesCount = _myVoteCount !== null ? _myVoteCount : Object.keys(_votos).length
     return {
       isMe: true, isAnon: !perfilPublico,
       name: 'Tú', displayName: perfilPublico ? (_authProfile?.alias || `Butaca #${MY_SEAT}`) : 'Ciudadano Anónimo',
       phrase: _authProfile?.phrase || 'Mi butaca en el hemiciclo libre de Venezuela.',
-      votes: Object.keys(_votos).length, color: '#f76a1e',
+      votes: votesCount, color: '#f76a1e',
       initials: String(MY_SEAT),
     }
   }
@@ -5778,6 +5789,7 @@ function mostrarSelectorCabildos() {
 
 function entrarCabildo(id) {
   if (id === 'venezuela') {
+    localStorage.setItem('cabildoos_cabildo', 'venezuela')
     _stopIntroAnim()
     showScreen('congress')
     resizeCanvas()
@@ -5945,8 +5957,14 @@ async function _onLogin(user) {
     if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
     voActualizarAlias(displayName)
     _actualizarBtnButaca()  // "↵ Mi butaca"
-    // Usuario verificado → mostrar selector de cabildos antes de entrar al congreso
-    mostrarSelectorCabildos()
+    _refreshMyVoteCount()   // sincronizar conteo de votos desde Supabase
+    // Usuario verificado → selector de cabildos solo si no hay preferencia guardada
+    const _cabildo = localStorage.getItem('cabildoos_cabildo')
+    if (_cabildo) {
+      entrarCabildo(_cabildo)
+    } else {
+      mostrarSelectorCabildos()
+    }
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
@@ -6285,6 +6303,8 @@ async function enviarResetEmail() {
 
 // ── Cerrar sesión ──
 async function cerrarSesion() {
+  localStorage.removeItem('cabildoos_cabildo')
+  _myVoteCount = null
   await sb.auth.signOut()
 }
 
