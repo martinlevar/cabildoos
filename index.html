@@ -3134,7 +3134,7 @@ body.on-congress #social-footer.visible { display:flex; }
         <p>Usá la rueda del mouse para explorar<br>el hemiciclo completo</p>
       </div>
       <div class="map-controls" id="map-controls">
-        <button class="map-btn orange" onclick="resetCamera()">↵ Mi butaca</button>
+        <button class="map-btn orange" id="btn-map-butaca" onclick="mapButacaBtn()">↵ Mi butaca</button>
         <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">0</b> ciudadanos</div>
         <button class="map-btn" onclick="zoomOut()">Ver todo</button>
         <button class="map-btn" onclick="abrirPreguntas()" id="btn-preguntas">📋 Preguntas<span id="ctb-badge" style="display:none;margin-left:4px;background:#1D1F3C;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px"></span></button>
@@ -4840,6 +4840,30 @@ function toWorld(sx, sy, W, H) {
   }
 }
 
+// Actualiza el texto y acción del botón naranja del mapa según si el usuario tiene butaca
+function _actualizarBtnButaca() {
+  const btn = document.getElementById('btn-map-butaca')
+  if (!btn) return
+  if (MY_SEAT > 0) {
+    btn.textContent = '↵ Mi butaca'
+  } else if (_authUser) {
+    btn.textContent = '↵ Crear butaca'
+  } else {
+    btn.textContent = '↵ Crear butaca'
+  }
+}
+
+function mapButacaBtn() {
+  if (MY_SEAT > 0) {
+    resetCamera()
+  } else if (_authUser) {
+    // Logueado pero sin verificar → ir a verificación
+    showScreen('verify-onboard')
+  } else {
+    abrirAuth('registro')
+  }
+}
+
 function resetCamera() {
   cam.tx = MY_SEAT_POS.x
   cam.ty = MY_SEAT_POS.y
@@ -5474,7 +5498,7 @@ let listRendered = false
 
 function abrirCiudadanos() {
   hideCard()
-  if (!listRendered) renderCitizensList()
+  renderCitizensList()  // siempre re-renderizar para reflejar MY_SEAT actual
   document.getElementById('citizens-panel').classList.add('open')
 }
 function cerrarCiudadanos() {
@@ -5485,17 +5509,23 @@ function renderCitizensList() {
   const list = document.getElementById('cl-list')
   const rows = []
 
-  // My seat first
-  rows.push(`<div class="cl-divider">Tu butaca</div>`)
-  rows.push(clRow(MY_SEAT, true))
+  // "Tu butaca" solo si el usuario tiene una (está verificado)
+  if (MY_SEAT > 0) {
+    rows.push(`<div class="cl-divider">Tu butaca</div>`)
+    rows.push(clRow(MY_SEAT, true))
+  }
 
-  // Then a sample: first 150 citizens (skipping mine)
+  // Todos los ciudadanos verificados
   rows.push(`<div class="cl-divider">Todos los ciudadanos</div>`)
   for (let i = 1; i <= Math.min(TOTAL_SEATS, 200); i++) {
     if (i === MY_SEAT) continue
     rows.push(clRow(i, false))
   }
-  rows.push(`<div class="cl-divider" style="padding-bottom:20px;opacity:.4">— mostrando 200 de 2.847 —</div>`)
+  if (TOTAL_SEATS === 0) {
+    rows.push(`<div style="text-align:center;padding:24px;opacity:.4;font-size:13px">Aún no hay ciudadanos verificados</div>`)
+  } else if (TOTAL_SEATS > 200) {
+    rows.push(`<div class="cl-divider" style="padding-bottom:20px;opacity:.4">— mostrando 200 de ${TOTAL_SEATS.toLocaleString('es-VE').replace(',','.')} —</div>`)
+  }
 
   list.innerHTML = rows.join('')
   listRendered = true
@@ -5702,6 +5732,7 @@ async function _onLogin(user) {
     const butacaInfo = document.getElementById('nav-umenu-butaca')
     if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
     voActualizarAlias(displayName)
+    _actualizarBtnButaca()  // "↵ Mi butaca"
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
@@ -5709,6 +5740,7 @@ async function _onLogin(user) {
     if (lbl) lbl.textContent = 'Verificar identidad'
     // MY_SEAT y localStorage ya se limpiaron al inicio de _onLogin (MY_SEAT=0)
     voActualizarAlias(displayName)
+    _actualizarBtnButaca()  // "↵ Crear butaca"
     // Breve delay para que el usuario vea el hemiciclo un momento
     setTimeout(() => showScreen('verify-onboard'), 2200)
   }
@@ -7965,9 +7997,18 @@ function voIniciarVerificacion() {
 function voExplorar() {
   showScreen('congress')
   resizeCanvas()
-  // Cargar datos reales: conteo de butacas + perfiles + preguntas
-  cargarConteoReal()      // incluye cargarPerfilesPublicos() internamente
+  // Cargar datos reales: conteo + perfiles + preguntas
+  cargarConteoReal().then(() => {
+    // Centrar la cámara en el primer seat real visible
+    if (SEATS.length > 0) {
+      cam.tx = SEATS[0].x
+      cam.ty = SEATS[0].y
+      cam.ts = 3.5
+    }
+  })
   cargarPreguntasActivas()
+  // Actualizar botón del mapa para usuario sin butaca
+  _actualizarBtnButaca()
 }
 
 function voActualizarAlias(alias) {
@@ -8451,6 +8492,11 @@ function abrirVotoForQ(i) {
   abrirModal()
 }
 async function abrirDebateForQ(i) {
+  if (!_authUser || !_authProfile?.seat_number) {
+    showToast('Verificá tu identidad para participar en el debate')
+    if (_authUser) showScreen('verify-onboard'); else abrirAuth('registro')
+    return
+  }
   const qdata = PREGUNTAS_DATA[i]
   if (!qdata) return
   qIdx = i
