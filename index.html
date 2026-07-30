@@ -52,6 +52,41 @@ html, body {
   position: relative; z-index: 50;
 }
 .nav-logo { font-size:17px; font-weight:800; letter-spacing:-.4px; cursor:pointer; }
+/* ── Cabildo brand en el nav ── */
+.nav-cabildo-brand { display:none; align-items:center; gap:9px; cursor:default; }
+.nav-cabildo-brand.visible { display:flex; }
+.nav-cb-logo { width:36px; height:36px; flex-shrink:0; }
+.nav-cb-texts { display:flex; flex-direction:column; gap:0px; }
+.nav-cb-name { font-size:14px; font-weight:600; color:var(--dark); letter-spacing:-.2px; line-height:1.2; }
+.nav-cb-slogan { font-size:10px; color:var(--mid); letter-spacing:.01em; }
+/* ── Config cabildo panel ── */
+#cabildo-config-panel {
+  display:none; position:fixed; inset:0; z-index:9400;
+  background:rgba(10,10,10,.6); backdrop-filter:blur(12px);
+  align-items:center; justify-content:center;
+}
+#cabildo-config-panel.open { display:flex; }
+.cc-panel {
+  background:#0D1B2E; border:1px solid rgba(255,255,255,.1);
+  border-radius:20px; padding:28px; width:min(460px,calc(100vw - 32px));
+  color:#fff;
+}
+.cc-title { font-size:16px; font-weight:700; margin-bottom:4px; }
+.cc-sub { font-size:12px; color:rgba(255,255,255,.45); margin-bottom:24px; }
+.cc-field { margin-bottom:16px; }
+.cc-label { font-size:11px; font-weight:600; color:rgba(255,255,255,.5); letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
+.cc-input {
+  width:100%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+  border-radius:10px; padding:10px 14px; color:#fff; font-size:14px;
+  font-family:inherit; outline:none;
+}
+.cc-input:focus { border-color:rgba(247,106,30,.5); }
+.cc-preview { background:rgba(255,255,255,.05); border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.cc-preview-lbl { font-size:10px; color:rgba(255,255,255,.3); margin-bottom:10px; text-transform:uppercase; letter-spacing:.06em; }
+.cc-preview-row { display:flex; align-items:center; gap:10px; }
+.cc-btns { display:flex; gap:10px; justify-content:flex-end; }
+.cc-btn-cancel { background:none; border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.6); padding:8px 18px; border-radius:9px; cursor:pointer; font-size:13px; }
+.cc-btn-save { background:#f76a1e; border:none; color:#fff; padding:8px 18px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600; }
 .nav-center { display:flex; justify-content:center; align-items:center; }
 .nav-right   { display:flex; justify-content:flex-end; align-items:center; }
 
@@ -3166,9 +3201,16 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 <!-- ══════════════ CONGRESS ══════════════ -->
 <div class="screen" id="congress">
   <nav class="nav">
-    <!-- Logo -->
-    <span class="nav-logo">cabildoOS</span>
-    <div class="nav-vdiv"></div>
+    <!-- Logo / Cabildo brand (se alterna según si estamos en un cabildo) -->
+    <span class="nav-logo" id="nav-logo-os">cabildoOS</span>
+    <div class="nav-cabildo-brand" id="nav-cabildo-brand">
+      <div class="nav-cb-logo" id="nav-cb-logo-wrap"></div>
+      <div class="nav-cb-texts">
+        <span class="nav-cb-name"  id="nav-cb-name">Cabildo</span>
+        <span class="nav-cb-slogan" id="nav-cb-slogan"></span>
+      </div>
+    </div>
+    <div class="nav-vdiv" id="nav-vdiv-cong"></div>
 
     <!-- Cabildo activo — Congresos dropdown -->
     <div class="cong-sel" id="cong-sel">
@@ -3303,6 +3345,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
           <span id="nav-umenu-butaca">Sin verificar</span>
         </div>
         <button class="nav-umenu-item" onclick="abrirMiPerfil();closeUserPill()">👤 Mi perfil</button>
+        <button class="nav-umenu-item" id="nav-btn-config-cabildo" style="display:none" onclick="abrirConfigCabildo();closeUserPill()">⚙️ Personalizar cabildo</button>
         <button class="nav-umenu-item danger" onclick="cerrarSesion();closeUserPill()">↩ Salir</button>
       </div>
     </div>
@@ -3636,6 +3679,36 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
       <span class="vav-lbl">● Sistema <b>VaV</b> — Votos Anónimos Verificables</span>
       <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
       <button class="modal-x" onclick="cerrarModal()">×</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CONFIG CABILDO PANEL ══════════════ -->
+<div id="cabildo-config-panel" onclick="if(event.target===this)cerrarConfigCabildo()">
+  <div class="cc-panel">
+    <p class="cc-title">⚙️ Personalizar cabildo</p>
+    <p class="cc-sub">Estos datos aparecen en el header cuando los ciudadanos entran al cabildo.</p>
+    <div class="cc-field">
+      <p class="cc-label">Nombre del cabildo</p>
+      <input class="cc-input" id="cc-nombre" placeholder="ej: Cabildo de Venezuela" oninput="ccActualizarPreview()">
+    </div>
+    <div class="cc-field">
+      <p class="cc-label">Slogan / subtítulo</p>
+      <input class="cc-input" id="cc-slogan" placeholder="ej: Generación Independencia 2026" oninput="ccActualizarPreview()">
+    </div>
+    <div class="cc-preview">
+      <p class="cc-preview-lbl">Preview del header</p>
+      <div class="cc-preview-row">
+        <div id="cc-logo-preview" style="width:36px;height:36px;flex-shrink:0"></div>
+        <div>
+          <p style="font-size:14px;font-weight:600;color:#fff;margin:0" id="cc-preview-name">Cabildo de Venezuela</p>
+          <p style="font-size:10px;color:rgba(255,255,255,.45);margin:2px 0 0" id="cc-preview-slogan">Generación Independencia 2026</p>
+        </div>
+      </div>
+    </div>
+    <div class="cc-btns">
+      <button class="cc-btn-cancel" onclick="cerrarConfigCabildo()">Cancelar</button>
+      <button class="cc-btn-save"   onclick="guardarConfigCabildo()">Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -5792,6 +5865,94 @@ function mostrarSelectorCabildos() {
   }).catch(() => {})
 }
 
+// SVG del logo Venezuela (reutilizado en nav y en config preview)
+const _CABILDO_LOGOS = {
+  venezuela: `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+    <circle cx="100" cy="100" r="98" fill="#1a2b5e"/>
+    <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="2" stroke-dasharray="3,4"/>
+    <circle cx="100" cy="100" r="81" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+    <g fill="white">
+      <circle cx="100" cy="36" r="4.5"/><circle cx="115" cy="38" r="4.5"/><circle cx="129" cy="44" r="4.5"/>
+      <circle cx="142" cy="53" r="4.5"/><circle cx="153" cy="65" r="4.5"/>
+      <circle cx="85"  cy="38" r="4.5"/><circle cx="71"  cy="44" r="4.5"/>
+      <circle cx="58"  cy="53" r="4.5"/><circle cx="47"  cy="65" r="4.5"/>
+      <circle cx="100" cy="50" r="4"/><circle cx="113" cy="52" r="4"/><circle cx="125" cy="57" r="4"/>
+      <circle cx="136" cy="65" r="4"/><circle cx="87"  cy="52" r="4"/>
+      <circle cx="75"  cy="57" r="4"/><circle cx="64"  cy="65" r="4"/>
+      <circle cx="100" cy="64" r="3.5"/><circle cx="111" cy="66" r="3.5"/><circle cx="121" cy="71" r="3.5"/>
+      <circle cx="89"  cy="66" r="3.5"/><circle cx="79"  cy="71" r="3.5"/>
+      <circle cx="100" cy="78" r="3"/><circle cx="109" cy="80" r="3"/><circle cx="91"  cy="80" r="3"/>
+    </g>
+    <circle cx="149" cy="73" r="5.5" fill="#3ecc6e"/>
+    <text x="100" y="120" text-anchor="middle" font-size="24" font-weight="700" fill="white" font-family="sans-serif" letter-spacing="-0.5">Cabildo</text>
+    <line x1="54" y1="128" x2="146" y2="128" stroke="rgba(255,255,255,.35)" stroke-width="1.2"/>
+    <text x="100" y="138" text-anchor="middle" font-size="11" fill="rgba(255,255,255,.6)" font-family="sans-serif">de</text>
+    <text x="100" y="162" text-anchor="middle" font-size="24" font-weight="700" fill="white" font-family="sans-serif" letter-spacing="-0.5">Venezuela</text>
+    <text x="72" y="178" font-size="13" fill="rgba(255,255,255,.75)" font-family="sans-serif">★ ★ ★ ★ ★ ★ ★</text>
+  </svg>`
+}
+
+function _aplicarMarcaCabildo(cabildoId) {
+  const nombre  = localStorage.getItem('cabildoos_cb_nombre')  || 'Cabildo de Venezuela'
+  const slogan  = localStorage.getItem('cabildoos_cb_slogan')  || 'Generación Independencia 2026'
+  const logoSvg = _CABILDO_LOGOS[cabildoId] || _CABILDO_LOGOS['venezuela']
+
+  // Nav: mostrar brand, ocultar logo genérico y pill de país
+  document.getElementById('nav-logo-os').style.display  = 'none'
+  document.getElementById('nav-vdiv-cong').style.display = 'none'
+  document.getElementById('cong-sel').style.display     = 'none'
+
+  const brand = document.getElementById('nav-cabildo-brand')
+  brand.classList.add('visible')
+  document.getElementById('nav-cb-logo-wrap').innerHTML = logoSvg
+  document.getElementById('nav-cb-name').textContent    = nombre
+  document.getElementById('nav-cb-slogan').textContent  = slogan
+
+  // Mostrar botón de configuración si es admin (seat_number === 1)
+  const btnConfig = document.getElementById('nav-btn-config-cabildo')
+  if (btnConfig && MY_SEAT === 1) btnConfig.style.display = ''
+}
+
+function _resetearMarcaCabildo() {
+  document.getElementById('nav-logo-os').style.display   = ''
+  document.getElementById('nav-vdiv-cong').style.display = ''
+  document.getElementById('cong-sel').style.display      = ''
+  document.getElementById('nav-cabildo-brand').classList.remove('visible')
+  const btnConfig = document.getElementById('nav-btn-config-cabildo')
+  if (btnConfig) btnConfig.style.display = 'none'
+}
+
+// ── Config panel ──
+function abrirConfigCabildo() {
+  document.getElementById('cc-nombre').value = localStorage.getItem('cabildoos_cb_nombre') || 'Cabildo de Venezuela'
+  document.getElementById('cc-slogan').value = localStorage.getItem('cabildoos_cb_slogan') || 'Generación Independencia 2026'
+  document.getElementById('cc-logo-preview').innerHTML = _CABILDO_LOGOS['venezuela']
+  ccActualizarPreview()
+  document.getElementById('cabildo-config-panel').classList.add('open')
+}
+
+function cerrarConfigCabildo() {
+  document.getElementById('cabildo-config-panel').classList.remove('open')
+}
+
+function ccActualizarPreview() {
+  const n = document.getElementById('cc-nombre').value || 'Cabildo de Venezuela'
+  const s = document.getElementById('cc-slogan').value || ''
+  document.getElementById('cc-preview-name').textContent   = n
+  document.getElementById('cc-preview-slogan').textContent = s
+}
+
+function guardarConfigCabildo() {
+  const nombre = document.getElementById('cc-nombre').value.trim()
+  const slogan = document.getElementById('cc-slogan').value.trim()
+  if (nombre) localStorage.setItem('cabildoos_cb_nombre', nombre)
+  if (slogan !== undefined) localStorage.setItem('cabildoos_cb_slogan', slogan)
+  cerrarConfigCabildo()
+  const cabildo = localStorage.getItem('cabildoos_cabildo')
+  if (cabildo) _aplicarMarcaCabildo(cabildo)
+  showToast('✓ Marca del cabildo actualizada')
+}
+
 function entrarCabildo(id) {
   if (id === 'venezuela') {
     localStorage.setItem('cabildoos_cabildo', 'venezuela')
@@ -5802,6 +5963,7 @@ function entrarCabildo(id) {
     if (cng) cng.style.pointerEvents = ''
     _stopIntroAnim()
     showScreen('congress')
+    _aplicarMarcaCabildo(id)
     resizeCanvas()
     cargarConteoReal()
     cargarPreguntasActivas()
@@ -6322,6 +6484,7 @@ async function cerrarSesion() {
   if (cng) cng.style.pointerEvents = ''
   localStorage.removeItem('cabildoos_cabildo')
   _myVoteCount = null
+  _resetearMarcaCabildo()
   await sb.auth.signOut()
 }
 
