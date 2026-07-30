@@ -4805,9 +4805,10 @@ async function consultarEstado(requestId) {
 // ══════════════════════════════════════════════════════════════
 //  DATA & PROFILES
 // ══════════════════════════════════════════════════════════════
-const IS_DEMO   = new URLSearchParams(location.search).has('demo')
-let TOTAL_SEATS = IS_DEMO ? 2847 : 0
-let MY_SEAT     = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
+const IS_DEMO      = new URLSearchParams(location.search).has('demo')
+const SEAT_CAPACITY = IS_DEMO ? 2847 : 300  // asientos totales del hemiciclo (fijos)
+let TOTAL_SEATS    = IS_DEMO ? 2847 : 0     // asientos ocupados (usuarios verificados)
+let MY_SEAT        = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
 
 const PHRASES = [
   'Venezuela libre y soberana.',
@@ -4947,13 +4948,14 @@ function centerOutOrder(n) {
 function buildSeats() {
   SEATS.length = 0
   let n = 0, row = 0
-  while (n < TOTAL_SEATS) {
+  // Siempre generamos SEAT_CAPACITY posiciones (hemiciclo completo visible desde el inicio)
+  while (n < SEAT_CAPACITY) {
     const r        = R_IN + row * R_STEP
     const fullCant = Math.floor(r * SPAN / GAP)
-    const cant     = Math.min(fullCant, TOTAL_SEATS - n)
+    const cant     = Math.min(fullCant, SEAT_CAPACITY - n)
     const order    = centerOutOrder(fullCant)  // orden centro → costados
     for (let i = 0; i < cant; i++) {
-      const posIdx = order[i]  // índice de posición angular (0..fullCant-1)
+      const posIdx = order[i]
       const t = fullCant > 1 ? posIdx / (fullCant - 1) : 0.5
       const a = A0 + t * SPAN
       SEATS.push({ num: n + 1, x: r * Math.cos(a), y: r * Math.sin(a), row })
@@ -4961,7 +4963,7 @@ function buildSeats() {
     }
     row++
   }
-  bx0=0; bx1=0; by0=0; by1=0  // defaults para cuando no hay butacas
+  bx0=0; bx1=0; by0=0; by1=0
   if (SEATS.length > 0) {
     bx0=Infinity; bx1=-Infinity; by0=Infinity; by1=-Infinity
     SEATS.forEach(s => {
@@ -4969,7 +4971,7 @@ function buildSeats() {
       by0=Math.min(by0,s.y); by1=Math.max(by1,s.y)
     })
   }
-  MY_SEAT_POS = SEATS[Math.min(MY_SEAT, TOTAL_SEATS) - 1] || SEATS[0] || { x: 0, y: 0 }
+  MY_SEAT_POS = SEATS[Math.min(MY_SEAT, SEAT_CAPACITY) - 1] || SEATS[0] || { x: 0, y: 0 }
 }
 buildSeats()
 // Sincronizar labels y ocultar botones de demo según modo
@@ -5183,46 +5185,59 @@ function draw() {
     const { x: sx, y: sy } = toScreen(s.x, s.y, W, H)
     if (sx < vx0 || sx > vx1 || sy < vy0 || sy > vy1) return
 
-    const isMine    = s.num === MY_SEAT
-    const isHovered = hoveredSeat === s.num
-    const isFollow  = following.has(s.num)
+    const isMine     = s.num === MY_SEAT
+    const isHovered  = hoveredSeat === s.num
+    const isFollow   = following.has(s.num)
+    // Asiento ocupado: es el mío, o tiene perfil cargado (usuario verificado)
+    const isOccupied = isMine || (s.num <= TOTAL_SEATS)
 
     // Dot radius on screen
     let r = Math.max(1.2, DOT_R * cam.scale)
     if (isMine) r *= (1 + ((Math.sin((t - t0) / 600) + 1) / 2) * 0.18)
     if (isHovered) r *= 1.22
 
-    // Color
-    let fill, glow = null
-    if (isMine)        { fill = '#f76a1e'; glow = 'rgba(247,106,30,.5)'; }
-    else if (isFollow) { fill = '#1e40af'; }
-    else               { fill = '#1a1f3c'; }
-
-    // At very small scale, use opacity to create depth
-    if (cam.scale < 0.5) {
-      const alpha = 0.35 + 0.65 * (s.row % 2 === 0 ? 1 : 0.7)
+    if (!isOccupied) {
+      // ── Asiento vacío: solo contorno ──
+      const alpha = cam.scale < 0.5 ? 0.25 : 0.18
       ctx.globalAlpha = alpha
-    }
-
-    if (glow && r > 3) {
-      ctx.shadowColor = glow
-      ctx.shadowBlur  = r * 0.9
-    }
-
-    ctx.beginPath()
-    ctx.arc(sx, sy, r, 0, Math.PI * 2)
-    ctx.fillStyle = fill
-    ctx.fill()
-    ctx.shadowBlur = 0
-    ctx.globalAlpha = 1
-
-    // Follow ring
-    if (isFollow && r > 3) {
       ctx.beginPath()
-      ctx.arc(sx, sy, r + 3, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(30,64,175,.35)'
-      ctx.lineWidth   = 1.5
+      ctx.arc(sx, sy, Math.max(1, r), 0, Math.PI * 2)
+      ctx.strokeStyle = '#8090a0'
+      ctx.lineWidth   = Math.max(0.6, Math.min(1.2, cam.scale * 0.8))
       ctx.stroke()
+      ctx.globalAlpha = 1
+    } else {
+      // ── Asiento ocupado: relleno ──
+      let fill, glow = null
+      if (isMine)        { fill = '#f76a1e'; glow = 'rgba(247,106,30,.5)'; }
+      else if (isFollow) { fill = '#1e40af'; }
+      else               { fill = '#1a1f3c'; }
+
+      if (cam.scale < 0.5) {
+        const alpha = 0.35 + 0.65 * (s.row % 2 === 0 ? 1 : 0.7)
+        ctx.globalAlpha = alpha
+      }
+
+      if (glow && r > 3) {
+        ctx.shadowColor = glow
+        ctx.shadowBlur  = r * 0.9
+      }
+
+      ctx.beginPath()
+      ctx.arc(sx, sy, r, 0, Math.PI * 2)
+      ctx.fillStyle = fill
+      ctx.fill()
+      ctx.shadowBlur  = 0
+      ctx.globalAlpha = 1
+
+      // Follow ring
+      if (isFollow && r > 3) {
+        ctx.beginPath()
+        ctx.arc(sx, sy, r + 3, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(30,64,175,.35)'
+        ctx.lineWidth   = 1.5
+        ctx.stroke()
+      }
     }
   })
 
@@ -8365,7 +8380,7 @@ async function cargarConteoReal() {
     const n = count.data ?? 0
     // NO modificar MY_SEAT aquí — es responsabilidad exclusiva de _onLogin/_onLogout
     // para evitar race conditions con la limpieza de localStorage
-    TOTAL_SEATS = Math.max(n, MY_SEAT) // mínimo: que mi butaca exista
+    TOTAL_SEATS = Math.min(Math.max(n, MY_SEAT), SEAT_CAPACITY) // nunca superar la capacidad
     await cargarPerfilesPublicos()     // cargar perfiles reales antes de redibujar
     buildSeats()
     const fmt = n.toLocaleString('es-VE').replace(',', '.')
