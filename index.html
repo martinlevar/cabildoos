@@ -5603,10 +5603,16 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
 
 async function _onLogin(user) {
   _authUser = user
+
+  // ── Limpiar MY_SEAT ANTES de resizeCanvas → evita que localStorage de una sesión
+  //    anterior muestre la butaca de otro usuario como "Tú" en el hemiciclo
+  localStorage.removeItem('cabildoos_butaca')
+  localStorage.removeItem('cabildoos_vid')
+  MY_SEAT = 0
+
   // Ir al congress inmediatamente
   showScreen('congress')
-  resizeCanvas()
-  if (MY_SEAT_POS) resetCamera()  // solo si ya se calculó la posición
+  resizeCanvas()   // buildSeats() corre con MY_SEAT=0 → sin butaca propia hasta confirmar perfil
   cargarPreguntasActivas()
   // Cargar perfil
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
@@ -5662,8 +5668,11 @@ async function _onLogin(user) {
   // localStorage es solo caché; si falta, lo reconstruimos desde el perfil
   if (profile?.seat_number) {
     // Siempre usar la butaca del perfil (sobrevive al borrado de localStorage)
-    vpAplicarButacaEnUI(profile.seat_number)
+    MY_SEAT = profile.seat_number          // ← ahora asignamos la butaca real
     localStorage.setItem('cabildoos_butaca', profile.seat_number)
+    buildSeats()                           // re-build hemiciclo con MY_SEAT correcto
+    if (MY_SEAT_POS) resetCamera()         // centrar cámara en nuestra butaca
+    vpAplicarButacaEnUI(profile.seat_number)
     // Mostrar action buttons, grupo separador y social buttons
     const actBtns = document.getElementById('nav-action-btns')
     if (actBtns) actBtns.style.display = 'flex'
@@ -5681,10 +5690,7 @@ async function _onLogin(user) {
     document.getElementById('st-ident').style.display   = 'none'
     const lbl = document.getElementById('st-noident-label')
     if (lbl) lbl.textContent = 'Verificar identidad'
-    // Limpiar caché de butaca de sesiones anteriores — previene bug de butaca automática
-    localStorage.removeItem('cabildoos_butaca')
-    localStorage.removeItem('cabildoos_vid')
-    MY_SEAT = 0
+    // MY_SEAT y localStorage ya se limpiaron al inicio de _onLogin (MY_SEAT=0)
     voActualizarAlias(displayName)
     // Breve delay para que el usuario vea el hemiciclo un momento
     setTimeout(() => showScreen('verify-onboard'), 2200)
@@ -7543,6 +7549,11 @@ function cerrarVerificacion() {
   vpPararCamara()
   clearInterval(_vpPollingTimer)
   document.getElementById('verify-overlay').classList.remove('open')
+  // Si el usuario no tiene butaca asignada (no verificado), volver a verify-onboard
+  // para que no quede atrapado en congress sin identidad
+  if (_authUser && !MY_SEAT) {
+    setTimeout(() => showScreen('verify-onboard'), 250)
+  }
 }
 
 function vpResetCamUI(tipo) {
