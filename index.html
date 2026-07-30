@@ -2782,6 +2782,90 @@ body:not(.on-congress) #q-cards-strip      { display:none !important; pointer-ev
 }
 .vo-btn-ghost:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
 /* Topbar pequeño en verify-onboard */
+/* ══════════════════════════════════════════════════════════════
+   CABILDO SELECTOR
+══════════════════════════════════════════════════════════════ */
+#cabildo-selector {
+  background: #07111f;
+  overflow-y: auto;
+}
+#cs-canvas {
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; opacity:.35;
+}
+.cs-topbar {
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 28px;
+  background:rgba(7,17,31,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.cs-logo { font-size:17px; font-weight:800; color:#fff; letter-spacing:.5px; }
+.cs-logout {
+  background:none; border:none; cursor:pointer;
+  color:rgba(255,255,255,.4); font-size:12px; font-weight:500;
+  padding:6px 12px; border-radius:8px; transition:color .2s, background .2s;
+}
+.cs-logout:hover { color:rgba(255,255,255,.75); background:rgba(255,255,255,.07); }
+.cs-ui {
+  max-width:760px; margin:0 auto; padding:48px 24px 80px;
+  display:flex; flex-direction:column; gap:32px;
+}
+.cs-header { text-align:center; display:flex; flex-direction:column; align-items:center; gap:12px; }
+.cs-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(74,222,128,.12); border:1px solid rgba(74,222,128,.25);
+  color:#4ade80; font-size:12px; font-weight:600; letter-spacing:.5px;
+  padding:5px 14px; border-radius:100px;
+}
+.cs-title { font-size:32px; font-weight:900; color:#fff; margin:0; letter-spacing:-.5px; }
+.cs-sub { color:rgba(255,255,255,.45); font-size:14px; max-width:480px; line-height:1.6; margin:0; }
+.cs-grid { display:flex; flex-direction:column; gap:16px; }
+.cs-card {
+  display:flex; align-items:center; gap:20px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+  border-radius:20px; padding:20px 24px;
+  transition:background .2s, border-color .2s, transform .15s;
+  cursor:default;
+}
+.cs-card.active {
+  border-color:rgba(247,106,30,.35); cursor:pointer;
+  background:rgba(247,106,30,.06);
+}
+.cs-card.active:hover {
+  background:rgba(247,106,30,.1); border-color:rgba(247,106,30,.55);
+  transform:translateY(-2px);
+}
+.cs-card.active:active { transform:translateY(0); }
+.cs-card.soon { opacity:.55; }
+.cs-card-logo { width:72px; height:72px; flex-shrink:0; }
+.cs-card-logo svg { width:100%; height:100%; }
+.cs-card-logo-flag {
+  width:72px; height:72px; font-size:42px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.05); border-radius:50%;
+}
+.cs-card-info { flex:1; display:flex; flex-direction:column; gap:6px; }
+.cs-card-name { font-size:18px; font-weight:800; color:#fff; }
+.cs-card-desc { font-size:13px; color:rgba(255,255,255,.45); line-height:1.5; }
+.cs-card-meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.cs-pill {
+  font-size:11px; font-weight:700; letter-spacing:.5px;
+  padding:3px 10px; border-radius:100px;
+}
+.cs-pill.open { background:rgba(74,222,128,.15); color:#4ade80; border:1px solid rgba(74,222,128,.2); }
+.cs-pill.soon-pill { background:rgba(255,255,255,.07); color:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.1); }
+.cs-members { font-size:12px; color:rgba(255,255,255,.3); }
+.cs-card-arrow { font-size:22px; color:var(--orange); font-weight:900; flex-shrink:0; }
+.cs-card.soon .cs-card-arrow { display:none; }
+
+@media(max-width:520px) {
+  .cs-title { font-size:24px; }
+  .cs-card { padding:16px; gap:14px; }
+  .cs-card-logo, .cs-card-logo-flag { width:56px; height:56px; font-size:32px; }
+  .cs-card-name { font-size:16px; }
+}
+
 .vo-topbar {
   position: absolute; top: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-between;
@@ -2991,6 +3075,99 @@ body:not(.on-congress) #q-cards-strip      { display:none !important; pointer-ev
         <button class="vo-btn-primary" onclick="voIniciarVerificacion()">Verificar mi identidad →</button>
         <button class="vo-btn-ghost" onclick="voExplorar()">Explorar el cabildo</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ CABILDO SELECTOR ══════════════ -->
+<div class="screen" id="cabildo-selector">
+  <canvas id="cs-canvas"></canvas>
+  <div class="cs-topbar">
+    <span class="cs-logo">cabildoOS</span>
+    <button class="cs-logout" onclick="cerrarSesion()">↩ Salir</button>
+  </div>
+  <div class="cs-ui">
+    <div class="cs-header">
+      <div class="cs-badge">✓ Identidad verificada</div>
+      <h1 class="cs-title">Elegí tu Cabildo</h1>
+      <p class="cs-sub">Sos un ciudadano anónimo verificado. Cada Cabildo define sus propias reglas de admisión.</p>
+    </div>
+    <div class="cs-grid">
+
+      <!-- Venezuela — ACTIVO -->
+      <div class="cs-card active" onclick="entrarCabildo('venezuela')">
+        <div class="cs-card-logo">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="100" cy="100" r="98" fill="#1a2f5a" stroke="white" stroke-width="3"/>
+            <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="3 4"/>
+            <!-- hemiciclo dots -->
+            <g fill="white" opacity="0.95">
+              <circle cx="100" cy="38" r="3.5"/><circle cx="112" cy="39" r="3.5"/><circle cx="124" cy="42" r="3.5"/><circle cx="135" cy="47" r="3.5"/><circle cx="145" cy="54" r="3.5"/>
+              <circle cx="88" cy="39" r="3.5"/><circle cx="76" cy="42" r="3.5"/><circle cx="65" cy="47" r="3.5"/><circle cx="55" cy="54" r="3.5"/>
+              <circle cx="100" cy="50" r="3.5"/><circle cx="113" cy="52" r="3.5"/><circle cx="126" cy="57" r="3.5"/><circle cx="138" cy="64" r="3.5"/>
+              <circle cx="87" cy="52" r="3.5"/><circle cx="74" cy="57" r="3.5"/><circle cx="62" cy="64" r="3.5"/>
+              <circle cx="100" cy="62" r="3.5"/><circle cx="114" cy="65" r="3.5"/><circle cx="127" cy="71" r="3.5"/>
+              <circle cx="86" cy="65" r="3.5"/><circle cx="73" cy="71" r="3.5"/>
+              <circle cx="100" cy="74" r="3.5"/><circle cx="115" cy="78" r="3.5"/>
+              <circle cx="85" cy="78" r="3.5"/>
+            </g>
+            <circle cx="148" cy="60" r="5" fill="#4caf50"/>
+            <text x="100" y="112" text-anchor="middle" fill="white" font-family="'Arial',sans-serif" font-size="22" font-weight="900" letter-spacing="1">Cabildo</text>
+            <line x1="55" y1="118" x2="145" y2="118" stroke="white" stroke-width="1.5" opacity="0.6"/>
+            <text x="100" y="132" text-anchor="middle" fill="white" font-family="'Arial',sans-serif" font-size="13" font-weight="400" letter-spacing="2">de</text>
+            <line x1="55" y1="138" x2="145" y2="138" stroke="white" stroke-width="1.5" opacity="0.6"/>
+            <text x="100" y="158" text-anchor="middle" fill="white" font-family="'Arial',sans-serif" font-size="20" font-weight="900" letter-spacing="1">Venezuela</text>
+            <text x="100" y="178" text-anchor="middle" fill="white" font-family="'Arial',sans-serif" font-size="13" letter-spacing="6">★★★★★★★</text>
+            <text x="100" y="196" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-family="'Arial',sans-serif" font-size="7" letter-spacing="3">Generación Independencia 2026</text>
+          </svg>
+        </div>
+        <div class="cs-card-info">
+          <div class="cs-card-name">Venezuela</div>
+          <div class="cs-card-desc">Democracia participativa para venezolanos en el país y en la diáspora</div>
+          <div class="cs-card-meta">
+            <span class="cs-pill open">● Abierto</span>
+            <span class="cs-members" id="cs-ve-members">— ciudadanos</span>
+          </div>
+        </div>
+        <div class="cs-card-arrow">→</div>
+      </div>
+
+      <!-- Argentina — Próximamente -->
+      <div class="cs-card soon">
+        <div class="cs-card-logo cs-card-logo-flag">🇦🇷</div>
+        <div class="cs-card-info">
+          <div class="cs-card-name">Argentina</div>
+          <div class="cs-card-desc">Cabildo Digital de la República Argentina</div>
+          <div class="cs-card-meta">
+            <span class="cs-pill soon-pill">🔒 Próximamente</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Colombia — Próximamente -->
+      <div class="cs-card soon">
+        <div class="cs-card-logo cs-card-logo-flag">🇨🇴</div>
+        <div class="cs-card-info">
+          <div class="cs-card-name">Colombia</div>
+          <div class="cs-card-desc">Cabildo Digital de la República de Colombia</div>
+          <div class="cs-card-meta">
+            <span class="cs-pill soon-pill">🔒 Próximamente</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diáspora — Próximamente -->
+      <div class="cs-card soon">
+        <div class="cs-card-logo cs-card-logo-flag">🌐</div>
+        <div class="cs-card-info">
+          <div class="cs-card-name">Diáspora Global</div>
+          <div class="cs-card-desc">Cabildo abierto para venezolanos fuera del país</div>
+          <div class="cs-card-meta">
+            <span class="cs-pill soon-pill">🔒 Próximamente</span>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -5596,15 +5773,41 @@ function toggleFollowList(num, btn) {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  CABILDO SELECTOR
+// ══════════════════════════════════════════════════════════════
+function mostrarSelectorCabildos() {
+  showScreen('cabildo-selector')
+  _startIntroAnim('cs-canvas')
+  // Cargar conteo real de ciudadanos de Venezuela
+  sb.rpc('get_butaca_count').then(({ data }) => {
+    const el = document.getElementById('cs-ve-members')
+    if (el && data) el.textContent = data + ' ciudadanos'
+  }).catch(() => {})
+}
+
+function entrarCabildo(id) {
+  if (id === 'venezuela') {
+    _stopIntroAnim()
+    showScreen('congress')
+    resizeCanvas()
+    cargarConteoReal()
+    cargarPreguntasActivas()
+    if (MY_SEAT_POS) resetCamera()
+    _actualizarBtnButaca()
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════════════════════════════════
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
   document.getElementById(id).classList.add('active')
-  document.body.classList.toggle('on-landing',        id === 'landing')
-  document.body.classList.toggle('on-congress',       id === 'congress')
-  document.body.classList.toggle('on-intro',          id === 'intro')
-  document.body.classList.toggle('on-verify-onboard', id === 'verify-onboard')
+  document.body.classList.toggle('on-landing',          id === 'landing')
+  document.body.classList.toggle('on-congress',         id === 'congress')
+  document.body.classList.toggle('on-intro',            id === 'intro')
+  document.body.classList.toggle('on-verify-onboard',   id === 'verify-onboard')
+  document.body.classList.toggle('on-cabildo-selector', id === 'cabildo-selector')
   // Collapse panel when leaving landing
   if (id !== 'landing') {
     sfActiveTab = null
@@ -5674,10 +5877,9 @@ async function _onLogin(user) {
   localStorage.removeItem('cabildoos_vid')
   MY_SEAT = 0
 
-  // Ir al congress inmediatamente
+  // Mostrar selector mientras carga el perfil (resizeCanvas necesita el canvas activo)
   showScreen('congress')
   resizeCanvas()   // buildSeats() corre con MY_SEAT=0 → sin butaca propia hasta confirmar perfil
-  cargarPreguntasActivas()
   // Cargar perfil
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
   _authProfile = profile
@@ -5752,6 +5954,8 @@ async function _onLogin(user) {
     if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
     voActualizarAlias(displayName)
     _actualizarBtnButaca()  // "↵ Mi butaca"
+    // Usuario verificado → mostrar selector de cabildos antes de entrar al congreso
+    mostrarSelectorCabildos()
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
@@ -7912,15 +8116,13 @@ function vpFinalizar() {
   const butaca = localStorage.getItem('cabildoos_butaca')
   if (butaca) {
     vpAplicarButacaEnUI(butaca)
-    showScreen('congress')
-    resizeCanvas()
-    if (MY_SEAT_POS) resetCamera()
+    // Verificación aprobada → mostrar selector de cabildos
+    mostrarSelectorCabildos()
   } else {
     // Solicitud enviada — en revisión
     const lbl = document.getElementById('st-noident-label')
     if (lbl) lbl.textContent = 'Verificación en revisión…'
     showToast('Solicitud enviada — se actualizará cuando el admin apruebe')
-    // Volver a verify-onboard (cerrarVerificacion ya lo hace, pero lo confirmamos)
     showScreen('verify-onboard')
   }
 }
