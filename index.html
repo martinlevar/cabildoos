@@ -2981,7 +2981,7 @@ body.on-congress #social-footer.visible { display:flex; }
 
       <div class="vo-ctas">
         <button class="vo-btn-primary" onclick="voIniciarVerificacion()">Verificar mi identidad →</button>
-        <button class="vo-btn-ghost" onclick="voExplorar()">Explorar el hemiciclo primero</button>
+        <button class="vo-btn-ghost" onclick="voExplorar()">Explorar el cabildo</button>
       </div>
     </div>
   </div>
@@ -5608,10 +5608,6 @@ function showScreen(id) {
   else if (id === 'verify-onboard') _startIntroAnim('vo-canvas')
   else _stopIntroAnim()
 
-  // Bloquear pointer events brevemente para eliminar ghost clicks
-  // que ocurren cuando el DOM cambia de pantalla durante un evento click
-  document.body.style.pointerEvents = 'none'
-  setTimeout(() => { document.body.style.pointerEvents = '' }, 380)
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -7617,6 +7613,9 @@ function abrirVerificacion() {
   // Usuarios no verificados no pueden escapar del overlay hasta completar el flujo
   const closeBtn = document.getElementById('vp-close-btn')
   if (closeBtn) closeBtn.style.display = MY_SEAT > 0 ? '' : 'none'
+  // Bloquear controles del hemiciclo mientras el overlay está abierto
+  const mc = document.getElementById('map-controls')
+  if (mc) mc.style.pointerEvents = 'none'
   vpShowStep(1)
   document.getElementById('verify-overlay').classList.add('open')
 }
@@ -7625,6 +7624,9 @@ function cerrarVerificacion() {
   vpPararCamara()
   clearInterval(_vpPollingTimer)
   document.getElementById('verify-overlay').classList.remove('open')
+  // Rehabilitar controles del hemiciclo
+  const mc = document.getElementById('map-controls')
+  if (mc) mc.style.pointerEvents = ''
   // Si el usuario no tiene butaca asignada (no verificado), volver a verify-onboard
   // para que no quede atrapado en congress sin identidad
   if (_authUser && !MY_SEAT) {
