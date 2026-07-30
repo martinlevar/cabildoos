@@ -2980,6 +2980,12 @@ body.on-congress #social-footer.visible { display:flex; }
 </div>
 
 <!-- ══════════════ CONGRESS ══════════════ -->
+<!-- Shield para modo observador: bloquea clicks hasta que el usuario verifique -->
+<div id="observador-shield" onclick="showScreen('verify-onboard')" title="Verificá tu identidad para interactuar" style="
+  display:none; position:fixed; inset:0; z-index:490;
+  cursor:pointer; background:transparent;
+"></div>
+
 <div class="screen" id="congress">
   <nav class="nav">
     <!-- Logo -->
@@ -5734,6 +5740,7 @@ async function _onLogin(user) {
     if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
     voActualizarAlias(displayName)
     _actualizarBtnButaca()  // "↵ Mi butaca"
+    _shieldOff()            // usuario verificado — habilitar interacciones
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
@@ -5750,6 +5757,7 @@ async function _onLogin(user) {
 function _onLogout() {
   _authUser = null
   _authProfile = null
+  _shieldOff()  // reset shield al hacer logout
   // Legacy landing nav
   const btnAuthNav = document.getElementById('btn-auth-nav')
   if (btnAuthNav) btnAuthNav.style.display = 'block'
@@ -8000,9 +8008,13 @@ function voIniciarVerificacion() {
   abrirVerificacion()
 }
 
+function _shieldOn()  { const s = document.getElementById('observador-shield'); if (s) s.style.display = 'block' }
+function _shieldOff() { const s = document.getElementById('observador-shield'); if (s) s.style.display = 'none'  }
+
 function voExplorar() {
   showScreen('congress')
   resizeCanvas()
+  _shieldOn()  // bloquear interacciones mientras sea observador
   // Cargar datos reales: conteo + perfiles + preguntas
   cargarConteoReal().then(() => {
     // Centrar la cámara en el primer seat real visible
