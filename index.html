@@ -118,26 +118,6 @@ html, body {
 .av-circle:hover { transform:scale(1.04); }
 .av-num { font-size:28px; font-weight:800; color:rgba(255,255,255,.9); }
 
-/* ── OBSERVER BANNER ── */
-#observer-banner {
-  display:none; flex-shrink:0;
-  background:rgba(29,29,29,.88); backdrop-filter:blur(10px);
-  padding:9px 24px; align-items:center; gap:12px; z-index:10;
-}
-#observer-banner.show { display:flex; }
-.ob-dot {
-  width:7px; height:7px; border-radius:50%; background:var(--mid); flex-shrink:0;
-}
-.ob-text { font-size:12px; color:rgba(255,255,255,.6); font-weight:500; flex:1; }
-.ob-text b { color:rgba(255,255,255,.9); font-weight:700; }
-.ob-cta {
-  padding:6px 14px; border-radius:20px;
-  background:var(--orange); color:#fff; border:none;
-  font-family:'Manrope',sans-serif; font-size:11px; font-weight:700;
-  cursor:pointer; transition:background .15s; white-space:nowrap; flex-shrink:0;
-}
-.ob-cta:hover { background:#d45510; }
-
 /* ── CONGRESS ── */
 #congress { overflow:hidden; }
 #congress .body {
@@ -2606,6 +2586,125 @@ body.on-congress #social-footer.visible { display:flex; }
   transition: all .15s;
 }
 .intro-btn-ghost:hover { background: rgba(255,255,255,.13); color: #fff; }
+
+/* ══════════════════════════════════════════════════════════
+   VERIFY ONBOARD — pantalla para usuarios sin butaca
+══════════════════════════════════════════════════════════ */
+#verify-onboard {
+  background: #040C1E;
+  overflow: hidden;
+}
+#vo-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+}
+.vo-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 90% 70% at 50% 108%,
+    rgba(37,99,235,.22) 0%, rgba(30,64,175,.08) 45%, transparent 70%);
+}
+.vo-ui {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+/* Card de vidrio */
+.vo-card {
+  background: rgba(13,27,46,.88);
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 24px;
+  width: min(520px, 100%);
+  padding: 36px 32px 32px;
+  box-shadow: 0 32px 80px rgba(0,0,0,.5);
+  backdrop-filter: blur(20px);
+  position: relative;
+  margin: auto;
+}
+/* Header de la card */
+.vo-check {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(34,197,94,.15); border: 2px solid rgba(34,197,94,.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin: 0 auto 20px;
+}
+.vo-title {
+  font-size: 24px; font-weight: 800; color: #fff;
+  text-align: center; letter-spacing: -.03em; margin-bottom: 6px;
+}
+.vo-alias {
+  text-align: center; font-size: 14px;
+  color: rgba(255,255,255,.4); margin-bottom: 28px;
+}
+/* Divider */
+.vo-divider {
+  height: 1px; background: rgba(255,255,255,.08); margin: 24px 0;
+}
+/* Sección de info */
+.vo-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: rgba(255,255,255,.3); margin-bottom: 14px;
+}
+/* Steps */
+.vo-steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+.vo-step {
+  display: flex; align-items: center; gap: 12px;
+}
+.vo-step-ic {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.vo-step-ic.done { background: rgba(34,197,94,.18); color: #4ade80; border: 1.5px solid rgba(34,197,94,.3); }
+.vo-step-ic.next { background: rgba(247,106,30,.18); color: #fb923c; border: 1.5px solid rgba(247,106,30,.35); }
+.vo-step-ic.todo { background: rgba(255,255,255,.06); color: rgba(255,255,255,.3); border: 1.5px solid rgba(255,255,255,.1); }
+.vo-step-txt { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.7); }
+.vo-step-txt.done { color: rgba(255,255,255,.4); text-decoration: line-through; }
+.vo-step-txt.next { color: #fff; }
+/* Info blocks */
+.vo-info-blocks { display: flex; flex-direction: column; gap: 10px; }
+.vo-info-block {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px; padding: 14px 16px;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.vo-info-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.vo-info-title { font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+.vo-info-text { font-size: 12px; color: rgba(255,255,255,.4); line-height: 1.5; }
+/* CTAs */
+.vo-ctas { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+.vo-btn-primary {
+  width: 100%; padding: 14px; border-radius: 12px;
+  background: linear-gradient(135deg, #f76a1e 0%, #e2560c 100%);
+  color: #fff; font-family: inherit; font-size: 14px; font-weight: 700;
+  border: none; cursor: pointer;
+  box-shadow: 0 2px 24px rgba(247,106,30,.35);
+  transition: opacity .15s, transform .15s;
+}
+.vo-btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+.vo-btn-ghost {
+  width: 100%; padding: 12px; border-radius: 12px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.12);
+  color: rgba(255,255,255,.5); font-family: inherit;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s;
+}
+.vo-btn-ghost:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
+/* Topbar pequeño en verify-onboard */
+.vo-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 28px; pointer-events: none; z-index: 2;
+}
+.vo-logo {
+  font-size: 16px; font-weight: 800; letter-spacing: -.4px;
+  color: rgba(255,255,255,.6);
+}
+.vo-flag {
+  font-size: 12px; color: rgba(255,255,255,.3); font-weight: 600;
+}
 </style>
 </head>
 <body>
@@ -2737,6 +2836,71 @@ body.on-congress #social-footer.visible { display:flex; }
       <div class="intro-ctas">
         <button class="intro-btn-primary" onclick="abrirAuth('registro')">Crear usuario →</button>
         <button class="intro-btn-ghost" onclick="abrirAuth('login')">Ya tengo cuenta</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ VERIFY ONBOARD ══════════════ -->
+<div class="screen" id="verify-onboard">
+  <canvas id="vo-canvas"></canvas>
+  <div class="vo-glow"></div>
+  <div class="vo-topbar">
+    <span class="vo-logo">cabildoOS</span>
+    <span class="vo-flag">🇻🇪 Venezuela</span>
+  </div>
+  <div class="vo-ui">
+    <div class="vo-card">
+      <div class="vo-check">✓</div>
+      <h2 class="vo-title">¡Bienvenido al cabildo!</h2>
+      <p class="vo-alias" id="vo-alias-lbl">Tu cuenta fue creada correctamente.</p>
+
+      <div class="vo-section-title">Tu progreso</div>
+      <div class="vo-steps">
+        <div class="vo-step">
+          <div class="vo-step-ic done">✓</div>
+          <span class="vo-step-txt done">Crear usuario</span>
+        </div>
+        <div class="vo-step">
+          <div class="vo-step-ic next">2</div>
+          <span class="vo-step-txt next">Verificar identidad → recibir butaca</span>
+        </div>
+        <div class="vo-step">
+          <div class="vo-step-ic todo">3</div>
+          <span class="vo-step-txt">Votar de forma anónima</span>
+        </div>
+      </div>
+
+      <div class="vo-divider"></div>
+
+      <div class="vo-section-title">¿Por qué verificar?</div>
+      <div class="vo-info-blocks">
+        <div class="vo-info-block">
+          <div class="vo-info-icon">🔐</div>
+          <div>
+            <div class="vo-info-title">Voto Anónimo Verificable</div>
+            <div class="vo-info-text">Nadie puede saber cómo votaste, ni siquiera el sistema. Pero se garantiza que sos una persona real y que votaste una sola vez.</div>
+          </div>
+        </div>
+        <div class="vo-info-block">
+          <div class="vo-info-icon">🪪</div>
+          <div>
+            <div class="vo-info-title">Solo una persona, una butaca</div>
+            <div class="vo-info-text">La verificación de identidad (cédula o pasaporte) asigna una única butaca. No se almacena tu documento — solo un hash criptográfico.</div>
+          </div>
+        </div>
+        <div class="vo-info-block">
+          <div class="vo-info-icon">🏛</div>
+          <div>
+            <div class="vo-info-title">Tu voz en el hemiciclo</div>
+            <div class="vo-info-text">Una vez verificado, tu dot aparece en el hemiciclo. Al votar, el dot cambia de color — verde sí, rojo no, ámbar abstención.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vo-ctas">
+        <button class="vo-btn-primary" onclick="voIniciarVerificacion()">Verificar mi identidad →</button>
+        <button class="vo-btn-ghost" onclick="voExplorar()">Explorar el hemiciclo primero</button>
       </div>
     </div>
   </div>
@@ -2889,11 +3053,6 @@ body.on-congress #social-footer.visible { display:flex; }
     <!-- Create account button (logged out) -->
     <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()">Crear cuenta</button>
   </nav>
-  <div id="observer-banner">
-    <div class="ob-dot"></div>
-    <p class="ob-text"><b>Modo observador</b> — Podés explorar el hemiciclo pero no votar</p>
-    <button class="ob-cta" onclick="abrirAuth()">Crear mi butaca →</button>
-  </div>
   <div class="body" style="flex:1;min-height:0">
     <div id="q-cards-strip"></div>
     <div class="canvas-area" id="canvas-area">
@@ -5306,9 +5465,10 @@ function toggleFollowList(num, btn) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
   document.getElementById(id).classList.add('active')
-  document.body.classList.toggle('on-landing',  id === 'landing')
-  document.body.classList.toggle('on-congress', id === 'congress')
-  document.body.classList.toggle('on-intro',    id === 'intro')
+  document.body.classList.toggle('on-landing',       id === 'landing')
+  document.body.classList.toggle('on-congress',      id === 'congress')
+  document.body.classList.toggle('on-intro',         id === 'intro')
+  document.body.classList.toggle('on-verify-onboard', id === 'verify-onboard')
   // Collapse panel when leaving landing
   if (id !== 'landing') {
     sfActiveTab = null
@@ -5316,8 +5476,9 @@ function showScreen(id) {
     document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
   }
   // Intro animation lifecycle
-  if (id === 'intro') _startIntroAnim()
-  else               _stopIntroAnim()
+  if (id === 'intro') _startIntroAnim('intro-canvas')
+  else if (id === 'verify-onboard') _startIntroAnim('vo-canvas')
+  else _stopIntroAnim()
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -5441,16 +5602,16 @@ async function _onLogin(user) {
     if (seatLbl) seatLbl.textContent = '#' + profile.seat_number
     const butacaInfo = document.getElementById('nav-umenu-butaca')
     if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
-    // Salir del modo observador
-    observerMode = false
-    document.getElementById('observer-banner').classList.remove('show')
+    voActualizarAlias(displayName)
   } else {
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
     const lbl = document.getElementById('st-noident-label')
     if (lbl) lbl.textContent = 'Verificar identidad'
-    // Sin butaca: ocultar action buttons, mostrar banner
-    document.getElementById('observer-banner').classList.add('show')
+    // Sin butaca: ir a pantalla de onboarding de verificación
+    // Breve delay para que el usuario vea el hemiciclo un momento
+    voActualizarAlias(displayName)
+    setTimeout(() => showScreen('verify-onboard'), 2200)
   }
 }
 
@@ -5481,9 +5642,6 @@ function _onLogout() {
   if (grpSep2) grpSep2.style.display = 'none'
   const socBtns2 = document.getElementById('nav-social-btns')
   if (socBtns2) socBtns2.style.display = 'none'
-  // Observer mode
-  observerMode = true
-  document.getElementById('observer-banner').classList.add('show')
   // Ocultar social footer
   document.getElementById('social-footer').classList.remove('visible')
   // Volver a la pantalla intro
@@ -5544,10 +5702,6 @@ function cerrarNavDropdown() {
 function irACongreso() { irAlCongreso() }  // alias
 function irAlCongreso() {
   showScreen('congress')
-  // Si es observador (sin sesión), mostrar banner
-  if (!_authUser) {
-    document.getElementById('observer-banner').classList.add('show')
-  }
   if (typeof cargarPreguntasActivas === 'function') cargarPreguntasActivas()
   if (typeof initHemiciclo === 'function') initHemiciclo()
   if (typeof _updatePqBadge === 'function') _updatePqBadge()
@@ -7679,33 +7833,34 @@ function initQuestionsRealtime() {
   } catch(e) { console.warn('Realtime no disponible:', e) }
 }
 
-let observerMode = false
-
 function entrarComoObservador() {
-  observerMode = true
-  document.getElementById('observer-banner').classList.add('show')
-  showScreen('congress'); resizeCanvas(); resetCamera()
+  showScreen('congress')
 }
 
 function irACongreso() {
-  if (!_authUser) {
-    // Sin sesión: modo observador
-    entrarComoObservador()
-  } else {
-    observerMode = false
-    document.getElementById('observer-banner').classList.remove('show')
-    showScreen('congress'); resizeCanvas(); resetCamera()
-  }
+  showScreen('congress'); resizeCanvas(); if (MY_SEAT_POS) resetCamera()
 }
 
 function volverALanding() {
   // Landing ya no es el default — permanecemos en congress
   // Mantenemos la función para compatibilidad con código legacy
   showScreen('congress')
-  if (observerMode) {
-    observerMode = false
-    document.getElementById('observer-banner').classList.remove('show')
-  }
+}
+
+function voIniciarVerificacion() {
+  showScreen('congress')
+  resizeCanvas()
+  setTimeout(() => abrirMiPerfil(), 300)
+}
+
+function voExplorar() {
+  showScreen('congress')
+  resizeCanvas()
+}
+
+function voActualizarAlias(alias) {
+  const lbl = document.getElementById('vo-alias-lbl')
+  if (lbl && alias) lbl.textContent = `Bienvenido, ${alias}`
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -8707,8 +8862,8 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
 //  MODAL
 // ══════════════════════════════════════════════════════════════
 function abrirModal() {
-  if (observerMode) {
-    showToast('Creá tu butaca para poder votar')
+  if (!_authUser || !_authProfile?.seat_number) {
+    showToast('Verificá tu identidad para poder votar')
     return
   }
 
@@ -8849,13 +9004,18 @@ let _introFrame = 0
 let _introCtx = null
 let _introCv = null
 
-function _initIntroCanvas() {
-  if (_introCv) return  // ya inicializado
-  _introCv = document.getElementById('intro-canvas')
+let _introResizeListenerAdded = false
+
+function _initIntroCanvas(canvasId = 'intro-canvas') {
+  _introCv = document.getElementById(canvasId)
   if (!_introCv) return
   _introCtx = _introCv.getContext('2d')
   _resizeIntro()
-  window.addEventListener('resize', _resizeIntro)
+  // Solo agregar el resize listener una vez
+  if (!_introResizeListenerAdded) {
+    window.addEventListener('resize', _resizeIntro)
+    _introResizeListenerAdded = true
+  }
 }
 
 function _resizeIntro() {
@@ -8997,10 +9157,9 @@ function _introDrawFrame() {
   _introRaf = requestAnimationFrame(_introDrawFrame)
 }
 
-function _startIntroAnim() {
-  _initIntroCanvas()
-  if (_introRaf) return  // ya corriendo
-  // Resetear dots y ocultar hero para nueva ejecución
+function _startIntroAnim(canvasId = 'intro-canvas') {
+  _initIntroCanvas(canvasId)
+  if (_introRaf) return
   const hero = document.getElementById('intro-hero')
   if (hero) hero.classList.remove('visible')
   _introSeats.forEach(s => {
