@@ -5197,13 +5197,12 @@ function draw() {
     if (isHovered) r *= 1.22
 
     if (!isOccupied) {
-      // ── Asiento vacío: solo contorno ──
-      const alpha = cam.scale < 0.5 ? 0.25 : 0.18
-      ctx.globalAlpha = alpha
+      // ── Asiento vacío: contorno visible ──
+      ctx.globalAlpha = cam.scale < 0.4 ? 0.4 : 0.65
       ctx.beginPath()
-      ctx.arc(sx, sy, Math.max(1, r), 0, Math.PI * 2)
-      ctx.strokeStyle = '#8090a0'
-      ctx.lineWidth   = Math.max(0.6, Math.min(1.2, cam.scale * 0.8))
+      ctx.arc(sx, sy, Math.max(1.2, r * 0.92), 0, Math.PI * 2)
+      ctx.strokeStyle = '#6a7a90'
+      ctx.lineWidth   = Math.max(1, Math.min(2, cam.scale * 1.2))
       ctx.stroke()
       ctx.globalAlpha = 1
     } else {
@@ -5332,6 +5331,7 @@ window.addEventListener('mousemove', e => {
 
   let closest = null, minD = hitR + 6
   SEATS.forEach(s => {
+    if (s.num > TOTAL_SEATS && s.num !== MY_SEAT) return  // butaca vacía: ignorar hover
     const { x: ssx, y: ssy } = toScreen(s.x, s.y, W, H)
     const d = Math.hypot(sx - ssx, sy - ssy)
     if (d < minD) { minD = d; closest = s }
