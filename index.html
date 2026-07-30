@@ -7588,20 +7588,25 @@ function abrirVerificacion() {
   vpAnonBlob = null
   vpBarcodeData = null
   vpGeminiResult = null
-  vpVerificationId = crypto.randomUUID()   // nuevo ID por sesión
+  // UUID con fallback para Safari antiguo
+  vpVerificationId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16)
+      })
   // Limpiar blobs de cámara
   vpCapturedDoc = null
   vpCapturedSelfie = null
   vpCapturedSelfieDoc = null
-  vpPararBarcodeScanner()
-  vpPararScanner()
-  vpPararCamara()
+  try { vpPararBarcodeScanner() } catch(e) {}
+  try { vpPararScanner() } catch(e) {}
+  try { vpPararCamara() } catch(e) {}
   // Resetear UI de cámara
-  ;['doc','selfie','selfiedoc'].forEach(t => vpResetCamUI(t))
+  try { ;['doc','selfie','selfiedoc'].forEach(t => vpResetCamUI(t)) } catch(e) {}
   document.querySelectorAll('.vp-proc-row').forEach(r => {
     r.classList.remove('active','done')
-    r.querySelector('.vp-proc-icon').textContent = '◌'
-    r.querySelector('.vp-proc-sub').textContent = ''
+    const icon = r.querySelector('.vp-proc-icon'); if (icon) icon.textContent = '◌'
+    const sub  = r.querySelector('.vp-proc-sub');  if (sub)  sub.textContent  = ''
   })
   const campos = ['vp-nombre','vp-num-doc','vp-fecha-nac']
   campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
@@ -8016,9 +8021,12 @@ function volverALanding() {
 }
 
 function voIniciarVerificacion() {
-  // Abrir el overlay directo sobre verify-onboard — evita el ghost click
-  // que ocurría al cambiar de pantalla con setTimeout antes de abrir el panel
-  abrirVerificacion()
+  try {
+    abrirVerificacion()
+  } catch(e) {
+    console.error('abrirVerificacion error:', e)
+    showToast('Error al abrir verificación: ' + e.message)
+  }
 }
 
 function voExplorar() {
