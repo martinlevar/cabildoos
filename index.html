@@ -1796,6 +1796,14 @@ html, body {
   color:#fff;
 }
 #verify-overlay.open #verify-panel { transform:translateY(0); }
+.vp-logout-btn {
+  position:absolute; top:14px; left:16px;
+  background:none; border:none; cursor:pointer;
+  color:rgba(255,255,255,.35); font-size:11px; font-weight:500;
+  padding:4px 8px; border-radius:6px;
+  transition:color .2s, background .2s;
+}
+.vp-logout-btn:hover { color:rgba(255,255,255,.7); background:rgba(255,255,255,.07); }
 /* Override text colors inside verify panel for dark mode */
 #verify-panel h2, #verify-panel h3, #verify-panel p,
 #verify-panel label, #verify-panel span:not(.vp-prog-dot) {
@@ -3460,6 +3468,7 @@ body.on-congress #social-footer.visible { display:flex; }
 <div id="verify-overlay" onclick="if(event.target===this&&MY_SEAT>0&&Date.now()-_verifyOverlayOpenedAt>500)cerrarVerificacion()">
   <div id="verify-panel">
     <button class="vp-close" onclick="if(MY_SEAT>0)cerrarVerificacion()" id="vp-close-btn">×</button>
+    <button class="vp-logout-btn" onclick="cerrarSesion()" title="Cerrar sesión">↩ Salir</button>
 
     <!-- Progress indicator -->
     <div class="vp-progress" id="vp-progress">
