@@ -8399,13 +8399,45 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
   _cargarCatTheme()
   cargarPreguntasActivas()
   initQuestionsRealtime()
+  initVotesRealtime()
+}
+
+/// ── Realtime: sincroniza conteo de votos en _profilesCache entre sesiones ──
+function initVotesRealtime() {
+  try {
+    sb.channel('votes-live')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'votes'
+      }, payload => {
+        const sn = payload.new?.seat_number
+        if (!sn) return
+        if (_profilesCache[sn]) {
+          _profilesCache[sn].votes = (_profilesCache[sn].votes || 0) + 1
+        }
+        // Si es nuestra propia butaca, actualizar también _myVoteCount
+        if (sn === MY_SEAT && MY_SEAT > 0) {
+          _myVoteCount = (_myVoteCount || 0) + 1
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'votes'
+      }, payload => {
+        // UPDATE = el mismo usuario cambió su voto, el conteo no cambia
+        // No hacemos nada al conteo total
+      })
+      .subscribe()
+  } catch(e) { console.warn('Realtime votes no disponible:', e) }
 }
 
 // ── Realtime: auto-actualiza preguntas cuando el admin crea/activa una ──
