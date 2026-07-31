@@ -2530,6 +2530,46 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 .sf-empty-msg { text-align:center; padding:24px 16px; color:var(--mid); font-size:13px; }
 .sf-empty-msg svg { margin-bottom:10px; opacity:.3; }
 
+/* Solicitudes de seguimiento en Mensajes */
+.sf-req-card {
+  border:1.5px solid rgba(247,106,30,.25);
+  background:rgba(247,106,30,.05);
+  border-radius:12px; padding:12px 14px; margin-bottom:8px;
+}
+.sf-req-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.sf-req-av {
+  width:34px; height:34px; border-radius:50%; flex-shrink:0;
+  background:var(--navy); display:flex; align-items:center;
+  justify-content:center; font-size:11px; font-weight:700; color:#fff;
+}
+.sf-req-info { flex:1; }
+.sf-req-name { font-size:13px; font-weight:700; color:var(--dark); }
+.sf-req-sub  { font-size:11px; color:var(--mid); margin-top:1px; }
+.sf-req-actions { display:flex; gap:6px; }
+.sf-req-accept {
+  flex:1; padding:8px; border-radius:9px; border:none; cursor:pointer;
+  background:var(--navy); color:#fff; font-size:12px; font-weight:700;
+  font-family:'Manrope',sans-serif; transition:background .15s;
+}
+.sf-req-accept:hover { background:#0f1535; }
+.sf-req-reject {
+  padding:8px 14px; border-radius:9px;
+  border:1.5px solid rgba(0,0,0,.12); background:transparent;
+  cursor:pointer; font-size:12px; font-weight:600; color:var(--mid);
+  font-family:'Manrope',sans-serif; transition:all .15s;
+}
+.sf-req-reject:hover { border-color:var(--mid); color:var(--dark); }
+/* Badge de notificación en el botón Mensajes */
+.nav-act-btn { position:relative; }
+.nav-msgs-badge {
+  position:absolute; top:2px; right:2px;
+  min-width:16px; height:16px; border-radius:99px;
+  background:#ef4444; color:#fff;
+  font-size:9px; font-weight:700; padding:0 4px;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none;
+}
+
 /* Floating panel above pill */
 .sf-float-panel {
   width:min(440px, calc(100vw - 40px));
@@ -3321,7 +3361,8 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
         <span class="nav-act-lbl">Seguidos</span>
       </button>
       <!-- Mensajes -->
-      <button class="nav-act-btn" onclick="sfSelectTab('mensajes')" title="Mensajes directos">
+      <button class="nav-act-btn" onclick="sfSelectTab('mensajes')" title="Mensajes directos" id="nav-btn-mensajes">
+        <span class="nav-msgs-badge" id="nav-msgs-badge" style="display:none"></span>
         <div class="nav-act-ic nav-ic-msgs">
           <svg width="16" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -5165,7 +5206,14 @@ function lerpCam() {
 // ══════════════════════════════════════════════════════════════
 const canvas = document.getElementById('hemiciclo')
 const ctx    = canvas.getContext('2d')
-const following = new Set()
+// ── Estado de follows (cargado desde Supabase) ──────────────────────────────
+const followingConfirmed  = new Set()  // yo sigo (aceptado)
+const followingPending    = new Set()  // solicitudes enviadas sin respuesta
+const followersConfirmed  = new Set()  // me siguen (aceptado)
+let   _pendingRequestsToMe = []        // solicitudes que debo aceptar/rechazar [{id,from_seat,alias}]
+
+// Alias para compatibilidad con canvas (usa `following`)
+const following = followingConfirmed
 let hoveredSeat = null
 let t0 = Date.now()
 
@@ -5401,12 +5449,15 @@ function showCard(seat, cx, cy) {
     // Dot ajeno: nunca mostrar Votar
     voteBtn.style.display = 'none'
     if (MY_SEAT > 0) {
-      // Solo usuarios verificados pueden seguir
       fbtn.style.display = ''
-      fbtn.textContent   = following.has(seat.num) ? 'Siguiendo' : 'Seguir'
-      fbtn.className     = following.has(seat.num) ? 'pc-follow following' : 'pc-follow'
+      if (followingConfirmed.has(seat.num)) {
+        fbtn.textContent = 'Siguiendo'; fbtn.className = 'pc-follow following'
+      } else if (followingPending.has(seat.num)) {
+        fbtn.textContent = 'Pendiente'; fbtn.className = 'pc-follow disabled'
+      } else {
+        fbtn.textContent = 'Seguir'; fbtn.className = 'pc-follow'
+      }
     } else {
-      // Modo observador: solo lectura
       fbtn.style.display = 'none'
     }
   }
@@ -5444,19 +5495,42 @@ document.getElementById('profile-card').addEventListener('mouseleave', () => {
   hideCard()
 })
 
-function toggleFollow() {
-  if (!cardSeat || cardSeat === MY_SEAT) return
+async function toggleFollow() {
+  if (!cardSeat || cardSeat === MY_SEAT || !MY_SEAT) return
   const btn = document.getElementById('pc-follow-btn')
-  if (following.has(cardSeat)) {
-    following.delete(cardSeat)
-    btn.textContent = 'Seguir'
-    btn.className   = 'pc-follow'
-    showToast(`Dejaste de seguir la butaca #${cardSeat}`)
+  const seat = cardSeat
+
+  if (followingConfirmed.has(seat) || followingPending.has(seat)) {
+    // Unfollow / cancelar solicitud
+    const { error } = await sb.from('follows')
+      .delete()
+      .eq('from_seat', MY_SEAT)
+      .eq('to_seat', seat)
+    if (!error) {
+      followingConfirmed.delete(seat)
+      followingPending.delete(seat)
+      btn.textContent = 'Seguir'
+      btn.className   = 'pc-follow'
+      showToast(`Dejaste de seguir la butaca #${seat}`)
+      renderSocial('seguidos')
+    }
   } else {
-    following.add(cardSeat)
-    btn.textContent = 'Siguiendo'
-    btn.className   = 'pc-follow following'
-    showToast(`Ahora seguís la butaca #${cardSeat}`)
+    // Enviar solicitud de seguimiento
+    btn.disabled = true
+    const { error } = await sb.from('follows').insert({
+      from_seat: MY_SEAT,
+      to_seat:   seat,
+      status:    'pending'
+    })
+    btn.disabled = false
+    if (!error) {
+      followingPending.add(seat)
+      btn.textContent = 'Pendiente'
+      btn.className   = 'pc-follow disabled'
+      showToast(`Solicitud enviada a butaca #${seat}`)
+    } else {
+      showToast('Error al enviar solicitud', true)
+    }
   }
 }
 
@@ -5825,8 +5899,11 @@ function clRow(num, isMe) {
   const p = getProfile(num)
   const badgeCls  = p.isAnon ? 'anon' : 'pub'
   const badgeTxt  = p.isAnon ? 'Anónimo' : 'Público'
-  const followCls = following.has(num) ? 'following' : ''
-  const followTxt = num === MY_SEAT ? 'Tu butaca' : following.has(num) ? 'Siguiendo' : 'Seguir'
+  const followCls = followingConfirmed.has(num) ? 'following' : ''
+  const followTxt = num === MY_SEAT ? 'Tu butaca'
+    : followingConfirmed.has(num) ? 'Siguiendo'
+    : followingPending.has(num)   ? 'Pendiente'
+    : 'Seguir'
   const followDis = num === MY_SEAT ? 'style="opacity:.35;pointer-events:none"' : ''
   return `
   <div class="cl-item ${isMe ? 'cl-me' : ''}" id="cl-row-${num}">
@@ -5845,24 +5922,36 @@ function clRow(num, isMe) {
   </div>`
 }
 
-function toggleFollowList(num, btn) {
-  if (following.has(num)) {
-    following.delete(num)
-    btn.textContent = 'Seguir'
-    btn.classList.remove('following')
-    showToast(`Dejaste de seguir la butaca #${num}`)
+async function toggleFollowList(num, btn) {
+  if (followingConfirmed.has(num) || followingPending.has(num)) {
+    const { error } = await sb.from('follows')
+      .delete().eq('from_seat', MY_SEAT).eq('to_seat', num)
+    if (!error) {
+      followingConfirmed.delete(num)
+      followingPending.delete(num)
+      btn.textContent = 'Seguir'
+      btn.classList.remove('following')
+      showToast(`Dejaste de seguir la butaca #${num}`)
+      renderSocial('seguidos')
+      // Sync profile card
+      if (cardSeat === num) {
+        const fbtn = document.getElementById('pc-follow-btn')
+        if (fbtn) { fbtn.textContent = 'Seguir'; fbtn.className = 'pc-follow' }
+      }
+    }
   } else {
-    following.add(num)
-    btn.textContent = 'Siguiendo'
-    btn.classList.add('following')
-    showToast(`Ahora seguís la butaca #${num}`)
-  }
-  // Sync with canvas profile card if open
-  if (cardSeat === num) {
-    const fbtn = document.getElementById('pc-follow-btn')
-    if (fbtn) {
-      fbtn.textContent = following.has(num) ? 'Siguiendo' : 'Seguir'
-      fbtn.className   = 'pc-follow' + (following.has(num) ? ' following' : '')
+    btn.disabled = true
+    const { error } = await sb.from('follows').insert({ from_seat: MY_SEAT, to_seat: num, status: 'pending' })
+    btn.disabled = false
+    if (!error) {
+      followingPending.add(num)
+      btn.textContent = 'Pendiente'
+      btn.classList.add('following')
+      showToast(`Solicitud enviada a butaca #${num}`)
+      if (cardSeat === num) {
+        const fbtn = document.getElementById('pc-follow-btn')
+        if (fbtn) { fbtn.textContent = 'Pendiente'; fbtn.className = 'pc-follow disabled' }
+      }
     }
   }
 }
@@ -6145,6 +6234,7 @@ async function _onLogin(user) {
     voActualizarAlias(displayName)
     _actualizarBtnButaca()  // "↵ Mi butaca"
     _refreshMyVoteCount()   // sincronizar conteo de votos desde Supabase
+    _loadFollows()          // cargar follows reales desde Supabase
     // Usuario verificado → selector de cabildos solo si no hay preferencia guardada
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
     if (_cabildo) {
@@ -6499,6 +6589,10 @@ async function cerrarSesion() {
   if (cng) cng.style.pointerEvents = ''
   localStorage.removeItem('cabildoos_cabildo')
   _myVoteCount = null
+  followingConfirmed.clear(); followingPending.clear()
+  followersConfirmed.clear(); _pendingRequestsToMe = []
+  const badge = document.getElementById('nav-msgs-badge')
+  if (badge) badge.style.display = 'none'
   _resetearMarcaCabildo()
   await sb.auth.signOut()
 }
@@ -8399,7 +8493,7 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime(); initFollowsRealtime() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
@@ -8407,9 +8501,93 @@ if (document.readyState === 'loading') {
   cargarPreguntasActivas()
   initQuestionsRealtime()
   initVotesRealtime()
+  initFollowsRealtime()
 }
 
-/// ── Realtime: sincroniza conteo de votos en _profilesCache entre sesiones ──
+/// ── Cargar estado de follows desde Supabase ──────────────────────────────────
+async function _loadFollows() {
+  if (!MY_SEAT) return
+  followingConfirmed.clear()
+  followingPending.clear()
+  followersConfirmed.clear()
+  _pendingRequestsToMe = []
+
+  const { data, error } = await sb.from('follows').select('id, from_seat, to_seat, status')
+  if (error || !data) return
+
+  data.forEach(f => {
+    if (f.from_seat === MY_SEAT) {
+      if (f.status === 'accepted') followingConfirmed.add(f.to_seat)
+      else followingPending.add(f.to_seat)
+    }
+    if (f.to_seat === MY_SEAT) {
+      if (f.status === 'accepted') followersConfirmed.add(f.from_seat)
+      else _pendingRequestsToMe.push({ id: f.id, from_seat: f.from_seat })
+    }
+  })
+  _renderMensajes()
+}
+
+// ── Realtime: follows en tiempo real ─────────────────────────────────────────
+function initFollowsRealtime() {
+  try {
+    sb.channel('follows-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'follows' }, payload => {
+        const f = payload.new
+        if (f.to_seat === MY_SEAT && f.status === 'pending') {
+          // Alguien me quiere seguir
+          if (!_pendingRequestsToMe.find(r => r.id === f.id)) {
+            _pendingRequestsToMe.push({ id: f.id, from_seat: f.from_seat })
+            _renderMensajes()
+            const alias = _profilesCache[f.from_seat]?.alias || `Butaca #${f.from_seat}`
+            showToast(`${alias} quiere seguirte`)
+          }
+        }
+        if (f.from_seat === MY_SEAT && f.status === 'pending') {
+          followingPending.add(f.to_seat)
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'follows' }, payload => {
+        const f = payload.new
+        if (f.status !== 'accepted') return
+        // Aceptaron mi solicitud
+        if (f.from_seat === MY_SEAT) {
+          followingPending.delete(f.to_seat)
+          followingConfirmed.add(f.to_seat)
+          const alias = _profilesCache[f.to_seat]?.alias || `Butaca #${f.to_seat}`
+          showToast(`${alias} aceptó tu solicitud`)
+          renderSocial('seguidos')
+          // Actualizar botón en canvas si está abierto
+          if (cardSeat === f.to_seat) {
+            const fbtn = document.getElementById('pc-follow-btn')
+            if (fbtn) { fbtn.textContent = 'Siguiendo'; fbtn.className = 'pc-follow following' }
+          }
+        }
+        // Yo acepté (otro tab / redundante, ya manejado en aceptarSolicitud)
+        if (f.to_seat === MY_SEAT) {
+          _pendingRequestsToMe = _pendingRequestsToMe.filter(r => r.id !== f.id)
+          followersConfirmed.add(f.from_seat)
+          _renderMensajes()
+          renderSocial('seguidores')
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'follows' }, payload => {
+        const f = payload.old
+        if (f.from_seat === MY_SEAT) {
+          followingConfirmed.delete(f.to_seat)
+          followingPending.delete(f.to_seat)
+        }
+        if (f.to_seat === MY_SEAT) {
+          followersConfirmed.delete(f.from_seat)
+          _pendingRequestsToMe = _pendingRequestsToMe.filter(r => r.from_seat !== f.from_seat)
+          _renderMensajes()
+        }
+      })
+      .subscribe()
+  } catch(e) { console.warn('Realtime follows no disponible:', e) }
+}
+
+// ── Realtime: sincroniza conteo de votos en _profilesCache entre sesiones ──
 function initVotesRealtime() {
   try {
     sb.channel('votes-live')
@@ -10080,6 +10258,7 @@ function sfSelectTab(tab) {
   if (tab === 'propuestas') renderPropuestas()
   if (tab === 'seguidores') renderSocial('seguidores')
   if (tab === 'seguidos')   renderSocial('seguidos')
+  if (tab === 'mensajes')   _renderMensajes()
 }
 
 // ── Abrir social tab desde el user pill dropdown ──
@@ -10146,16 +10325,79 @@ function compartirPropuesta(i) {
 // Mock social data — vacío: no mostrar datos de ejemplo
 const mockSocial = []
 
+function _renderMensajes() {
+  const el = document.getElementById('sf-mensajes-list')
+  if (!el) return
+  const badge = document.getElementById('nav-msgs-badge')
+
+  if (!_pendingRequestsToMe.length) {
+    if (badge) { badge.style.display = 'none' }
+    el.innerHTML = `<div class="sf-empty-msg">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <p>No tenés mensajes aún</p>
+      <p style="font-size:11px;margin-top:4px;color:var(--mid)">Las solicitudes de seguidores aparecerán aquí</p>
+    </div>`
+    return
+  }
+
+  if (badge) { badge.textContent = _pendingRequestsToMe.length; badge.style.display = 'flex' }
+
+  el.innerHTML = _pendingRequestsToMe.map(req => {
+    const p = _profilesCache[req.from_seat]
+    const alias = p?.alias || `Butaca #${req.from_seat}`
+    const initials = alias.slice(0, 2).toUpperCase()
+    const phrase = p?.phrase ? `"${p.phrase}"` : ''
+    return `<div class="sf-req-card" id="sf-req-${req.id}">
+      <div class="sf-req-top">
+        <div class="sf-req-av">${initials}</div>
+        <div class="sf-req-info">
+          <div class="sf-req-name">${alias}</div>
+          <div class="sf-req-sub">Butaca #${req.from_seat} quiere seguirte${phrase ? ' · ' + phrase : ''}</div>
+        </div>
+      </div>
+      <div class="sf-req-actions">
+        <button class="sf-req-accept" onclick="aceptarSolicitud('${req.id}', ${req.from_seat})">✓ Aceptar</button>
+        <button class="sf-req-reject" onclick="rechazarSolicitud('${req.id}', ${req.from_seat})">Rechazar</button>
+      </div>
+    </div>`
+  }).join('')
+}
+
+async function aceptarSolicitud(reqId, fromSeat) {
+  const { error } = await sb.from('follows')
+    .update({ status: 'accepted' })
+    .eq('id', reqId)
+  if (!error) {
+    _pendingRequestsToMe = _pendingRequestsToMe.filter(r => r.id !== reqId)
+    followersConfirmed.add(fromSeat)
+    _renderMensajes()
+    renderSocial('seguidores')
+    showToast(`Aceptaste a butaca #${fromSeat} como seguidor`)
+  }
+}
+
+async function rechazarSolicitud(reqId, fromSeat) {
+  const { error } = await sb.from('follows')
+    .delete()
+    .eq('id', reqId)
+  if (!error) {
+    _pendingRequestsToMe = _pendingRequestsToMe.filter(r => r.id !== reqId)
+    _renderMensajes()
+    showToast(`Solicitud de butaca #${fromSeat} rechazada`)
+  }
+}
+
 function renderSocial(type) {
   const el = document.getElementById(`sf-${type}-list`)
-  const source = type === 'seguidos'
-    ? [...following].map(n => ({ seat: n, phrase: getProfile(n).phrase }))
-    : mockSocial
+  const seats = type === 'seguidos'
+    ? [...followingConfirmed]
+    : [...followersConfirmed]
 
-  if (!source.length) {
+  if (!seats.length) {
     el.innerHTML = '<p class="sf-empty">' + (type === 'seguidos' ? 'No seguís a nadie aún.' : 'Nadie te sigue aún.') + '</p>'
     return
   }
+  const source = seats.map(n => ({ seat: n, phrase: getProfile(n).phrase }))
   el.innerHTML = source.map(s => {
     const initials = '#' + s.seat
     return `<div class="sf-social-row">
