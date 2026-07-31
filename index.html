@@ -68,9 +68,68 @@ html, body {
 #cabildo-config-panel.open { display:flex; }
 .cc-panel {
   background:#0D1B2E; border:1px solid rgba(255,255,255,.1);
-  border-radius:20px; padding:28px; width:min(460px,calc(100vw - 32px));
-  color:#fff;
+  border-radius:20px; padding:0; width:min(500px,calc(100vw - 32px));
+  color:#fff; overflow:hidden; max-height:calc(100dvh - 48px); display:flex; flex-direction:column;
 }
+.cc-tabs { display:flex; border-bottom:1px solid rgba(255,255,255,.1); flex-shrink:0; }
+.cc-tab {
+  flex:1; padding:14px 0; border:none; background:none; cursor:pointer;
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700;
+  color:rgba(255,255,255,.4); letter-spacing:.03em;
+  border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s;
+}
+.cc-tab.active { color:#fff; border-bottom-color:var(--orange); }
+.cc-tab-body { flex:1; overflow-y:auto; padding:24px; }
+/* Usage meters */
+.sb-usage-grid { display:flex; flex-direction:column; gap:14px; }
+.sb-usage-row { display:flex; flex-direction:column; gap:5px; }
+.sb-usage-header { display:flex; justify-content:space-between; align-items:center; }
+.sb-usage-label { font-size:11px; font-weight:700; color:rgba(255,255,255,.6); letter-spacing:.04em; text-transform:uppercase; }
+.sb-usage-val   { font-size:12px; font-weight:700; }
+.sb-usage-val.ok   { color:#4ade80; }
+.sb-usage-val.warn { color:#fbbf24; }
+.sb-usage-val.crit { color:#f87171; }
+.sb-bar-bg { height:6px; border-radius:99px; background:rgba(255,255,255,.1); overflow:hidden; }
+.sb-bar-fill { height:100%; border-radius:99px; transition:width .5s ease; }
+.sb-bar-fill.ok   { background:linear-gradient(90deg,#34d399,#4ade80); }
+.sb-bar-fill.warn { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
+.sb-bar-fill.crit { background:linear-gradient(90deg,#ef4444,#f87171); }
+.sb-plan-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700;
+  border:1.5px solid; margin-bottom:16px; cursor:pointer; transition:all .15s;
+}
+.sb-plan-badge.free { border-color:rgba(255,255,255,.2); color:rgba(255,255,255,.6); }
+.sb-plan-badge.pro  { border-color:#3b82f6; color:#60a5fa; }
+.sb-plan-badge.team { border-color:#8b5cf6; color:#a78bfa; }
+.sb-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+.sb-stat-card {
+  background:rgba(255,255,255,.05); border-radius:10px; padding:12px;
+  border:1px solid rgba(255,255,255,.08);
+}
+.sb-stat-n { font-size:22px; font-weight:800; color:#fff; line-height:1; }
+.sb-stat-l { font-size:10px; color:rgba(255,255,255,.4); margin-top:4px; text-transform:uppercase; letter-spacing:.04em; }
+.sb-refresh-btn {
+  width:100%; margin-top:18px; padding:10px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.7); cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:600; transition:all .15s;
+}
+.sb-refresh-btn:hover { background:rgba(255,255,255,.12); color:#fff; }
+.sb-dashboard-link {
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  margin-top:10px; padding:10px; border-radius:10px;
+  border:1px solid rgba(62,207,142,.3); background:rgba(62,207,142,.07);
+  color:#4ade80; text-decoration:none; font-size:12px; font-weight:600;
+  transition:all .15s;
+}
+.sb-dashboard-link:hover { background:rgba(62,207,142,.14); }
+.sb-alert-bar {
+  padding:10px 14px; border-radius:10px; margin-bottom:14px;
+  font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px;
+}
+.sb-alert-bar.warn { background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.3); color:#fbbf24; }
+.sb-alert-bar.crit { background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.3); color:#f87171; }
 .cc-title { font-size:16px; font-weight:700; margin-bottom:4px; }
 .cc-sub { font-size:12px; color:rgba(255,255,255,.45); margin-bottom:24px; }
 .cc-field { margin-bottom:16px; }
@@ -3993,29 +4052,73 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 <!-- ══════════════ CONFIG CABILDO PANEL ══════════════ -->
 <div id="cabildo-config-panel" onclick="if(event.target===this)cerrarConfigCabildo()">
   <div class="cc-panel">
-    <p class="cc-title">⚙️ Personalizar cabildo</p>
-    <p class="cc-sub">Estos datos aparecen en el header cuando los ciudadanos entran al cabildo.</p>
-    <div class="cc-field">
-      <p class="cc-label">Nombre del cabildo</p>
-      <input class="cc-input" id="cc-nombre" placeholder="ej: Cabildo de Venezuela" oninput="ccActualizarPreview()">
+    <!-- Tabs -->
+    <div class="cc-tabs">
+      <button class="cc-tab active" id="cc-tab-brand" onclick="ccShowTab('brand')">🎨 Cabildo</button>
+      <button class="cc-tab"        id="cc-tab-infra" onclick="ccShowTab('infra')">📊 Sistema</button>
     </div>
-    <div class="cc-field">
-      <p class="cc-label">Slogan / subtítulo</p>
-      <input class="cc-input" id="cc-slogan" placeholder="ej: Generación Independencia 2026" oninput="ccActualizarPreview()">
-    </div>
-    <div class="cc-preview">
-      <p class="cc-preview-lbl">Preview del header</p>
-      <div class="cc-preview-row">
-        <div id="cc-logo-preview" style="width:36px;height:36px;flex-shrink:0"></div>
-        <div>
-          <p style="font-size:14px;font-weight:600;color:#fff;margin:0" id="cc-preview-name">Cabildo de Venezuela</p>
-          <p style="font-size:10px;color:rgba(255,255,255,.45);margin:2px 0 0" id="cc-preview-slogan">Generación Independencia 2026</p>
+
+    <!-- Tab: Branding -->
+    <div class="cc-tab-body" id="cc-body-brand">
+      <p class="cc-title">⚙️ Personalizar cabildo</p>
+      <p class="cc-sub">Estos datos aparecen en el header cuando los ciudadanos entran al cabildo.</p>
+      <div class="cc-field">
+        <p class="cc-label">Nombre del cabildo</p>
+        <input class="cc-input" id="cc-nombre" placeholder="ej: Cabildo de Venezuela" oninput="ccActualizarPreview()">
+      </div>
+      <div class="cc-field">
+        <p class="cc-label">Slogan / subtítulo</p>
+        <input class="cc-input" id="cc-slogan" placeholder="ej: Generación Independencia 2026" oninput="ccActualizarPreview()">
+      </div>
+      <div class="cc-preview">
+        <p class="cc-preview-lbl">Preview del header</p>
+        <div class="cc-preview-row">
+          <div id="cc-logo-preview" style="width:36px;height:36px;flex-shrink:0"></div>
+          <div>
+            <p style="font-size:14px;font-weight:600;color:#fff;margin:0" id="cc-preview-name">Cabildo de Venezuela</p>
+            <p style="font-size:10px;color:rgba(255,255,255,.45);margin:2px 0 0" id="cc-preview-slogan">Generación Independencia 2026</p>
+          </div>
         </div>
       </div>
+      <div class="cc-btns">
+        <button class="cc-btn-cancel" onclick="cerrarConfigCabildo()">Cancelar</button>
+        <button class="cc-btn-save"   onclick="guardarConfigCabildo()">Guardar cambios</button>
+      </div>
     </div>
-    <div class="cc-btns">
-      <button class="cc-btn-cancel" onclick="cerrarConfigCabildo()">Cancelar</button>
-      <button class="cc-btn-save"   onclick="guardarConfigCabildo()">Guardar cambios</button>
+
+    <!-- Tab: Sistema / Infraestructura -->
+    <div class="cc-tab-body" id="cc-body-infra" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <p class="cc-title" style="margin:0">📊 Estado del sistema</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:10px;color:rgba(255,255,255,.35)" id="sb-last-update"></span>
+          <select id="sb-plan-select" onchange="sbRenderMetrics()"
+            style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+                   border-radius:8px;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer">
+            <option value="free">Plan Free</option>
+            <option value="pro">Plan Pro</option>
+            <option value="team">Plan Team</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Alerta si hay métricas críticas -->
+      <div id="sb-alert" style="display:none"></div>
+
+      <!-- Barras de uso -->
+      <div class="sb-usage-grid" id="sb-usage-grid">
+        <p style="color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:20px 0">Cargando métricas…</p>
+      </div>
+
+      <!-- Stats en cards -->
+      <div class="sb-stats-grid" id="sb-stats-grid"></div>
+
+      <button class="sb-refresh-btn" onclick="sbCargarMetricas()">↻ Actualizar métricas</button>
+
+      <a class="sb-dashboard-link" href="https://supabase.com/dashboard/project/ayxscmxmnoguktfgveud/reports/database" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Ver dashboard completo en Supabase
+      </a>
     </div>
   </div>
 </div>
@@ -6299,11 +6402,137 @@ function abrirConfigCabildo() {
   document.getElementById('cc-slogan').value = localStorage.getItem('cabildoos_cb_slogan') || 'Generación Independencia 2026'
   document.getElementById('cc-logo-preview').innerHTML = _CABILDO_LOGOS['venezuela']
   ccActualizarPreview()
+  ccShowTab('brand')   // siempre abre en branding
   document.getElementById('cabildo-config-panel').classList.add('open')
 }
 
 function cerrarConfigCabildo() {
   document.getElementById('cabildo-config-panel').classList.remove('open')
+}
+
+// ── Admin tabs ──
+function ccShowTab(tab) {
+  document.getElementById('cc-tab-brand').classList.toggle('active', tab === 'brand')
+  document.getElementById('cc-tab-infra').classList.toggle('active', tab === 'infra')
+  document.getElementById('cc-body-brand').style.display = tab === 'brand' ? '' : 'none'
+  document.getElementById('cc-body-infra').style.display = tab === 'infra' ? '' : 'none'
+  if (tab === 'infra') sbCargarMetricas()
+}
+
+// ── Límites por plan ─────────────────────────────────────────────────────────
+const SB_LIMITS = {
+  free: {
+    db_bytes:    500 * 1024 * 1024,      // 500 MB
+    connections: 200,                     // realtime concurrentes
+    label: 'Free'
+  },
+  pro: {
+    db_bytes:    8 * 1024 * 1024 * 1024, // 8 GB
+    connections: 500,
+    label: 'Pro ($25/mes)'
+  },
+  team: {
+    db_bytes:    100 * 1024 * 1024 * 1024, // 100 GB
+    connections: 10000,
+    label: 'Team ($599/mes)'
+  }
+}
+
+let _sbStats = null
+
+async function sbCargarMetricas() {
+  const grid = document.getElementById('sb-usage-grid')
+  if (grid) grid.innerHTML = '<p style="color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:20px 0">Cargando…</p>'
+
+  try {
+    const { data, error } = await sb.rpc('get_system_stats')
+    if (error) throw error
+    _sbStats = data
+    const upEl = document.getElementById('sb-last-update')
+    if (upEl) upEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+    sbRenderMetrics()
+  } catch(e) {
+    if (grid) grid.innerHTML = '<p style="color:#f87171;font-size:12px;text-align:center;padding:20px 0">Error al cargar métricas</p>'
+  }
+}
+
+function sbRenderMetrics() {
+  if (!_sbStats) return
+  const plan  = document.getElementById('sb-plan-select')?.value || 'free'
+  const lims  = SB_LIMITS[plan]
+  const s     = _sbStats
+
+  // Calcular % de uso
+  const dbPct   = Math.min(100, Math.round(s.db_size_bytes / lims.db_bytes * 100))
+  // Conexiones: estimamos 4 canales por usuario verificado (questions + votes + follows + messages)
+  const estConn = Math.min(lims.connections, Number(s.verified_seats) || 0)
+  const connPct = Math.min(100, Math.round(estConn / lims.connections * 100))
+
+  function cls(pct) { return pct >= 90 ? 'crit' : pct >= 70 ? 'warn' : 'ok' }
+  function bar(pct) {
+    const c = cls(pct)
+    return `<div class="sb-bar-bg"><div class="sb-bar-fill ${c}" style="width:${pct}%"></div></div>`
+  }
+  function badge(pct, val, limit) {
+    const c = cls(pct)
+    return `<span class="sb-usage-val ${c}">${val} / ${limit}</span>`
+  }
+
+  // Alertas
+  const alerts = []
+  if (dbPct >= 90)   alerts.push({ type:'crit', msg:`⚠️ Base de datos al ${dbPct}% — vas a necesitar subir de plan pronto` })
+  else if (dbPct >= 70) alerts.push({ type:'warn', msg:`⚡ Base de datos al ${dbPct}% — monitoreá el crecimiento` })
+  if (connPct >= 80) alerts.push({ type:'warn', msg:`⚡ Cerca del límite de conexiones simultáneas del plan ${lims.label}` })
+  if (connPct >= 95) alerts.push({ type:'crit', msg:`🚨 Límite de conexiones casi alcanzado — subí al siguiente plan` })
+
+  const alertEl = document.getElementById('sb-alert')
+  if (alertEl) {
+    alertEl.style.display = alerts.length ? '' : 'none'
+    alertEl.innerHTML = alerts.map(a =>
+      `<div class="sb-alert-bar ${a.type}">${a.msg}</div>`
+    ).join('')
+  }
+
+  // Barras de uso
+  const grid = document.getElementById('sb-usage-grid')
+  if (grid) grid.innerHTML = `
+    <div class="sb-usage-row">
+      <div class="sb-usage-header">
+        <span class="sb-usage-label">Base de datos</span>
+        ${badge(dbPct, s.db_size_pretty, plan === 'free' ? '500 MB' : plan === 'pro' ? '8 GB' : '100 GB')}
+      </div>
+      ${bar(dbPct)}
+    </div>
+    <div class="sb-usage-row">
+      <div class="sb-usage-header">
+        <span class="sb-usage-label">Conexiones WebSocket (est.)</span>
+        ${badge(connPct, estConn, lims.connections)}
+      </div>
+      ${bar(connPct)}
+      <span style="font-size:10px;color:rgba(255,255,255,.25);margin-top:2px">
+        Basado en ${s.verified_seats} butacas verificadas × 1 conexión c/u
+      </span>
+    </div>
+    <div class="sb-usage-row">
+      <div class="sb-usage-header">
+        <span class="sb-usage-label">Conexiones DB activas</span>
+        <span class="sb-usage-val ${Number(s.active_connections) > 80 ? 'warn' : 'ok'}">${s.active_connections} activas / ${s.total_connections} total</span>
+      </div>
+    </div>`
+
+  // Stats cards
+  const statsEl = document.getElementById('sb-stats-grid')
+  if (statsEl) statsEl.innerHTML = [
+    { n: s.verified_seats, l: 'Butacas verificadas' },
+    { n: s.total_users,    l: 'Usuarios registrados' },
+    { n: s.total_votes,    l: 'Votos emitidos' },
+    { n: s.total_messages, l: 'Mensajes enviados' },
+    { n: s.total_follows,  l: 'Conexiones activas' },
+    { n: s.total_proposals,l: 'Propuestas' },
+  ].map(c => `<div class="sb-stat-card">
+    <div class="sb-stat-n">${Number(c.n).toLocaleString('es-VE')}</div>
+    <div class="sb-stat-l">${c.l}</div>
+  </div>`).join('')
 }
 
 function ccActualizarPreview() {
@@ -6861,6 +7090,7 @@ async function cerrarSesion() {
   followingConfirmed.clear(); followingPending.clear()
   followersConfirmed.clear(); _pendingRequestsToMe = []
   _unreadConvos = {}
+  if (_votesPollingInterval) { clearInterval(_votesPollingInterval); _votesPollingInterval = null }
   const badge = document.getElementById('nav-msgs-badge')
   if (badge) badge.style.display = 'none'
   _resetearMarcaCabildo()
@@ -8908,35 +9138,24 @@ function initMessagesRealtime() {
   } catch(e) { console.warn('Realtime messages no disponible:', e) }
 }
 
-// ── Realtime: sincroniza conteo de votos en _profilesCache entre sesiones ──
+/// ── Polling de conteo de votos (cada 20s) — más eficiente que realtime a escala ──
+// Con 2000 usuarios, 1 evento INSERT en votes generaría 2000 mensajes WebSocket simultáneos.
+// El polling hace 1 query cada 20s y actualiza todos los conteos de una vez.
+let _votesPollingInterval = null
 function initVotesRealtime() {
-  try {
-    sb.channel('votes-live')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'votes'
-      }, payload => {
-        const sn = payload.new?.seat_number
-        if (!sn) return
-        if (_profilesCache[sn]) {
-          _profilesCache[sn].votes = (_profilesCache[sn].votes || 0) + 1
-        }
-        // Si es nuestra propia butaca, actualizar también _myVoteCount
-        if (sn === MY_SEAT && MY_SEAT > 0) {
-          _myVoteCount = (_myVoteCount || 0) + 1
+  if (_votesPollingInterval) clearInterval(_votesPollingInterval)
+  // Actualización inmediata al voto propio (via _refreshMyVoteCount en confirmarVoto)
+  // Polling para conteos ajenos
+  _votesPollingInterval = setInterval(async () => {
+    try {
+      const { data } = await sb.rpc('get_profiles_with_vote_counts')
+      if (data) data.forEach(r => {
+        if (_profilesCache[r.seat_number]) {
+          _profilesCache[r.seat_number].votes = Number(r.vote_count) || 0
         }
       })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'votes'
-      }, payload => {
-        // UPDATE = el mismo usuario cambió su voto, el conteo no cambia
-        // No hacemos nada al conteo total
-      })
-      .subscribe()
-  } catch(e) { console.warn('Realtime votes no disponible:', e) }
+    } catch(e) {}
+  }, 20000)
 }
 
 // ── Realtime: auto-actualiza preguntas cuando el admin crea/activa una ──
