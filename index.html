@@ -5578,21 +5578,17 @@ function getProfile(num) {
       initials: cached.alias.slice(0, 2).toUpperCase(),
     }
   }
-  // ── Fallback: datos simulados para butacas sin perfil real (modo demo)
-  let s = lcg(num)
-  const isAnon  = (s % 100) < 58 ; s = lcg(s)
-  const nIdx    = s % NAMES.length ; s = lcg(s)
-  const pIdx    = s % PHRASES.length ; s = lcg(s)
-  const votes   = 1 + (s % 29) ; s = lcg(s)
-  const cIdx    = s % AVATAR_COLORS.length
-  const name    = isAnon ? 'Anónimo' : NAMES[nIdx]
+  // ── Fallback: butaca sin perfil público = ciudadano anónimo
+  // No se simulan datos. Si no está en _profilesCache es porque eligió privado.
+  const cIdx = num % AVATAR_COLORS.length
   return {
-    isMe: false, isAnon,
-    name,
-    displayName: isAnon ? 'Ciudadano Anónimo' : name,
-    phrase: PHRASES[pIdx],
-    votes, color: AVATAR_COLORS[cIdx],
-    initials: isAnon ? '?' : name.slice(0,2).toUpperCase(),
+    isMe: false, isAnon: true,
+    name: `Butaca #${num}`,
+    displayName: `Butaca #${num}`,
+    phrase: '',
+    votes: 0,
+    color: AVATAR_COLORS[cIdx],
+    initials: '#',
   }
 }
 
@@ -6941,6 +6937,8 @@ async function _onLogin(user) {
   // Cargar perfil
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
   _authProfile = profile
+  // Privacidad desde DB — nunca desde localStorage
+  perfilPublico = !!profile?.is_public
 
   // Nav landing — legacy (la pantalla landing sigue en DOM pero oculta)
   const btnAuthNav = document.getElementById('btn-auth-nav')
@@ -9848,7 +9846,7 @@ function voActualizarAlias(alias) {
 // ══════════════════════════════════════════════════════════════
 //  MI PERFIL
 // ══════════════════════════════════════════════════════════════
-let perfilPublico = localStorage.getItem('cabildoos_perfil_publico') === '1'
+let perfilPublico = false  // se sincroniza desde DB en _onLogin, nunca desde localStorage
 
 async function abrirMiPerfil() {
   // Poblar con datos reales del perfil
@@ -9859,11 +9857,12 @@ async function abrirMiPerfil() {
   if (_authUser) {
     document.getElementById('mp-strip-email').textContent = _authUser.email || ''
   }
-  // Sincronizar toggle con estado guardado
+  // Sincronizar toggle con valor real de DB
+  perfilPublico = !!_authProfile?.is_public
   document.getElementById('mp-toggle').classList.toggle('on', perfilPublico)
   document.getElementById('mp-toggle-sub').textContent = perfilPublico
     ? 'Tu perfil es visible en el hemiciclo'
-    : 'Tu identidad está oculta (anónimo)'
+    : 'Tu identidad está oculta — solo se ve tu #butaca'
 
   // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
   let cntSi = 0, cntNo = 0, cntAbs = 0
@@ -10070,14 +10069,67 @@ function cerrarMiPerfil() {
   document.getElementById('mp-bar-no').style.width  = '0%'
   document.getElementById('mp-bar-abs').style.width = '0%'
 }
+// ── Confirmación de cambio de privacidad ────────────────────────────────────
+let _pendingPrivacyValue = null
+
 function togglePerfilPublico() {
-  perfilPublico = !perfilPublico
-  localStorage.setItem('cabildoos_perfil_publico', perfilPublico ? '1' : '0')
-  document.getElementById('mp-toggle').classList.toggle('on', perfilPublico)
-  document.getElementById('mp-toggle-sub').textContent = perfilPublico
+  _pendingPrivacyValue = !perfilPublico
+  const goPublic = _pendingPrivacyValue
+  document.getElementById('pco-icon').textContent  = goPublic ? '🌐' : '🔒'
+  document.getElementById('pco-title').textContent = goPublic
+    ? '¿Hacer tu perfil público?'
+    : '¿Volver a ser anónimo?'
+  document.getElementById('pco-body').textContent  = goPublic
+    ? 'Tu alias y frase aparecerán en el hemiciclo visibles para todos los usuarios de la plataforma. Podés revertirlo en cualquier momento.'
+    : 'Tu nombre desaparecerá para todos los usuarios de la plataforma de forma inmediata y global. Solo se verá tu número de butaca.'
+  document.getElementById('pco-btn').textContent   = goPublic ? 'Sí, hacer público' : 'Sí, volver anónimo'
+  document.getElementById('pco-btn').style.background = goPublic ? '#1d1d1d' : '#ef4444'
+  document.getElementById('privacy-confirm-overlay').style.display = 'flex'
+}
+
+function cerrarPrivacyConfirm() {
+  document.getElementById('privacy-confirm-overlay').style.display = 'none'
+  _pendingPrivacyValue = null
+}
+
+async function confirmarCambioPrivacidad() {
+  if (_pendingPrivacyValue === null) return
+  const goPublic = _pendingPrivacyValue
+  cerrarPrivacyConfirm()
+
+  const { error } = await sb.rpc('set_profile_public', { p_is_public: goPublic })
+  if (error) {
+    showToast('Error al guardar — intentá de nuevo', true)
+    return
+  }
+
+  // Actualizar estado local
+  perfilPublico = goPublic
+  if (_authProfile) _authProfile.is_public = goPublic
+
+  // Actualizar caché de perfiles (afecta cómo te ven los demás)
+  if (MY_SEAT > 0) {
+    if (goPublic) {
+      _profilesCache[MY_SEAT] = {
+        alias:  _authProfile?.alias  || `Butaca #${MY_SEAT}`,
+        phrase: _authProfile?.phrase || '',
+        votes:  _myVoteCount || 0,
+      }
+    } else {
+      delete _profilesCache[MY_SEAT]
+    }
+  }
+
+  // Actualizar UI del panel Mi Perfil
+  document.getElementById('mp-toggle').classList.toggle('on', goPublic)
+  document.getElementById('mp-toggle-sub').textContent = goPublic
     ? 'Tu perfil es visible en el hemiciclo'
     : 'Tu identidad está oculta (anónimo)'
-  showToast(perfilPublico ? 'Perfil cambiado a público' : 'Perfil cambiado a anónimo')
+
+  // Reconstruir hemiciclo para reflejar el cambio
+  buildSeats()
+
+  showToast(goPublic ? '✓ Perfil público — todos te pueden ver' : '✓ Perfil privado — estás anónimo')
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -11600,21 +11652,28 @@ async function abrirUserProfile(seatNum, fromTab) {
   window._upmFromTab = _upmFromTab
   cerrarSocialModal()
 
-  // Poblar header
-  const p       = _profilesCache[seatNum] || {}
-  const alias   = p.alias  || `Butaca #${seatNum}`
-  const phrase  = p.phrase || ''
-  const votes   = p.votes  || 0
-  const initials = alias.slice(0, 2).toUpperCase()
-  const cIdx    = seatNum % AVATAR_COLORS.length
-  const color   = AVATAR_COLORS[cIdx]
+  // Poblar header — si no está en cache es perfil PRIVADO
+  const p         = _profilesCache[seatNum]  // solo usuarios públicos están en cache
+  const isPrivate = !p
+  const alias     = p?.alias  || `Butaca #${seatNum}`
+  const phrase    = p?.phrase || ''
+  const votes     = p?.votes  || 0
+  const cIdx      = seatNum % AVATAR_COLORS.length
+  const color     = AVATAR_COLORS[cIdx]
 
   const avEl = document.getElementById('upm-av')
-  avEl.textContent = initials; avEl.style.background = color
-  document.getElementById('upm-alias').textContent       = alias
+  if (isPrivate) {
+    avEl.textContent = '🔒'; avEl.style.background = '#e5e7eb'; avEl.style.fontSize = '20px'
+  } else {
+    avEl.textContent = alias.slice(0, 2).toUpperCase()
+    avEl.style.background = color; avEl.style.fontSize = ''
+  }
+  document.getElementById('upm-alias').textContent       = isPrivate ? 'Ciudadano Anónimo' : alias
   document.getElementById('upm-seat').textContent        = `Butaca #${seatNum}`
-  document.getElementById('upm-phrase-hero').textContent = phrase ? `"${phrase}"` : ''
-  document.getElementById('upm-stat-votes').textContent  = votes
+  document.getElementById('upm-phrase-hero').textContent = isPrivate
+    ? 'Este ciudadano eligió mantener su identidad privada.'
+    : (phrase ? `"${phrase}"` : '')
+  document.getElementById('upm-stat-votes').textContent  = isPrivate ? '—' : votes
 
   // Seguir button
   const fbtn = document.getElementById('upm-follow-btn')
@@ -12228,6 +12287,31 @@ function _syncBugFab() {
       </svg>
       Social
     </button>
+  </div>
+</div>
+
+<!-- ══ CONFIRMACIÓN PRIVACIDAD ══ -->
+<div id="privacy-confirm-overlay" onclick="if(event.target===this)cerrarPrivacyConfirm()"
+  style="position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.65);
+         display:none;align-items:center;justify-content:center;
+         backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)">
+  <div style="background:#fff;border-radius:24px;padding:32px 28px 24px;
+              max-width:380px;width:calc(100% - 40px);
+              box-shadow:0 40px 100px rgba(0,0,0,.3)">
+    <div id="pco-icon" style="font-size:40px;margin-bottom:14px;line-height:1">🔒</div>
+    <h3 id="pco-title" style="font-size:19px;font-weight:800;color:#1d1d1d;
+                               margin-bottom:10px;letter-spacing:-.02em"></h3>
+    <p  id="pco-body"  style="font-size:13px;color:#666;line-height:1.55;margin-bottom:24px"></p>
+    <div style="display:flex;gap:10px">
+      <button onclick="cerrarPrivacyConfirm()"
+        style="flex:1;padding:13px;border:1.5px solid rgba(0,0,0,.15);border-radius:14px;
+               background:none;font-family:inherit;font-size:13px;font-weight:600;
+               color:#666;cursor:pointer">Cancelar</button>
+      <button id="pco-btn" onclick="confirmarCambioPrivacidad()"
+        style="flex:1;padding:13px;border:none;border-radius:14px;
+               font-family:inherit;font-size:13px;font-weight:700;
+               color:#fff;cursor:pointer;transition:opacity .15s"></button>
+    </div>
   </div>
 </div>
 
