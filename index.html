@@ -7682,7 +7682,15 @@ function vpMostrarResultadoGemini(data) {
   const paisDeclarado = (document.getElementById('vp-pais')?.value || '').trim()
 
   // Validación de país — bloqueante si declararon país
-  if (paisDeclarado && !ext.pais_coincide) {
+  // Override: ciertos tipos de doc implican un país con certeza (DNI_AR → Argentina).
+  // Si Gemini no pudo leer pais_emisor (holograma/reflejo), no bloqueamos si el tipo
+  // de doc y el país declarado coinciden — Gemini no es la fuente de verdad en ese caso.
+  const _vpNormStr = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+  const _vpDocPaisMap = { 'DNI_AR': 'argentina', 'LICENCIA': 'argentina', 'CEDULA_VE': 'venezuela' }
+  const _vpPaisImplicado = _vpDocPaisMap[vpTipoDoc2] || ''
+  const _vpDocImplicaPais = _vpPaisImplicado && _vpNormStr(paisDeclarado) === _vpPaisImplicado
+  const _vpPaisOk = !paisDeclarado || ext.pais_coincide || _vpDocImplicaPais
+  if (!_vpPaisOk) {
     vpDocMsg('Nacionalidad incorrecta', '#ef4444')
     const panel = document.getElementById('vp-doc-sin-datos')
     panel.style.display = ''
