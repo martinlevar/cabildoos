@@ -2504,6 +2504,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 .nav-ic-segs    { background:rgba(59,130,246,.11); color:#2563eb; }
 .nav-ic-seguidos{ background:rgba(99,102,241,.11); color:#4f46e5; }
 .nav-ic-msgs    { background:rgba(236,72,153,.11); color:#db2777; }
+.nav-ic-social  { background:rgba(99,102,241,.11); color:#4f46e5; }
 /* Label below icon */
 .nav-act-lbl { font-size:9.5px; font-weight:600; color:var(--mid); letter-spacing:.01em; white-space:nowrap; }
 /* User pill */
@@ -2854,30 +2855,40 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 }
 #sf-center-modal.open { opacity:1; pointer-events:all; }
 .sf-cm-panel {
-  background:#fff; border-radius:22px; width:100%; max-width:480px;
-  max-height:80vh; display:flex; flex-direction:column;
-  box-shadow:0 32px 80px rgba(0,0,0,.22);
+  background:#fff; border-radius:28px; width:calc(100% - 32px); max-width:520px;
+  max-height:85vh; display:flex; flex-direction:column;
+  box-shadow:0 48px 120px rgba(0,0,0,.30), 0 8px 32px rgba(0,0,0,.10);
   overflow:hidden;
 }
 .sf-cm-header {
-  display:flex; align-items:center; gap:0;
-  border-bottom:1px solid rgba(0,0,0,.08); flex-shrink:0;
-  padding:0 16px;
+  display:flex; flex-direction:column;
+  border-bottom:1px solid rgba(0,0,0,.07); flex-shrink:0;
+}
+.sf-cm-title-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:22px 24px 0;
+}
+.sf-cm-title {
+  font-size:22px; font-weight:800; color:#1d1d1d; letter-spacing:-.03em;
+}
+.sf-cm-close {
+  width:32px; height:32px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.07); color:#1d1d1d; font-size:14px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; transition:background .15s;
+}
+.sf-cm-close:hover { background:rgba(0,0,0,.13); }
+.sf-cm-tabs {
+  display:flex; align-items:center; padding:0 20px; margin-top:4px;
 }
 .sf-cm-tab {
-  flex:1; padding:14px 4px; border:none; background:none; cursor:pointer;
-  font-family:inherit; font-size:12px; font-weight:600; color:#8a8a8a;
-  border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s;
-  white-space:nowrap;
+  padding:12px 14px 11px; border:none; background:none; cursor:pointer;
+  font-family:inherit; font-size:13px; font-weight:600; color:#9a9a9a;
+  border-bottom:2.5px solid transparent; margin-bottom:-1px; transition:all .15s;
+  white-space:nowrap; letter-spacing:-.01em;
 }
 .sf-cm-tab.active { color:#1d1d1d; border-bottom-color:#1d1d1d; }
-.sf-cm-close {
-  width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
-  background:rgba(0,0,0,.06); color:#1d1d1d; font-size:14px; flex-shrink:0;
-  display:flex; align-items:center; justify-content:center; margin-left:8px;
-}
 .sf-cm-body { flex:1; overflow-y:auto; }
-.sf-cm-pane { display:none; padding:20px; }
+.sf-cm-pane { display:none; padding:20px 24px 24px; }
 .sf-cm-pane.active { display:block; }
 
 /* Mensajes: lista de conversaciones */
@@ -2971,27 +2982,33 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 .prop-share:hover { border-color:var(--orange); color:var(--orange); }
 
 /* Social list (seguidores/seguidos) */
-.sf-empty { text-align:center; padding:24px 0; color:var(--mid); font-size:13px; }
+.sf-empty { text-align:center; padding:32px 0 16px; color:var(--mid); font-size:14px; }
+.sf-soc-section-hd {
+  font-size:11px; font-weight:700; color:#b0b0b0; letter-spacing:.06em;
+  text-transform:uppercase; padding-bottom:14px;
+}
 .sf-social-row {
-  display:flex; align-items:center; gap:12px;
-  padding:10px 0; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:14px;
+  padding:12px 0; border-bottom:1px solid rgba(0,0,0,.055);
+  transition:background .12s;
 }
 .sf-social-row:last-child { border-bottom:none; }
 .sf-soc-av {
-  width:36px; height:36px; border-radius:50%;
+  width:46px; height:46px; border-radius:50%;
   background:var(--navy); flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; color:#fff;
+  font-size:15px; font-weight:800; color:#fff;
 }
-.sf-soc-name { font-size:13px; font-weight:600; color:var(--dark); }
-.sf-soc-sub  { font-size:12px; font-weight:400; color:var(--mid); margin-top:1px; }
+.sf-soc-info { flex:1; min-width:0; }
+.sf-soc-name { font-size:14px; font-weight:700; color:#1d1d1d; letter-spacing:-.01em; }
+.sf-soc-sub  { font-size:12px; font-weight:500; color:#8a8a8a; margin-top:3px;
+               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sf-soc-btn {
-  margin-left:auto; padding:5px 12px;
-  border:1.5px solid var(--border); border-radius:20px;
-  font-family:inherit; font-size:11px; font-weight:600; color:var(--mid);
-  background:none; cursor:pointer; flex-shrink:0; transition:all .15s;
+  padding:8px 18px; border:none; border-radius:20px;
+  font-family:inherit; font-size:12px; font-weight:700; color:#fff;
+  background:#1d1d1d; cursor:pointer; flex-shrink:0; transition:all .15s;
 }
-.sf-soc-btn:hover { border-color:var(--orange); color:var(--orange); }
+.sf-soc-btn:hover { background:#333; transform:translateY(-1px); }
 
 /* ══════════════════════════════════════════════════════════
    INTRO SCREEN — fondo azul + hemiciclo votando
@@ -3759,44 +3776,18 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
         </div>
         <span class="nav-act-lbl">Propuestas</span>
       </button>
-      <!-- Seguidores -->
-      <button class="nav-act-btn" onclick="sfSelectTab('seguidores')" title="Seguidores">
-        <div class="nav-act-ic nav-ic-segs">
-          <svg width="17" height="15" viewBox="0 0 15 14" fill="none">
-            <circle cx="3.5" cy="7" r="1.8" fill="currentColor"/>
-            <path d="M7 4 A4.2 4.2 0 0 1 7 10"      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            <path d="M9.8 2 A7 7 0 0 1 9.8 12"      stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-            <path d="M12.5 0.5 A9.8 9.8 0 0 1 12.5 13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".45"/>
-          </svg>
-        </div>
-        <span class="nav-act-lbl">Seguidores</span>
-      </button>
-      <!-- Seguidos -->
-      <button class="nav-act-btn" onclick="sfSelectTab('seguidos')" title="Seguidos">
-        <div class="nav-act-ic nav-ic-seguidos">
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7"    r="2.2" fill="currentColor"/>
-            <circle cx="7" cy="1.5"  r="1.1" fill="currentColor" opacity=".55"/>
-            <circle cx="7" cy="12.5" r="1.1" fill="currentColor" opacity=".55"/>
-            <circle cx="1.5" cy="7"  r="1.1" fill="currentColor" opacity=".55"/>
-            <circle cx="12.5" cy="7" r="1.1" fill="currentColor" opacity=".55"/>
-            <circle cx="3"  cy="3"   r=".9"  fill="currentColor" opacity=".3"/>
-            <circle cx="11" cy="3"   r=".9"  fill="currentColor" opacity=".3"/>
-            <circle cx="3"  cy="11"  r=".9"  fill="currentColor" opacity=".3"/>
-            <circle cx="11" cy="11"  r=".9"  fill="currentColor" opacity=".3"/>
-          </svg>
-        </div>
-        <span class="nav-act-lbl">Seguidos</span>
-      </button>
-      <!-- Mensajes -->
-      <button class="nav-act-btn" onclick="sfSelectTab('mensajes')" title="Mensajes directos" id="nav-btn-mensajes">
+      <!-- Social -->
+      <button class="nav-act-btn" onclick="sfSelectTab('seguidos')" title="Social" id="nav-btn-social">
         <span class="nav-msgs-badge" id="nav-msgs-badge" style="display:none"></span>
-        <div class="nav-act-ic nav-ic-msgs">
-          <svg width="16" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <div class="nav-act-ic nav-ic-social">
+          <svg width="18" height="15" viewBox="0 0 18 14" fill="none">
+            <circle cx="6.5" cy="4.5" r="2.6" fill="currentColor"/>
+            <path d="M0.5 13.5C0.5 10.46 3.19 8 6.5 8C9.81 8 12.5 10.46 12.5 13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+            <circle cx="13.5" cy="3.5" r="2" fill="currentColor" opacity=".55"/>
+            <path d="M12 9.5C13.05 9 14.1 9.3 15 9.8C16.2 10.5 17 11.7 17.2 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".55"/>
           </svg>
         </div>
-        <span class="nav-act-lbl">Mensajes</span>
+        <span class="nav-act-lbl">Social</span>
       </button>
     </div>
 
@@ -11119,12 +11110,17 @@ function mostrarFooter() {
 // El centro modal se cierra solo con su propio backdrop click — no necesitamos listener global
 
 function sfSelectTab(tab) {
-  document.getElementById('social-footer').classList.add('visible')
-
   // Abrir el centro modal
   const modal = document.getElementById('sf-center-modal')
   modal.classList.add('open')
   sfActiveTab = tab
+
+  // Modo: propuestas vs social
+  const isPropsMode = tab === 'propuestas'
+  const titleEl = document.getElementById('sf-cm-title')
+  const tabsEl  = document.getElementById('sf-cm-tabs')
+  if (titleEl) titleEl.textContent = isPropsMode ? 'Mis Propuestas' : 'Social'
+  if (tabsEl)  tabsEl.style.display = isPropsMode ? 'none' : 'flex'
 
   // Activar tab en header del modal
   document.querySelectorAll('.sf-cm-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
@@ -11681,13 +11677,17 @@ function renderSocial(type) {
     const p = _profilesCache[n] || getProfile(n)
     return { seat: n, alias: p.alias || `Butaca #${n}`, phrase: p.phrase || '' }
   })
-  el.innerHTML = source.map(s => {
+  const countLabel = type === 'seguidos'
+    ? `${seats.length} ${seats.length === 1 ? 'persona seguida' : 'personas seguidas'}`
+    : `${seats.length} ${seats.length === 1 ? 'seguidor' : 'seguidores'}`
+  el.innerHTML = `<div class="sf-soc-section-hd">${countLabel}</div>` +
+    source.map(s => {
     const initials = s.alias.slice(0, 2).toUpperCase()
     const ci = s.seat % AVATAR_COLORS_CONVO.length
-    const phrase = s.phrase ? (s.phrase.slice(0, 45) + (s.phrase.length > 45 ? '…' : '')) : `Butaca #${s.seat}`
+    const phrase = s.phrase ? (s.phrase.slice(0, 55) + (s.phrase.length > 55 ? '…' : '')) : `Butaca #${s.seat}`
     return `<div class="sf-social-row">
       <div class="sf-soc-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${initials}</div>
-      <div style="flex:1;min-width:0">
+      <div class="sf-soc-info">
         <p class="sf-soc-name">${s.alias}</p>
         <p class="sf-soc-sub">${phrase}</p>
       </div>
@@ -11851,11 +11851,15 @@ function _syncBugFab() {
 <div id="sf-center-modal" onclick="if(event.target===this)cerrarSocialPanel()">
   <div class="sf-cm-panel">
     <div class="sf-cm-header">
-      <button class="sf-cm-tab" data-tab="propuestas"  onclick="sfSelectTab('propuestas')">Propuestas</button>
-      <button class="sf-cm-tab" data-tab="seguidores"  onclick="sfSelectTab('seguidores')">Seguidores</button>
-      <button class="sf-cm-tab" data-tab="seguidos"    onclick="sfSelectTab('seguidos')">Seguidos</button>
-      <button class="sf-cm-tab" data-tab="mensajes"    onclick="sfSelectTab('mensajes')">Mensajes</button>
-      <button class="sf-cm-close" onclick="cerrarSocialPanel()">✕</button>
+      <div class="sf-cm-title-row">
+        <span class="sf-cm-title" id="sf-cm-title">Social</span>
+        <button class="sf-cm-close" onclick="cerrarSocialPanel()">✕</button>
+      </div>
+      <div class="sf-cm-tabs" id="sf-cm-tabs">
+        <button class="sf-cm-tab" data-tab="seguidos"   onclick="sfSelectTab('seguidos')">Seguidos</button>
+        <button class="sf-cm-tab" data-tab="seguidores" onclick="sfSelectTab('seguidores')">Seguidores</button>
+        <button class="sf-cm-tab" data-tab="mensajes"   onclick="sfSelectTab('mensajes')">Mensajes</button>
+      </div>
     </div>
     <div class="sf-cm-body">
       <div class="sf-cm-pane" id="sfp-propuestas"><div id="sf-propuestas-list"></div></div>
@@ -11866,9 +11870,8 @@ function _syncBugFab() {
   </div>
 </div>
 
-<!-- ══════════════ SOCIAL FOOTER (pill tabs only) ══════════════ -->
+<!-- ══════════════ SOCIAL FOOTER (pill tabs) ══════════════ -->
 <div id="social-footer">
-  <!-- Separated pill tabs -->
   <div class="sf-tabs-row">
     <button class="sf-tab" data-tab="propuestas" onclick="sfSelectTab('propuestas')">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0">
@@ -11878,32 +11881,14 @@ function _syncBugFab() {
       </svg>
       Mis propuestas
     </button>
-    <button class="sf-tab" data-tab="seguidores" onclick="sfSelectTab('seguidores')">
-      <svg width="15" height="14" viewBox="0 0 15 14" fill="none" style="flex-shrink:0">
-        <circle cx="3.5" cy="7" r="1.8" fill="currentColor"/>
-        <path d="M7 4 A4.2 4.2 0 0 1 7 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-        <path d="M9.8 2 A7 7 0 0 1 9.8 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-        <path d="M12.5 0.5 A9.8 9.8 0 0 1 12.5 13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".5"/>
+    <button class="sf-tab" data-tab="seguidos" onclick="sfSelectTab('seguidos')" id="sf-tab-social">
+      <svg width="18" height="14" viewBox="0 0 18 14" fill="none" style="flex-shrink:0">
+        <circle cx="6.5" cy="4.5" r="2.6" fill="currentColor"/>
+        <path d="M0.5 13.5C0.5 10.46 3.19 8 6.5 8C9.81 8 12.5 10.46 12.5 13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+        <circle cx="13.5" cy="3.5" r="2" fill="currentColor" opacity=".5"/>
+        <path d="M12 9.5C13.05 9 14.1 9.3 15 9.8C16.2 10.5 17 11.7 17.2 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity=".5"/>
       </svg>
-      Seguidores
-    </button>
-    <button class="sf-tab" data-tab="seguidos" onclick="sfSelectTab('seguidos')">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0">
-        <circle cx="7" cy="7" r="2.2" fill="currentColor"/>
-        <circle cx="7" cy="1.5" r="1.2" fill="currentColor" opacity=".6"/>
-        <circle cx="7" cy="12.5" r="1.2" fill="currentColor" opacity=".6"/>
-        <circle cx="1.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/>
-        <circle cx="12.5" cy="7" r="1.2" fill="currentColor" opacity=".6"/>
-        <circle cx="2.9" cy="2.9" r="1" fill="currentColor" opacity=".35"/>
-        <circle cx="11.1" cy="2.9" r="1" fill="currentColor" opacity=".35"/>
-        <circle cx="2.9" cy="11.1" r="1" fill="currentColor" opacity=".35"/>
-        <circle cx="11.1" cy="11.1" r="1" fill="currentColor" opacity=".35"/>
-      </svg>
-      Seguidos
-    </button>
-    <button class="sf-tab" data-tab="mensajes" onclick="sfSelectTab('mensajes')" id="sf-tab-mensajes">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Mensajes
+      Social
     </button>
   </div>
 </div>
