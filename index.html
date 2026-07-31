@@ -9604,6 +9604,11 @@ async function confirmarVoto() {
   const buf   = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
   const hash  = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
 
+  // identity_hash por usuario — evita conflicto con constraint votes_identity_hash_question_id_key
+  // Se deriva del auth.uid() del usuario para que sea único por persona pero estable
+  const uidBuf      = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cabildoos-id:' + _authUser.id))
+  const identityHash = Array.from(new Uint8Array(uidBuf)).map(b => b.toString(16).padStart(2,'0')).join('')
+
   // Guardar nonce localmente (para la fase de revelación)
   const stored = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
   stored[qId]  = { voto, nonce, hash, ts: Date.now() }
@@ -9611,10 +9616,11 @@ async function confirmarVoto() {
 
   // Enviar hash a Supabase (upsert por question_id + seat_number)
   const { error } = await sb.from('votes').upsert({
-    question_id: qId,
-    seat_number: MY_SEAT,
-    vote_hash:   hash,
-    vote_plain:  voto  // guardamos el voto para la fase de revelación
+    question_id:   qId,
+    seat_number:   MY_SEAT,
+    vote_hash:     hash,
+    vote_plain:    voto,
+    identity_hash: identityHash  // único por usuario, evita NULL-collision en la constraint
   }, { onConflict: 'question_id,seat_number' })
 
   if (error) {
