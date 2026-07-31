@@ -5477,6 +5477,7 @@ const followingConfirmed  = new Set()  // yo sigo (aceptado)
 const followingPending    = new Set()  // solicitudes enviadas sin respuesta
 const followersConfirmed  = new Set()  // me siguen (aceptado)
 let   _pendingRequestsToMe = []        // solicitudes que debo aceptar/rechazar [{id,from_seat,alias}]
+let   _unreadConvos = {}               // {from_seat: {count, lastText, lastTime}}
 
 // Alias para compatibilidad con canvas (usa `following`)
 const following = followingConfirmed
@@ -6499,8 +6500,10 @@ async function _onLogin(user) {
     if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
     voActualizarAlias(displayName)
     _actualizarBtnButaca()  // "↵ Mi butaca"
-    _refreshMyVoteCount()   // sincronizar conteo de votos desde Supabase
-    _loadFollows()          // cargar follows reales desde Supabase
+    _refreshMyVoteCount()    // sincronizar conteo de votos desde Supabase
+    _loadFollows()           // cargar follows reales desde Supabase
+    _loadUnreadMessages()    // cargar mensajes no leídos
+    initMessagesRealtime()   // escuchar mensajes entrantes en tiempo real
     // Usuario verificado → selector de cabildos solo si no hay preferencia guardada
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
     if (_cabildo) {
@@ -6857,6 +6860,7 @@ async function cerrarSesion() {
   _myVoteCount = null
   followingConfirmed.clear(); followingPending.clear()
   followersConfirmed.clear(); _pendingRequestsToMe = []
+  _unreadConvos = {}
   const badge = document.getElementById('nav-msgs-badge')
   if (badge) badge.style.display = 'none'
   _resetearMarcaCabildo()
@@ -8853,6 +8857,57 @@ function initFollowsRealtime() {
   } catch(e) { console.warn('Realtime follows no disponible:', e) }
 }
 
+// ── Cargar mensajes no leídos al login ───────────────────────────────────────
+async function _loadUnreadMessages() {
+  if (!MY_SEAT) return
+  _unreadConvos = {}
+  const { data } = await sb.from('messages')
+    .select('from_seat, text, created_at')
+    .eq('to_seat', MY_SEAT)
+    .is('read_at', null)
+    .order('created_at', { ascending: false })
+  if (!data) return
+  data.forEach(m => {
+    if (!_unreadConvos[m.from_seat]) {
+      _unreadConvos[m.from_seat] = { count: 0, lastText: m.text, lastTime: m.created_at }
+    }
+    _unreadConvos[m.from_seat].count++
+  })
+  _renderMensajes()
+}
+
+// ── Realtime global para mensajes entrantes ───────────────────────────────────
+function initMessagesRealtime() {
+  try {
+    sb.channel('messages-inbox')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages'
+      }, payload => {
+        const m = payload.new
+        if (m.to_seat !== MY_SEAT) return   // no es para mí
+
+        // Si el modal de perfil está abierto en esa conversación, no notificar
+        const modalOpen = document.getElementById('user-profile-modal')?.classList.contains('open')
+        if (modalOpen && _upmSeat === m.from_seat && _upmCurTab === 'mensajes') return
+
+        // Acumular no-leídos
+        if (!_unreadConvos[m.from_seat]) {
+          _unreadConvos[m.from_seat] = { count: 0, lastText: m.text, lastTime: m.created_at }
+        }
+        _unreadConvos[m.from_seat].count++
+        _unreadConvos[m.from_seat].lastText = m.text
+        _unreadConvos[m.from_seat].lastTime = m.created_at
+
+        _renderMensajes()
+
+        // Toast con preview del mensaje
+        const alias = _profilesCache[m.from_seat]?.alias || `Butaca #${m.from_seat}`
+        showToast(`💬 ${alias}: ${m.text.length > 40 ? m.text.slice(0,40)+'…' : m.text}`)
+      })
+      .subscribe()
+  } catch(e) { console.warn('Realtime messages no disponible:', e) }
+}
+
 // ── Realtime: sincroniza conteo de votos en _profilesCache entre sesiones ──
 function initVotesRealtime() {
   try {
@@ -10695,9 +10750,9 @@ async function abrirUserProfile(seatNum, fromTab) {
     }
   }).catch(() => {})
 
-  // Abrir modal y mostrar tab propuestas
+  // Abrir modal — si venimos de una notificación de mensaje, abrir directo en mensajes
   document.getElementById('user-profile-modal').classList.add('open')
-  upmShowTab('propuestas')
+  upmShowTab(fromTab === 'mensajes-inbox' ? 'mensajes' : 'propuestas')
 }
 
 function cerrarUserProfile() {
@@ -10882,9 +10937,11 @@ async function upmLoadMessages() {
 
   upmRenderMessages(data || [])
 
-  // Marcar como leídos
+  // Marcar como leídos en DB y limpiar badge
   sb.from('messages').update({ read_at: new Date().toISOString() })
     .eq('to_seat', MY_SEAT).eq('from_seat', _upmSeat).is('read_at', null).then(() => {})
+  delete _unreadConvos[_upmSeat]
+  _renderMensajes()
 
   // Suscribir realtime al hilo
   if (_upmMsgChannel) sb.removeChannel(_upmMsgChannel)
@@ -10941,39 +10998,75 @@ async function upmSendMsg() {
 function _renderMensajes() {
   const el = document.getElementById('sf-mensajes-list')
   if (!el) return
-  const badge = document.getElementById('nav-msgs-badge')
 
-  if (!_pendingRequestsToMe.length) {
-    if (badge) { badge.style.display = 'none' }
+  const unreadSeats   = Object.keys(_unreadConvos).map(Number)
+  const totalRequests = _pendingRequestsToMe.length
+  const totalUnread   = unreadSeats.reduce((s, seat) => s + _unreadConvos[seat].count, 0)
+  const totalBadge    = totalRequests + totalUnread
+
+  const badge = document.getElementById('nav-msgs-badge')
+  if (badge) {
+    badge.textContent   = totalBadge || ''
+    badge.style.display = totalBadge ? 'flex' : 'none'
+  }
+
+  if (!totalRequests && !unreadSeats.length) {
     el.innerHTML = `<div class="sf-empty-msg">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <p>No tenés mensajes aún</p>
-      <p style="font-size:11px;margin-top:4px;color:var(--mid)">Las solicitudes de seguidores aparecerán aquí</p>
+      <p style="font-size:11px;margin-top:4px;color:var(--mid)">Las solicitudes y mensajes aparecerán aquí</p>
     </div>`
     return
   }
 
-  if (badge) { badge.textContent = _pendingRequestsToMe.length; badge.style.display = 'flex' }
-
-  el.innerHTML = _pendingRequestsToMe.map(req => {
-    const p = _profilesCache[req.from_seat]
-    const alias = p?.alias || `Butaca #${req.from_seat}`
-    const initials = alias.slice(0, 2).toUpperCase()
-    const phrase = p?.phrase ? `"${p.phrase}"` : ''
-    return `<div class="sf-req-card" id="sf-req-${req.id}">
-      <div class="sf-req-top">
-        <div class="sf-req-av">${initials}</div>
-        <div class="sf-req-info">
-          <div class="sf-req-name">${alias}</div>
-          <div class="sf-req-sub">Butaca #${req.from_seat} quiere seguirte${phrase ? ' · ' + phrase : ''}</div>
+  // Sección solicitudes de seguimiento
+  const reqsHtml = totalRequests ? `
+    <p style="font-size:10px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Solicitudes</p>
+    ${_pendingRequestsToMe.map(req => {
+      const p = _profilesCache[req.from_seat]
+      const alias    = p?.alias || `Butaca #${req.from_seat}`
+      const initials = alias.slice(0, 2).toUpperCase()
+      const cIdx     = req.from_seat % AVATAR_COLORS.length
+      return `<div class="sf-req-card" id="sf-req-${req.id}">
+        <div class="sf-req-top">
+          <div class="sf-req-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
+          <div class="sf-req-info">
+            <div class="sf-req-name">${alias}</div>
+            <div class="sf-req-sub">quiere seguirte</div>
+          </div>
         </div>
-      </div>
-      <div class="sf-req-actions">
-        <button class="sf-req-accept" onclick="aceptarSolicitud('${req.id}', ${req.from_seat})">✓ Aceptar</button>
-        <button class="sf-req-reject" onclick="rechazarSolicitud('${req.id}', ${req.from_seat})">Rechazar</button>
-      </div>
-    </div>`
-  }).join('')
+        <div class="sf-req-actions">
+          <button class="sf-req-accept" onclick="aceptarSolicitud('${req.id}',${req.from_seat})">✓ Aceptar</button>
+          <button class="sf-req-reject" onclick="rechazarSolicitud('${req.id}',${req.from_seat})">Rechazar</button>
+        </div>
+      </div>`
+    }).join('')}` : ''
+
+  // Sección mensajes no leídos
+  const msgsHtml = unreadSeats.length ? `
+    <p style="font-size:10px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin:${totalRequests?'14px':0} 0 8px">Mensajes</p>
+    ${unreadSeats.map(seat => {
+      const p        = _profilesCache[seat]
+      const alias    = p?.alias || `Butaca #${seat}`
+      const initials = alias.slice(0, 2).toUpperCase()
+      const cIdx     = seat % AVATAR_COLORS.length
+      const conv     = _unreadConvos[seat]
+      const preview  = conv.lastText.length > 45 ? conv.lastText.slice(0,45)+'…' : conv.lastText
+      const t        = new Date(conv.lastTime).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
+      return `<div class="sf-msg-row unread" onclick="abrirUserProfile(${seat},'mensajes-inbox');sfSelectTab('');cerrarSocialPanel()" style="cursor:pointer">
+        <div class="sf-msg-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:12px;font-weight:700;color:var(--dark)">${alias}</span>
+            <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;background:#ef4444;color:#fff;margin-left:auto">${conv.count}</span>
+          </div>
+          <p class="sf-msg-preview">${preview}</p>
+        </div>
+        <span class="sf-msg-time">${t}</span>
+      </div>`
+    }).join('')}` : ''
+
+  el.innerHTML = reqsHtml + msgsHtml
 }
 
 async function aceptarSolicitud(reqId, fromSeat) {
