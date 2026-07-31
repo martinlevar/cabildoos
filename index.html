@@ -8815,23 +8815,17 @@ let _profilesCache = {}
 
 async function cargarPerfilesPublicos() {
   try {
-    // 1. Perfiles con butaca asignada
-    const { data: profs } = await sb.from('profiles')
-      .select('seat_number, alias, phrase')
-      .not('seat_number', 'is', null)
-    if (profs) {
+    // Una sola query atómica: perfiles + conteo de votos — sin race condition
+    const { data: rows, error } = await sb.rpc('get_profiles_with_vote_counts')
+    if (error) throw error
+    if (rows) {
       _profilesCache = {}
-      profs.forEach(p => {
-        _profilesCache[p.seat_number] = { alias: p.alias || `Butaca #${p.seat_number}`, phrase: p.phrase || '', votes: 0 }
-      })
-    }
-    // 2. Contar votos por butaca
-    const { data: voteRows } = await sb.from('votes')
-      .select('seat_number')
-      .not('seat_number', 'is', null)
-    if (voteRows) {
-      voteRows.forEach(v => {
-        if (_profilesCache[v.seat_number]) _profilesCache[v.seat_number].votes++
+      rows.forEach(r => {
+        _profilesCache[r.seat_number] = {
+          alias:  r.alias  || `Butaca #${r.seat_number}`,
+          phrase: r.phrase || '',
+          votes:  Number(r.vote_count) || 0
+        }
       })
     }
   } catch(e) { console.warn('cargarPerfilesPublicos:', e) }
