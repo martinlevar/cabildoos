@@ -3604,11 +3604,18 @@ async function sisCargarGemini() {
   const statusEl  = document.getElementById('sis-gemini-status')
   const metricsEl = document.getElementById('sis-gemini-metrics')
 
-  // 1. Intentar endpoint propio del backend
+  // 1. Intentar endpoint propio del backend (requiere auth)
   let backendData = null
   try {
-    const res = await fetch(API_BACKEND + '/api/status/gemini', { signal: AbortSignal.timeout(5000) })
-    if (res.ok) backendData = await res.json().catch(() => null)
+    const { data: { session } } = await sb.auth.getSession()
+    const token = session?.access_token
+    if (token) {
+      const res = await fetch(API_BACKEND + '/api/admin/status/gemini', {
+        headers: { 'Authorization': 'Bearer ' + token },
+        signal: AbortSignal.timeout(8000)
+      })
+      if (res.ok) backendData = await res.json().catch(() => null)
+    }
   } catch(_) {}
 
   if (backendData) {
