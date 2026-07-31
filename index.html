@@ -11677,16 +11677,21 @@ function renderSocial(type) {
     el.innerHTML = '<p class="sf-empty">' + (type === 'seguidos' ? 'No seguís a nadie aún.' : 'Nadie te sigue aún.') + '</p>'
     return
   }
-  const source = seats.map(n => ({ seat: n, phrase: getProfile(n).phrase }))
+  const source = seats.map(n => {
+    const p = _profilesCache[n] || getProfile(n)
+    return { seat: n, alias: p.alias || `Butaca #${n}`, phrase: p.phrase || '' }
+  })
   el.innerHTML = source.map(s => {
-    const initials = '#' + s.seat
+    const initials = s.alias.slice(0, 2).toUpperCase()
+    const ci = s.seat % AVATAR_COLORS_CONVO.length
+    const phrase = s.phrase ? (s.phrase.slice(0, 45) + (s.phrase.length > 45 ? '…' : '')) : `Butaca #${s.seat}`
     return `<div class="sf-social-row">
-      <div class="sf-soc-av">${initials}</div>
-      <div>
-        <p class="sf-soc-name">Butaca #${s.seat}</p>
-        <p class="sf-soc-sub">${s.phrase.slice(0, 40)}${s.phrase.length > 40 ? '…' : ''}</p>
+      <div class="sf-soc-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <p class="sf-soc-name">${s.alias}</p>
+        <p class="sf-soc-sub">${phrase}</p>
       </div>
-      <button class="sf-soc-btn">Ver</button>
+      <button class="sf-soc-btn" onclick="abrirUserProfile(${s.seat});cerrarSocialPanel()">Ver</button>
     </div>`
   }).join('')
 }
