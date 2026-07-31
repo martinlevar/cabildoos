@@ -2560,9 +2560,9 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 }
 .cf-brand { font-size:12px; font-weight:800; color:rgba(0,0,0,.25); letter-spacing:-.3px; }
 .cf-links { display:flex; gap:16px; }
-.cf-links a { font-size:11px; color:var(--mid); cursor:pointer; text-decoration:none; }
+.cf-links a { font-size:11px; font-weight:500; color:var(--mid); cursor:pointer; text-decoration:none; }
 .cf-links a:hover { color:var(--dark); }
-.cf-copy { font-size:11px; color:var(--mid); }
+.cf-copy { font-size:11px; font-weight:500; color:var(--mid); }
 
 /* Mensajes panel — más alto para conversaciones */
 .sf-float-panel[data-tab="mensajes"] { max-height:420px; }
@@ -2793,8 +2793,8 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 }
 .sf-msg-body { flex:1; min-width:0; }
 .sf-msg-name { font-size:12px; font-weight:700; color:var(--dark); }
-.sf-msg-preview { font-size:11px; color:var(--mid); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
-.sf-msg-time { font-size:10px; color:var(--mid); flex-shrink:0; margin-top:2px; }
+.sf-msg-preview { font-size:12px; font-weight:400; color:var(--mid); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.sf-msg-time { font-size:10px; font-weight:500; color:var(--mid); flex-shrink:0; margin-top:2px; }
 .sf-msg-unread-dot {
   width:7px; height:7px; border-radius:50%; background:var(--orange); flex-shrink:0; margin-top:4px;
 }
@@ -2841,22 +2841,80 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
   pointer-events:none;
 }
 
-/* Floating panel above pill */
-.sf-float-panel {
-  width:min(440px, calc(100vw - 40px));
-  background:rgba(255,255,255,.92);
-  backdrop-filter:blur(20px) saturate(1.8);
-  -webkit-backdrop-filter:blur(20px) saturate(1.8);
-  border:1px solid rgba(255,255,255,.95);
-  border-radius:20px;
-  box-shadow:0 20px 60px rgba(0,0,0,.13), 0 4px 16px rgba(0,0,0,.06);
-  max-height:0; overflow:hidden;
-  pointer-events:none;
-  transition:max-height .32s cubic-bezier(.4,0,.2,1), opacity .22s;
-  opacity:0;
+/* Floating panel — hidden, replaced by center modal */
+.sf-float-panel { display:none !important; }
+.sf-panel-inner  { display:none !important; }
+
+/* ── Centro modal social ── */
+#sf-center-modal {
+  position:fixed; inset:0; z-index:700;
+  background:rgba(0,0,0,.55); backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  opacity:0; pointer-events:none; transition:opacity .22s;
 }
-.sf-float-panel.open { max-height:380px; overflow-y:auto; opacity:1; pointer-events:all; }
-.sf-panel-inner { padding:20px 20px 16px; }
+#sf-center-modal.open { opacity:1; pointer-events:all; }
+.sf-cm-panel {
+  background:#fff; border-radius:22px; width:100%; max-width:480px;
+  max-height:80vh; display:flex; flex-direction:column;
+  box-shadow:0 32px 80px rgba(0,0,0,.22);
+  overflow:hidden;
+}
+.sf-cm-header {
+  display:flex; align-items:center; gap:0;
+  border-bottom:1px solid rgba(0,0,0,.08); flex-shrink:0;
+  padding:0 16px;
+}
+.sf-cm-tab {
+  flex:1; padding:14px 4px; border:none; background:none; cursor:pointer;
+  font-family:inherit; font-size:12px; font-weight:600; color:#8a8a8a;
+  border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s;
+  white-space:nowrap;
+}
+.sf-cm-tab.active { color:#1d1d1d; border-bottom-color:#1d1d1d; }
+.sf-cm-close {
+  width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.06); color:#1d1d1d; font-size:14px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; margin-left:8px;
+}
+.sf-cm-body { flex:1; overflow-y:auto; }
+.sf-cm-pane { display:none; padding:20px; }
+.sf-cm-pane.active { display:block; }
+
+/* Mensajes: lista de conversaciones */
+.sf-convo-row {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 0; border-bottom:1px solid rgba(0,0,0,.06); cursor:pointer;
+  transition:background .1s; margin:0 -4px; padding-left:4px; padding-right:4px;
+  border-radius:10px;
+}
+.sf-convo-row:last-child { border-bottom:none; }
+.sf-convo-row:hover { background:rgba(0,0,0,.03); }
+.sf-convo-av {
+  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#fff; position:relative;
+}
+.sf-convo-av .unread-dot {
+  position:absolute; top:0; right:0; width:10px; height:10px;
+  border-radius:50%; background:var(--orange); border:2px solid #fff;
+}
+.sf-convo-info { flex:1; min-width:0; }
+.sf-convo-name { font-size:13px; font-weight:600; color:#1d1d1d; }
+.sf-convo-preview { font-size:12px; color:#8a8a8a; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sf-convo-meta { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+.sf-convo-time { font-size:10px; color:#8a8a8a; }
+.sf-convo-badge {
+  background:var(--orange); color:#fff; font-size:10px; font-weight:700;
+  padding:2px 6px; border-radius:10px; min-width:18px; text-align:center;
+}
+
+/* Solicitudes en mensajes */
+.sf-req-card { background:rgba(247,106,30,.06); border-radius:12px; padding:12px; margin-bottom:10px; }
+.sf-req-card p { font-size:13px; font-weight:500; color:#1d1d1d; margin-bottom:8px; }
+.sf-req-btns { display:flex; gap:8px; }
+.sf-req-btns button { flex:1; padding:7px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; border:none; }
+.sf-req-accept { background:#1d1d1d; color:#fff; }
+.sf-req-reject { background:rgba(0,0,0,.08); color:#1d1d1d; }
 
 /* Separated individual pill tabs */
 .sf-tabs-row { display:flex; gap:10px; pointer-events:all; }
@@ -2926,7 +2984,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
   font-size:12px; font-weight:700; color:#fff;
 }
 .sf-soc-name { font-size:13px; font-weight:600; color:var(--dark); }
-.sf-soc-sub  { font-size:11px; color:var(--mid); margin-top:1px; }
+.sf-soc-sub  { font-size:12px; font-weight:400; color:var(--mid); margin-top:1px; }
 .sf-soc-btn {
   margin-left:auto; padding:5px 12px;
   border:1.5px solid var(--border); border-radius:20px;
@@ -3296,13 +3354,13 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 }
 .lgl-body {
   padding:20px 24px 24px; overflow-y:auto; flex:1;
-  font-size:13px; line-height:1.7; color:var(--text,#1d1d1d);
+  font-size:13px; font-weight:400; line-height:1.75; color:#1d1d1d;
   display:flex; flex-direction:column; gap:4px;
 }
 .lgl-section-title {
-  font-weight:700; font-size:13px; margin-top:16px; margin-bottom:4px; color:var(--dark,#1d1d1d);
+  font-weight:700; font-size:13px; margin-top:16px; margin-bottom:4px; color:#1d1d1d;
 }
-.lgl-body p { color:var(--muted2,#666); }
+.lgl-body p { color:#555; font-weight:400; }
 .lgl-body p:first-child { margin-top:0; }
 /* Steps de ayuda */
 .ayuda-steps { display:flex; flex-direction:column; gap:18px; }
@@ -3702,7 +3760,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
         <span class="nav-act-lbl">Propuestas</span>
       </button>
       <!-- Seguidores -->
-      <button class="nav-act-btn" onclick="abrirSocialModal('seguidores')" title="Seguidores">
+      <button class="nav-act-btn" onclick="sfSelectTab('seguidores')" title="Seguidores">
         <div class="nav-act-ic nav-ic-segs">
           <svg width="17" height="15" viewBox="0 0 15 14" fill="none">
             <circle cx="3.5" cy="7" r="1.8" fill="currentColor"/>
@@ -3714,7 +3772,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
         <span class="nav-act-lbl">Seguidores</span>
       </button>
       <!-- Seguidos -->
-      <button class="nav-act-btn" onclick="abrirSocialModal('seguidos')" title="Seguidos">
+      <button class="nav-act-btn" onclick="sfSelectTab('seguidos')" title="Seguidos">
         <div class="nav-act-ic nav-ic-seguidos">
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7"    r="2.2" fill="currentColor"/>
@@ -3788,7 +3846,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
       <a onclick="abrirModalTerminos()">Términos</a>
       <a onclick="abrirModalAyuda()">Ayuda</a>
       <a onclick="abrirBugReport('contacto')">Contacto</a>
-      <a onclick="abrirBugReport('error')" id="footer-bug-link" style="display:none">🐛 Reportar</a>
+      <a onclick="abrirBugReport('error')" id="footer-bug-link" style="display:none">Reportar</a>
     </div>
     <span class="cf-copy">© 2026 CabildoOS</span>
   </footer>
@@ -6685,9 +6743,7 @@ function showScreen(id) {
   document.body.classList.toggle('on-cabildo-selector', id === 'cabildo-selector')
   // Collapse panel when leaving landing
   if (id !== 'landing') {
-    sfActiveTab = null
-    document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
-    document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
+    cerrarSocialPanel()
   }
   // Intro animation lifecycle
   if (id === 'intro') _startIntroAnim('intro-canvas')
@@ -9243,6 +9299,110 @@ function initMessagesRealtime() {
   } catch(e) { console.warn('Realtime messages no disponible:', e) }
 }
 
+// ── Conversaciones: cargar todas (leídas + no leídas) y renderizar ────────────
+const AVATAR_COLORS_CONVO = ['#1a1f3c','#f76a1e','#3ecf8e','#f04545','#6366f1','#0ea5e9','#8b5cf6','#ec4899']
+
+async function _loadAndRenderConversaciones() {
+  const el = document.getElementById('sf-mensajes-list')
+  if (!el) return
+  el.innerHTML = '<p style="color:#8a8a8a;font-size:13px;text-align:center;padding:32px">Cargando…</p>'
+
+  if (!MY_SEAT) {
+    el.innerHTML = '<p style="color:#8a8a8a;font-size:13px;text-align:center;padding:32px">Necesitás una butaca verificada</p>'
+    return
+  }
+
+  // Solicitudes pendientes primero
+  let html = ''
+  if (_pendingRequestsToMe.length) {
+    html += `<p style="font-size:10px;font-weight:700;color:#8a8a8a;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Solicitudes de seguimiento</p>`
+    html += _pendingRequestsToMe.map(req => {
+      const alias = _profilesCache[req.from_seat]?.alias || `Butaca #${req.from_seat}`
+      return `<div class="sf-req-card">
+        <p>👤 <strong>${alias}</strong> quiere seguirte</p>
+        <div class="sf-req-btns">
+          <button class="sf-req-accept" onclick="aceptarSolicitud('${req.id}',${req.from_seat})">✓ Aceptar</button>
+          <button class="sf-req-reject" onclick="rechazarSolicitud('${req.id}',${req.from_seat})">✕ Rechazar</button>
+        </div>
+      </div>`
+    }).join('')
+  }
+
+  // Notificaciones de propuestas no leídas
+  const unreadNotifs = _notifications.filter(n => !n.read_at && n.type === 'new_proposal')
+  if (unreadNotifs.length) {
+    html += `<p style="font-size:10px;font-weight:700;color:#8a8a8a;letter-spacing:.06em;text-transform:uppercase;margin:${_pendingRequestsToMe.length?'16px':0} 0 10px">Nuevas propuestas</p>`
+    html += unreadNotifs.map(n => {
+      const alias = _profilesCache[n.from_seat]?.alias || `Butaca #${n.from_seat}`
+      const t = new Date(n.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
+      const ci = n.from_seat % AVATAR_COLORS_CONVO.length
+      return `<div class="sf-convo-row" onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')">
+        <div class="sf-convo-av" style="background:${AVATAR_COLORS_CONVO[ci]}">📣</div>
+        <div class="sf-convo-info">
+          <p class="sf-convo-name">${alias}</p>
+          <p class="sf-convo-preview">${n.message}</p>
+        </div>
+        <div class="sf-convo-meta"><span class="sf-convo-time">${t}</span><span class="sf-convo-badge">!</span></div>
+      </div>`
+    }).join('')
+  }
+
+  // Todas las conversaciones de mensajes (leídas + no leídas)
+  try {
+    const { data } = await sb.from('messages')
+      .select('from_seat, to_seat, text, created_at, read_at')
+      .or(`from_seat.eq.${MY_SEAT},to_seat.eq.${MY_SEAT}`)
+      .order('created_at', { ascending: false })
+
+    // Agrupar por contraparte
+    const convos = {}
+    ;(data || []).forEach(m => {
+      const other = m.from_seat === MY_SEAT ? m.to_seat : m.from_seat
+      if (!convos[other]) {
+        convos[other] = { seat: other, lastText: m.text, lastTime: m.created_at, unread: 0 }
+      }
+      if (m.to_seat === MY_SEAT && !m.read_at) convos[other].unread++
+    })
+
+    const convoList = Object.values(convos).sort((a,b) => new Date(b.lastTime) - new Date(a.lastTime))
+
+    if (convoList.length) {
+      html += `<p style="font-size:10px;font-weight:700;color:#8a8a8a;letter-spacing:.06em;text-transform:uppercase;margin:${(_pendingRequestsToMe.length||unreadNotifs.length)?'16px':0} 0 10px">Mensajes directos</p>`
+      html += convoList.map(c => {
+        const alias = _profilesCache[c.seat]?.alias || `Butaca #${c.seat}`
+        const initials = alias.slice(0,2).toUpperCase()
+        const ci = c.seat % AVATAR_COLORS_CONVO.length
+        const t = new Date(c.lastTime).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
+        const preview = c.lastText.length > 45 ? c.lastText.slice(0,45)+'…' : c.lastText
+        return `<div class="sf-convo-row" onclick="abrirUserProfile(${c.seat},'mensajes-inbox');cerrarSocialPanel()">
+          <div class="sf-convo-av" style="background:${AVATAR_COLORS_CONVO[ci]}">
+            ${initials}
+            ${c.unread > 0 ? '<span class="unread-dot"></span>' : ''}
+          </div>
+          <div class="sf-convo-info">
+            <p class="sf-convo-name">${alias}</p>
+            <p class="sf-convo-preview">${preview}</p>
+          </div>
+          <div class="sf-convo-meta">
+            <span class="sf-convo-time">${t}</span>
+            ${c.unread > 0 ? `<span class="sf-convo-badge">${c.unread}</span>` : ''}
+          </div>
+        </div>`
+      }).join('')
+    }
+  } catch(e) { console.warn('_loadAndRenderConversaciones:', e) }
+
+  if (!html) {
+    html = `<div style="text-align:center;padding:40px 16px;color:#8a8a8a">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="margin-bottom:12px;opacity:.3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <p style="font-weight:500">No tenés mensajes aún</p>
+      <p style="font-size:12px;margin-top:4px">Podés escribirle a cualquier ciudadano desde su perfil</p>
+    </div>`
+  }
+
+  el.innerHTML = html
+}
+
 // ── Sistema de notificaciones ─────────────────────────────────────────────────
 let _notifications = []   // [{id, from_seat, type, proposal_id, message, created_at}]
 
@@ -10956,59 +11116,42 @@ function mostrarFooter() {
   document.getElementById('social-footer').classList.add('visible')
 }
 
-// Close panel when clicking outside
-document.addEventListener('click', (e) => {
-  if (!sfActiveTab) return
-  if (e.target.closest('#social-footer')) return
-  if (e.target.closest('#nav-umenu')) return      // no cerrar cuando se abre desde el dropdown
-  if (e.target.closest('.nav-act-btn')) return   // no cerrar al clickear un botón del nav
-  sfActiveTab = null
-  document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
-  document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
-  document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
-})
+// El centro modal se cierra solo con su propio backdrop click — no necesitamos listener global
 
 function sfSelectTab(tab) {
-  // Asegurar que el contenedor está visible (para los paneles)
   document.getElementById('social-footer').classList.add('visible')
-  // Toggle: same tab collapses
-  if (sfActiveTab === tab) {
-    sfActiveTab = null
-    document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
-    document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
-    return
-  }
-  sfActiveTab = tab
-  document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
-  document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.toggle('open', p.dataset.tab === tab))
-  // Resaltar botón del nav correspondiente
-  document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
-  const activeNavBtn = document.querySelector(`#nav-social-btns .nav-act-btn[title]`)
-  document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => {
-    const titleMap = { propuestas:'Mis propuestas', seguidores:'Seguidores', seguidos:'Seguidos', mensajes:'Mensajes directos' }
-    b.classList.toggle('active-tab', b.title === titleMap[tab])
-  })
 
+  // Abrir el centro modal
+  const modal = document.getElementById('sf-center-modal')
+  modal.classList.add('open')
+  sfActiveTab = tab
+
+  // Activar tab en header del modal
+  document.querySelectorAll('.sf-cm-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
+  document.querySelectorAll('.sf-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
+
+  // Mostrar pane correcto
+  document.querySelectorAll('.sf-cm-pane').forEach(p => p.classList.toggle('active', p.id === 'sfp-' + tab))
+
+  // Cargar contenido
   if (tab === 'propuestas') renderPropuestas()
   if (tab === 'seguidores') renderSocial('seguidores')
   if (tab === 'seguidos')   renderSocial('seguidos')
-  if (tab === 'mensajes')   _renderMensajes()
+  if (tab === 'mensajes')   _loadAndRenderConversaciones()
 }
 
 // ── Abrir social tab desde el user pill dropdown ──
 function abrirSocialTab(tab) {
   closeUserPill()
-  if (tab === 'seguidores' || tab === 'seguidos') {
-    abrirSocialModal(tab)
-  } else {
-    sfSelectTab(tab)
-  }
+  sfSelectTab(tab)
 }
 
-// ── Cerrar panel social (botón ×) ──
+// ── Cerrar centro modal social ──
 function cerrarSocialPanel() {
   sfActiveTab = null
-  document.querySelectorAll('.sf-float-panel').forEach(p => p.classList.remove('open'))
+  document.getElementById('sf-center-modal').classList.remove('open')
+  document.querySelectorAll('.sf-cm-tab').forEach(t => t.classList.remove('active'))
+  document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
   document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
 }
 
@@ -11699,46 +11842,27 @@ function _syncBugFab() {
 }
 </script>
 
-<!-- ══════════════ SOCIAL FOOTER (floating pill) ══════════════ -->
+<!-- ══ CENTRO MODAL SOCIAL ══ -->
+<div id="sf-center-modal" onclick="if(event.target===this)cerrarSocialPanel()">
+  <div class="sf-cm-panel">
+    <div class="sf-cm-header">
+      <button class="sf-cm-tab" data-tab="propuestas"  onclick="sfSelectTab('propuestas')">Propuestas</button>
+      <button class="sf-cm-tab" data-tab="seguidores"  onclick="sfSelectTab('seguidores')">Seguidores</button>
+      <button class="sf-cm-tab" data-tab="seguidos"    onclick="sfSelectTab('seguidos')">Seguidos</button>
+      <button class="sf-cm-tab" data-tab="mensajes"    onclick="sfSelectTab('mensajes')">Mensajes</button>
+      <button class="sf-cm-close" onclick="cerrarSocialPanel()">✕</button>
+    </div>
+    <div class="sf-cm-body">
+      <div class="sf-cm-pane" id="sfp-propuestas"><div id="sf-propuestas-list"></div></div>
+      <div class="sf-cm-pane" id="sfp-seguidores"><div id="sf-seguidores-list"></div></div>
+      <div class="sf-cm-pane" id="sfp-seguidos">  <div id="sf-seguidos-list"></div></div>
+      <div class="sf-cm-pane" id="sfp-mensajes">  <div id="sf-mensajes-list"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ SOCIAL FOOTER (pill tabs only) ══════════════ -->
 <div id="social-footer">
-  <!-- Floating panels (appear above pill) -->
-  <div class="sf-float-panel" data-tab="propuestas">
-    <div class="sf-panel-inner">
-      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
-      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Mis propuestas</p>
-      <div id="sf-propuestas-list"></div>
-    </div>
-  </div>
-  <div class="sf-float-panel" data-tab="seguidores">
-    <div class="sf-panel-inner">
-      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
-      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Seguidores</p>
-      <div id="sf-seguidores-list"></div>
-    </div>
-  </div>
-  <div class="sf-float-panel" data-tab="seguidos">
-    <div class="sf-panel-inner">
-      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
-      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Seguidos</p>
-      <div id="sf-seguidos-list"></div>
-    </div>
-  </div>
-
-  <!-- Panel mensajes -->
-  <div class="sf-float-panel" data-tab="mensajes">
-    <div class="sf-panel-inner">
-      <button class="sf-panel-close" onclick="cerrarSocialPanel()" title="Cerrar">×</button>
-      <p style="font-size:11px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px">Mensajes directos</p>
-      <div id="sf-mensajes-list">
-        <div class="sf-empty-msg">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <p>No tenés mensajes directos aún</p>
-          <p style="font-size:11px;margin-top:4px;color:var(--mid)">Los mensajes de tus seguidores aparecerán aquí</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Separated pill tabs -->
   <div class="sf-tabs-row">
     <button class="sf-tab" data-tab="propuestas" onclick="sfSelectTab('propuestas')">
