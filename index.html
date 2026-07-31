@@ -2507,6 +2507,218 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 
 /* Mensajes panel — más alto para conversaciones */
 .sf-float-panel[data-tab="mensajes"] { max-height:420px; }
+
+/* ══════════════════════════════════════════════════
+   SOCIAL CENTER MODAL — lista seguidores/seguidos
+══════════════════════════════════════════════════ */
+#social-modal {
+  position:fixed; inset:0; z-index:8000;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#social-modal.open { opacity:1; pointer-events:all; }
+.slm-panel {
+  background:#fff; border-radius:20px;
+  width:min(520px, calc(100vw - 32px));
+  max-height:min(680px, calc(100dvh - 60px));
+  display:flex; flex-direction:column;
+  box-shadow:0 24px 60px rgba(0,0,0,.18);
+  overflow:hidden;
+}
+.slm-header {
+  display:flex; align-items:center; gap:0;
+  padding:18px 20px 0; border-bottom:1.5px solid var(--border); flex-shrink:0;
+}
+.slm-tabs { display:flex; gap:0; flex:1; }
+.slm-tab {
+  padding:10px 20px 14px; border:none; background:none; cursor:pointer;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:700;
+  color:var(--mid); border-bottom:2.5px solid transparent; margin-bottom:-1.5px;
+  transition:all .15s;
+}
+.slm-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+.slm-close {
+  width:30px; height:30px; border-radius:50%; border:none;
+  background:rgba(0,0,0,.06); cursor:pointer; font-size:16px; color:#888;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background .15s;
+}
+.slm-close:hover { background:rgba(0,0,0,.12); }
+.slm-body { flex:1; overflow-y:auto; padding:16px 20px; }
+.slm-user-card {
+  display:flex; align-items:center; gap:14px;
+  padding:12px 14px; border-radius:14px;
+  border:1.5px solid var(--border); margin-bottom:10px;
+  transition:border-color .15s, background .15s; cursor:default;
+}
+.slm-user-card:hover { border-color:rgba(26,31,60,.2); background:rgba(26,31,60,.02); }
+.slm-uav {
+  width:44px; height:44px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; color:#fff;
+}
+.slm-uinfo { flex:1; min-width:0; }
+.slm-uname { font-size:13px; font-weight:700; color:var(--dark); }
+.slm-uphrase { font-size:11px; color:var(--mid); font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.slm-umeta { font-size:10.5px; color:#bbb; margin-top:2px; }
+.slm-ver-btn {
+  padding:7px 14px; border-radius:20px; border:1.5px solid var(--border);
+  background:none; cursor:pointer; font-family:inherit;
+  font-size:12px; font-weight:600; color:var(--navy); flex-shrink:0;
+  transition:all .15s;
+}
+.slm-ver-btn:hover { background:var(--navy); color:#fff; border-color:var(--navy); }
+
+/* ══════════════════════════════════════════════════
+   USER PROFILE MODAL
+══════════════════════════════════════════════════ */
+#user-profile-modal {
+  position:fixed; inset:0; z-index:8100;
+  background:rgba(0,0,0,.5); backdrop-filter:blur(5px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#user-profile-modal.open { opacity:1; pointer-events:all; }
+.upm-panel {
+  background:#fff; border-radius:20px;
+  width:min(540px, calc(100vw - 32px));
+  max-height:min(720px, calc(100dvh - 40px));
+  display:flex; flex-direction:column;
+  box-shadow:0 28px 70px rgba(0,0,0,.2); overflow:hidden;
+}
+.upm-top {
+  padding:20px 20px 16px; flex-shrink:0;
+  background:linear-gradient(135deg,#1a1f3c 0%,#2a3060 100%);
+  color:#fff; position:relative;
+}
+.upm-back {
+  position:absolute; top:16px; left:16px;
+  width:32px; height:32px; border-radius:50%; border:none;
+  background:rgba(255,255,255,.12); cursor:pointer; color:#fff;
+  font-size:16px; display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+}
+.upm-back:hover { background:rgba(255,255,255,.22); }
+.upm-close {
+  position:absolute; top:16px; right:16px;
+  width:32px; height:32px; border-radius:50%; border:none;
+  background:rgba(255,255,255,.12); cursor:pointer; color:#fff;
+  font-size:16px; display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+}
+.upm-close:hover { background:rgba(255,255,255,.22); }
+.upm-hero { display:flex; align-items:center; gap:14px; padding:0 8px; margin-top:4px; }
+.upm-av {
+  width:56px; height:56px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:700; color:#fff; border:2.5px solid rgba(255,255,255,.25);
+}
+.upm-id { flex:1; }
+.upm-alias { font-size:16px; font-weight:800; letter-spacing:-.01em; }
+.upm-seat  { font-size:11px; opacity:.55; margin-top:2px; }
+.upm-phrase-hero { font-size:12px; opacity:.7; font-style:italic; margin-top:4px; }
+.upm-follow-btn-hero {
+  padding:8px 18px; border-radius:20px; flex-shrink:0;
+  border:1.5px solid rgba(255,255,255,.3); background:rgba(255,255,255,.1);
+  color:#fff; cursor:pointer; font-family:inherit; font-size:12px; font-weight:700;
+  transition:all .15s;
+}
+.upm-follow-btn-hero:hover { background:rgba(255,255,255,.2); }
+.upm-follow-btn-hero.following { background:rgba(62,207,142,.25); border-color:rgba(62,207,142,.5); }
+.upm-stats-row {
+  display:flex; gap:0; margin-top:16px; border-top:1px solid rgba(255,255,255,.1); padding-top:14px;
+}
+.upm-stat { flex:1; text-align:center; }
+.upm-stat-n { font-size:18px; font-weight:800; }
+.upm-stat-l { font-size:10px; opacity:.5; margin-top:2px; letter-spacing:.04em; text-transform:uppercase; }
+.upm-divider { width:1px; background:rgba(255,255,255,.1); }
+/* Tabs */
+.upm-tabs {
+  display:flex; border-bottom:1.5px solid var(--border); flex-shrink:0;
+}
+.upm-tab-btn {
+  flex:1; padding:12px 0; border:none; background:none; cursor:pointer;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:700;
+  color:var(--mid); border-bottom:2.5px solid transparent; margin-bottom:-1.5px;
+  transition:all .15s;
+}
+.upm-tab-btn.active { color:var(--navy); border-bottom-color:var(--navy); }
+/* Content */
+.upm-content { flex:1; overflow-y:auto; padding:16px 20px; }
+/* Proposal cards in profile view */
+.upm-prop-card {
+  border:1.5px solid var(--border); border-radius:14px;
+  padding:14px 16px; margin-bottom:10px; transition:border-color .15s;
+}
+.upm-prop-card:hover { border-color:rgba(26,31,60,.2); }
+.upm-prop-text { font-size:13px; color:var(--dark); line-height:1.55; margin-bottom:10px; }
+.upm-prop-footer { display:flex; align-items:center; gap:8px; }
+.upm-prop-cat { font-size:10px; font-weight:700; padding:3px 8px; border-radius:20px; background:rgba(26,31,60,.07); color:var(--navy); }
+.upm-like-btn {
+  display:flex; align-items:center; gap:4px;
+  padding:5px 10px; border-radius:20px; border:1.5px solid var(--border);
+  background:none; cursor:pointer; font-family:inherit; font-size:11px; font-weight:700;
+  color:var(--mid); transition:all .15s; margin-left:auto;
+}
+.upm-like-btn:hover { border-color:#e879a0; color:#e879a0; }
+.upm-like-btn.liked { border-color:#e879a0; color:#e879a0; background:rgba(232,121,160,.08); }
+.upm-comment-btn {
+  display:flex; align-items:center; gap:4px;
+  padding:5px 10px; border-radius:20px; border:1.5px solid var(--border);
+  background:none; cursor:pointer; font-family:inherit; font-size:11px; font-weight:600;
+  color:var(--mid); transition:all .15s;
+}
+.upm-comment-btn:hover { border-color:var(--navy); color:var(--navy); }
+/* Comments section inside proposal */
+.upm-comments-wrap { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
+.upm-comment-row { display:flex; gap:8px; margin-bottom:8px; }
+.upm-cmt-av { width:24px; height:24px; border-radius:50%; background:var(--navy); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; color:#fff; }
+.upm-cmt-bubble { background:rgba(0,0,0,.04); border-radius:10px; padding:7px 10px; flex:1; }
+.upm-cmt-name { font-size:10px; font-weight:700; color:var(--navy); margin-bottom:2px; }
+.upm-cmt-text { font-size:11.5px; color:var(--dark); }
+.upm-cmt-input-row { display:flex; gap:8px; margin-top:10px; }
+.upm-cmt-input {
+  flex:1; padding:8px 12px; border-radius:20px;
+  border:1.5px solid var(--border); font-family:inherit; font-size:12px;
+  outline:none; transition:border-color .15s;
+}
+.upm-cmt-input:focus { border-color:var(--navy); }
+.upm-cmt-send {
+  padding:8px 14px; border-radius:20px; border:none;
+  background:var(--navy); color:#fff; cursor:pointer;
+  font-family:inherit; font-size:12px; font-weight:700; transition:background .15s;
+}
+.upm-cmt-send:hover { background:#0f1535; }
+/* Messages (DM thread) */
+.upm-chat-wrap { display:flex; flex-direction:column; gap:8px; padding-bottom:8px; }
+.upm-msg-bubble {
+  max-width:80%; padding:9px 13px; border-radius:16px;
+  font-size:12.5px; line-height:1.5;
+}
+.upm-msg-bubble.mine {
+  align-self:flex-end; background:var(--navy); color:#fff; border-bottom-right-radius:4px;
+}
+.upm-msg-bubble.theirs {
+  align-self:flex-start; background:rgba(0,0,0,.06); color:var(--dark); border-bottom-left-radius:4px;
+}
+.upm-msg-time { font-size:9.5px; opacity:.5; margin-top:3px; }
+.upm-msg-bar {
+  padding:12px 16px; border-top:1.5px solid var(--border); flex-shrink:0;
+  display:flex; gap:8px; align-items:center;
+}
+.upm-msg-input {
+  flex:1; padding:10px 14px; border-radius:22px;
+  border:1.5px solid var(--border); font-family:inherit; font-size:13px;
+  outline:none; transition:border-color .15s; background:#fafaf9;
+}
+.upm-msg-input:focus { border-color:var(--navy); background:#fff; }
+.upm-msg-send {
+  width:40px; height:40px; border-radius:50%; border:none; flex-shrink:0;
+  background:var(--navy); color:#fff; cursor:pointer; font-size:16px;
+  display:flex; align-items:center; justify-content:center; transition:background .15s;
+}
+.upm-msg-send:hover { background:#0f1535; }
 .sf-msg-list { display:flex; flex-direction:column; gap:8px; padding-bottom:4px; }
 .sf-msg-row {
   display:flex; align-items:flex-start; gap:10px;
@@ -3332,7 +3544,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
         <span class="nav-act-lbl">Propuestas</span>
       </button>
       <!-- Seguidores -->
-      <button class="nav-act-btn" onclick="sfSelectTab('seguidores')" title="Seguidores">
+      <button class="nav-act-btn" onclick="abrirSocialModal('seguidores')" title="Seguidores">
         <div class="nav-act-ic nav-ic-segs">
           <svg width="17" height="15" viewBox="0 0 15 14" fill="none">
             <circle cx="3.5" cy="7" r="1.8" fill="currentColor"/>
@@ -3344,7 +3556,7 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
         <span class="nav-act-lbl">Seguidores</span>
       </button>
       <!-- Seguidos -->
-      <button class="nav-act-btn" onclick="sfSelectTab('seguidos')" title="Seguidos">
+      <button class="nav-act-btn" onclick="abrirSocialModal('seguidos')" title="Seguidos">
         <div class="nav-act-ic nav-ic-seguidos">
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7"    r="2.2" fill="currentColor"/>
@@ -3635,6 +3847,60 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
       </button>
     </div>
 
+  </div>
+</div>
+
+<!-- ══════════════ SOCIAL LIST MODAL ══════════════ -->
+<div id="social-modal" onclick="if(event.target===this)cerrarSocialModal()">
+  <div class="slm-panel">
+    <div class="slm-header">
+      <div class="slm-tabs">
+        <button class="slm-tab active" id="slm-tab-seguidores" onclick="slmShowTab('seguidores')">Seguidores</button>
+        <button class="slm-tab" id="slm-tab-seguidos" onclick="slmShowTab('seguidos')">Seguidos</button>
+      </div>
+      <button class="slm-close" onclick="cerrarSocialModal()">×</button>
+    </div>
+    <div class="slm-body" id="slm-body"></div>
+  </div>
+</div>
+
+<!-- ══════════════ USER PROFILE MODAL ══════════════ -->
+<div id="user-profile-modal" onclick="if(event.target===this)cerrarUserProfile()">
+  <div class="upm-panel">
+    <!-- Header oscuro con stats -->
+    <div class="upm-top">
+      <button class="upm-back" onclick="cerrarUserProfile();abrirSocialModal(window._upmFromTab||'seguidores')" title="Volver">‹</button>
+      <button class="upm-close" onclick="cerrarUserProfile()" title="Cerrar">×</button>
+      <div class="upm-hero">
+        <div class="upm-av" id="upm-av"></div>
+        <div class="upm-id">
+          <div class="upm-alias" id="upm-alias"></div>
+          <div class="upm-seat"  id="upm-seat"></div>
+          <div class="upm-phrase-hero" id="upm-phrase-hero"></div>
+        </div>
+        <button class="upm-follow-btn-hero" id="upm-follow-btn" onclick="upmToggleFollow()"></button>
+      </div>
+      <div class="upm-stats-row">
+        <div class="upm-stat"><div class="upm-stat-n" id="upm-stat-votes">—</div><div class="upm-stat-l">Votaciones</div></div>
+        <div class="upm-divider"></div>
+        <div class="upm-stat"><div class="upm-stat-n" id="upm-stat-segs">—</div><div class="upm-stat-l">Seguidores</div></div>
+        <div class="upm-divider"></div>
+        <div class="upm-stat"><div class="upm-stat-n" id="upm-stat-siguiendo">—</div><div class="upm-stat-l">Siguiendo</div></div>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <div class="upm-tabs">
+      <button class="upm-tab-btn active" id="upm-tab-props" onclick="upmShowTab('propuestas')">Propuestas</button>
+      <button class="upm-tab-btn" id="upm-tab-msgs"  onclick="upmShowTab('mensajes')">Mensajes</button>
+    </div>
+    <!-- Content area -->
+    <div class="upm-content" id="upm-content"></div>
+    <!-- Message bar (solo visible en tab mensajes) -->
+    <div class="upm-msg-bar" id="upm-msg-bar" style="display:none">
+      <input class="upm-msg-input" id="upm-msg-input" placeholder="Escribe un mensaje privado…"
+             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();upmSendMsg()}">
+      <button class="upm-msg-send" onclick="upmSendMsg()" title="Enviar">➤</button>
+    </div>
   </div>
 </div>
 
@@ -10264,7 +10530,11 @@ function sfSelectTab(tab) {
 // ── Abrir social tab desde el user pill dropdown ──
 function abrirSocialTab(tab) {
   closeUserPill()
-  sfSelectTab(tab)
+  if (tab === 'seguidores' || tab === 'seguidos') {
+    abrirSocialModal(tab)
+  } else {
+    sfSelectTab(tab)
+  }
 }
 
 // ── Cerrar panel social (botón ×) ──
@@ -10324,6 +10594,349 @@ function compartirPropuesta(i) {
 
 // Mock social data — vacío: no mostrar datos de ejemplo
 const mockSocial = []
+
+// ══════════════════════════════════════════════════════════════
+//  SOCIAL CENTER MODAL — lista seguidores / seguidos
+// ══════════════════════════════════════════════════════════════
+let _slmCurrentTab = 'seguidores'
+
+function abrirSocialModal(tab) {
+  _slmCurrentTab = tab || 'seguidores'
+  slmShowTab(_slmCurrentTab)
+  document.getElementById('social-modal').classList.add('open')
+}
+
+function cerrarSocialModal() {
+  document.getElementById('social-modal').classList.remove('open')
+}
+
+function slmShowTab(tab) {
+  _slmCurrentTab = tab
+  document.getElementById('slm-tab-seguidores').classList.toggle('active', tab === 'seguidores')
+  document.getElementById('slm-tab-seguidos').classList.toggle('active',   tab === 'seguidos')
+  const seats = tab === 'seguidores' ? [...followersConfirmed] : [...followingConfirmed]
+  const el    = document.getElementById('slm-body')
+  if (!seats.length) {
+    el.innerHTML = `<p class="sf-empty" style="padding:40px 0">
+      ${tab === 'seguidores' ? 'Nadie te sigue aún.' : 'No seguís a nadie aún.'}</p>`
+    return
+  }
+  el.innerHTML = seats.map(seatNum => {
+    const p = _profilesCache[seatNum]
+    const alias   = p?.alias   || `Butaca #${seatNum}`
+    const phrase  = p?.phrase  || ''
+    const votes   = p?.votes   || 0
+    const initials = alias.slice(0, 2).toUpperCase()
+    const cIdx    = seatNum % AVATAR_COLORS.length
+    const color   = AVATAR_COLORS[cIdx]
+    return `<div class="slm-user-card">
+      <div class="slm-uav" style="background:${color}">${initials}</div>
+      <div class="slm-uinfo">
+        <div class="slm-uname">${alias}</div>
+        ${phrase ? `<div class="slm-uphrase">"${phrase}"</div>` : ''}
+        <div class="slm-umeta">${votes} votaciones · Butaca #${seatNum}</div>
+      </div>
+      <button class="slm-ver-btn" onclick="abrirUserProfile(${seatNum},'${tab}')">Ver perfil</button>
+    </div>`
+  }).join('')
+}
+
+// ══════════════════════════════════════════════════════════════
+//  USER PROFILE MODAL
+// ══════════════════════════════════════════════════════════════
+let _upmSeat     = null   // butaca del usuario que estamos viendo
+let _upmFromTab  = 'seguidores'
+let _upmCurTab   = 'propuestas'
+let _upmProps    = []     // propuestas cargadas
+let _upmLikes    = new Set()  // ids de proposals que yo likee
+let _upmMsgChannel = null
+
+window._upmFromTab = 'seguidores'
+
+async function abrirUserProfile(seatNum, fromTab) {
+  _upmSeat    = seatNum
+  _upmFromTab = fromTab || 'seguidores'
+  window._upmFromTab = _upmFromTab
+  cerrarSocialModal()
+
+  // Poblar header
+  const p       = _profilesCache[seatNum] || {}
+  const alias   = p.alias  || `Butaca #${seatNum}`
+  const phrase  = p.phrase || ''
+  const votes   = p.votes  || 0
+  const initials = alias.slice(0, 2).toUpperCase()
+  const cIdx    = seatNum % AVATAR_COLORS.length
+  const color   = AVATAR_COLORS[cIdx]
+
+  const avEl = document.getElementById('upm-av')
+  avEl.textContent = initials; avEl.style.background = color
+  document.getElementById('upm-alias').textContent       = alias
+  document.getElementById('upm-seat').textContent        = `Butaca #${seatNum}`
+  document.getElementById('upm-phrase-hero').textContent = phrase ? `"${phrase}"` : ''
+  document.getElementById('upm-stat-votes').textContent  = votes
+
+  // Seguir button
+  const fbtn = document.getElementById('upm-follow-btn')
+  if (followingConfirmed.has(seatNum)) {
+    fbtn.textContent = 'Siguiendo'; fbtn.className = 'upm-follow-btn-hero following'
+  } else if (followingPending.has(seatNum)) {
+    fbtn.textContent = 'Pendiente'; fbtn.className = 'upm-follow-btn-hero'
+  } else {
+    fbtn.textContent = 'Seguir'; fbtn.className = 'upm-follow-btn-hero'
+  }
+
+  // Cargar stats de seguidores/seguidos del usuario visto
+  document.getElementById('upm-stat-segs').textContent = '…'
+  document.getElementById('upm-stat-siguiendo').textContent = '…'
+  sb.rpc('get_follow_stats', { p_seat: seatNum }).then(({ data }) => {
+    if (data) {
+      document.getElementById('upm-stat-segs').textContent      = data.followers ?? '—'
+      document.getElementById('upm-stat-siguiendo').textContent = data.following  ?? '—'
+    }
+  }).catch(() => {})
+
+  // Abrir modal y mostrar tab propuestas
+  document.getElementById('user-profile-modal').classList.add('open')
+  upmShowTab('propuestas')
+}
+
+function cerrarUserProfile() {
+  document.getElementById('user-profile-modal').classList.remove('open')
+  if (_upmMsgChannel) { sb.removeChannel(_upmMsgChannel); _upmMsgChannel = null }
+  _upmSeat = null
+}
+
+async function upmToggleFollow() {
+  if (!_upmSeat || !MY_SEAT) return
+  const fbtn = document.getElementById('upm-follow-btn')
+  if (followingConfirmed.has(_upmSeat) || followingPending.has(_upmSeat)) {
+    const { error } = await sb.from('follows').delete()
+      .eq('from_seat', MY_SEAT).eq('to_seat', _upmSeat)
+    if (!error) {
+      followingConfirmed.delete(_upmSeat); followingPending.delete(_upmSeat)
+      fbtn.textContent = 'Seguir'; fbtn.className = 'upm-follow-btn-hero'
+      showToast(`Dejaste de seguir butaca #${_upmSeat}`)
+    }
+  } else {
+    fbtn.disabled = true
+    const { error } = await sb.from('follows').insert({ from_seat: MY_SEAT, to_seat: _upmSeat, status: 'pending' })
+    fbtn.disabled = false
+    if (!error) {
+      followingPending.add(_upmSeat)
+      fbtn.textContent = 'Pendiente'; fbtn.className = 'upm-follow-btn-hero'
+      showToast(`Solicitud enviada a butaca #${_upmSeat}`)
+    }
+  }
+}
+
+function upmShowTab(tab) {
+  _upmCurTab = tab
+  document.getElementById('upm-tab-props').classList.toggle('active', tab === 'propuestas')
+  document.getElementById('upm-tab-msgs').classList.toggle('active',  tab === 'mensajes')
+  document.getElementById('upm-msg-bar').style.display = tab === 'mensajes' ? '' : 'none'
+  if (tab === 'propuestas') upmLoadProposals()
+  else                      upmLoadMessages()
+}
+
+async function upmLoadProposals() {
+  const el = document.getElementById('upm-content')
+  el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
+
+  // Cargar propuestas del usuario
+  const [propsRes, myLikesRes] = await Promise.all([
+    sb.from('proposals').select('id, text, cat, likes, status, created_at')
+      .eq('seat_number', _upmSeat).order('created_at', { ascending: false }),
+    MY_SEAT ? sb.from('proposal_likes').select('proposal_id')
+      .eq('from_seat', MY_SEAT) : Promise.resolve({ data: [] })
+  ])
+
+  const props = propsRes.data || []
+  _upmProps   = props
+  _upmLikes   = new Set((myLikesRes.data || []).map(r => r.proposal_id))
+
+  if (!props.length) {
+    el.innerHTML = '<p class="sf-empty" style="padding:40px 0">Este usuario no tiene propuestas aún.</p>'
+    return
+  }
+
+  // Cargar comentarios por propuesta
+  const propIds = props.map(p => p.id)
+  const { data: cmtCounts } = await sb.from('proposal_comments')
+    .select('proposal_id').in('proposal_id', propIds)
+  const cmtMap = {}
+  ;(cmtCounts || []).forEach(c => { cmtMap[c.proposal_id] = (cmtMap[c.proposal_id] || 0) + 1 })
+
+  const statusLabel = { pending: 'En revisión', approved: '✓ Aprobada', rejected: 'Rechazada' }
+  el.innerHTML = props.map((p, i) => {
+    const liked   = _upmLikes.has(p.id)
+    const cmtN    = cmtMap[p.id] || 0
+    const likeN   = p.likes || 0
+    const date    = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    return `<div class="upm-prop-card" id="upm-prop-${p.id}">
+      <p class="upm-prop-text">${p.text}</p>
+      <div class="upm-prop-footer">
+        <span class="upm-prop-cat">${p.cat}</span>
+        <span style="font-size:10px;color:var(--mid);margin-left:6px">${statusLabel[p.status]||'En revisión'}</span>
+        <span style="font-size:10px;color:var(--mid);margin-left:auto;margin-right:8px">${date}</span>
+        <button class="upm-comment-btn" onclick="upmToggleComments('${p.id}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          ${cmtN}
+        </button>
+        <button class="upm-like-btn ${liked?'liked':''}" id="upm-like-${p.id}" onclick="upmToggleLike('${p.id}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="${liked?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span id="upm-like-n-${p.id}">${likeN}</span>
+        </button>
+      </div>
+      <div class="upm-comments-wrap" id="upm-cmts-${p.id}" style="display:none"></div>
+    </div>`
+  }).join('')
+}
+
+async function upmToggleLike(propId) {
+  if (!MY_SEAT) { showToast('Necesitás una butaca para dar likes'); return }
+  const btn = document.getElementById(`upm-like-${propId}`)
+  const nEl = document.getElementById(`upm-like-n-${propId}`)
+  const liked = _upmLikes.has(propId)
+
+  if (liked) {
+    await sb.from('proposal_likes').delete()
+      .eq('proposal_id', propId).eq('from_seat', MY_SEAT)
+    _upmLikes.delete(propId)
+    const n = parseInt(nEl.textContent) - 1
+    nEl.textContent = n
+    btn.classList.remove('liked')
+    btn.querySelector('svg path').setAttribute('fill','none')
+    // Sync DB
+    await sb.from('proposals').update({ likes: n }).eq('id', propId)
+  } else {
+    const { error } = await sb.from('proposal_likes').insert({ proposal_id: propId, from_seat: MY_SEAT })
+    if (!error) {
+      _upmLikes.add(propId)
+      const n = parseInt(nEl.textContent) + 1
+      nEl.textContent = n
+      btn.classList.add('liked')
+      btn.querySelector('svg path').setAttribute('fill','currentColor')
+      await sb.from('proposals').update({ likes: n }).eq('id', propId)
+    }
+  }
+}
+
+async function upmToggleComments(propId) {
+  const wrap = document.getElementById(`upm-cmts-${propId}`)
+  if (wrap.style.display !== 'none') { wrap.style.display = 'none'; return }
+  wrap.style.display = 'block'
+  wrap.innerHTML = '<p style="font-size:11px;color:var(--mid);padding:8px 0">Cargando…</p>'
+  const { data } = await sb.from('proposal_comments')
+    .select('id, from_seat, text, created_at').eq('proposal_id', propId)
+    .order('created_at', { ascending: true })
+  const cmts = data || []
+  const cmtHtml = cmts.map(c => {
+    const p = _profilesCache[c.from_seat]
+    const alias = p?.alias || `#${c.from_seat}`
+    const init  = alias.slice(0,2).toUpperCase()
+    const cIdx  = c.from_seat % AVATAR_COLORS.length
+    return `<div class="upm-comment-row">
+      <div class="upm-cmt-av" style="background:${AVATAR_COLORS[cIdx]}">${init}</div>
+      <div class="upm-cmt-bubble">
+        <div class="upm-cmt-name">${alias}</div>
+        <div class="upm-cmt-text">${c.text}</div>
+      </div>
+    </div>`
+  }).join('')
+  const canComment = MY_SEAT && MY_SEAT > 0
+  wrap.innerHTML = (cmts.length ? cmtHtml : '<p class="sf-empty" style="padding:8px 0;font-size:11px">Sin comentarios aún.</p>') +
+    (canComment ? `<div class="upm-cmt-input-row">
+      <input class="upm-cmt-input" id="upm-cmt-inp-${propId}" placeholder="Dejá un comentario…" maxlength="300"
+             onkeydown="if(event.key==='Enter'){upmSendComment('${propId}');event.preventDefault()}">
+      <button class="upm-cmt-send" onclick="upmSendComment('${propId}')">↑</button>
+    </div>` : '')
+}
+
+async function upmSendComment(propId) {
+  const inp = document.getElementById(`upm-cmt-inp-${propId}`)
+  const text = inp?.value?.trim()
+  if (!text || !MY_SEAT) return
+  inp.disabled = true
+  const { error } = await sb.from('proposal_comments').insert({ proposal_id: propId, from_seat: MY_SEAT, text })
+  inp.disabled = false
+  if (!error) {
+    inp.value = ''
+    // Recargar comentarios
+    await upmToggleComments(propId)  // cierra
+    await upmToggleComments(propId)  // reabre con nuevo
+    showToast('Comentario publicado')
+  }
+}
+
+async function upmLoadMessages() {
+  const el = document.getElementById('upm-content')
+  el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
+  if (!MY_SEAT || !_upmSeat) {
+    el.innerHTML = '<p class="sf-empty">Necesitás una butaca para enviar mensajes.</p>'; return
+  }
+
+  // Fetch hilo entre los dos
+  const { data } = await sb.from('messages').select('*')
+    .or(`and(from_seat.eq.${MY_SEAT},to_seat.eq.${_upmSeat}),and(from_seat.eq.${_upmSeat},to_seat.eq.${MY_SEAT})`)
+    .order('created_at', { ascending: true })
+
+  upmRenderMessages(data || [])
+
+  // Marcar como leídos
+  sb.from('messages').update({ read_at: new Date().toISOString() })
+    .eq('to_seat', MY_SEAT).eq('from_seat', _upmSeat).is('read_at', null).then(() => {})
+
+  // Suscribir realtime al hilo
+  if (_upmMsgChannel) sb.removeChannel(_upmMsgChannel)
+  _upmMsgChannel = sb.channel(`msgs-${MY_SEAT}-${_upmSeat}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+      const m = payload.new
+      const relevant = (m.from_seat === MY_SEAT && m.to_seat === _upmSeat)
+                    || (m.from_seat === _upmSeat && m.to_seat === MY_SEAT)
+      if (relevant && _upmCurTab === 'mensajes') {
+        const wrap = document.getElementById('upm-content').querySelector('.upm-chat-wrap')
+        if (wrap) {
+          const isMine = m.from_seat === MY_SEAT
+          const bubble = document.createElement('div')
+          bubble.className = 'upm-msg-bubble ' + (isMine ? 'mine' : 'theirs')
+          bubble.textContent = m.text
+          wrap.appendChild(bubble)
+          bubble.scrollIntoView({ behavior: 'smooth' })
+        }
+      }
+    })
+    .subscribe()
+}
+
+function upmRenderMessages(msgs) {
+  const el = document.getElementById('upm-content')
+  if (!msgs.length) {
+    el.innerHTML = '<div class="upm-chat-wrap"><p class="sf-empty" style="padding:40px 0">Empezá la conversación 👋</p></div>'
+    return
+  }
+  el.innerHTML = '<div class="upm-chat-wrap">' + msgs.map(m => {
+    const isMine = m.from_seat === MY_SEAT
+    const t = new Date(m.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+    return `<div style="display:flex;flex-direction:column;align-items:${isMine?'flex-end':'flex-start'}">
+      <div class="upm-msg-bubble ${isMine?'mine':'theirs'}">${m.text}</div>
+      <div class="upm-msg-time">${t}</div>
+    </div>`
+  }).join('') + '</div>'
+  // Scroll al final
+  setTimeout(() => { el.scrollTop = el.scrollHeight }, 50)
+}
+
+async function upmSendMsg() {
+  const inp  = document.getElementById('upm-msg-input')
+  const text = inp?.value?.trim()
+  if (!text || !MY_SEAT || !_upmSeat) return
+  inp.value = ''
+  inp.disabled = true
+  const { error } = await sb.from('messages').insert({ from_seat: MY_SEAT, to_seat: _upmSeat, text })
+  inp.disabled = false
+  if (error) { inp.value = text; showToast('Error al enviar', true) }
+  else { inp.focus() }
+}
 
 function _renderMensajes() {
   const el = document.getElementById('sf-mensajes-list')
