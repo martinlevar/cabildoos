@@ -1766,8 +1766,7 @@ select option { background: var(--surface); }
           <select id="sis-plan" onchange="sisRenderMetrics()"
             style="background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);
                    padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer">
-            <option value="free">Plan Free</option>
-            <option value="pro">Plan Pro</option>
+            <option value="pro" selected>Plan Pro</option>
             <option value="team">Plan Team</option>
           </select>
           <button class="btn btn-secondary" onclick="sisCargarTodo()" id="sis-refresh-btn">↻ Actualizar</button>
@@ -1808,8 +1807,8 @@ select option { background: var(--surface); }
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
             <div style="width:36px;height:36px;border-radius:10px;background:var(--yellow2);display:flex;align-items:center;justify-content:center;font-size:18px">✨</div>
             <div>
-              <p style="font-weight:700;font-size:14px">Gemini</p>
-              <p style="color:var(--muted2);font-size:11px">IA / Verificación</p>
+              <p style="font-weight:700;font-size:14px">Gemini AI</p>
+              <p style="color:var(--muted2);font-size:11px">Validador de identidad</p>
             </div>
             <span class="badge" id="sis-gemini-status" style="margin-left:auto">…</span>
           </div>
@@ -3517,9 +3516,17 @@ async function cerrarSesion() {
 //  SISTEMA — Monitoreo de infraestructura
 // ══════════════════════════════════════════════════════════════
 const SIS_LIMITS = {
-  free:  { db_bytes: 500*1024*1024,         connections: 200,   db_label:'500 MB',  conn_label:'200' },
   pro:   { db_bytes: 8*1024*1024*1024,      connections: 500,   db_label:'8 GB',    conn_label:'500' },
   team:  { db_bytes: 100*1024*1024*1024,    connections: 10000, db_label:'100 GB',  conn_label:'10 000' },
+}
+
+// Límites reales de Gemini API (Google AI Studio / Vertex AI)
+// gemini-2.0-flash: 1500 RPD gratis / en pago: 10M TPM sin límite de RPD
+// gemini-1.5-pro:   50 RPD gratis / en pago: sin límite de RPD pero hay TPM
+const GEMINI_MODELS = {
+  'gemini-2.0-flash':  { free_rpd: 1500, free_rpm: 15,  paid: true  },
+  'gemini-1.5-pro':    { free_rpd: 50,   free_rpm: 2,   paid: true  },
+  'gemini-1.5-flash':  { free_rpd: 1500, free_rpm: 15,  paid: true  },
 }
 
 const API_BACKEND = typeof API_BASE !== 'undefined' ? API_BASE : 'https://cabildoos-api.onrender.com'
@@ -3591,35 +3598,76 @@ async function sisCargarRender() {
 }
 
 // ── Gemini ───────────────────────────────────────────────────
+// Gemini no tiene endpoint de cuotas público — consultamos el backend y si no responde
+// mostramos los límites reales del modelo + link directo a Google Cloud Console.
 async function sisCargarGemini() {
   const statusEl  = document.getElementById('sis-gemini-status')
   const metricsEl = document.getElementById('sis-gemini-metrics')
-  // Gemini no tiene un endpoint de health público — consultamos el backend que lo usa
+
+  // 1. Intentar endpoint propio del backend
+  let backendData = null
   try {
-    const res = await fetch(API_BACKEND + '/api/status/gemini', { signal: AbortSignal.timeout(6000) })
-    if (res.ok) {
-      const data = await res.json().catch(() => ({}))
-      const quota = data.requests_today ?? null
-      const limit = data.daily_limit ?? null
-      const pct   = quota && limit ? Math.round(quota/limit*100) : null
-      statusEl.textContent = '● Online'
-      statusEl.className   = pct >= 90 ? 'badge crit' : pct >= 70 ? 'badge warn' : 'badge ok'
-      metricsEl.innerHTML  = `
-        <div class="sis-service-row"><span>Requests hoy</span><span>${quota ?? '—'} ${limit ? '/ ' + limit : ''}</span></div>
-        <div class="sis-service-row"><span>Modelo</span><span>${data.model || 'gemini-pro'}</span></div>
-        <div class="sis-service-row"><span>Estado API</span><span style="color:var(--green)">Operativo</span></div>
-        ${pct >= 70 ? `<div class="sis-service-row"><span>Cuota usada</span><span style="color:${pct>=90?'var(--red)':'var(--yellow)'}">${pct}%</span></div>` : ''}`
-      if (pct >= 90) sisAgregarAlerta('crit', '🚨 Gemini al ' + pct + '% de cuota diaria — los próximos requests pueden fallar')
-      else if (pct >= 70) sisAgregarAlerta('warn', '⚡ Gemini al ' + pct + '% de cuota diaria')
-    } else { throw new Error('HTTP ' + res.status) }
-  } catch(e) {
-    // El backend no tiene /api/status/gemini todavía — mostrar estado desconocido
-    statusEl.textContent = '● Sin datos'
-    statusEl.className   = 'badge'
-    metricsEl.innerHTML  = `
-      <p style="color:var(--muted2);font-size:12px;margin-bottom:6px">El backend no expone métricas de Gemini aún.</p>
-      <a href="https://aistudio.google.com" target="_blank" style="font-size:11px;color:var(--blue)">Ver en AI Studio →</a>`
+    const res = await fetch(API_BACKEND + '/api/status/gemini', { signal: AbortSignal.timeout(5000) })
+    if (res.ok) backendData = await res.json().catch(() => null)
+  } catch(_) {}
+
+  if (backendData) {
+    const quota = backendData.requests_today ?? null
+    const limit = backendData.daily_limit    ?? null
+    const model = backendData.model          || 'gemini-2.0-flash'
+    const pct   = quota && limit ? Math.round(quota / limit * 100) : null
+    statusEl.textContent = '● Online'
+    statusEl.className   = pct >= 90 ? 'badge crit' : pct >= 70 ? 'badge warn' : 'badge ok'
+    metricsEl.innerHTML  = _geminiRows(model, quota, limit, pct, backendData.errors_today ?? 0)
+    if (pct >= 90) sisAgregarAlerta('crit', '🚨 Gemini al ' + pct + '% de cuota — verificaciones de identidad pueden fallar')
+    else if (pct >= 70) sisAgregarAlerta('warn', '⚡ Gemini al ' + pct + '% de cuota diaria')
+    return
   }
+
+  // 2. Sin datos del backend — mostrar límites del modelo y links útiles
+  // Detectamos qué modelo usa el backend si responde el /health
+  let model = 'gemini-2.0-flash'
+  try {
+    const r = await fetch(API_BACKEND + '/health', { signal: AbortSignal.timeout(5000) })
+    if (r.ok) { const d = await r.json().catch(()=>({})); model = d.gemini_model || model }
+  } catch(_) {}
+
+  const m = GEMINI_MODELS[model] || GEMINI_MODELS['gemini-2.0-flash']
+  statusEl.textContent = '● Sin métricas'
+  statusEl.className   = 'badge warn'
+  metricsEl.innerHTML  = `
+    <div class="sis-service-row"><span>Modelo</span><span style="font-weight:600">${model}</span></div>
+    <div class="sis-service-row"><span>Límite diario (free tier)</span><span>${m.free_rpd.toLocaleString('es-VE')} req/día</span></div>
+    <div class="sis-service-row"><span>Límite por minuto</span><span>${m.free_rpm} RPM</span></div>
+    <div class="sis-service-row"><span>Uso real del día</span><span style="color:var(--muted2)">Ver en consola →</span></div>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+      <a href="https://aistudio.google.com/app/apikey" target="_blank"
+         style="font-size:11px;color:var(--blue);text-decoration:none">
+        🔑 AI Studio — API Keys & cuotas
+      </a>
+      <a href="https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas" target="_blank"
+         style="font-size:11px;color:var(--blue);text-decoration:none">
+        📊 Google Cloud — Quotas (uso real)
+      </a>
+      <p style="font-size:10px;color:var(--muted);margin-top:4px">
+        Para ver métricas en tiempo real aquí, agregá <code style="background:var(--bg2);padding:2px 4px;border-radius:4px">/api/status/gemini</code> al backend de Render.
+      </p>
+    </div>`
+}
+
+function _geminiRows(model, quota, limit, pct, errors) {
+  return `
+    <div class="sis-service-row"><span>Modelo</span><span style="font-weight:600">${model}</span></div>
+    <div class="sis-service-row"><span>Requests hoy</span><span>${quota ?? '—'}${limit ? ' / ' + limit.toLocaleString('es-VE') : ''}</span></div>
+    ${pct !== null ? `<div class="sis-service-row"><span>Cuota usada</span>
+      <span style="color:${pct>=90?'var(--red)':pct>=70?'var(--yellow)':'var(--green)'};font-weight:700">${pct}%</span></div>` : ''}
+    <div class="sis-service-row"><span>Errores hoy</span>
+      <span style="color:${errors>0?'var(--yellow)':'var(--muted2)'}">${errors}</span></div>
+    <div class="sis-service-row"><span>Uso en validaciones</span><span style="color:var(--green)">Activo</span></div>
+    <a href="https://console.cloud.google.com/apis/api/generativelanguage.googleapis.com/quotas" target="_blank"
+       style="font-size:11px;color:var(--blue);text-decoration:none;display:block;margin-top:10px">
+      📊 Ver métricas en Google Cloud →
+    </a>`
 }
 
 // ── Barras de cuota Supabase ──────────────────────────────────
