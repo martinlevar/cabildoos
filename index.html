@@ -6832,8 +6832,10 @@ async function _onLogin(user) {
     _refreshMyVoteCount()    // sincronizar conteo de votos desde Supabase
     _loadFollows()           // cargar follows reales desde Supabase
     _loadUnreadMessages()    // cargar mensajes no leídos
-    initMessagesRealtime()   // escuchar mensajes entrantes en tiempo real
-    _syncBugFab()            // mostrar botón de reporte
+    initMessagesRealtime()        // escuchar mensajes entrantes en tiempo real
+    _loadNotifications()          // cargar notificaciones no leídas
+    initNotificationsRealtime()   // escuchar propuestas de seguidos en tiempo real
+    _syncBugFab()                 // mostrar botón de reporte en footer
     // Usuario verificado → selector de cabildos solo si no hay preferencia guardada
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
     if (_cabildo) {
@@ -7192,6 +7194,7 @@ async function cerrarSesion() {
   followingConfirmed.clear(); followingPending.clear()
   followersConfirmed.clear(); _pendingRequestsToMe = []
   _unreadConvos = {}
+  _clearNotifications()
   if (_votesPollingInterval) { clearInterval(_votesPollingInterval); _votesPollingInterval = null }
   const badge = document.getElementById('nav-msgs-badge')
   if (badge) badge.style.display = 'none'
@@ -9238,6 +9241,95 @@ function initMessagesRealtime() {
       })
       .subscribe()
   } catch(e) { console.warn('Realtime messages no disponible:', e) }
+}
+
+// ── Sistema de notificaciones ─────────────────────────────────────────────────
+let _notifications = []   // [{id, from_seat, type, proposal_id, message, created_at}]
+
+async function _loadNotifications() {
+  if (!MY_SEAT) return
+  const { data } = await sb.rpc('get_my_notifications', { p_seat: MY_SEAT })
+  _notifications = data || []
+  _renderNotifBadge()
+}
+
+function initNotificationsRealtime() {
+  if (!MY_SEAT) return
+  try {
+    sb.channel('notifications-live-' + MY_SEAT)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `to_seat=eq.${MY_SEAT}`
+      }, payload => {
+        const n = payload.new
+        _notifications.unshift(n)
+        _renderNotifBadge()
+
+        // Toast con botón "Ver propuesta"
+        const alias = _profilesCache[n.from_seat]?.alias || `Butaca #${n.from_seat}`
+        _showNotifToast(n, alias)
+      })
+      .subscribe()
+  } catch(e) { console.warn('Realtime notifications:', e) }
+}
+
+function _renderNotifBadge() {
+  const count = _notifications.filter(n => !n.read_at).length
+  // Badge en el nav — reutilizamos el badge de mensajes sumando
+  // (las notificaciones se muestran en el panel social en tab "propuestas")
+  const badge = document.getElementById('nav-msgs-badge')
+  if (!badge) return
+  const msgCount = Object.values(_unreadConvos).reduce((s, c) => s + c.count, 0)
+              + _pendingRequestsToMe.length
+  const total = msgCount + count
+  badge.textContent = total > 9 ? '9+' : total
+  badge.style.display = total > 0 ? '' : 'none'
+}
+
+function _showNotifToast(n, alias) {
+  // Toast con acción "Ver"
+  const existing = document.getElementById('notif-toast')
+  if (existing) existing.remove()
+
+  const toast = document.createElement('div')
+  toast.id = 'notif-toast'
+  toast.style.cssText = `
+    position:fixed; bottom:60px; left:50%; transform:translateX(-50%);
+    background:#1d1d1d; color:#fff; border-radius:14px; padding:12px 18px;
+    font-size:13px; font-weight:500; z-index:2000; display:flex;
+    align-items:center; gap:12px; box-shadow:0 8px 32px rgba(0,0,0,.3);
+    max-width:340px; animation:toastIn .3s ease;
+  `
+  toast.innerHTML = `
+    <span>📣 <strong>${alias}</strong> publicó una propuesta</span>
+    <button onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')"
+      style="background:#fff;color:#1d1d1d;border:none;border-radius:8px;
+             padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+      Ver
+    </button>
+  `
+  document.body.appendChild(toast)
+  setTimeout(() => { if (toast.parentNode) toast.remove() }, 6000)
+}
+
+async function _abrirPropuestaNotif(proposalId, fromSeat, notifId) {
+  // Marcar como leída
+  await sb.rpc('mark_notification_read', { p_id: notifId })
+  _notifications = _notifications.filter(n => n.id !== notifId)
+  _renderNotifBadge()
+
+  // Quitar toast
+  const t = document.getElementById('notif-toast')
+  if (t) t.remove()
+
+  // Abrir perfil del autor en tab propuestas
+  abrirUserProfile(Number(fromSeat), 'propuestas')
+}
+
+// Limpiar al cerrar sesión
+function _clearNotifications() {
+  _notifications = []
+  _renderNotifBadge()
 }
 
 /// ── Polling de conteo de votos (cada 20s) — más eficiente que realtime a escala ──
@@ -11320,18 +11412,19 @@ function _renderMensajes() {
   const el = document.getElementById('sf-mensajes-list')
   if (!el) return
 
-  const unreadSeats   = Object.keys(_unreadConvos).map(Number)
-  const totalRequests = _pendingRequestsToMe.length
-  const totalUnread   = unreadSeats.reduce((s, seat) => s + _unreadConvos[seat].count, 0)
-  const totalBadge    = totalRequests + totalUnread
+  const unreadSeats    = Object.keys(_unreadConvos).map(Number)
+  const totalRequests  = _pendingRequestsToMe.length
+  const totalUnread    = unreadSeats.reduce((s, seat) => s + _unreadConvos[seat].count, 0)
+  const totalNotifs    = _notifications.filter(n => !n.read_at).length
+  const totalBadge     = totalRequests + totalUnread + totalNotifs
 
   const badge = document.getElementById('nav-msgs-badge')
   if (badge) {
-    badge.textContent   = totalBadge || ''
+    badge.textContent   = totalBadge > 9 ? '9+' : (totalBadge || '')
     badge.style.display = totalBadge ? 'flex' : 'none'
   }
 
-  if (!totalRequests && !unreadSeats.length) {
+  if (!totalRequests && !unreadSeats.length && !totalNotifs) {
     el.innerHTML = `<div class="sf-empty-msg">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <p>No tenés mensajes aún</p>
@@ -11387,7 +11480,24 @@ function _renderMensajes() {
       </div>`
     }).join('')}` : ''
 
-  el.innerHTML = reqsHtml + msgsHtml
+  // Notificaciones de propuestas de seguidos
+  const unreadNotifs = _notifications.filter(n => !n.read_at && n.type === 'new_proposal')
+  const notifsHtml = unreadNotifs.length ? `
+    <p style="font-size:10px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;margin-top:${(totalRequests || unreadSeats.length) ? 12 : 0}px">Nuevas propuestas</p>
+    ${unreadNotifs.map(n => {
+      const alias = _profilesCache[n.from_seat]?.alias || `Butaca #${n.from_seat}`
+      const t = new Date(n.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+      return `<div class="sf-msg-row" style="cursor:pointer" onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')">
+        <div class="sf-msg-av" style="background:#f76a1e;color:#fff;font-size:14px">📣</div>
+        <div class="sf-msg-info">
+          <p class="sf-msg-alias" style="font-weight:700">${alias}</p>
+          <p class="sf-msg-preview">${n.message}</p>
+        </div>
+        <span class="sf-msg-time">${t}</span>
+      </div>`
+    }).join('')}` : ''
+
+  el.innerHTML = reqsHtml + msgsHtml + notifsHtml
 }
 
 async function aceptarSolicitud(reqId, fromSeat) {
