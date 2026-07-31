@@ -371,6 +371,39 @@ tr:hover td { background: rgba(255,255,255,0.015); }
 .badge.active   { background: var(--accent2); color: var(--accent); }
 .badge.closed   { background: rgba(255,255,255,0.06); color: var(--muted2); }
 .badge.review   { background: var(--blue2);   color: var(--blue); }
+.badge.ok       { background: var(--green2);  color: var(--green); }
+.badge.warn     { background: var(--yellow2); color: var(--yellow); }
+.badge.crit     { background: var(--red2);    color: var(--red); }
+.badge.red      { background: var(--red2);    color: var(--red); }
+
+/* Sistema — barras de cuota */
+.sis-bar-row { margin-bottom:16px; }
+.sis-bar-header { display:flex; justify-content:space-between; margin-bottom:6px; }
+.sis-bar-label  { font-size:12px; font-weight:600; color:var(--muted2); }
+.sis-bar-val    { font-size:12px; font-weight:700; }
+.sis-bar-val.ok   { color:var(--green); }
+.sis-bar-val.warn { color:var(--yellow); }
+.sis-bar-val.crit { color:var(--red); }
+.sis-bar-bg   { height:6px; border-radius:99px; background:var(--border2); overflow:hidden; }
+.sis-bar-fill { height:100%; border-radius:99px; transition:width .6s ease; }
+.sis-bar-fill.ok   { background:linear-gradient(90deg,#16a34a,#22c55e); }
+.sis-bar-fill.warn { background:linear-gradient(90deg,#ca8a04,#eab308); }
+.sis-bar-fill.crit { background:linear-gradient(90deg,#dc2626,#ef4444); }
+.sis-alert {
+  display:flex; align-items:center; gap:10px;
+  padding:12px 16px; border-radius:10px; margin-bottom:10px;
+  font-size:13px; font-weight:600;
+}
+.sis-alert.warn { background:var(--yellow2); color:var(--yellow); border:1px solid rgba(234,179,8,.3); }
+.sis-alert.crit { background:var(--red2);    color:var(--red);    border:1px solid rgba(239,68,68,.3); }
+.sis-stat-card {
+  background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;
+}
+.sis-stat-n { font-size:24px; font-weight:800; font-family:var(--f-display); }
+.sis-stat-l { font-size:10px; color:var(--muted2); margin-top:4px; text-transform:uppercase; letter-spacing:.05em; }
+.sis-service-row { display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px; }
+.sis-service-row span:first-child { color:var(--muted2); }
+.sis-service-row span:last-child  { font-weight:600; }
 
 /* ── BUTTONS ── */
 .btn {
@@ -1096,6 +1129,12 @@ select option { background: var(--surface); }
       <span class="icon">👥</span> Verificadores
     </div>
 
+    <div class="nav-section">Infraestructura</div>
+    <div class="nav-item admin-only" data-section="sistema" onclick="navTo('sistema', this)">
+      <span class="icon">📊</span> Sistema
+      <span class="nav-badge red" id="badge-sistema" style="display:none">!</span>
+    </div>
+
     <div class="nav-section">Configuración</div>
     <div class="nav-item" data-section="hemiciclo" onclick="navTo('hemiciclo', this)">
       <span class="icon">⬛</span> Hemiciclo
@@ -1716,6 +1755,78 @@ select option { background: var(--surface); }
 
     </div>
 
+    <!-- ══════ SISTEMA ══════ -->
+    <div class="section" id="s-sistema">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div>
+          <h2 style="font-family:var(--f-display);font-size:22px;font-weight:800">Sistema & Infraestructura</h2>
+          <p style="color:var(--muted2);font-size:13px;margin-top:4px">Cuotas de uso, estado de servicios y alertas</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="sis-plan" onchange="sisRenderMetrics()"
+            style="background:var(--card);border:1px solid var(--border2);border-radius:8px;color:var(--text);
+                   padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer">
+            <option value="free">Plan Free</option>
+            <option value="pro">Plan Pro</option>
+            <option value="team">Plan Team</option>
+          </select>
+          <button class="btn btn-secondary" onclick="sisCargarTodo()" id="sis-refresh-btn">↻ Actualizar</button>
+          <span style="font-size:11px;color:var(--muted);margin-left:4px" id="sis-last-update"></span>
+        </div>
+      </div>
+
+      <!-- Alertas -->
+      <div id="sis-alerts"></div>
+
+      <!-- Grid de servicios -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px" id="sis-services-grid">
+        <div class="table-card" style="padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--green2);display:flex;align-items:center;justify-content:center;font-size:18px">🗄</div>
+            <div>
+              <p style="font-weight:700;font-size:14px">Supabase</p>
+              <p style="color:var(--muted2);font-size:11px">Base de datos & Auth</p>
+            </div>
+            <span class="badge" id="sis-sb-status" style="margin-left:auto">…</span>
+          </div>
+          <div id="sis-sb-metrics"><p style="color:var(--muted);font-size:12px">Cargando…</p></div>
+        </div>
+
+        <div class="table-card" style="padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--blue2);display:flex;align-items:center;justify-content:center;font-size:18px">⚙️</div>
+            <div>
+              <p style="font-weight:700;font-size:14px">Render</p>
+              <p style="color:var(--muted2);font-size:11px">API Backend (FastAPI)</p>
+            </div>
+            <span class="badge" id="sis-render-status" style="margin-left:auto">…</span>
+          </div>
+          <div id="sis-render-metrics"><p style="color:var(--muted);font-size:12px">Cargando…</p></div>
+        </div>
+
+        <div class="table-card" style="padding:20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--yellow2);display:flex;align-items:center;justify-content:center;font-size:18px">✨</div>
+            <div>
+              <p style="font-weight:700;font-size:14px">Gemini</p>
+              <p style="color:var(--muted2);font-size:11px">IA / Verificación</p>
+            </div>
+            <span class="badge" id="sis-gemini-status" style="margin-left:auto">…</span>
+          </div>
+          <div id="sis-gemini-metrics"><p style="color:var(--muted);font-size:12px">Cargando…</p></div>
+        </div>
+      </div>
+
+      <!-- Supabase: barras de cuota -->
+      <div class="table-card" style="padding:24px;margin-bottom:16px">
+        <p style="font-weight:700;font-size:14px;margin-bottom:18px">📊 Supabase — Uso de cuotas</p>
+        <div id="sis-quota-bars"><p style="color:var(--muted);font-size:12px">Cargando…</p></div>
+      </div>
+
+      <!-- Stats cards -->
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px" id="sis-stat-cards"></div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -1964,6 +2075,7 @@ const SECTION_META = {
   verificadores:{ title: 'Verificadores',        sub: 'Gestión de acceso al panel de validación' },
   hemiciclo:    { title: 'Hemiciclo',            sub: 'Configuración visual del recinto' },
   votacion:     { title: 'Votación',             sub: 'Control y monitoreo de votaciones' },
+  sistema:      { title: 'Sistema & Infraestructura', sub: 'Cuotas de uso, estado de servicios y alertas' },
 }
 
 function navTo(id, el) {
@@ -1984,6 +2096,7 @@ function navTo(id, el) {
   if (id === 'seguimiento')   cargarSeguimiento()
   if (id === 'usuarios')      cargarUsuarios()
   if (id === 'votacion')      cargarVotacion()
+  if (id === 'sistema')      { _sisAlerts = []; const a = document.getElementById('sis-alerts'); if(a) a.innerHTML = ''; sisCargarTodo() }
 }
 
 // ── TOAST ──
@@ -3399,6 +3512,183 @@ async function cerrarSesion() {
 })()
 
 // Nav items necesitan data-section para RBAC — ya lo tienen
+
+// ══════════════════════════════════════════════════════════════
+//  SISTEMA — Monitoreo de infraestructura
+// ══════════════════════════════════════════════════════════════
+const SIS_LIMITS = {
+  free:  { db_bytes: 500*1024*1024,         connections: 200,   db_label:'500 MB',  conn_label:'200' },
+  pro:   { db_bytes: 8*1024*1024*1024,      connections: 500,   db_label:'8 GB',    conn_label:'500' },
+  team:  { db_bytes: 100*1024*1024*1024,    connections: 10000, db_label:'100 GB',  conn_label:'10 000' },
+}
+
+const API_BACKEND = typeof API_BASE !== 'undefined' ? API_BASE : 'https://cabildoos-api.onrender.com'
+
+let _sisStats = null
+
+async function sisCargarTodo() {
+  document.getElementById('sis-refresh-btn').textContent = '…'
+  await Promise.all([ sisCargarSupabase(), sisCargarRender(), sisCargarGemini() ])
+  document.getElementById('sis-refresh-btn').textContent = '↻ Actualizar'
+  const now = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
+  document.getElementById('sis-last-update').textContent = now
+}
+
+// ── Supabase ──────────────────────────────────────────────────
+async function sisCargarSupabase() {
+  const statusEl  = document.getElementById('sis-sb-status')
+  const metricsEl = document.getElementById('sis-sb-metrics')
+  try {
+    const { data, error } = await sb.rpc('get_system_stats')
+    if (error) throw error
+    _sisStats = data
+    statusEl.textContent  = '● Online'
+    statusEl.className    = 'badge ok'
+    metricsEl.innerHTML   = `
+      <div class="sis-service-row"><span>Tamaño DB</span><span>${data.db_size_pretty}</span></div>
+      <div class="sis-service-row"><span>Conexiones activas</span><span>${data.active_connections}</span></div>
+      <div class="sis-service-row"><span>Usuarios registrados</span><span>${data.total_users}</span></div>
+      <div class="sis-service-row"><span>Butacas verificadas</span><span>${data.verified_seats}</span></div>`
+    sisRenderMetrics()
+  } catch(e) {
+    statusEl.textContent = '● Error'
+    statusEl.className   = 'badge crit'
+    metricsEl.innerHTML  = `<p style="color:var(--red);font-size:12px">No se pudo conectar</p>`
+    sisAgregarAlerta('crit', '🚨 Supabase no responde — verificá credenciales o estado del proyecto')
+  }
+}
+
+// ── Render (backend FastAPI) ──────────────────────────────────
+async function sisCargarRender() {
+  const statusEl  = document.getElementById('sis-render-status')
+  const metricsEl = document.getElementById('sis-render-metrics')
+  const t0 = Date.now()
+  try {
+    const res = await fetch(API_BACKEND + '/health', { signal: AbortSignal.timeout(8000) })
+    const latency = Date.now() - t0
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}))
+      statusEl.textContent = '● Online'
+      statusEl.className   = latency > 3000 ? 'badge warn' : 'badge ok'
+      metricsEl.innerHTML  = `
+        <div class="sis-service-row"><span>Latencia</span><span style="color:${latency>3000?'var(--yellow)':'var(--green)'}">${latency} ms</span></div>
+        <div class="sis-service-row"><span>Versión</span><span>${data.version || '—'}</span></div>
+        <div class="sis-service-row"><span>Verificaciones hoy</span><span>${data.verifications_today ?? '—'}</span></div>
+        <div class="sis-service-row"><span>Estado</span><span>${data.status || 'ok'}</span></div>`
+      if (latency > 5000) sisAgregarAlerta('warn', '⚡ Backend en Render respondió lento (' + latency + ' ms) — puede estar en cold start')
+    } else {
+      throw new Error('HTTP ' + res.status)
+    }
+  } catch(e) {
+    const isCold = e.name === 'TimeoutError'
+    statusEl.textContent = isCold ? '● Cold start' : '● Error'
+    statusEl.className   = 'badge warn'
+    metricsEl.innerHTML  = `
+      <p style="color:var(--yellow);font-size:12px;margin-bottom:6px">${isCold ? 'Sin respuesta en 8s — el servicio puede estar en modo sleep' : 'Error: ' + e.message}</p>
+      <a href="https://dashboard.render.com" target="_blank" style="font-size:11px;color:var(--blue)">Ver en Render →</a>`
+    if (!isCold) sisAgregarAlerta('crit', '🚨 Backend Render no responde: ' + e.message)
+  }
+}
+
+// ── Gemini ───────────────────────────────────────────────────
+async function sisCargarGemini() {
+  const statusEl  = document.getElementById('sis-gemini-status')
+  const metricsEl = document.getElementById('sis-gemini-metrics')
+  // Gemini no tiene un endpoint de health público — consultamos el backend que lo usa
+  try {
+    const res = await fetch(API_BACKEND + '/api/status/gemini', { signal: AbortSignal.timeout(6000) })
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}))
+      const quota = data.requests_today ?? null
+      const limit = data.daily_limit ?? null
+      const pct   = quota && limit ? Math.round(quota/limit*100) : null
+      statusEl.textContent = '● Online'
+      statusEl.className   = pct >= 90 ? 'badge crit' : pct >= 70 ? 'badge warn' : 'badge ok'
+      metricsEl.innerHTML  = `
+        <div class="sis-service-row"><span>Requests hoy</span><span>${quota ?? '—'} ${limit ? '/ ' + limit : ''}</span></div>
+        <div class="sis-service-row"><span>Modelo</span><span>${data.model || 'gemini-pro'}</span></div>
+        <div class="sis-service-row"><span>Estado API</span><span style="color:var(--green)">Operativo</span></div>
+        ${pct >= 70 ? `<div class="sis-service-row"><span>Cuota usada</span><span style="color:${pct>=90?'var(--red)':'var(--yellow)'}">${pct}%</span></div>` : ''}`
+      if (pct >= 90) sisAgregarAlerta('crit', '🚨 Gemini al ' + pct + '% de cuota diaria — los próximos requests pueden fallar')
+      else if (pct >= 70) sisAgregarAlerta('warn', '⚡ Gemini al ' + pct + '% de cuota diaria')
+    } else { throw new Error('HTTP ' + res.status) }
+  } catch(e) {
+    // El backend no tiene /api/status/gemini todavía — mostrar estado desconocido
+    statusEl.textContent = '● Sin datos'
+    statusEl.className   = 'badge'
+    metricsEl.innerHTML  = `
+      <p style="color:var(--muted2);font-size:12px;margin-bottom:6px">El backend no expone métricas de Gemini aún.</p>
+      <a href="https://aistudio.google.com" target="_blank" style="font-size:11px;color:var(--blue)">Ver en AI Studio →</a>`
+  }
+}
+
+// ── Barras de cuota Supabase ──────────────────────────────────
+function sisRenderMetrics() {
+  if (!_sisStats) return
+  const plan = document.getElementById('sis-plan')?.value || 'free'
+  const lims = SIS_LIMITS[plan]
+  const s    = _sisStats
+
+  const dbPct   = Math.min(100, Math.round(s.db_size_bytes / lims.db_bytes * 100))
+  const estConn = Math.min(lims.connections, Number(s.verified_seats) || 0)
+  const connPct = Math.min(100, Math.round(estConn / lims.connections * 100))
+
+  function cls(p) { return p >= 90 ? 'crit' : p >= 70 ? 'warn' : 'ok' }
+  function bar(pct, label, val, limit) {
+    const c = cls(pct)
+    return `<div class="sis-bar-row">
+      <div class="sis-bar-header">
+        <span class="sis-bar-label">${label}</span>
+        <span class="sis-bar-val ${c}">${val} / ${limit} (${pct}%)</span>
+      </div>
+      <div class="sis-bar-bg"><div class="sis-bar-fill ${c}" style="width:${pct}%"></div></div>
+    </div>`
+  }
+
+  document.getElementById('sis-quota-bars').innerHTML =
+    bar(dbPct,   'Base de datos',              s.db_size_pretty, lims.db_label) +
+    bar(connPct, 'Conexiones WebSocket (est.)', estConn,          lims.conn_label) +
+    `<p style="font-size:11px;color:var(--muted);margin-top:4px">
+      * Las conexiones se estiman como 1 por butaca verificada. Para métricas exactas
+      <a href="https://supabase.com/dashboard/project/ayxscmxmnoguktfgveud/reports/realtime" target="_blank" style="color:var(--blue)">abrí el dashboard de Supabase</a>.
+    </p>`
+
+  // Stat cards
+  const cards = [
+    { n: s.verified_seats,  l: 'Butacas' },
+    { n: s.total_users,     l: 'Usuarios' },
+    { n: s.total_votes,     l: 'Votos' },
+    { n: s.total_messages,  l: 'Mensajes' },
+    { n: s.total_follows,   l: 'Follows' },
+    { n: s.total_proposals, l: 'Propuestas' },
+  ]
+  document.getElementById('sis-stat-cards').innerHTML = cards.map(c =>
+    `<div class="sis-stat-card">
+      <div class="sis-stat-n">${Number(c.n).toLocaleString('es-VE')}</div>
+      <div class="sis-stat-l">${c.l}</div>
+    </div>`
+  ).join('')
+
+  // Alertas de cuota
+  if (dbPct >= 90)   sisAgregarAlerta('crit', `🚨 DB de Supabase al ${dbPct}% — necesitás subir de plan`)
+  else if (dbPct >= 70) sisAgregarAlerta('warn', `⚡ DB al ${dbPct}% del límite ${plan === 'free' ? '(500 MB Free)' : ''}`)
+  if (connPct >= 80) sisAgregarAlerta('warn', `⚡ Cerca del límite de conexiones del plan ${plan} (${lims.conn_label})`)
+}
+
+let _sisAlerts = []
+function sisAgregarAlerta(tipo, msg) {
+  if (_sisAlerts.includes(msg)) return
+  _sisAlerts.push(msg)
+  const el = document.getElementById('sis-alerts')
+  if (!el) return
+  el.innerHTML += `<div class="sis-alert ${tipo}">${msg}</div>`
+  // Badge en sidebar
+  const badge = document.getElementById('badge-sistema')
+  if (badge && tipo === 'crit') { badge.style.display = ''; badge.textContent = '!' }
+}
+
+// Limpiar alertas al entrar a la sección
+// sistema hook integrado en navTo principal
 </script>
 </body>
 </html>
