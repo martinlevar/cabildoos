@@ -3241,16 +3241,6 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 #maint-overlay h2 { font-family:var(--f-display,sans-serif); font-size:28px; font-weight:800; }
 #maint-overlay p  { font-size:15px; color:rgba(255,255,255,.6); max-width:380px; line-height:1.6; }
 
-/* ── Botón flotante de reporte ── */
-#bug-fab {
-  position:fixed; bottom:24px; right:24px; z-index:1200;
-  width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
-  background:#1d1d1d; color:#fff; font-size:18px;
-  display:none; align-items:center; justify-content:center;
-  box-shadow:0 4px 16px rgba(0,0,0,.25); transition:transform .15s, box-shadow .15s;
-}
-#bug-fab:hover { transform:scale(1.08); box-shadow:0 6px 20px rgba(0,0,0,.35); }
-
 /* ── Modal de reporte ── */
 #bug-modal-overlay {
   position:fixed; inset:0; z-index:1300;
@@ -3279,6 +3269,53 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 .bug-btn-cancel { background:var(--bg,#f0f0f0); color:var(--text,#1d1d1d); }
 .bug-btn-send   { background:#1d1d1d; color:#fff; }
 .bug-btn-send:disabled { opacity:.5; cursor:default; }
+
+/* ── Modales legales (Privacidad / Términos / Ayuda) ── */
+.lgl-overlay {
+  position:fixed; inset:0; z-index:1400;
+  background:rgba(0,0,0,.5); backdrop-filter:blur(5px);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.lgl-overlay.open { opacity:1; pointer-events:all; }
+.lgl-modal {
+  background:var(--card,#fff); border-radius:20px; width:100%; max-width:520px;
+  max-height:85vh; display:flex; flex-direction:column;
+  box-shadow:0 24px 64px rgba(0,0,0,.22);
+}
+.lgl-modal-wide { max-width:640px; }
+.lgl-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:22px 24px 16px; border-bottom:1px solid var(--border,#e5e5e5); flex-shrink:0;
+}
+.lgl-header h2 { font-size:17px; font-weight:800; }
+.lgl-header button {
+  width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
+  background:var(--bg,#f5f5f6); color:var(--text,#1d1d1d); font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+}
+.lgl-body {
+  padding:20px 24px 24px; overflow-y:auto; flex:1;
+  font-size:13px; line-height:1.7; color:var(--text,#1d1d1d);
+  display:flex; flex-direction:column; gap:4px;
+}
+.lgl-section-title {
+  font-weight:700; font-size:13px; margin-top:16px; margin-bottom:4px; color:var(--dark,#1d1d1d);
+}
+.lgl-body p { color:var(--muted2,#666); }
+.lgl-body p:first-child { margin-top:0; }
+/* Steps de ayuda */
+.ayuda-steps { display:flex; flex-direction:column; gap:18px; }
+.ayuda-step {
+  display:flex; gap:14px; align-items:flex-start;
+}
+.ayuda-num {
+  width:28px; height:28px; border-radius:50%; background:#1d1d1d; color:#fff;
+  font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; margin-top:1px;
+}
+.ayuda-step strong { font-size:13px; font-weight:700; display:block; margin-bottom:2px; }
+.ayuda-step p { font-size:12px; color:var(--muted2,#666); margin:0; }
 
 /* ── Banner de anuncio (no-mantenimiento) ── */
 #sys-announcement {
@@ -3747,10 +3784,11 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
   <footer class="cong-footer">
     <span class="cf-brand">cabildoOS</span>
     <div class="cf-links">
-      <a>Privacidad</a>
-      <a>Términos</a>
-      <a>Ayuda</a>
-      <a>Contacto</a>
+      <a onclick="abrirModalPrivacidad()">Privacidad</a>
+      <a onclick="abrirModalTerminos()">Términos</a>
+      <a onclick="abrirModalAyuda()">Ayuda</a>
+      <a onclick="abrirBugReport('contacto')">Contacto</a>
+      <a onclick="abrirBugReport('error')" id="footer-bug-link" style="display:none">🐛 Reportar</a>
     </div>
     <span class="cf-copy">© 2026 CabildoOS</span>
   </footer>
@@ -11474,11 +11512,49 @@ function _applyAnnouncement(val) {
 // Llamar al iniciar la app (antes del login)
 ;(async () => { initSystemConfigRealtime() })()
 
-// ── Bug report ────────────────────────────────────────────────
-function abrirBugReport() {
+// ── Modales legales ──────────────────────────────────────────
+function abrirModalPrivacidad() {
+  document.getElementById('modal-privacidad').classList.add('open')
+}
+function abrirModalTerminos() {
+  document.getElementById('modal-terminos').classList.add('open')
+}
+function abrirModalAyuda() {
+  document.getElementById('modal-ayuda').classList.add('open')
+}
+
+async function enviarPreguntaAyuda() {
+  const msg = document.getElementById('ayuda-pregunta').value.trim()
+  if (!msg) return
+  try {
+    await sb.from('bug_reports').insert({
+      seat_number: MY_SEAT || null,
+      alias:       _authProfile?.alias || null,
+      category:    'consulta',
+      message:     '[Pregunta de Ayuda] ' + msg,
+    })
+    document.getElementById('ayuda-pregunta').value = ''
+    document.getElementById('modal-ayuda').classList.remove('open')
+    mostrarToast('✓ Tu pregunta fue enviada — te respondemos pronto')
+  } catch(e) {
+    mostrarToast('Error al enviar la pregunta')
+  }
+}
+
+// ── Bug report / Contacto ─────────────────────────────────────
+const _BUG_TITLES = {
+  error:     '🔴 Reportar un problema',
+  sugerencia:'💡 Sugerencia de mejora',
+  consulta:  '❓ Consulta',
+  contacto:  '✉️ Contacto',
+}
+function abrirBugReport(categoria) {
+  const cat = categoria || 'error'
+  document.getElementById('bug-modal-title').textContent = _BUG_TITLES[cat] || 'Escribinos'
+  document.getElementById('bug-category').value = cat
   document.getElementById('bug-message').value = ''
   document.getElementById('bug-modal-overlay').classList.add('open')
-  document.getElementById('bug-message').focus()
+  setTimeout(() => document.getElementById('bug-message').focus(), 100)
 }
 
 function cerrarBugReport() {
@@ -11489,8 +11565,7 @@ async function enviarBugReport() {
   const msg = document.getElementById('bug-message').value.trim()
   if (!msg) return
   const btn = document.getElementById('bug-send-btn')
-  btn.disabled = true
-  btn.textContent = 'Enviando…'
+  btn.disabled = true; btn.textContent = 'Enviando…'
   try {
     await sb.from('bug_reports').insert({
       seat_number: MY_SEAT || null,
@@ -11499,19 +11574,18 @@ async function enviarBugReport() {
       message:     msg,
     })
     cerrarBugReport()
-    mostrarToast('✓ Reporte enviado — gracias por tu ayuda')
+    mostrarToast('✓ Mensaje enviado — gracias')
   } catch(e) {
-    mostrarToast('Error al enviar el reporte')
+    mostrarToast('Error al enviar')
   } finally {
-    btn.disabled = false
-    btn.textContent = 'Enviar reporte'
+    btn.disabled = false; btn.textContent = 'Enviar'
   }
 }
 
-// Mostrar el FAB solo cuando el usuario está logueado
+// Mostrar "Reportar" en el footer solo cuando está logueado
 function _syncBugFab() {
-  const fab = document.getElementById('bug-fab')
-  if (fab) fab.style.display = _authUser ? 'flex' : 'none'
+  const lnk = document.getElementById('footer-bug-link')
+  if (lnk) lnk.style.display = _authUser ? '' : 'none'
 }
 </script>
 
@@ -11609,22 +11683,147 @@ function _syncBugFab() {
     style="background:none;border:none;cursor:pointer;font-size:16px;color:inherit;padding:0 4px">✕</button>
 </div>
 
-<!-- ══ BOTÓN FLOTANTE REPORTAR ERROR ══ -->
-<button id="bug-fab" title="Reportar un problema" onclick="abrirBugReport()">🐛</button>
-
-<!-- ══ MODAL REPORTAR ERROR ══ -->
+<!-- ══ MODAL REPORTAR / CONTACTO ══ -->
 <div id="bug-modal-overlay" onclick="if(event.target===this)cerrarBugReport()">
   <div class="bug-modal">
-    <h3>Reportar un problema</h3>
+    <h3 id="bug-modal-title">Reportar un problema</h3>
     <select id="bug-category">
       <option value="error">🔴 Error técnico</option>
       <option value="sugerencia">💡 Sugerencia de mejora</option>
       <option value="consulta">❓ Consulta / pregunta</option>
+      <option value="contacto">✉️ Contacto general</option>
     </select>
-    <textarea id="bug-message" placeholder="Describí el problema con el mayor detalle posible: ¿qué estabas haciendo? ¿qué esperabas que pasara? ¿qué pasó en cambio?" maxlength="1000"></textarea>
+    <textarea id="bug-message" placeholder="Describí tu consulta o el problema con el mayor detalle posible…" maxlength="1000"></textarea>
     <div class="bug-modal-footer">
       <button class="bug-btn-cancel" onclick="cerrarBugReport()">Cancelar</button>
-      <button class="bug-btn-send" id="bug-send-btn" onclick="enviarBugReport()">Enviar reporte</button>
+      <button class="bug-btn-send" id="bug-send-btn" onclick="enviarBugReport()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL PRIVACIDAD ══ -->
+<div id="modal-privacidad" onclick="if(event.target===this)this.classList.remove('open')" class="lgl-overlay">
+  <div class="lgl-modal">
+    <div class="lgl-header">
+      <h2>🔒 Política de Privacidad</h2>
+      <button onclick="document.getElementById('modal-privacidad').classList.remove('open')">✕</button>
+    </div>
+    <div class="lgl-body">
+      <p class="lgl-section-title">Qué datos recopilamos</p>
+      <p>CabildoOS recopila únicamente los datos necesarios para verificar tu identidad como ciudadano y permitirte participar en el hemiciclo digital: tu email de registro, los datos del documento presentado durante la verificación y tu alias público.</p>
+
+      <p class="lgl-section-title">Verificación de Identidad Anónima (VaV)</p>
+      <p>El sistema VaV (Voto Anónimo Verificable) garantiza que podés participar sin revelar quién sos. Tu identidad real se convierte en un hash criptográfico irreversible. <strong>Ni el equipo de CabildoOS puede vincular tu voto con tu persona.</strong> Las fotos del documento y el selfie se eliminan automáticamente una vez procesada la verificación y nunca se almacenan de forma permanente.</p>
+
+      <p class="lgl-section-title">Datos públicos vs. privados</p>
+      <p>Tu <strong>alias, butaca y propuestas</strong> son públicos dentro de la plataforma. Tu email, documento de identidad y mensajes privados son estrictamente confidenciales y nunca se comparten con terceros.</p>
+
+      <p class="lgl-section-title">Uso de IA (Gemini)</p>
+      <p>Las imágenes del documento se envían a la API de Google Gemini únicamente para la extracción de datos de verificación. Google no las usa para entrenamiento según sus términos de uso de datos de la API.</p>
+
+      <p class="lgl-section-title">Retención de datos</p>
+      <p>Podés solicitar la eliminación de tu cuenta y todos tus datos enviando un mensaje a través del formulario de Contacto. Procesamos las solicitudes en un plazo de 30 días.</p>
+
+      <p class="lgl-section-title">Contacto</p>
+      <p>Para consultas sobre privacidad, usá el formulario de <a onclick="document.getElementById('modal-privacidad').classList.remove('open');abrirBugReport('contacto')" style="color:var(--navy);cursor:pointer">Contacto</a> en el footer.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL TÉRMINOS ══ -->
+<div id="modal-terminos" onclick="if(event.target===this)this.classList.remove('open')" class="lgl-overlay">
+  <div class="lgl-modal">
+    <div class="lgl-header">
+      <h2>📋 Términos y Condiciones</h2>
+      <button onclick="document.getElementById('modal-terminos').classList.remove('open')">✕</button>
+    </div>
+    <div class="lgl-body">
+      <p class="lgl-section-title">1. Propósito de la plataforma</p>
+      <p>CabildoOS es una plataforma de participación ciudadana digital. Permite a ciudadanos verificados expresar su posición sobre temas de interés público de forma anónima y verificable. No es un sistema de votación oficial ni vinculante legalmente.</p>
+
+      <p class="lgl-section-title">2. Requisitos de uso</p>
+      <p>Para participar debés ser mayor de 18 años, poseer un documento de identidad válido, y aceptar que tu identidad será verificada por el sistema de IA. Cada persona puede tener una única cuenta verificada.</p>
+
+      <p class="lgl-section-title">3. Conducta en la plataforma</p>
+      <p>Está prohibido: crear múltiples cuentas, suplantar identidades, publicar contenido ofensivo, discriminatorio o ilegal en propuestas y comentarios. El equipo de moderación puede suspender cuentas que violen estas normas.</p>
+
+      <p class="lgl-section-title">4. Propiedad del contenido</p>
+      <p>Las propuestas y comentarios que publicás son de tu autoría. Al publicarlos en CabildoOS otorgás una licencia de uso para mostrarlos dentro de la plataforma. No cedés ningún derecho de propiedad intelectual.</p>
+
+      <p class="lgl-section-title">5. Limitación de responsabilidad</p>
+      <p>CabildoOS no garantiza la disponibilidad continua del servicio. Los resultados de las votaciones son indicativos y no tienen efecto legal vinculante. La plataforma está en desarrollo activo (versión beta).</p>
+
+      <p class="lgl-section-title">6. Modificaciones</p>
+      <p>Estos términos pueden actualizarse. Los cambios sustanciales serán comunicados mediante el sistema de anuncios de la plataforma.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL AYUDA ══ -->
+<div id="modal-ayuda" onclick="if(event.target===this)this.classList.remove('open')" class="lgl-overlay">
+  <div class="lgl-modal lgl-modal-wide">
+    <div class="lgl-header">
+      <h2>❓ Cómo funciona CabildoOS</h2>
+      <button onclick="document.getElementById('modal-ayuda').classList.remove('open')">✕</button>
+    </div>
+    <div class="lgl-body">
+      <div class="ayuda-steps">
+        <div class="ayuda-step">
+          <div class="ayuda-num">1</div>
+          <div>
+            <strong>Creá tu cuenta</strong>
+            <p>Registrate con tu email. Es el único dato personal que pedimos al inicio.</p>
+          </div>
+        </div>
+        <div class="ayuda-step">
+          <div class="ayuda-num">2</div>
+          <div>
+            <strong>Verificá tu identidad</strong>
+            <p>Fotografiá tu documento de identidad y tomá un selfie sosteniéndolo. La IA valida que sos una persona real con documento válido. Tus fotos se eliminan inmediatamente después — no se guardan.</p>
+          </div>
+        </div>
+        <div class="ayuda-step">
+          <div class="ayuda-num">3</div>
+          <div>
+            <strong>Ocupás una butaca en el hemiciclo</strong>
+            <p>Una vez verificado, el sistema te asigna una butaca única en el hemiciclo digital de 300 asientos. Tu butaca es permanente y anónima: aparecés con tu alias, no con tu nombre real.</p>
+          </div>
+        </div>
+        <div class="ayuda-step">
+          <div class="ayuda-num">4</div>
+          <div>
+            <strong>Votá en las preguntas activas</strong>
+            <p>Cuando hay una pregunta activa, podés votar Sí, No o Abstención. Tu voto es anónimo y verificable gracias al sistema VaV: nadie puede saber cómo votaste, pero cualquiera puede verificar que el conteo es correcto.</p>
+          </div>
+        </div>
+        <div class="ayuda-step">
+          <div class="ayuda-num">5</div>
+          <div>
+            <strong>Interactuá con otros ciudadanos</strong>
+            <p>Podés seguir a otros ciudadanos, dejar comentarios en sus propuestas, darles likes y enviarles mensajes privados. También podés publicar tus propias propuestas ciudadanas.</p>
+          </div>
+        </div>
+        <div class="ayuda-step">
+          <div class="ayuda-num">6</div>
+          <div>
+            <strong>¿Qué es el VaV?</strong>
+            <p>El Voto Anónimo Verificable es el corazón del sistema. Combina criptografía y hash SHA-256 para garantizar que: (a) solo ciudadanos verificados votan, (b) nadie puede votar dos veces, (c) nadie puede saber tu voto individual, y (d) el resultado total es verificable públicamente.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--border,#e5e5e5);margin-top:24px;padding-top:20px">
+        <p style="font-weight:700;font-size:14px;margin-bottom:12px">¿Tenés una pregunta específica?</p>
+        <textarea id="ayuda-pregunta" placeholder="Escribí tu pregunta aquí y te responderemos…" maxlength="500"
+          style="width:100%;border:1.5px solid var(--border,#e5e5e5);border-radius:10px;padding:10px 12px;
+                 font-size:13px;font-family:inherit;background:var(--bg,#f5f5f6);color:var(--text,#1d1d1d);
+                 outline:none;resize:none;min-height:80px;transition:border-color .15s"></textarea>
+        <button onclick="enviarPreguntaAyuda()"
+          style="margin-top:10px;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:700;
+                 cursor:pointer;border:none;background:#1d1d1d;color:#fff">
+          Enviar pregunta
+        </button>
+      </div>
     </div>
   </div>
 </div>
