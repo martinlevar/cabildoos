@@ -3027,6 +3027,62 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 .sf-tab.active { background:var(--orange); color:#fff; border-color:var(--orange); box-shadow:0 6px 24px rgba(247,106,30,.32); }
 .sf-tab-icon { font-size:14px; }
 
+/* Propuestas pane — sub-header */
+.prop-pane-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px; gap:10px;
+}
+.prop-sub-tabs {
+  display:flex; background:rgba(0,0,0,.06); border-radius:10px; padding:3px; gap:2px;
+}
+.prop-sub-tab {
+  padding:6px 13px; border-radius:8px; border:none; background:none;
+  font-family:inherit; font-size:12px; font-weight:600; color:#8a8a8a;
+  cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.prop-sub-tab.active {
+  background:#fff; color:#1d1d1d;
+  box-shadow:0 1px 6px rgba(0,0,0,.1);
+}
+.prop-new-btn {
+  padding:8px 16px; border:none; border-radius:20px;
+  background:var(--orange); color:#fff;
+  font-family:inherit; font-size:12px; font-weight:700;
+  cursor:pointer; transition:all .15s; white-space:nowrap; flex-shrink:0;
+}
+.prop-new-btn:hover { background:#e05a10; transform:translateY(-1px); }
+
+/* Otras propuestas */
+.otras-prop-card {
+  background:var(--bg); border-radius:14px;
+  padding:13px 15px 11px; margin-bottom:10px; cursor:pointer;
+  transition:all .15s; border:1.5px solid transparent;
+}
+.otras-prop-card:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(0,0,0,.08); border-color:var(--border); }
+.otras-prop-author {
+  display:flex; align-items:center; gap:8px; margin-bottom:9px;
+}
+.otras-prop-av {
+  width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:800; color:#fff;
+}
+.otras-prop-alias { font-size:11px; font-weight:700; color:var(--mid); }
+.otras-prop-text {
+  font-size:13px; font-weight:600; color:var(--dark);
+  line-height:1.45; margin-bottom:9px;
+}
+.otras-prop-meta { display:flex; align-items:center; gap:8px; }
+.otras-prop-cat {
+  font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px;
+  background:rgba(0,0,0,.07); color:var(--mid);
+}
+.otras-prop-likes {
+  font-size:11px; font-weight:600; color:var(--mid);
+  display:flex; align-items:center; gap:3px;
+}
+.otras-prop-date { font-size:10px; color:#c0c0c0; margin-left:auto; }
+
 /* Proposals list */
 .prop-card {
   background:var(--bg); border-radius:14px;
@@ -3560,12 +3616,6 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
           <p class="av-label-seat">Mi butaca</p>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center">
-          <div class="av-propose-btn" onclick="abrirPropuesta()" title="Proponer pregunta">
-            <span class="av-plus">+</span>
-          </div>
-          <p class="av-label-prop">Proponer</p>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center">
           <div class="av-congress-btn" onclick="irAlCongreso()" title="Ir al congreso">
             <svg class="av-hemi-icon" width="44" height="44" viewBox="0 0 611.48 611.63" fill="none" xmlns="http://www.w3.org/2000/svg">
               <ellipse cx="305.77" cy="305.84" rx="72.76" ry="72.78" fill="#1a1f3c"/>
@@ -3818,13 +3868,6 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
       <button class="nav-act-btn" onclick="abrirMiPerfil()" title="Mi butaca">
         <div class="nav-act-ic nav-ic-seat"><span id="nav-seat-lbl">#—</span></div>
         <span class="nav-act-lbl">Mi butaca</span>
-      </button>
-      <!-- Proponer -->
-      <button class="nav-act-btn" onclick="abrirPropuesta()" title="Proponer pregunta">
-        <div class="nav-act-ic nav-ic-prop">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </div>
-        <span class="nav-act-lbl">Proponer</span>
       </button>
       <!-- Estadísticas -->
       <button class="nav-act-btn" onclick="abrirEstadisticas()" title="Estadísticas de votación">
@@ -11361,7 +11404,7 @@ function sfSelectTab(tab) {
   document.querySelectorAll('.sf-cm-pane').forEach(p => p.classList.toggle('active', p.id === 'sfp-' + tab))
 
   // Cargar contenido
-  if (tab === 'propuestas') renderPropuestas()
+  if (tab === 'propuestas') propSelectSubTab('mis')
   if (tab === 'seguidores') renderSocial('seguidores')
   if (tab === 'seguidos')   renderSocial('seguidos')
   if (tab === 'mensajes')   _loadAndRenderConversaciones()
@@ -11382,12 +11425,69 @@ function cerrarSocialPanel() {
   document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
 }
 
+let _propSubTab = 'mis'
+
+function propSelectSubTab(tab) {
+  _propSubTab = tab
+  document.querySelectorAll('.prop-sub-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === tab))
+  const misEl   = document.getElementById('sf-propuestas-list')
+  const otrasEl = document.getElementById('sf-otras-propuestas-list')
+  if (misEl)   misEl.style.display   = tab === 'mis'   ? '' : 'none'
+  if (otrasEl) otrasEl.style.display = tab === 'otras' ? '' : 'none'
+  if (tab === 'mis')   renderPropuestas()
+  if (tab === 'otras') renderOtrasPropuestas()
+}
+
+async function renderOtrasPropuestas() {
+  const el = document.getElementById('sf-otras-propuestas-list')
+  if (!el) return
+  el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
+
+  const query = sb.from('proposals')
+    .select('*')
+    .eq('status', 'approved')
+    .order('likes', { ascending: false })
+    .limit(60)
+  if (MY_SEAT > 0) query.neq('seat_number', MY_SEAT)
+
+  const { data, error } = await query
+
+  if (error || !data?.length) {
+    el.innerHTML = '<p class="sf-empty">No hay propuestas aprobadas de otros usuarios aún.</p>'
+    return
+  }
+
+  el.innerHTML = data.map(p => {
+    const ci    = p.seat_number % AVATAR_COLORS_CONVO.length
+    const alias = _profilesCache[p.seat_number]?.alias || `Butaca #${p.seat_number}`
+    const init  = alias.slice(0, 2).toUpperCase()
+    const date  = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    const txt   = p.text.length > 110 ? p.text.slice(0, 110) + '…' : p.text
+    return `<div class="otras-prop-card" onclick="abrirUserProfile(${p.seat_number},'propuestas');cerrarSocialPanel()">
+      <div class="otras-prop-author">
+        <div class="otras-prop-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${init}</div>
+        <span class="otras-prop-alias">${alias}</span>
+      </div>
+      <p class="otras-prop-text">${txt}</p>
+      <div class="otras-prop-meta">
+        <span class="otras-prop-cat">${p.cat}</span>
+        <span class="otras-prop-likes">
+          <svg width="11" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          ${p.likes}
+        </span>
+        <span class="otras-prop-date">${date}</span>
+      </div>
+    </div>`
+  }).join('')
+}
+
 async function renderPropuestas() {
   const el = document.getElementById('sf-propuestas-list')
   el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
 
   if (!MY_SEAT || MY_SEAT <= 0) {
-    el.innerHTML = '<p class="sf-empty">Necesitás una butaca para proponer preguntas.</p>'
+    el.innerHTML = '<p class="sf-empty">Necesitás una butaca verificada para proponer.</p>'
     return
   }
 
@@ -11397,7 +11497,10 @@ async function renderPropuestas() {
     .order('created_at', { ascending: false })
 
   if (error || !data?.length) {
-    el.innerHTML = '<p class="sf-empty">Todavía no tenés propuestas.<br><span style="font-size:11px;opacity:.55">Hacé click en "Proponer" para enviar una pregunta al pleno.</span></p>'
+    el.innerHTML = `<div class="sf-empty" style="padding:32px 0">
+      <p style="margin-bottom:12px">Todavía no tenés propuestas.</p>
+      <button class="prop-new-btn" onclick="cerrarSocialPanel();abrirPropuesta()">+ Crear primera propuesta</button>
+    </div>`
     return
   }
 
@@ -12087,7 +12190,17 @@ function _syncBugFab() {
       </div>
     </div>
     <div class="sf-cm-body">
-      <div class="sf-cm-pane" id="sfp-propuestas"><div id="sf-propuestas-list"></div></div>
+      <div class="sf-cm-pane" id="sfp-propuestas">
+        <div class="prop-pane-hd">
+          <div class="prop-sub-tabs">
+            <button class="prop-sub-tab active" data-tab="mis"   onclick="propSelectSubTab('mis')">Mis propuestas</button>
+            <button class="prop-sub-tab"        data-tab="otras" onclick="propSelectSubTab('otras')">Otras propuestas</button>
+          </div>
+          <button class="prop-new-btn" onclick="cerrarSocialPanel();abrirPropuesta()">+ Proponer</button>
+        </div>
+        <div id="sf-propuestas-list"></div>
+        <div id="sf-otras-propuestas-list" style="display:none"></div>
+      </div>
       <div class="sf-cm-pane" id="sfp-seguidores"><div id="sf-seguidores-list"></div></div>
       <div class="sf-cm-pane" id="sfp-seguidos">  <div id="sf-seguidos-list"></div></div>
       <div class="sf-cm-pane" id="sfp-mensajes">  <div id="sf-mensajes-list"></div></div>
