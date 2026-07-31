@@ -3227,6 +3227,68 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
 .vo-flag {
   font-size: 12px; color: rgba(255,255,255,.3); font-weight: 600;
 }
+
+/* ── Mantenimiento overlay ── */
+#maint-overlay {
+  position:fixed; inset:0; z-index:9999;
+  background:rgba(15,15,20,.92); backdrop-filter:blur(8px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:20px; color:#fff; text-align:center; padding:32px;
+  opacity:0; pointer-events:none; transition:opacity .3s;
+}
+#maint-overlay.active { opacity:1; pointer-events:all; }
+#maint-overlay .maint-icon { font-size:56px; }
+#maint-overlay h2 { font-family:var(--f-display,sans-serif); font-size:28px; font-weight:800; }
+#maint-overlay p  { font-size:15px; color:rgba(255,255,255,.6); max-width:380px; line-height:1.6; }
+
+/* ── Botón flotante de reporte ── */
+#bug-fab {
+  position:fixed; bottom:24px; right:24px; z-index:1200;
+  width:44px; height:44px; border-radius:50%; border:none; cursor:pointer;
+  background:#1d1d1d; color:#fff; font-size:18px;
+  display:none; align-items:center; justify-content:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.25); transition:transform .15s, box-shadow .15s;
+}
+#bug-fab:hover { transform:scale(1.08); box-shadow:0 6px 20px rgba(0,0,0,.35); }
+
+/* ── Modal de reporte ── */
+#bug-modal-overlay {
+  position:fixed; inset:0; z-index:1300;
+  background:rgba(0,0,0,.5); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none; transition:opacity .2s;
+}
+#bug-modal-overlay.open { opacity:1; pointer-events:all; }
+.bug-modal {
+  background:var(--card,#fff); border-radius:18px; width:100%; max-width:420px;
+  padding:28px; box-shadow:0 20px 60px rgba(0,0,0,.2);
+  display:flex; flex-direction:column; gap:16px;
+}
+.bug-modal h3 { font-size:17px; font-weight:800; }
+.bug-modal select, .bug-modal textarea {
+  width:100%; border:1.5px solid var(--border,#e5e5e5);
+  border-radius:10px; padding:10px 12px;
+  font-size:13px; font-family:inherit; background:var(--bg,#f5f5f6);
+  color:var(--text,#1d1d1d); outline:none; resize:none;
+  transition:border-color .15s;
+}
+.bug-modal select:focus, .bug-modal textarea:focus { border-color:#1d1d1d; }
+.bug-modal textarea { min-height:100px; }
+.bug-modal-footer { display:flex; gap:10px; justify-content:flex-end; }
+.bug-modal-footer button { padding:10px 20px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; border:none; }
+.bug-btn-cancel { background:var(--bg,#f0f0f0); color:var(--text,#1d1d1d); }
+.bug-btn-send   { background:#1d1d1d; color:#fff; }
+.bug-btn-send:disabled { opacity:.5; cursor:default; }
+
+/* ── Banner de anuncio (no-mantenimiento) ── */
+#sys-announcement {
+  position:fixed; top:0; left:0; right:0; z-index:1100;
+  padding:10px 20px; font-size:13px; font-weight:600; text-align:center;
+  display:none; align-items:center; justify-content:center; gap:10px;
+}
+#sys-announcement.info    { background:#2563eb; color:#fff; }
+#sys-announcement.warning { background:#f59e0b; color:#000; }
+#sys-announcement.error   { background:#dc2626; color:#fff; }
 </style>
 </head>
 <body>
@@ -6733,6 +6795,7 @@ async function _onLogin(user) {
     _loadFollows()           // cargar follows reales desde Supabase
     _loadUnreadMessages()    // cargar mensajes no leídos
     initMessagesRealtime()   // escuchar mensajes entrantes en tiempo real
+    _syncBugFab()            // mostrar botón de reporte
     // Usuario verificado → selector de cabildos solo si no hay preferencia guardada
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
     if (_cabildo) {
@@ -6786,6 +6849,7 @@ function _onLogout() {
   localStorage.removeItem('cabildoos_butaca')
   localStorage.removeItem('cabildoos_vid')
   MY_SEAT = 0
+  _syncBugFab()
   // Volver a la pantalla intro
   showScreen('intro')
 }
@@ -11350,6 +11414,105 @@ function simularRespuestasSeguidores(propIdx) {
     if (sfActiveTab === 'propuestas') renderPropuestas()
   }, 1800)
 }
+
+// ══════════════════════════════════════════════════════════════
+//  SISTEMA — mantenimiento, anuncios y reporte de errores
+// ══════════════════════════════════════════════════════════════
+
+// ── Suscripción a system_config (realtime) ───────────────────
+function initSystemConfigRealtime() {
+  sb.channel('system-config-live')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'system_config'
+    }, payload => {
+      const row = payload.new
+      if (!row) return
+      if (row.key === 'maintenance_mode') _applyMaintenance(row.value)
+      if (row.key === 'announcement')     _applyAnnouncement(row.value)
+    })
+    .subscribe()
+
+  // Cargar estado inicial
+  _loadSystemConfig()
+}
+
+async function _loadSystemConfig() {
+  try {
+    const { data } = await sb.from('system_config').select('key, value')
+    if (!data) return
+    data.forEach(row => {
+      if (row.key === 'maintenance_mode') _applyMaintenance(row.value)
+      if (row.key === 'announcement')     _applyAnnouncement(row.value)
+    })
+  } catch(e) { console.warn('system_config load:', e) }
+}
+
+function _applyMaintenance(val) {
+  const overlay = document.getElementById('maint-overlay')
+  if (!overlay) return
+  if (val?.active) {
+    document.getElementById('maint-msg').textContent = val.message || 'El sistema está en mantenimiento.'
+    overlay.classList.add('active')
+  } else {
+    overlay.classList.remove('active')
+  }
+}
+
+function _applyAnnouncement(val) {
+  const bar = document.getElementById('sys-announcement')
+  if (!bar) return
+  if (val?.active && val.text) {
+    document.getElementById('sys-announcement-text').textContent = val.text
+    bar.className = ''
+    bar.classList.add(val.type || 'info')
+    bar.style.display = 'flex'
+  } else {
+    bar.style.display = 'none'
+  }
+}
+
+// Llamar al iniciar la app (antes del login)
+;(async () => { initSystemConfigRealtime() })()
+
+// ── Bug report ────────────────────────────────────────────────
+function abrirBugReport() {
+  document.getElementById('bug-message').value = ''
+  document.getElementById('bug-modal-overlay').classList.add('open')
+  document.getElementById('bug-message').focus()
+}
+
+function cerrarBugReport() {
+  document.getElementById('bug-modal-overlay').classList.remove('open')
+}
+
+async function enviarBugReport() {
+  const msg = document.getElementById('bug-message').value.trim()
+  if (!msg) return
+  const btn = document.getElementById('bug-send-btn')
+  btn.disabled = true
+  btn.textContent = 'Enviando…'
+  try {
+    await sb.from('bug_reports').insert({
+      seat_number: MY_SEAT || null,
+      alias:       _authProfile?.alias || null,
+      category:    document.getElementById('bug-category').value,
+      message:     msg,
+    })
+    cerrarBugReport()
+    mostrarToast('✓ Reporte enviado — gracias por tu ayuda')
+  } catch(e) {
+    mostrarToast('Error al enviar el reporte')
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'Enviar reporte'
+  }
+}
+
+// Mostrar el FAB solo cuando el usuario está logueado
+function _syncBugFab() {
+  const fab = document.getElementById('bug-fab')
+  if (fab) fab.style.display = _authUser ? 'flex' : 'none'
+}
 </script>
 
 <!-- ══════════════ SOCIAL FOOTER (floating pill) ══════════════ -->
@@ -11429,6 +11592,40 @@ function simularRespuestasSeguidores(propIdx) {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="flex-shrink:0"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Mensajes
     </button>
+  </div>
+</div>
+
+<!-- ══ MANTENIMIENTO OVERLAY ══ -->
+<div id="maint-overlay">
+  <div class="maint-icon">🔧</div>
+  <h2>Sistema en mantenimiento</h2>
+  <p id="maint-msg">El sistema está en mantenimiento. Volvé pronto.</p>
+</div>
+
+<!-- ══ BANNER DE ANUNCIO ══ -->
+<div id="sys-announcement">
+  <span id="sys-announcement-text"></span>
+  <button onclick="document.getElementById('sys-announcement').style.display='none'"
+    style="background:none;border:none;cursor:pointer;font-size:16px;color:inherit;padding:0 4px">✕</button>
+</div>
+
+<!-- ══ BOTÓN FLOTANTE REPORTAR ERROR ══ -->
+<button id="bug-fab" title="Reportar un problema" onclick="abrirBugReport()">🐛</button>
+
+<!-- ══ MODAL REPORTAR ERROR ══ -->
+<div id="bug-modal-overlay" onclick="if(event.target===this)cerrarBugReport()">
+  <div class="bug-modal">
+    <h3>Reportar un problema</h3>
+    <select id="bug-category">
+      <option value="error">🔴 Error técnico</option>
+      <option value="sugerencia">💡 Sugerencia de mejora</option>
+      <option value="consulta">❓ Consulta / pregunta</option>
+    </select>
+    <textarea id="bug-message" placeholder="Describí el problema con el mayor detalle posible: ¿qué estabas haciendo? ¿qué esperabas que pasara? ¿qué pasó en cambio?" maxlength="1000"></textarea>
+    <div class="bug-modal-footer">
+      <button class="bug-btn-cancel" onclick="cerrarBugReport()">Cancelar</button>
+      <button class="bug-btn-send" id="bug-send-btn" onclick="enviarBugReport()">Enviar reporte</button>
+    </div>
   </div>
 </div>
 </body>

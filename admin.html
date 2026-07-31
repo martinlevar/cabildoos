@@ -1049,6 +1049,24 @@ select option { background: var(--surface); }
   animation: spin .7s linear infinite;
   display: inline-block;
 }
+/* ── Reportes ── */
+.rep-card {
+  background: var(--card); border: 1px solid var(--border2); border-radius: 12px;
+  padding: 16px 20px; margin-bottom: 10px; display: flex; gap: 16px; align-items: flex-start;
+}
+.rep-cat { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+.rep-body { flex: 1; min-width: 0; }
+.rep-meta { font-size: 11px; color: var(--muted2); margin-bottom: 4px; }
+.rep-msg  { font-size: 13px; color: var(--text); line-height: 1.5; margin-bottom: 8px; word-break: break-word; }
+.rep-notes { font-size: 12px; color: var(--muted); font-style: italic; margin-bottom: 8px; }
+.rep-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.rep-actions button { font-size: 11px; padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--bg); color: var(--text); cursor: pointer; }
+.rep-actions button:hover { background: var(--border2); }
+.rep-status-nuevo     { border-left: 3px solid var(--red); }
+.rep-status-revisado  { border-left: 3px solid var(--yellow); }
+.rep-status-resuelto  { border-left: 3px solid var(--green); }
+.rep-status-descartado{ border-left: 3px solid var(--muted2); opacity: .6; }
 </style>
 </head>
 <body>
@@ -1133,6 +1151,10 @@ select option { background: var(--surface); }
     <div class="nav-item admin-only" data-section="sistema" onclick="navTo('sistema', this)">
       <span class="icon">📊</span> Sistema
       <span class="nav-badge red" id="badge-sistema" style="display:none">!</span>
+    </div>
+    <div class="nav-item admin-only" data-section="reportes" onclick="navTo('reportes', this)">
+      <span class="icon">🐛</span> Reportes
+      <span class="nav-badge orange" id="badge-reportes" style="display:none">0</span>
     </div>
 
     <div class="nav-section">Configuración</div>
@@ -1824,6 +1846,74 @@ select option { background: var(--surface); }
 
       <!-- Stats cards -->
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px" id="sis-stat-cards"></div>
+
+      <!-- Mantenimiento & Anuncios -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+
+        <div class="table-card" style="padding:22px">
+          <p style="font-weight:700;font-size:14px;margin-bottom:16px">🔧 Modo Mantenimiento</p>
+          <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">
+            Activa un overlay a pantalla completa en la app de todos los usuarios. Úsalo para deploys o fixes críticos.
+          </p>
+          <div style="display:flex;gap:10px;margin-bottom:12px">
+            <input id="maint-msg-input" type="text" placeholder="Mensaje para los usuarios…"
+              value="El sistema está en mantenimiento. Volvé pronto."
+              style="flex:1;border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;
+                     font-size:12px;background:var(--bg);color:var(--text);outline:none">
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" style="flex:1" onclick="activarMantenimiento()">🔴 Activar</button>
+            <button class="btn btn-ghost"   style="flex:1" onclick="desactivarMantenimiento()">✓ Desactivar</button>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:10px" id="maint-status-lbl">Estado: desconocido</p>
+        </div>
+
+        <div class="table-card" style="padding:22px">
+          <p style="font-weight:700;font-size:14px;margin-bottom:16px">📢 Anuncio global</p>
+          <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.6">
+            Muestra un banner en la barra superior de la app para todos los usuarios (sin bloquear).
+          </p>
+          <select id="ann-type" style="width:100%;border:1.5px solid var(--border2);border-radius:8px;
+            padding:8px 12px;font-size:12px;background:var(--bg);color:var(--text);margin-bottom:10px">
+            <option value="info">🔵 Informativo</option>
+            <option value="warning">🟡 Advertencia</option>
+            <option value="error">🔴 Urgente</option>
+          </select>
+          <input id="ann-text" type="text" placeholder="Texto del anuncio…"
+            style="width:100%;border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;
+                   font-size:12px;background:var(--bg);color:var(--text);margin-bottom:12px;outline:none">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" style="flex:1" onclick="publicarAnuncio()">📢 Publicar</button>
+            <button class="btn btn-ghost"   style="flex:1" onclick="limpiarAnuncio()">✕ Quitar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ SECCIÓN REPORTES ══ -->
+    <div class="section" id="s-reportes">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <h2 style="font-family:var(--f-display);font-size:20px;font-weight:800">Reportes de usuarios</h2>
+          <p style="color:var(--muted2);font-size:13px">Errores y sugerencias enviadas desde la app</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="rep-filter" onchange="cargarReportes()"
+            style="background:var(--card);border:1px solid var(--border2);border-radius:8px;
+                   color:var(--text);padding:6px 10px;font-size:12px;cursor:pointer">
+            <option value="">Todos</option>
+            <option value="nuevo">🔴 Nuevos</option>
+            <option value="revisado">🟡 Revisados</option>
+            <option value="resuelto">🟢 Resueltos</option>
+            <option value="descartado">⚫ Descartados</option>
+          </select>
+          <button class="btn btn-secondary" onclick="cargarReportes()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div id="rep-list">
+        <p style="color:var(--muted);font-size:13px;text-align:center;padding:40px">Cargando…</p>
+      </div>
     </div>
 
   </div><!-- /content -->
@@ -1955,7 +2045,7 @@ const sb = createClient(
 
 /// ── RBAC: qué secciones puede ver cada rol ──
 const ROLE_ACCESS = {
-  admin:     ['dashboard','usuarios','preguntas','identidades','seguimiento','verificadores','hemiciclo','votacion','sistema'],
+  admin:     ['dashboard','usuarios','preguntas','identidades','seguimiento','verificadores','hemiciclo','votacion','sistema','reportes'],
   validator: ['identidades','seguimiento'],
   moderator: ['preguntas','identidades','seguimiento'],
 }
@@ -2061,6 +2151,8 @@ function iniciarPanel(user, role) {
 
   // Cargar datos
   if (allowed.includes('dashboard')) cargarStats()
+  if (allowed.includes('reportes'))  _cargarBadgeReportes()
+  if (allowed.includes('sistema'))   _cargarEstadoMaintenance()
 }
 
 // ── NAV ──
@@ -2075,6 +2167,7 @@ const SECTION_META = {
   hemiciclo:    { title: 'Hemiciclo',            sub: 'Configuración visual del recinto' },
   votacion:     { title: 'Votación',             sub: 'Control y monitoreo de votaciones' },
   sistema:      { title: 'Sistema & Infraestructura', sub: 'Cuotas de uso, estado de servicios y alertas' },
+  reportes:     { title: 'Reportes de usuarios',      sub: 'Errores y sugerencias reportadas desde la app' },
 }
 
 function navTo(id, el) {
@@ -2096,6 +2189,7 @@ function navTo(id, el) {
   if (id === 'usuarios')      cargarUsuarios()
   if (id === 'votacion')      cargarVotacion()
   if (id === 'sistema')      { _sisAlerts = []; const a = document.getElementById('sis-alerts'); if(a) a.innerHTML = ''; sisCargarTodo() }
+  if (id === 'reportes')     cargarReportes()
 }
 
 // ── TOAST ──
@@ -3744,6 +3838,122 @@ function sisAgregarAlerta(tipo, msg) {
 
 // Limpiar alertas al entrar a la sección
 // sistema hook integrado en navTo principal
+
+// ══════════════════════════════════════════════════════════════
+//  MANTENIMIENTO & ANUNCIOS
+// ══════════════════════════════════════════════════════════════
+async function _setSystemConfig(key, value) {
+  const { error } = await sb.rpc('set_system_config', {
+    p_key: key, p_value: value, p_by: currentUser?.email || 'admin'
+  })
+  if (error) { toast('Error: ' + error.message, 'error'); throw error }
+}
+
+async function activarMantenimiento() {
+  const msg = document.getElementById('maint-msg-input').value.trim()
+    || 'El sistema está en mantenimiento. Volvé pronto.'
+  await _setSystemConfig('maintenance_mode', { active: true, message: msg })
+  document.getElementById('maint-status-lbl').textContent = '🔴 Estado: ACTIVO'
+  toast('Modo mantenimiento activado')
+}
+
+async function desactivarMantenimiento() {
+  await _setSystemConfig('maintenance_mode', { active: false, message: '' })
+  document.getElementById('maint-status-lbl').textContent = '🟢 Estado: inactivo'
+  toast('Modo mantenimiento desactivado')
+}
+
+async function publicarAnuncio() {
+  const text = document.getElementById('ann-text').value.trim()
+  if (!text) { toast('Escribí el texto del anuncio', 'error'); return }
+  const type = document.getElementById('ann-type').value
+  await _setSystemConfig('announcement', { active: true, text, type })
+  toast('Anuncio publicado')
+}
+
+async function limpiarAnuncio() {
+  await _setSystemConfig('announcement', { active: false, text: '', type: 'info' })
+  toast('Anuncio quitado')
+}
+
+// Cargar estado actual de mantenimiento al entrar al sistema
+async function _cargarEstadoMaintenance() {
+  try {
+    const { data } = await sb.from('system_config').select('value').eq('key','maintenance_mode').single()
+    if (data) {
+      const lbl = document.getElementById('maint-status-lbl')
+      if (lbl) lbl.textContent = data.value?.active ? '🔴 Estado: ACTIVO' : '🟢 Estado: inactivo'
+    }
+  } catch(_) {}
+}
+
+// ══════════════════════════════════════════════════════════════
+//  REPORTES DE USUARIOS
+// ══════════════════════════════════════════════════════════════
+const REP_CAT_ICON = { error: '🔴', sugerencia: '💡', consulta: '❓' }
+const REP_CAT_LBL  = { error: 'Error técnico', sugerencia: 'Sugerencia', consulta: 'Consulta' }
+
+async function cargarReportes() {
+  const listEl = document.getElementById('rep-list')
+  const filter = document.getElementById('rep-filter')?.value || null
+  listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px">Cargando…</p>'
+
+  const { data, error } = await sb.rpc('get_bug_reports', { p_status: filter || null })
+  if (error) { listEl.innerHTML = `<p style="color:var(--red)">Error: ${error.message}</p>`; return }
+
+  const rows = data || []
+
+  // Actualizar badge
+  const nuevos = rows.filter(r => r.status === 'nuevo').length
+  const badge = document.getElementById('badge-reportes')
+  if (badge) { badge.textContent = nuevos; badge.style.display = nuevos > 0 ? '' : 'none' }
+
+  if (!rows.length) {
+    listEl.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:40px">No hay reportes</p>'
+    return
+  }
+
+  listEl.innerHTML = rows.map(r => {
+    const ts = new Date(r.created_at).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
+    const who = r.alias ? `${r.alias} (butaca #${r.seat_number || '?'})` : `Butaca #${r.seat_number || '?'}`
+    return `<div class="rep-card rep-status-${r.status}" id="rep-${r.id}">
+      <div class="rep-cat">${REP_CAT_ICON[r.category] || '📝'}</div>
+      <div class="rep-body">
+        <div class="rep-meta">${REP_CAT_LBL[r.category] || r.category} · ${who} · ${ts}</div>
+        <div class="rep-msg">${r.message.replace(/</g,'&lt;')}</div>
+        ${r.admin_notes ? `<div class="rep-notes">📝 Nota: ${r.admin_notes}</div>` : ''}
+        <div class="rep-actions">
+          ${r.status !== 'revisado'   ? `<button onclick="cambiarStatusRep('${r.id}','revisado')">👁 Revisar</button>` : ''}
+          ${r.status !== 'resuelto'   ? `<button onclick="cambiarStatusRep('${r.id}','resuelto')">✓ Resolver</button>` : ''}
+          ${r.status !== 'descartado' ? `<button onclick="cambiarStatusRep('${r.id}','descartado')">✕ Descartar</button>` : ''}
+          <button onclick="abrirNotaRep('${r.id}')">✏ Nota</button>
+        </div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+async function cambiarStatusRep(id, status) {
+  await sb.rpc('update_bug_report', { p_id: id, p_status: status })
+  cargarReportes()
+}
+
+async function abrirNotaRep(id) {
+  const nota = prompt('Nota interna para este reporte:')
+  if (nota === null) return
+  await sb.rpc('update_bug_report', { p_id: id, p_status: 'revisado', p_notes: nota })
+  cargarReportes()
+}
+
+// Cargar badge de nuevos reportes al iniciar
+async function _cargarBadgeReportes() {
+  try {
+    const { data } = await sb.rpc('get_bug_reports', { p_status: 'nuevo' })
+    const n = (data || []).length
+    const badge = document.getElementById('badge-reportes')
+    if (badge) { badge.textContent = n; badge.style.display = n > 0 ? '' : 'none' }
+  } catch(_) {}
+}
 </script>
 </body>
 </html>
