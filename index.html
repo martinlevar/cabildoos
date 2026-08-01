@@ -6979,38 +6979,41 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
 
 // Inicializar auth al cargar
 ;(async () => {
-  const { data: { session } } = await sb.auth.getSession()
+  try {
+    const { data: { session } } = await sb.auth.getSession()
 
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      _isPasswordRecovery = true
-      // Mostrar congress como fondo y abrir el modal de reset
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        _isPasswordRecovery = true
+        showScreen('congress')
+        setTimeout(() => abrirAuth('reset'), 80)
+        return
+      }
+      if (event === 'SIGNED_OUT') {
+        _isPasswordRecovery = false
+        _onLogout()
+        return
+      }
+      if (_isPasswordRecovery) return
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) await _onLogin(session.user)
+    })
+
+    if (_isPasswordRecovery) {
       showScreen('congress')
-      setTimeout(() => abrirAuth('reset'), 80)
-      return
-    }
-    if (event === 'SIGNED_OUT') {
-      _isPasswordRecovery = false
+    } else if (session?.user) {
+      await _onLogin(session.user)
+    } else {
       _onLogout()
-      return
     }
-    if (_isPasswordRecovery) return  // ignorar SIGNED_IN/INITIAL_SESSION durante recovery
-    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) await _onLogin(session.user)
-  })
-
-  if (_isPasswordRecovery) {
-    showScreen('congress')
-  } else if (session?.user) {
-    await _onLogin(session.user)
-  } else {
-    _onLogout()
-  }
-
-  // Ocultar overlay de carga — auth ya resolvió
-  const _authOverlay = document.getElementById('auth-loading-overlay')
-  if (_authOverlay) {
-    _authOverlay.style.opacity = '0'
-    setTimeout(() => _authOverlay.remove(), 280)
+  } catch(e) {
+    console.error('Auth init error:', e)
+    try { _onLogout() } catch(_) {}
+  } finally {
+    const _authOverlay = document.getElementById('auth-loading-overlay')
+    if (_authOverlay) {
+      _authOverlay.style.opacity = '0'
+      setTimeout(() => _authOverlay.remove(), 280)
+    }
   }
 })()
 
