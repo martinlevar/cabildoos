@@ -6325,8 +6325,8 @@ async function iniciarSimulacion() {
 
   SIM.revealed = 0
 
-  // Orden aleatorio de revelación (Fisher-Yates sobre los seats reales)
-  SIM.order = SEATS.map(s => s.num).sort(() => Math.random() - 0.5)
+  // Orden aleatorio de revelación — solo butacas ocupadas (1..TOTAL_SEATS)
+  SIM.order = SEATS.filter(s => s.num <= TOTAL_SEATS).map(s => s.num).sort(() => Math.random() - 0.5)
   const simTotal = SIM.order.length
   SIM.revealedArr = new Uint8Array(TOTAL_SEATS + 1)
 
