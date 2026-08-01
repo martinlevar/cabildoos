@@ -1847,6 +1847,40 @@ select option { background: var(--surface); }
       <!-- Stats cards -->
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px" id="sis-stat-cards"></div>
 
+      <!-- Panel de errores del sistema -->
+      <div class="table-card" style="padding:24px;margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:36px;height:36px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:18px">🚨</div>
+            <div>
+              <p style="font-weight:700;font-size:14px">Errores del Sistema</p>
+              <p style="color:var(--muted2);font-size:11px">Gemini, verificaciones fallidas y otros errores críticos</p>
+            </div>
+            <span id="sys-err-badge" style="display:none;background:#ef4444;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:4px"></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="sys-err-filter-type" onchange="sysErrCargar()"
+              style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:5px 8px;font-size:12px">
+              <option value="">Todos los tipos</option>
+              <option value="gemini">Gemini AI</option>
+              <option value="verification">Verificaciones</option>
+              <option value="auth">Auth</option>
+              <option value="storage">Storage</option>
+              <option value="general">General</option>
+            </select>
+            <select id="sys-err-filter-sev" onchange="sysErrCargar()"
+              style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:5px 8px;font-size:12px">
+              <option value="">Toda severidad</option>
+              <option value="critical">🔴 Crítico</option>
+              <option value="error">🟠 Error</option>
+              <option value="warning">🟡 Warning</option>
+            </select>
+            <button class="btn btn-secondary" onclick="sysErrCargar()" style="padding:5px 12px;font-size:12px">↻</button>
+          </div>
+        </div>
+        <div id="sys-err-list"><p style="color:var(--muted);font-size:12px;text-align:center;padding:24px 0">Cargando errores…</p></div>
+      </div>
+
       <!-- Mantenimiento & Anuncios -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
 
@@ -3629,10 +3663,86 @@ let _sisStats = null
 
 async function sisCargarTodo() {
   document.getElementById('sis-refresh-btn').textContent = '…'
-  await Promise.all([ sisCargarSupabase(), sisCargarRender(), sisCargarGemini() ])
+  await Promise.all([ sisCargarSupabase(), sisCargarRender(), sisCargarGemini(), sysErrCargar() ])
   document.getElementById('sis-refresh-btn').textContent = '↻ Actualizar'
   const now = new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit' })
   document.getElementById('sis-last-update').textContent = now
+}
+
+// ── Errores del Sistema ───────────────────────────────────────
+const _SYS_ERR_SEV_ICON = { critical: '🔴', error: '🟠', warning: '🟡' }
+const _SYS_ERR_TYPE_LABEL = { gemini: 'Gemini AI', verification: 'Verificación', auth: 'Auth', storage: 'Storage', general: 'General' }
+
+async function sysErrCargar() {
+  const listEl = document.getElementById('sys-err-list')
+  const badge  = document.getElementById('sys-err-badge')
+  if (!listEl) return
+
+  const { data: { session } } = await sb.auth.getSession()
+  const token = session?.access_token
+  if (!token) { listEl.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center;padding:24px">Sesión requerida</p>'; return }
+
+  const typeFilter = document.getElementById('sys-err-filter-type')?.value || ''
+  const sevFilter  = document.getElementById('sys-err-filter-sev')?.value  || ''
+  let url = `${API_BACKEND}/api/admin/errors?limit=50`
+  if (typeFilter) url += `&error_type=${typeFilter}`
+  if (sevFilter)  url += `&severity=${sevFilter}`
+
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) throw new Error(res.status)
+    const { errors, total } = await res.json()
+
+    // Badge con conteo
+    const critCount = errors.filter(e => e.severity === 'critical').length
+    if (badge) {
+      badge.textContent = total > 0 ? `${total}` : ''
+      badge.style.display = total > 0 ? '' : 'none'
+      badge.style.background = critCount > 0 ? '#ef4444' : '#f59e0b'
+    }
+
+    if (!errors.length) {
+      listEl.innerHTML = '<p style="color:var(--muted);font-size:12px;text-align:center;padding:24px 0">✅ Sin errores registrados</p>'
+      return
+    }
+
+    listEl.innerHTML = errors.map(e => {
+      const ts   = new Date(e.created_at).toLocaleString('es-AR', { dateStyle:'short', timeStyle:'medium' })
+      const icon = _SYS_ERR_SEV_ICON[e.severity] || '⚪'
+      const type = _SYS_ERR_TYPE_LABEL[e.error_type] || e.error_type
+      const det  = e.details ? `<pre style="margin:6px 0 0;font-size:10px;color:var(--muted);white-space:pre-wrap;background:var(--bg2);padding:8px;border-radius:6px;max-height:80px;overflow:auto">${JSON.stringify(e.details, null, 2)}</pre>` : ''
+      return `
+        <div style="padding:12px 0;border-bottom:1px solid var(--border2);display:flex;gap:12px;align-items:flex-start">
+          <span style="font-size:16px;margin-top:1px">${icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <span style="font-size:11px;font-weight:700;background:var(--bg2);padding:2px 7px;border-radius:20px;color:var(--muted2)">${type}</span>
+              <span style="font-size:11px;color:var(--muted)">${ts}</span>
+            </div>
+            <p style="font-size:13px;font-weight:600;margin:0;color:var(--text)">${e.message}</p>
+            ${det}
+          </div>
+          <button onclick="sysErrEliminar('${e.id}')"
+            style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 6px;border-radius:6px;flex-shrink:0"
+            title="Marcar como resuelto">✕</button>
+        </div>`
+    }).join('')
+  } catch(err) {
+    listEl.innerHTML = `<p style="color:var(--muted);font-size:12px;text-align:center;padding:24px">Error cargando: ${err.message}</p>`
+  }
+}
+
+async function sysErrEliminar(id) {
+  const { data: { session } } = await sb.auth.getSession()
+  const token = session?.access_token
+  if (!token) return
+  try {
+    await fetch(`${API_BACKEND}/api/admin/errors/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    sysErrCargar()
+  } catch(_) {}
 }
 
 // ── Supabase ──────────────────────────────────────────────────
