@@ -6363,32 +6363,14 @@ async function iniciarSimulacion() {
   SIM.camX = (bx0 + bx1) / 2
   SIM.camY = (by0 + by1) / 2
 
-  // Velocidad dinámica: siempre ~5s en total, dramático con pocas butacas
-  const TOTAL_MS   = 5000
-  const frameMs    = simTotal <= 50 ? Math.max(16, Math.round(TOTAL_MS / Math.max(simTotal, 1))) : 16
-  const batchSize  = simTotal <= 50 ? 1 : Math.max(1, Math.ceil(simTotal / (TOTAL_MS / 16)))
-
-  SIM.ivId = setInterval(() => {
-    const end = Math.min(SIM.revealed + batchSize, simTotal)
-    while (SIM.revealed < end) {
-      SIM.revealedArr[SIM.order[SIM.revealed]] = 1
-      SIM.revealed++
-    }
-    document.getElementById('sim-progress').textContent =
-      SIM.revealed.toLocaleString('es-AR')
-    if (SIM.revealed >= simTotal) {
-      clearInterval(SIM.ivId)
-      // Terminar animación del label y mostrar footer
-      const fs = document.getElementById('sim-floating-status')
-      if (fs) fs.classList.remove('counting')
-      const lbl = document.getElementById('sim-floating-label')
-      if (lbl) lbl.textContent = '✓ Votos revelados'
-      setTimeout(() => {
-        const footer = document.getElementById('sim-footer-bar')
-        if (footer) footer.classList.add('show')
-      }, 600)
-    }
-  }, frameMs)
+  // Duración total dinámica: dramático con pocas butacas, épico con muchas
+  SIM.startTime  = Date.now()
+  SIM.flashMap   = {}   // seat_num → timestamp de revelación (para efecto pop)
+  SIM._done      = false
+  SIM.REVEAL_DUR = simTotal <= 5  ? 4000
+                 : simTotal <= 20 ? 3500
+                 : simTotal <= 80 ? 4000
+                 : 5000
 
   simDraw()
 }
@@ -6405,6 +6387,43 @@ function simDraw() {
   const W = simCSSW, H = simCSSH
   const t = Date.now()
   const dotR = Math.max(3.5, DOT_R * SIM.camS)
+
+  // ── Reveal frame-driven (curva cúbica + jitter aleatorio) ────────────────
+  const _simTotal = SIM.order.length
+  if (_simTotal > 0 && SIM.revealed < _simTotal && SIM.startTime) {
+    const elapsed = t - SIM.startTime
+    const rawT    = Math.min(elapsed / SIM.REVEAL_DUR, 1)
+    // Cubic ease-in-out: tensión al inicio, explosión en el medio, suspenso al final
+    const eased   = rawT < 0.5
+      ? 4 * rawT * rawT * rawT
+      : 1 - Math.pow(-2 * rawT + 2, 3) / 2
+    // Jitter: rafagas cortas aleatorias para sorpresa visual
+    const jitter  = Math.random() < 0.25 ? Math.ceil(Math.random() * (1 + _simTotal * 0.04)) : 0
+    const target  = Math.min(Math.floor(eased * _simTotal) + jitter, _simTotal)
+    const prev    = SIM.revealed
+    while (SIM.revealed < target) {
+      const snum = SIM.order[SIM.revealed]
+      SIM.revealedArr[snum] = 1
+      SIM.flashMap[snum]    = t   // timestamp para flash pop
+      SIM.revealed++
+    }
+    if (SIM.revealed > prev) {
+      document.getElementById('sim-progress').textContent =
+        SIM.revealed.toLocaleString('es-AR')
+    }
+    if (SIM.revealed >= _simTotal && !SIM._done) {
+      SIM._done = true
+      const fs = document.getElementById('sim-floating-status')
+      if (fs) fs.classList.remove('counting')
+      const lbl = document.getElementById('sim-floating-label')
+      if (lbl) lbl.textContent = '✓ Votos revelados'
+      setTimeout(() => {
+        const footer = document.getElementById('sim-footer-bar')
+        if (footer) footer.classList.add('show')
+      }, 600)
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   simCtx.clearRect(0, 0, W, H)
   simCtx.fillStyle = '#1d1d1d'
@@ -6488,6 +6507,27 @@ function simDraw() {
     simCtx.fill()
     simCtx.shadowBlur = 0
   })
+
+  // Pass 5: Flash pop — bloom blanco que explota al revelar cada dot
+  if (SIM.flashMap) {
+    SEATS.forEach(s => {
+      const ts = SIM.flashMap[s.num]
+      if (!ts) return
+      const age = t - ts
+      if (age > 450) return
+      const ft = 1 - age / 450   // 1 → 0
+      const { x: sx, y: sy } = simToScreen(s.x, s.y)
+      if (sx < -dotR*12 || sx > W+dotR*12 || sy < -dotR*12 || sy > H+dotR*12) return
+      // Anillo exterior de halo
+      simCtx.shadowColor = `rgba(255,255,255,${ft * 0.85})`
+      simCtx.shadowBlur  = dotR * (10 + ft * 14)
+      simCtx.beginPath()
+      simCtx.arc(sx, sy, dotR * (1.1 + ft * 2.2), 0, Math.PI * 2)
+      simCtx.fillStyle = `rgba(255,255,255,${ft * 0.9})`
+      simCtx.fill()
+      simCtx.shadowBlur = 0
+    })
+  }
 
   if (SIM.active) requestAnimationFrame(simDraw)
 }
