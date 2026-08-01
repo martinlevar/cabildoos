@@ -6995,7 +6995,16 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
         return
       }
       if (_isPasswordRecovery) return
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) await _onLogin(session.user)
+      // INITIAL_SESSION lo manejamos abajo directamente — ignorar aquí para evitar doble _onLogin
+      if (event === 'INITIAL_SESSION') return
+      // SIGNED_IN → login nuevo completo
+      if (event === 'SIGNED_IN' && session?.user) {
+        await _onLogin(session.user)
+      }
+      // TOKEN_REFRESHED → solo restaurar sesión si el UI quedó en estado deslogueado
+      if (event === 'TOKEN_REFRESHED' && session?.user && !_authUser) {
+        await _onLogin(session.user)
+      }
     })
 
     if (_isPasswordRecovery) {
@@ -7007,7 +7016,7 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
     }
   } catch(e) {
     console.error('Auth init error:', e)
-    try { _onLogout() } catch(_) {}
+    // No llamar _onLogout() — si algo falla, dejar la UI como está y que el usuario refresque
   } finally {
     const _authOverlay = document.getElementById('auth-loading-overlay')
     if (_authOverlay) {
