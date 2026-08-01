@@ -2398,6 +2398,36 @@ body.on-verify-onboard #social-footer      { display:none !important; pointer-ev
 body.on-verify-onboard #citizens-panel     { display:none !important; pointer-events:none !important; }
 body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-events:none !important; }
 
+/* ══ MODO OBSERVADOR — solo dots + preguntas (ver) + botón crear butaca ══
+   Se activa con body.observer-mode cuando MY_SEAT=0 y no hay sesión.
+   El objetivo es que el cabildo sea un hook visual para que el observador
+   quiera crear su cuenta — ve el hemiciclo en vivo pero no puede participar. */
+
+/* Ocultar toda interacción de nav excepto "Crear cuenta" */
+body.observer-mode #nav-action-btns       { display:none !important; }
+body.observer-mode #nav-social-btns       { display:none !important; }
+body.observer-mode #nav-group-sep         { display:none !important; }
+body.observer-mode #nav-upill-wrap        { display:none !important; }
+body.observer-mode #nav-user-divider      { display:none !important; }
+
+/* Ocultar footer de ciudadanos, social footer, floating footer */
+body.observer-mode .citizen-count         { pointer-events:none; opacity:.4; cursor:default; }
+body.observer-mode #social-footer         { display:none !important; }
+body.observer-mode #sim-footer-bar        { display:none !important; }
+body.observer-mode #citizens-panel        { display:none !important; }
+
+/* Preguntas: visible pero sin poder votar */
+body.observer-mode .q-card-vote-btn       { display:none !important; }
+body.observer-mode .im-vote-btn           { display:none !important; }
+body.observer-mode .pc-vote-btn           { display:none !important; }
+body.observer-mode #debate-panel          { display:none !important; }
+
+/* Footer del congress: solo marca y copyright, sin links de acción */
+body.observer-mode .cf-links              { display:none !important; }
+
+/* Banner de "Participá" sobre las preguntas para invitar a crear cuenta */
+body.observer-mode #observer-cta-strip    { display:flex !important; }
+
 /* ── SOCIAL FOOTER — ocultar pill, solo paneles ── */
 #social-footer .sf-tabs-row { display:none !important; }
 /* El contenedor sigue siendo el anchor para los paneles */
@@ -3665,6 +3695,12 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
         <button class="intro-btn-primary" onclick="abrirAuth('registro')">Crear usuario →</button>
         <button class="intro-btn-ghost" onclick="abrirAuth('login')">Ya tengo cuenta</button>
       </div>
+      <button onclick="entrarComoObservador()"
+        style="margin-top:16px;background:none;border:none;cursor:pointer;
+               color:rgba(255,255,255,.45);font-size:12px;font-weight:500;
+               text-decoration:underline;text-underline-offset:3px">
+        Ver el cabildo sin registrarme
+      </button>
     </div>
   </div>
 </div>
@@ -3949,6 +3985,18 @@ body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-ev
     <!-- Create account button (logged out) -->
     <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()">Crear cuenta</button>
   </nav>
+  <!-- CTA para observadores: aparece solo con body.observer-mode -->
+  <div id="observer-cta-strip" style="display:none;align-items:center;justify-content:space-between;
+    padding:10px 20px;background:linear-gradient(90deg,#1d1d1d,#2d2d2d);gap:16px;flex-shrink:0">
+    <p style="font-size:13px;color:rgba(255,255,255,.75);margin:0">
+      👁 Estás observando el hemiciclo en vivo — <strong style="color:#fff">creá tu butaca para participar</strong>
+    </p>
+    <button onclick="abrirAuth('registro')" style="background:#f76a1e;color:#fff;border:none;
+      border-radius:20px;padding:7px 18px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
+      Crear butaca →
+    </button>
+  </div>
+
   <div class="body" style="flex:1;min-height:0">
     <div id="q-cards-strip"></div>
     <div class="canvas-area" id="canvas-area">
@@ -6924,6 +6972,8 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
 
 async function _onLogin(user) {
   _authUser = user
+  // Al loguearse, salir del modo observador
+  document.body.classList.remove('observer-mode')
 
   // ── Limpiar MY_SEAT ANTES de resizeCanvas → evita que localStorage de una sesión
   //    anterior muestre la butaca de otro usuario como "Tú" en el hemiciclo
@@ -7040,6 +7090,7 @@ async function _onLogin(user) {
 function _onLogout() {
   _authUser = null
   _authProfile = null
+  document.body.classList.add('observer-mode')
   // Legacy landing nav
   const btnAuthNav = document.getElementById('btn-auth-nav')
   if (btnAuthNav) btnAuthNav.style.display = 'block'
@@ -9838,6 +9889,7 @@ function initQuestionsRealtime() {
 }
 
 function entrarComoObservador() {
+  document.body.classList.add('observer-mode')
   showScreen('congress')
 }
 
@@ -11693,6 +11745,11 @@ let _upmMsgChannel = null
 window._upmFromTab = 'seguidores'
 
 async function abrirUserProfile(seatNum, fromTab) {
+  // En modo observador: clic en un dot → invitar a crear cuenta, no mostrar perfil
+  if (document.body.classList.contains('observer-mode')) {
+    abrirAuth('registro')
+    return
+  }
   _upmSeat    = seatNum
   _upmFromTab = fromTab || 'seguidores'
   window._upmFromTab = _upmFromTab
