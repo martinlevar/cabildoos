@@ -6985,20 +6985,13 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
 
   // getSession() espera a que el token se refresque si está vencido
   try {
-    const { data: { session }, error } = await sb.auth.getSession()
-    console.log('[auth] getSession result:', session?.user?.email ?? 'null', error ?? '')
+    const { data: { session } } = await sb.auth.getSession()
     if (_isPasswordRecovery) { showScreen('congress'); return }
-    if (session?.user) {
-      console.log('[auth] llamando _onLogin...')
-      await _onLogin(session.user)
-      console.log('[auth] _onLogin completó')
-    } else {
-      console.log('[auth] sin sesión → _onLogout')
-      _onLogout()
-    }
+    if (session?.user) await _onLogin(session.user)
+    else _onLogout()
   } catch(e) {
-    console.error('[auth] ERROR en init:', e)
-    _onLogout()
+    console.error('[auth] init error:', e)
+    try { _onLogout() } catch(_) {}
   }
 })()
 
@@ -7136,7 +7129,7 @@ function _onLogout() {
   const socBtns2 = document.getElementById('nav-social-btns')
   if (socBtns2) socBtns2.style.display = 'none'
   // Ocultar social footer
-  document.getElementById('social-footer').classList.remove('visible')
+  document.getElementById('social-footer')?.classList.remove('visible')
   // Limpiar caché de butaca — previene que el próximo usuario herede el seat
   localStorage.removeItem('cabildoos_butaca')
   localStorage.removeItem('cabildoos_vid')
@@ -11619,7 +11612,7 @@ function abrirSocialTab(tab) {
 // ── Cerrar centro modal social ──
 function cerrarSocialPanel() {
   sfActiveTab = null
-  document.getElementById('sf-center-modal').classList.remove('open')
+  document.getElementById('sf-center-modal')?.classList.remove('open')
   document.querySelectorAll('.sf-cm-tab').forEach(t => t.classList.remove('active'))
   document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
   document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
