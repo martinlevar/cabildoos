@@ -7028,72 +7028,57 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
 
 async function _onLogin(user) {
   _authUser = user
-  // Al loguearse, salir del modo observador
   document.body.classList.remove('observer-mode')
 
-  // ── Limpiar MY_SEAT ANTES de resizeCanvas → evita que localStorage de una sesión
-  //    anterior muestre la butaca de otro usuario como "Tú" en el hemiciclo
   localStorage.removeItem('cabildoos_butaca')
   localStorage.removeItem('cabildoos_vid')
   MY_SEAT = 0
 
-  // Mostrar selector mientras carga el perfil (resizeCanvas necesita el canvas activo)
   showScreen('congress')
-  resizeCanvas()   // buildSeats() corre con MY_SEAT=0 → sin butaca propia hasta confirmar perfil
-  // Cargar perfil
+  resizeCanvas()
+
+  // ── Nav: actualizar ANTES de cualquier await para que nunca aparezca "Crear cuenta" ──
+  const _emailName = user.email?.split('@')[0] || 'Usuario'
+  document.getElementById('nav-creat-btn')?.style.setProperty('display', 'none')
+  document.getElementById('nav-upill-wrap')?.style.setProperty('display', 'flex')
+  document.getElementById('nav-user-divider')?.style.setProperty('display', 'block')
+  document.getElementById('nav-upill-alias')  && (document.getElementById('nav-upill-alias').textContent  = _emailName)
+  document.getElementById('nav-umenu-alias')  && (document.getElementById('nav-umenu-alias').textContent  = _emailName)
+  document.getElementById('nav-upill-av')     && (document.getElementById('nav-upill-av').textContent     = _emailName.charAt(0).toUpperCase())
+  document.getElementById('btn-auth-nav')?.style.setProperty('display', 'none')
+  const navInfo = document.getElementById('nav-user-info')
+  if (navInfo) navInfo.style.display = 'flex'
+
+  // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
   _authProfile = profile
-  // Privacidad granular desde DB — nunca desde localStorage
   _visibilidad.alias  = !!profile?.show_alias
   _visibilidad.phrase = !!profile?.show_phrase
   _visibilidad.votes  = !!profile?.show_votes
   perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
 
-  // Nav landing — legacy (la pantalla landing sigue en DOM pero oculta)
-  const btnAuthNav = document.getElementById('btn-auth-nav')
-  if (btnAuthNav) btnAuthNav.style.display = 'none'
-  const navInfo = document.getElementById('nav-user-info')
-  if (navInfo) navInfo.style.display = 'flex'
-  // Nombre: alias o parte antes del @ del email
-  const displayName = profile?.alias || user.email?.split('@')[0] || 'Usuario'
-  const navUserAlias = document.getElementById('nav-user-alias')
-  if (navUserAlias) navUserAlias.textContent = displayName
+  // Actualizar nav con nombre real (alias) si está disponible
+  const displayName = profile?.alias || _emailName
+  document.getElementById('nav-upill-alias')  && (document.getElementById('nav-upill-alias').textContent  = displayName)
+  document.getElementById('nav-umenu-alias')  && (document.getElementById('nav-umenu-alias').textContent  = displayName)
+  document.getElementById('nav-upill-av')     && (document.getElementById('nav-upill-av').textContent     = displayName.charAt(0).toUpperCase())
+  document.getElementById('nav-user-alias')   && (document.getElementById('nav-user-alias').textContent   = displayName)
 
-  // Badge de verificación en el dropdown (landing)
+  // Badge de verificación en el dropdown
   const ddBadge = document.getElementById('nav-dd-status-badge')
   const ddButaca = document.getElementById('nav-dd-butaca')
   if (profile?.seat_number) {
     if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
     if (ddButaca) ddButaca.textContent = '· Butaca #' + profile.seat_number
   } else {
-    // Verificar si tiene solicitud pending
     const { data: req } = await sb.from('verification_requests')
       .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
     if (ddBadge) {
-      if (req?.status === 'pending') {
-        ddBadge.textContent = 'En revisión'; ddBadge.className = 'nav-dd-pending'
-      } else {
-        ddBadge.textContent = 'Sin verificar'; ddBadge.className = 'nav-dd-pending'
-      }
+      ddBadge.textContent = req?.status === 'pending' ? 'En revisión' : 'Sin verificar'
+      ddBadge.className = 'nav-dd-pending'
     }
     if (ddButaca) ddButaca.textContent = ''
   }
-
-  // ── Congress nav — nuevo UI ──
-  const initial = displayName.charAt(0).toUpperCase()
-  // Ocultar "Crear cuenta", mostrar pill de usuario
-  const creatBtn = document.getElementById('nav-creat-btn')
-  if (creatBtn) creatBtn.style.display = 'none'
-  const upillWrap = document.getElementById('nav-upill-wrap')
-  if (upillWrap) upillWrap.style.display = 'flex'
-  const udiv = document.getElementById('nav-user-divider')
-  if (udiv) udiv.style.display = 'block'
-  const aliasEl = document.getElementById('nav-upill-alias')
-  if (aliasEl) aliasEl.textContent = displayName
-  const menuAliasEl = document.getElementById('nav-umenu-alias')
-  if (menuAliasEl) menuAliasEl.textContent = displayName
-  const avEl = document.getElementById('nav-upill-av')
-  if (avEl) avEl.textContent = initial
 
   // Landing: VaV — fuente de verdad es Supabase (profile.seat_number)
   // localStorage es solo caché; si falta, lo reconstruimos desde el perfil
