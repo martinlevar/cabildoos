@@ -3573,6 +3573,18 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 </head>
 <body>
 
+<!-- ── AUTH LOADING OVERLAY — cubre la página hasta que Supabase resuelve la sesión ── -->
+<div id="auth-loading-overlay" style="
+  position:fixed;inset:0;z-index:99999;
+  background:#0f0f0f;
+  display:flex;align-items:center;justify-content:center;
+  transition:opacity .25s ease;
+">
+  <span style="font-family:'Manrope',sans-serif;font-size:20px;font-weight:800;
+               letter-spacing:-.5px;color:#fff;opacity:.9">cabildoOS</span>
+</div>
+
+
 <!-- ══════════════ SPLASH ══════════════ -->
 <div id="splash">
   <canvas id="splash-canvas"></canvas>
@@ -6987,12 +6999,18 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
   })
 
   if (_isPasswordRecovery) {
-    // Llegó desde link de reset — mostrar congress de fondo, PASSWORD_RECOVERY abrirá el modal
     showScreen('congress')
   } else if (session?.user) {
     await _onLogin(session.user)
   } else {
     _onLogout()
+  }
+
+  // Ocultar overlay de carga — auth ya resolvió
+  const _authOverlay = document.getElementById('auth-loading-overlay')
+  if (_authOverlay) {
+    _authOverlay.style.opacity = '0'
+    setTimeout(() => _authOverlay.remove(), 280)
   }
 })()
 
