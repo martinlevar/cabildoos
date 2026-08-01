@@ -9287,7 +9287,7 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime(); initFollowsRealtime() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime(); initProfilesRealtime(); initFollowsRealtime() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
@@ -9295,6 +9295,7 @@ if (document.readyState === 'loading') {
   cargarPreguntasActivas()
   initQuestionsRealtime()
   initVotesRealtime()
+  initProfilesRealtime()
   initFollowsRealtime()
 }
 
@@ -9763,24 +9764,61 @@ function _clearNotifications() {
   _renderNotifBadge()
 }
 
-/// ── Polling de conteo de votos (cada 20s) — más eficiente que realtime a escala ──
-// Con 2000 usuarios, 1 evento INSERT en votes generaría 2000 mensajes WebSocket simultáneos.
-// El polling hace 1 query cada 20s y actualiza todos los conteos de una vez.
+// ── Realtime de votos y perfiles — todos ven lo mismo, siempre actualizado ──
 let _votesPollingInterval = null
+let _votesChannel = null
+let _profilesChannel = null
+
 function initVotesRealtime() {
   if (_votesPollingInterval) clearInterval(_votesPollingInterval)
-  // Actualización inmediata al voto propio (via _refreshMyVoteCount en confirmarVoto)
-  // Polling para conteos ajenos
-  _votesPollingInterval = setInterval(async () => {
-    try {
-      const { data } = await sb.rpc('get_profiles_with_vote_counts')
-      if (data) data.forEach(r => {
-        if (_profilesCache[r.seat_number]) {
-          _profilesCache[r.seat_number].votes = Number(r.vote_count) || 0
+
+  // Supabase Realtime: INSERT/DELETE en votes → actualizar butaca afectada al instante
+  // votes tiene SELECT policy para anon+authenticated → funciona para observadores también
+  if (_votesChannel) { try { sb.removeChannel(_votesChannel) } catch(_) {} }
+  try {
+    _votesChannel = sb.channel('votes-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes' }, payload => {
+        const seat = payload.new?.seat_number
+        if (!seat) return
+        if (_profilesCache[seat]) {
+          _profilesCache[seat].votes = (_profilesCache[seat].votes || 0) + 1
+          buildSeats()
+        } else {
+          // Butaca que aún no estaba en cache → recargar todo (p.ej. perfil recién hecho público)
+          cargarPerfilesPublicos().then(() => buildSeats())
         }
       })
-    } catch(e) {}
-  }, 20000)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'votes' }, payload => {
+        const seat = payload.old?.seat_number
+        if (!seat || !_profilesCache[seat]) return
+        _profilesCache[seat].votes = Math.max(0, (_profilesCache[seat].votes || 1) - 1)
+        buildSeats()
+      })
+      .subscribe()
+  } catch(e) { console.warn('votes-live realtime:', e) }
+
+  // Fallback: rebuild completo cada 60s para corregir cualquier desync acumulado
+  _votesPollingInterval = setInterval(() => {
+    cargarPerfilesPublicos().then(() => buildSeats())
+  }, 60000)
+}
+
+// ── Realtime de perfiles: cambios de alias, privacidad o frase → todos los ven al instante ──
+function initProfilesRealtime() {
+  if (_profilesChannel) { try { sb.removeChannel(_profilesChannel) } catch(_) {} }
+  try {
+    _profilesChannel = sb.channel('profiles-live')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, async () => {
+        // Un perfil cambió (alias, is_public, phrase) → recargamos cache y redibujamos
+        await cargarPerfilesPublicos()
+        buildSeats()
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, async () => {
+        await cargarPerfilesPublicos()
+        buildSeats()
+      })
+      .subscribe()
+  } catch(e) { console.warn('profiles-live realtime:', e) }
 }
 
 // ── Realtime: auto-actualiza preguntas cuando el admin crea/activa una ──
