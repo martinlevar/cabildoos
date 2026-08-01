@@ -2776,8 +2776,9 @@ function renderUsuarios() {
       <div class="u-email">${u.email}</div>
       <div class="u-date">${ago}</div>
       <div>${st}</div>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
         ${noVerif ? `<button class="btn btn-ghost btn-sm" onclick="recordarVerificacion('${u.id}','${u.email}','${u.alias}')" style="font-size:11px;white-space:nowrap">📧 Recordar</button>` : ''}
+        <button class="btn btn-sm" onclick="eliminarUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#ef444420;color:#ef4444;border-color:#ef444440">🗑 Borrar</button>
       </div>
     </div>`
   }).join('')
@@ -2801,6 +2802,26 @@ async function recordarVerificacion(uid, email, alias) {
       const btn = row.querySelector('button')
       if (btn) { btn.textContent = '✓ Enviado'; btn.disabled = true }
     }
+  } catch(e) {
+    toast('Error: ' + e.message)
+  }
+}
+
+async function eliminarUsuario(uid, email) {
+  if (!confirm(`¿Borrar permanentemente al usuario ${email}?\n\nEsta acción no se puede deshacer.`)) return
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const token = session?.access_token
+    const resp = await fetch(`${API_BASE}/api/admin/users/${uid}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!resp.ok) throw new Error((await resp.json()).detail)
+    document.getElementById('usr-' + uid)?.remove()
+    _usersCache = _usersCache.filter(u => u.id !== uid)
+    const label = document.getElementById('usr-count-label')
+    if (label) label.textContent = `${_usersCache.length} usuarios`
+    toast('✓ Usuario eliminado permanentemente')
   } catch(e) {
     toast('Error: ' + e.message)
   }
