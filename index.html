@@ -6978,61 +6978,50 @@ let _authProfile = null  // perfil (alias, seat_number)
 let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
 
 // Inicializar auth al cargar
-// Usamos onAuthStateChange como única fuente de verdad para el estado inicial.
-// getSession() puede devolver null si el token expiró y el refresh aún no terminó,
-// lo que causaría un flash de "deslogueado". INITIAL_SESSION siempre llega
-// con la sesión correcta una vez que el refresh termina.
-;(async () => {
-  await new Promise(resolve => {
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        _isPasswordRecovery = true
-        showScreen('congress')
-        setTimeout(() => abrirAuth('reset'), 80)
-        resolve()
-        return
-      }
-
-      if (event === 'INITIAL_SESSION') {
-        // Este evento siempre llega primero y con el estado correcto
-        try {
-          if (_isPasswordRecovery) {
-            showScreen('congress')
-          } else if (session?.user) {
-            await _onLogin(session.user)
-          } else {
-            _onLogout()
-          }
-        } catch(e) {
-          console.error('Auth init error:', e)
-        }
-        resolve()
-        return
-      }
-
-      // Eventos posteriores (no iniciales)
-      if (event === 'SIGNED_OUT') {
-        _isPasswordRecovery = false
-        _onLogout()
-        return
-      }
-      if (_isPasswordRecovery) return
-      if (event === 'SIGNED_IN' && session?.user) {
-        await _onLogin(session.user)
-      }
-      // TOKEN_REFRESHED: solo re-inicializar si el UI quedó en estado deslogueado
-      if (event === 'TOKEN_REFRESHED' && session?.user && !_authUser) {
-        await _onLogin(session.user)
-      }
-    })
-  })
-
-  // Overlay se quita DESPUÉS de que INITIAL_SESSION resolvió y _onLogin completó
-  const _authOverlay = document.getElementById('auth-loading-overlay')
-  if (_authOverlay) {
-    _authOverlay.style.opacity = '0'
-    setTimeout(() => _authOverlay.remove(), 280)
+;(() => {
+  let _overlayDone = false
+  const _hideOverlay = () => {
+    if (_overlayDone) return
+    _overlayDone = true
+    const el = document.getElementById('auth-loading-overlay')
+    if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 280) }
   }
+
+  // Timeout de seguridad: si nada resolvió en 5s, mostrar la UI igual
+  setTimeout(_hideOverlay, 5000)
+
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      _isPasswordRecovery = true
+      showScreen('congress')
+      setTimeout(() => abrirAuth('reset'), 80)
+      _hideOverlay()
+      return
+    }
+
+    if (event === 'SIGNED_OUT') {
+      _isPasswordRecovery = false
+      _onLogout()
+      _hideOverlay()
+      return
+    }
+
+    if (_isPasswordRecovery) { _hideOverlay(); return }
+
+    if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+      try { await _onLogin(session.user) } catch(e) { console.error('_onLogin error:', e) }
+      _hideOverlay()
+      return
+    }
+
+    if (event === 'INITIAL_SESSION' && !session?.user) {
+      // Bug conocido en supabase-js v2: INITIAL_SESSION puede llegar con null
+      // mientras TOKEN_REFRESHED aún está en camino. Esperar 800ms antes de asumir logout.
+      setTimeout(() => {
+        if (!_authUser) { _onLogout(); _hideOverlay() }
+      }, 800)
+    }
+  })
 })()
 
 async function _onLogin(user) {
