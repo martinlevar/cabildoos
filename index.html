@@ -6984,10 +6984,22 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
   })
 
   // getSession() espera a que el token se refresque si está vencido
-  const { data: { session } } = await sb.auth.getSession()
-  if (_isPasswordRecovery) { showScreen('congress'); return }
-  if (session?.user) await _onLogin(session.user)
-  else _onLogout()
+  try {
+    const { data: { session }, error } = await sb.auth.getSession()
+    console.log('[auth] getSession result:', session?.user?.email ?? 'null', error ?? '')
+    if (_isPasswordRecovery) { showScreen('congress'); return }
+    if (session?.user) {
+      console.log('[auth] llamando _onLogin...')
+      await _onLogin(session.user)
+      console.log('[auth] _onLogin completó')
+    } else {
+      console.log('[auth] sin sesión → _onLogout')
+      _onLogout()
+    }
+  } catch(e) {
+    console.error('[auth] ERROR en init:', e)
+    _onLogout()
+  }
 })()
 
 async function _onLogin(user) {
