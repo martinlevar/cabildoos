@@ -5613,9 +5613,11 @@ function getProfile(num) {
     }
   }
   // ── Datos reales desde Supabase (caché cargado por cargarPerfilesPublicos)
+  // La RPC ahora devuelve TODOS los asientos: públicos con alias, privados con alias=null
   const cached = _profilesCache[num]
-  if (cached) {
-    const cIdx = num % AVATAR_COLORS.length
+  const cIdx = num % AVATAR_COLORS.length
+  if (cached && cached.isPublic && cached.alias) {
+    // Perfil público con identidad visible
     return {
       isMe: false, isAnon: false,
       name: cached.alias,
@@ -5626,15 +5628,14 @@ function getProfile(num) {
       initials: cached.alias.slice(0, 2).toUpperCase(),
     }
   }
-  // ── Fallback: butaca sin perfil público = ciudadano anónimo
-  // No se simulan datos. Si no está en _profilesCache es porque eligió privado.
-  const cIdx = num % AVATAR_COLORS.length
+  // Perfil privado (en cache sin alias) o todavía sin datos: mostrar anónimo
+  // pero con el conteo de votos real si lo tenemos
   return {
     isMe: false, isAnon: true,
     name: `Butaca #${num}`,
     displayName: `Butaca #${num}`,
     phrase: '',
-    votes: 0,
+    votes: cached?.votes || 0,   // ← conteo real aunque sea privado
     color: AVATAR_COLORS[cIdx],
     initials: '#',
   }
@@ -10297,21 +10298,23 @@ let PREGUNTAS_DATA = []
 let qIdx = 0, _revealTriggered = {}
 
 // ── Caché de perfiles reales desde Supabase
-//    seat_number → { alias, phrase, votes }
+//    seat_number → { alias, phrase, votes, isPublic }
+//    Perfiles privados: alias=null, phrase=null, votes=real — el conteo no es dato sensible
 let _profilesCache = {}
 
 async function cargarPerfilesPublicos() {
   try {
-    // Una sola query atómica: perfiles + conteo de votos — sin race condition
+    // Una sola query atómica: TODOS los asientos + votos reales (privados sin alias/phrase)
     const { data: rows, error } = await sb.rpc('get_profiles_with_vote_counts')
     if (error) throw error
     if (rows) {
       _profilesCache = {}
       rows.forEach(r => {
         _profilesCache[r.seat_number] = {
-          alias:  r.alias  || `Butaca #${r.seat_number}`,
-          phrase: r.phrase || '',
-          votes:  Number(r.vote_count) || 0
+          alias:    r.alias    || null,   // null si privado
+          phrase:   r.phrase   || '',
+          votes:    Number(r.vote_count) || 0,
+          isPublic: !!r.is_public,
         }
       })
     }
@@ -11755,12 +11758,13 @@ async function abrirUserProfile(seatNum, fromTab) {
   window._upmFromTab = _upmFromTab
   cerrarSocialModal()
 
-  // Poblar header — si no está en cache es perfil PRIVADO
-  const p         = _profilesCache[seatNum]  // solo usuarios públicos están en cache
-  const isPrivate = !p
-  const alias     = p?.alias  || `Butaca #${seatNum}`
+  // Poblar header — la RPC ahora incluye todos los asientos
+  // isPrivate = en cache pero sin alias (privado), o no en cache aún
+  const p         = _profilesCache[seatNum]
+  const isPrivate = !p?.isPublic || !p?.alias
+  const alias     = (p?.isPublic && p?.alias) ? p.alias : `Butaca #${seatNum}`
   const phrase    = p?.phrase || ''
-  const votes     = p?.votes  || 0
+  const votes     = p?.votes  || 0   // conteo real siempre, incluso para privados
   const cIdx      = seatNum % AVATAR_COLORS.length
   const color     = AVATAR_COLORS[cIdx]
 
@@ -11776,7 +11780,7 @@ async function abrirUserProfile(seatNum, fromTab) {
   document.getElementById('upm-phrase-hero').textContent = isPrivate
     ? 'Este ciudadano eligió mantener su identidad privada.'
     : (phrase ? `"${phrase}"` : '')
-  document.getElementById('upm-stat-votes').textContent  = isPrivate ? '—' : votes
+  document.getElementById('upm-stat-votes').textContent  = votes  // siempre el número real
 
   // Seguir button
   const fbtn = document.getElementById('upm-follow-btn')
