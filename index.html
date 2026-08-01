@@ -6397,9 +6397,7 @@ function simDraw() {
     const eased   = rawT < 0.5
       ? 4 * rawT * rawT * rawT
       : 1 - Math.pow(-2 * rawT + 2, 3) / 2
-    // Jitter: rafagas cortas aleatorias para sorpresa visual
-    const jitter  = Math.random() < 0.25 ? Math.ceil(Math.random() * (1 + _simTotal * 0.04)) : 0
-    const target  = Math.min(Math.floor(eased * _simTotal) + jitter, _simTotal)
+    const target  = Math.min(Math.floor(eased * _simTotal), _simTotal)
     const prev    = SIM.revealed
     while (SIM.revealed < target) {
       const snum = SIM.order[SIM.revealed]
@@ -6441,93 +6439,90 @@ function simDraw() {
     simCtx.fill()
   })
 
-  // Pass 2a: no votó — gris muy claro
+  // Helper: fade-in suave desde el momento de revelación (efecto "luz que enciende")
+  // ft = 0 justo al revelar, 1 cuando ya está completamente encendida (900ms)
+  const FADE_MS = 900
+  const _ft = snum => {
+    const ts = SIM.flashMap?.[snum]
+    if (!ts) return 1
+    return Math.min((t - ts) / FADE_MS, 1)
+  }
+  // Easing suave: empieza rápido, termina lento (como una bombita que calienta)
+  const _warmup = ft => ft < 0.5 ? 2*ft*ft : 1-(1-ft)*(1-ft)*2
+
+  // Pass 2a: no votó — gris, se enciende suavemente
   simCtx.shadowBlur = 0
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
     if (SIM.results[s.num] !== null && SIM.results[s.num] !== undefined) return
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
     if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) return
+    const w = _warmup(_ft(s.num))
+    simCtx.globalAlpha = 0.15 + w * 0.85
     simCtx.beginPath()
     simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
     simCtx.fillStyle = '#888888'
     simCtx.fill()
   })
+  simCtx.globalAlpha = 1
 
-  // Pass 2b: abstención explícita — amarillo/ámbar
+  // Pass 2b: abstención — ámbar, glow crece con el warmup
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
     if (SIM.results[s.num] !== 'abs') return
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
     if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
+    const w     = _warmup(_ft(s.num))
     const phase = (s.num * 1.3) % (Math.PI * 2)
-    const pulse = (Math.sin(Date.now() / 800 + phase) + 1) / 2
-    simCtx.shadowColor = `rgba(250,204,21,${0.45 + pulse * 0.35})`
-    simCtx.shadowBlur  = dotR * (3 + pulse * 5)
+    const pulse = (Math.sin(t / 800 + phase) + 1) / 2
+    simCtx.shadowColor = `rgba(250,204,21,${(0.35 + pulse * 0.3) * w})`
+    simCtx.shadowBlur  = dotR * (3 + pulse * 5) * w
+    simCtx.globalAlpha = 0.2 + w * 0.8
     simCtx.beginPath()
-    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.15), 0, Math.PI * 2)
+    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.12), 0, Math.PI * 2)
     simCtx.fillStyle = `rgb(${200 + Math.round(pulse*30)},${160 + Math.round(pulse*30)},${20 + Math.round(pulse*10)})`
     simCtx.fill()
     simCtx.shadowBlur = 0
   })
+  simCtx.globalAlpha = 1
 
-  // Pass 3: SÍ — green pulsing glow (traffic light)
+  // Pass 3: SÍ — verde, glow nace suave y respira cuando está encendido
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num] || SIM.results[s.num] !== 'si') return
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
     if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
-
+    const w     = _warmup(_ft(s.num))
     const phase = (s.num * 1.7) % (Math.PI * 2)
-    const pulse = (Math.sin(t / 700 + phase) + 1) / 2   // 0..1 breathing
-
-    // Outer glow pass
-    simCtx.shadowColor = `rgba(34,230,120,${0.55 + pulse * 0.45})`
-    simCtx.shadowBlur  = dotR * (4 + pulse * 7)
+    const pulse = (Math.sin(t / 700 + phase) + 1) / 2
+    simCtx.shadowColor = `rgba(34,230,120,${(0.45 + pulse * 0.4) * w})`
+    simCtx.shadowBlur  = dotR * (4 + pulse * 7) * w
+    simCtx.globalAlpha = 0.2 + w * 0.8
     simCtx.beginPath()
-    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.2), 0, Math.PI * 2)
+    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.18), 0, Math.PI * 2)
     simCtx.fillStyle = `rgb(${30 + Math.round(pulse*30)},${185 + Math.round(pulse*70)},${80 + Math.round(pulse*40)})`
     simCtx.fill()
     simCtx.shadowBlur = 0
   })
+  simCtx.globalAlpha = 1
 
-  // Pass 4: NO — red pulsing glow (traffic light)
+  // Pass 4: NO — rojo, mismo tratamiento suave
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num] || SIM.results[s.num] !== 'no') return
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
     if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
-
+    const w     = _warmup(_ft(s.num))
     const phase = (s.num * 2.1) % (Math.PI * 2)
     const pulse = (Math.sin(t / 650 + phase) + 1) / 2
-
-    simCtx.shadowColor = `rgba(240,60,60,${0.55 + pulse * 0.45})`
-    simCtx.shadowBlur  = dotR * (4 + pulse * 7)
+    simCtx.shadowColor = `rgba(240,60,60,${(0.45 + pulse * 0.4) * w})`
+    simCtx.shadowBlur  = dotR * (4 + pulse * 7) * w
+    simCtx.globalAlpha = 0.2 + w * 0.8
     simCtx.beginPath()
-    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.2), 0, Math.PI * 2)
+    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.18), 0, Math.PI * 2)
     simCtx.fillStyle = `rgb(${185 + Math.round(pulse*70)},${25 + Math.round(pulse*15)},${25 + Math.round(pulse*15)})`
     simCtx.fill()
     simCtx.shadowBlur = 0
   })
-
-  // Pass 5: Flash pop — bloom blanco que explota al revelar cada dot
-  if (SIM.flashMap) {
-    SEATS.forEach(s => {
-      const ts = SIM.flashMap[s.num]
-      if (!ts) return
-      const age = t - ts
-      if (age > 450) return
-      const ft = 1 - age / 450   // 1 → 0
-      const { x: sx, y: sy } = simToScreen(s.x, s.y)
-      if (sx < -dotR*12 || sx > W+dotR*12 || sy < -dotR*12 || sy > H+dotR*12) return
-      // Anillo exterior de halo
-      simCtx.shadowColor = `rgba(255,255,255,${ft * 0.85})`
-      simCtx.shadowBlur  = dotR * (10 + ft * 14)
-      simCtx.beginPath()
-      simCtx.arc(sx, sy, dotR * (1.1 + ft * 2.2), 0, Math.PI * 2)
-      simCtx.fillStyle = `rgba(255,255,255,${ft * 0.9})`
-      simCtx.fill()
-      simCtx.shadowBlur = 0
-    })
-  }
+  simCtx.globalAlpha = 1
 
   if (SIM.active) requestAnimationFrame(simDraw)
 }
