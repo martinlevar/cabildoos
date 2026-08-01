@@ -6978,51 +6978,60 @@ let _authProfile = null  // perfil (alias, seat_number)
 let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
 
 // Inicializar auth al cargar
+// Usamos onAuthStateChange como única fuente de verdad para el estado inicial.
+// getSession() puede devolver null si el token expiró y el refresh aún no terminó,
+// lo que causaría un flash de "deslogueado". INITIAL_SESSION siempre llega
+// con la sesión correcta una vez que el refresh termina.
 ;(async () => {
-  try {
-    const { data: { session } } = await sb.auth.getSession()
-
+  await new Promise(resolve => {
     sb.auth.onAuthStateChange(async (event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         _isPasswordRecovery = true
         showScreen('congress')
         setTimeout(() => abrirAuth('reset'), 80)
+        resolve()
         return
       }
+
+      if (event === 'INITIAL_SESSION') {
+        // Este evento siempre llega primero y con el estado correcto
+        try {
+          if (_isPasswordRecovery) {
+            showScreen('congress')
+          } else if (session?.user) {
+            await _onLogin(session.user)
+          } else {
+            _onLogout()
+          }
+        } catch(e) {
+          console.error('Auth init error:', e)
+        }
+        resolve()
+        return
+      }
+
+      // Eventos posteriores (no iniciales)
       if (event === 'SIGNED_OUT') {
         _isPasswordRecovery = false
         _onLogout()
         return
       }
       if (_isPasswordRecovery) return
-      // INITIAL_SESSION lo manejamos abajo directamente — ignorar aquí para evitar doble _onLogin
-      if (event === 'INITIAL_SESSION') return
-      // SIGNED_IN → login nuevo completo
       if (event === 'SIGNED_IN' && session?.user) {
         await _onLogin(session.user)
       }
-      // TOKEN_REFRESHED → solo restaurar sesión si el UI quedó en estado deslogueado
+      // TOKEN_REFRESHED: solo re-inicializar si el UI quedó en estado deslogueado
       if (event === 'TOKEN_REFRESHED' && session?.user && !_authUser) {
         await _onLogin(session.user)
       }
     })
+  })
 
-    if (_isPasswordRecovery) {
-      showScreen('congress')
-    } else if (session?.user) {
-      await _onLogin(session.user)
-    } else {
-      _onLogout()
-    }
-  } catch(e) {
-    console.error('Auth init error:', e)
-    // No llamar _onLogout() — si algo falla, dejar la UI como está y que el usuario refresque
-  } finally {
-    const _authOverlay = document.getElementById('auth-loading-overlay')
-    if (_authOverlay) {
-      _authOverlay.style.opacity = '0'
-      setTimeout(() => _authOverlay.remove(), 280)
-    }
+  // Overlay se quita DESPUÉS de que INITIAL_SESSION resolvió y _onLogin completó
+  const _authOverlay = document.getElementById('auth-loading-overlay')
+  if (_authOverlay) {
+    _authOverlay.style.opacity = '0'
+    setTimeout(() => _authOverlay.remove(), 280)
   }
 })()
 
