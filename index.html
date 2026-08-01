@@ -4138,13 +4138,32 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
         </div>
       </div>
 
-      <!-- Toggle perfil público -->
-      <div class="mp-toggle-row">
-        <div>
-          <p class="mp-toggle-lbl">Perfil público</p>
-          <p class="mp-toggle-sub" id="mp-toggle-sub">Tu identidad está oculta (anónimo)</p>
+      <!-- Controles de visibilidad granular -->
+      <div style="margin-top:4px">
+        <p class="mp-field-label" style="margin-bottom:10px">Visibilidad pública</p>
+        <div style="display:flex;flex-direction:column;gap:0;border:1.5px solid var(--border2);border-radius:14px;overflow:hidden">
+          <div class="mp-toggle-row" style="padding:14px 16px;border-bottom:1px solid var(--border2);margin:0;border-radius:0">
+            <div>
+              <p class="mp-toggle-lbl" style="margin:0">Alias</p>
+              <p style="font-size:11px;color:var(--mid);margin:2px 0 0">Tu nombre visible en el hemiciclo</p>
+            </div>
+            <button class="tog-sw" id="mp-toggle-alias" onclick="toggleVisibilidad('alias')"></button>
+          </div>
+          <div class="mp-toggle-row" style="padding:14px 16px;border-bottom:1px solid var(--border2);margin:0;border-radius:0">
+            <div>
+              <p class="mp-toggle-lbl" style="margin:0">Frase</p>
+              <p style="font-size:11px;color:var(--mid);margin:2px 0 0">Tu frase visible en tu perfil</p>
+            </div>
+            <button class="tog-sw" id="mp-toggle-phrase" onclick="toggleVisibilidad('phrase')"></button>
+          </div>
+          <div class="mp-toggle-row" style="padding:14px 16px;margin:0;border-radius:0">
+            <div>
+              <p class="mp-toggle-lbl" style="margin:0">Votaciones</p>
+              <p style="font-size:11px;color:var(--mid);margin:2px 0 0">Tu conteo de votos visible para otros</p>
+            </div>
+            <button class="tog-sw" id="mp-toggle-votes" onclick="toggleVisibilidad('votes')"></button>
+          </div>
         </div>
-        <button class="tog-sw" id="mp-toggle" onclick="togglePerfilPublico()"></button>
       </div>
 
       <!-- Votaciones — 3 tarjetas coloreadas -->
@@ -5605,10 +5624,10 @@ function getProfile(num) {
     const _votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
     const votesCount = _myVoteCount !== null ? _myVoteCount : Object.keys(_votos).length
     return {
-      isMe: true, isAnon: !perfilPublico,
-      name: 'Tú', displayName: perfilPublico ? (_authProfile?.alias || `Butaca #${MY_SEAT}`) : 'Ciudadano Anónimo',
-      phrase: _authProfile?.phrase || 'Mi butaca en el hemiciclo libre de Venezuela.',
-      votes: votesCount, color: '#f76a1e',
+      isMe: true, isAnon: !_visibilidad.alias,
+      name: 'Tú', displayName: _visibilidad.alias ? (_authProfile?.alias || `Butaca #${MY_SEAT}`) : 'Ciudadano Anónimo',
+      phrase: _visibilidad.phrase ? (_authProfile?.phrase || '') : '',
+      votes: _visibilidad.votes ? votesCount : 0, color: '#f76a1e',
       initials: String(MY_SEAT),
     }
   }
@@ -5616,26 +5635,25 @@ function getProfile(num) {
   // La RPC ahora devuelve TODOS los asientos: públicos con alias, privados con alias=null
   const cached = _profilesCache[num]
   const cIdx = num % AVATAR_COLORS.length
-  if (cached && cached.isPublic && cached.alias) {
-    // Perfil público con identidad visible
+  if (cached && cached.showAlias && cached.alias) {
+    // Alias visible: mostrar identidad + datos según toggles
     return {
       isMe: false, isAnon: false,
       name: cached.alias,
       displayName: cached.alias,
-      phrase: cached.phrase || '',
-      votes: cached.votes || 0,
+      phrase: cached.showPhrase ? (cached.phrase || '') : '',
+      votes: cached.showVotes  ? (cached.votes  || 0)  : 0,
       color: AVATAR_COLORS[cIdx],
       initials: cached.alias.slice(0, 2).toUpperCase(),
     }
   }
-  // Perfil privado (en cache sin alias) o todavía sin datos: mostrar anónimo
-  // pero con el conteo de votos real si lo tenemos
+  // Alias oculto: anónimo; votos sólo si show_votes está activo
   return {
     isMe: false, isAnon: true,
     name: `Butaca #${num}`,
     displayName: `Butaca #${num}`,
     phrase: '',
-    votes: cached?.votes || 0,   // ← conteo real aunque sea privado
+    votes: cached?.showVotes ? (cached?.votes || 0) : 0,
     color: AVATAR_COLORS[cIdx],
     initials: '#',
   }
@@ -6988,8 +7006,11 @@ async function _onLogin(user) {
   // Cargar perfil
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
   _authProfile = profile
-  // Privacidad desde DB — nunca desde localStorage
-  perfilPublico = !!profile?.is_public
+  // Privacidad granular desde DB — nunca desde localStorage
+  _visibilidad.alias  = !!profile?.show_alias
+  _visibilidad.phrase = !!profile?.show_phrase
+  _visibilidad.votes  = !!profile?.show_votes
+  perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
 
   // Nav landing — legacy (la pantalla landing sigue en DOM pero oculta)
   const btnAuthNav = document.getElementById('btn-auth-nav')
@@ -9945,7 +9966,8 @@ function voActualizarAlias(alias) {
 // ══════════════════════════════════════════════════════════════
 //  MI PERFIL
 // ══════════════════════════════════════════════════════════════
-let perfilPublico = false  // se sincroniza desde DB en _onLogin, nunca desde localStorage
+let perfilPublico = false  // derivado: true si ANY campo está visible
+let _visibilidad  = { alias: false, phrase: false, votes: false }  // estado granular
 
 async function abrirMiPerfil() {
   // Poblar con datos reales del perfil
@@ -9956,12 +9978,12 @@ async function abrirMiPerfil() {
   if (_authUser) {
     document.getElementById('mp-strip-email').textContent = _authUser.email || ''
   }
-  // Sincronizar toggle con valor real de DB
-  perfilPublico = !!_authProfile?.is_public
-  document.getElementById('mp-toggle').classList.toggle('on', perfilPublico)
-  document.getElementById('mp-toggle-sub').textContent = perfilPublico
-    ? 'Tu perfil es visible en el hemiciclo'
-    : 'Tu identidad está oculta — solo se ve tu #butaca'
+  // Sincronizar toggles granulares con valores de DB
+  _visibilidad.alias  = !!_authProfile?.show_alias
+  _visibilidad.phrase = !!_authProfile?.show_phrase
+  _visibilidad.votes  = !!_authProfile?.show_votes
+  perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
+  _syncVisibilidadUI()
 
   // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
   let cntSi = 0, cntNo = 0, cntAbs = 0
@@ -10168,68 +10190,92 @@ function cerrarMiPerfil() {
   document.getElementById('mp-bar-no').style.width  = '0%'
   document.getElementById('mp-bar-abs').style.width = '0%'
 }
-// ── Confirmación de cambio de privacidad ────────────────────────────────────
-let _pendingPrivacyValue = null
+// ── Visibilidad granular de perfil ───────────────────────────────────────────
+function _syncVisibilidadUI() {
+  document.getElementById('mp-toggle-alias')?.classList.toggle('on',  _visibilidad.alias)
+  document.getElementById('mp-toggle-phrase')?.classList.toggle('on', _visibilidad.phrase)
+  document.getElementById('mp-toggle-votes')?.classList.toggle('on',  _visibilidad.votes)
+}
 
-function togglePerfilPublico() {
-  _pendingPrivacyValue = !perfilPublico
-  const goPublic = _pendingPrivacyValue
-  document.getElementById('pco-icon').textContent  = goPublic ? '🌐' : '🔒'
-  document.getElementById('pco-title').textContent = goPublic
-    ? '¿Hacer tu perfil público?'
-    : '¿Volver a ser anónimo?'
-  document.getElementById('pco-body').textContent  = goPublic
-    ? 'Tu alias y frase aparecerán en el hemiciclo visibles para todos los usuarios de la plataforma. Podés revertirlo en cualquier momento.'
-    : 'Tu nombre desaparecerá para todos los usuarios de la plataforma de forma inmediata y global. Solo se verá tu número de butaca.'
-  document.getElementById('pco-btn').textContent   = goPublic ? 'Sí, hacer público' : 'Sí, volver anónimo'
-  document.getElementById('pco-btn').style.background = goPublic ? '#1d1d1d' : '#ef4444'
+let _pendingVisibilidadField = null
+let _pendingVisibilidadValue = null
+
+function toggleVisibilidad(field) {
+  const newVal = !_visibilidad[field]
+  _pendingVisibilidadField = field
+  _pendingVisibilidadValue = newVal
+  const labels = { alias: 'tu alias', phrase: 'tu frase', votes: 'tus votaciones' }
+  document.getElementById('pco-icon').textContent  = newVal ? '🌐' : '🔒'
+  document.getElementById('pco-title').textContent = newVal
+    ? `¿Mostrar ${labels[field]}?`
+    : `¿Ocultar ${labels[field]}?`
+  document.getElementById('pco-body').textContent  = newVal
+    ? `${labels[field].charAt(0).toUpperCase() + labels[field].slice(1)} pasará a ser visible para todos los usuarios de la plataforma de forma inmediata.`
+    : `${labels[field].charAt(0).toUpperCase() + labels[field].slice(1)} dejará de ser visible para todos de forma inmediata.`
+  document.getElementById('pco-btn').textContent   = newVal ? 'Sí, mostrar' : 'Sí, ocultar'
+  document.getElementById('pco-btn').style.background = newVal ? '#1d1d1d' : '#ef4444'
   document.getElementById('privacy-confirm-overlay').style.display = 'flex'
 }
 
 function cerrarPrivacyConfirm() {
   document.getElementById('privacy-confirm-overlay').style.display = 'none'
-  _pendingPrivacyValue = null
+  _pendingVisibilidadField = null
+  _pendingVisibilidadValue = null
 }
 
 async function confirmarCambioPrivacidad() {
-  if (_pendingPrivacyValue === null) return
-  const goPublic = _pendingPrivacyValue
+  if (!_pendingVisibilidadField) return
+  const field = _pendingVisibilidadField
+  const newVal = _pendingVisibilidadValue
   cerrarPrivacyConfirm()
 
-  const { error } = await sb.rpc('set_profile_public', { p_is_public: goPublic })
+  // Aplicar el cambio localmente primero (optimistic)
+  _visibilidad[field] = newVal
+  perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
+  _syncVisibilidadUI()
+
+  const { error } = await sb.rpc('set_profile_visibility', {
+    p_show_alias:  _visibilidad.alias,
+    p_show_phrase: _visibilidad.phrase,
+    p_show_votes:  _visibilidad.votes,
+  })
   if (error) {
+    // Revertir si falló
+    _visibilidad[field] = !newVal
+    perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
+    _syncVisibilidadUI()
     showToast('Error al guardar — intentá de nuevo', true)
     return
   }
 
-  // Actualizar estado local
-  perfilPublico = goPublic
-  if (_authProfile) _authProfile.is_public = goPublic
+  // Sincronizar _authProfile
+  if (_authProfile) {
+    _authProfile.show_alias  = _visibilidad.alias
+    _authProfile.show_phrase = _visibilidad.phrase
+    _authProfile.show_votes  = _visibilidad.votes
+    _authProfile.is_public   = perfilPublico
+  }
 
-  // Actualizar caché de perfiles (afecta cómo te ven los demás)
+  // Actualizar caché: mi butaca refleja la visibilidad nueva
   if (MY_SEAT > 0) {
-    if (goPublic) {
-      _profilesCache[MY_SEAT] = {
-        alias:  _authProfile?.alias  || `Butaca #${MY_SEAT}`,
-        phrase: _authProfile?.phrase || '',
-        votes:  _myVoteCount || 0,
-      }
-    } else {
-      delete _profilesCache[MY_SEAT]
+    _profilesCache[MY_SEAT] = {
+      alias:      _visibilidad.alias  ? (_authProfile?.alias  || null) : null,
+      phrase:     _visibilidad.phrase ? (_authProfile?.phrase || '')   : '',
+      votes:      _myVoteCount || 0,
+      showAlias:  _visibilidad.alias,
+      showPhrase: _visibilidad.phrase,
+      showVotes:  _visibilidad.votes,
+      isPublic:   perfilPublico,
     }
   }
 
-  // Actualizar UI del panel Mi Perfil
-  document.getElementById('mp-toggle').classList.toggle('on', goPublic)
-  document.getElementById('mp-toggle-sub').textContent = goPublic
-    ? 'Tu perfil es visible en el hemiciclo'
-    : 'Tu identidad está oculta (anónimo)'
-
-  // Reconstruir hemiciclo para reflejar el cambio
   buildSeats()
-
-  showToast(goPublic ? '✓ Perfil público — todos te pueden ver' : '✓ Perfil privado — estás anónimo')
+  const fieldLabel = { alias: 'Alias', phrase: 'Frase', votes: 'Votaciones' }[field]
+  showToast(newVal ? `✓ ${fieldLabel} ahora visible` : `✓ ${fieldLabel} ocultado`)
 }
+
+// Compatibilidad retroactiva — ya no se usa pero puede quedar referenciado en otros lugares
+function togglePerfilPublico() { toggleVisibilidad('alias') }
 
 // ══════════════════════════════════════════════════════════════
 //  PROPONER PREGUNTA
@@ -10311,10 +10357,13 @@ async function cargarPerfilesPublicos() {
       _profilesCache = {}
       rows.forEach(r => {
         _profilesCache[r.seat_number] = {
-          alias:    r.alias    || null,   // null si privado
-          phrase:   r.phrase   || '',
-          votes:    Number(r.vote_count) || 0,
-          isPublic: !!r.is_public,
+          alias:      r.alias    || null,
+          phrase:     r.phrase   || '',
+          votes:      Number(r.vote_count) || 0,
+          showAlias:  !!r.show_alias,
+          showPhrase: !!r.show_phrase,
+          showVotes:  !!r.show_votes,
+          isPublic:   !!(r.show_alias || r.show_phrase || r.show_votes),
         }
       })
     }
@@ -11758,13 +11807,15 @@ async function abrirUserProfile(seatNum, fromTab) {
   window._upmFromTab = _upmFromTab
   cerrarSocialModal()
 
-  // Poblar header — la RPC ahora incluye todos los asientos
-  // isPrivate = en cache pero sin alias (privado), o no en cache aún
-  const p         = _profilesCache[seatNum]
-  const isPrivate = !p?.isPublic || !p?.alias
-  const alias     = (p?.isPublic && p?.alias) ? p.alias : `Butaca #${seatNum}`
-  const phrase    = p?.phrase || ''
-  const votes     = p?.votes  || 0   // conteo real siempre, incluso para privados
+  // Poblar header — la RPC incluye todos los asientos con granular visibility
+  const p          = _profilesCache[seatNum]
+  const showAlias  = !!(p?.showAlias  && p?.alias)
+  const showPhrase = !!(p?.showPhrase && p?.phrase)
+  const showVotes  =  !!(p?.showVotes)
+  const isPrivate  = !showAlias
+  const alias      = showAlias  ? p.alias   : `Butaca #${seatNum}`
+  const phrase     = showPhrase ? p.phrase  : ''
+  const votes      = showVotes  ? (p?.votes || 0) : 0
   const cIdx      = seatNum % AVATAR_COLORS.length
   const color     = AVATAR_COLORS[cIdx]
 
