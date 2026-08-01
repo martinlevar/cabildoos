@@ -5825,6 +5825,7 @@ function hcpAplicar() {
 }
 
 function abrirHemiConfig() {
+  if (!_requireButaca()) return
   document.getElementById('hemi-config-panel').classList.add('open')
   document.getElementById('btn-hemi-config').style.color = 'var(--orange)'
   hcpUpdateDisplay(TOTAL_SEATS)
@@ -6280,6 +6281,7 @@ const SIM = {
 }
 
 async function iniciarSimulacion() {
+  if (!_requireButaca()) return
   // Asegurar que las butacas reales están cargadas
   if (SEATS.length === 0) {
     await cargarConteoReal()
@@ -6588,6 +6590,7 @@ window.addEventListener('resize', () => {
 let listRendered = false
 
 function abrirCiudadanos() {
+  if (!_requireButaca()) return
   hideCard()
   renderCitizensList()  // siempre re-renderizar para reflejar MY_SEAT actual
   document.getElementById('citizens-panel').classList.add('open')
@@ -9925,6 +9928,19 @@ function voIniciarVerificacion() {
   }
 }
 
+// ── Guard: redirige a verificación si el usuario no tiene butaca ─────────────
+function _requireButaca() {
+  if (MY_SEAT > 0) return true   // verificado → permitir
+  if (_authUser) {
+    // Logueado pero sin butaca → pantalla de verificación
+    showScreen('verify-onboard')
+    showToast('Verificá tu identidad para participar')
+  } else {
+    abrirAuth('registro')
+  }
+  return false
+}
+
 function voExplorar() {
   showScreen('congress')
   // Bloquear TODOS los elementos de congress por 500ms para matar el ghost click
@@ -9961,6 +9977,7 @@ let perfilPublico = false  // derivado: true si ANY campo está visible
 let _visibilidad  = { alias: false, phrase: false, votes: false }  // estado granular
 
 async function abrirMiPerfil() {
+  if (!_requireButaca()) return
   // Poblar con datos reales del perfil
   if (_authProfile) {
     document.getElementById('mp-alias-input').value  = _authProfile.alias  || ''
@@ -10643,6 +10660,7 @@ function _updatePqBadge() {
 }
 
 function abrirPreguntas() {
+  if (!_requireButaca()) return
   renderQuestionsTab()
   document.getElementById('preguntas-panel').classList.add('open')
 }
@@ -11577,6 +11595,7 @@ function mostrarFooter() {
 // El centro modal se cierra solo con su propio backdrop click — no necesitamos listener global
 
 function sfSelectTab(tab) {
+  if (!_requireButaca()) return
   // Abrir el centro modal
   const modal = document.getElementById('sf-center-modal')
   modal.classList.add('open')
@@ -11788,11 +11807,9 @@ let _upmMsgChannel = null
 window._upmFromTab = 'seguidores'
 
 async function abrirUserProfile(seatNum, fromTab) {
-  // En modo observador: clic en un dot → invitar a crear cuenta, no mostrar perfil
-  if (document.body.classList.contains('observer-mode')) {
-    abrirAuth('registro')
-    return
-  }
+  // Observador → registrarse; logueado sin butaca → verificarse
+  if (document.body.classList.contains('observer-mode')) { abrirAuth('registro'); return }
+  if (!_requireButaca()) return
   _upmSeat    = seatNum
   _upmFromTab = fromTab || 'seguidores'
   window._upmFromTab = _upmFromTab
