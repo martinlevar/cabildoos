@@ -6280,6 +6280,67 @@ const SIM = {
   camX: 0, camY: 0, camS: 1,
 }
 
+// ── Demo 300 butacas — llama desde consola: simDemo() ───────────────────────
+window.simDemo = function(n = 300) {
+  // Asegurar geometría completa
+  const prevTotal = TOTAL_SEATS
+  TOTAL_SEATS = n
+  buildSeats()
+
+  hideCard()
+  document.getElementById('modal-bd')?.classList.remove('open')
+
+  // Distribución aleatoria realista
+  const opciones = ['si','si','si','no','no','abs',null]
+  SIM.results = {}; SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
+  SEATS.filter(s => s.num <= n).forEach(s => {
+    const v = opciones[Math.floor(Math.random() * opciones.length)]
+    SIM.results[s.num] = v
+    if (v === 'si') SIM.totalSi++
+    else if (v === 'no') SIM.totalNo++
+    else if (v === 'abs') SIM.totalAbs++
+  })
+  SIM._realSi = SIM.totalSi; SIM._realNo = SIM.totalNo; SIM._realAbs = SIM.totalAbs
+
+  SIM.revealed = 0
+  SIM.order = SEATS.filter(s => s.num <= n).map(s => s.num).sort(() => Math.random() - 0.5)
+  const simTotal = SIM.order.length
+  SIM.revealedArr = new Uint8Array(n + 1)
+
+  const qEl = document.getElementById('sw-question-txt')
+  if (qEl) qEl.textContent = '¿Apoya usted esta propuesta de ley?'
+  const simTotalEl = document.getElementById('sim-total')
+  if (simTotalEl) simTotalEl.textContent = simTotal.toLocaleString('es-AR')
+  document.getElementById('sim-progress').textContent = '0'
+
+  SIM.active = true
+  document.getElementById('sim-overlay').classList.add('open')
+  document.getElementById('sim-winner-banner').classList.remove('show')
+  const _fs = document.getElementById('sim-floating-status')
+  if (_fs) _fs.classList.add('counting')
+  const _lbl = document.getElementById('sim-floating-label')
+  if (_lbl) _lbl.textContent = 'Contando sobres…'
+  const _footer = document.getElementById('sim-footer-bar')
+  if (_footer) _footer.classList.remove('show')
+
+  resizeSimCanvas()
+
+  const rangeX = bx1 - bx0, rangeY = by1 - by0
+  const padX = Math.max(rangeX * 0.05, DOT_R * 4)
+  const padY = Math.max(rangeY * 0.05, DOT_R * 4)
+  SIM.camS = Math.min(simCSSW / (rangeX + padX*2), simCSSH / (rangeY + padY*2), 12) * 0.92
+  SIM.camX = (bx0 + bx1) / 2
+  SIM.camY = (by0 + by1) / 2
+
+  SIM.startTime  = Date.now()
+  SIM.flashMap   = {}
+  SIM._done      = false
+  SIM.REVEAL_DUR = simTotal <= 5 ? 4000 : simTotal <= 20 ? 3500 : simTotal <= 80 ? 4000 : 5000
+
+  simDraw()
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function iniciarSimulacion() {
   if (!_requireButaca()) return
   // Asegurar que las butacas reales están cargadas
