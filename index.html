@@ -3573,16 +3573,6 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 </head>
 <body>
 
-<!-- ── AUTH LOADING OVERLAY — cubre la página hasta que Supabase resuelve la sesión ── -->
-<div id="auth-loading-overlay" style="
-  position:fixed;inset:0;z-index:99999;
-  background:#0f0f0f;
-  display:flex;align-items:center;justify-content:center;
-  transition:opacity .25s ease;
-">
-  <span style="font-family:'Manrope',sans-serif;font-size:20px;font-weight:800;
-               letter-spacing:-.5px;color:#fff;opacity:.9">cabildoOS</span>
-</div>
 
 
 <!-- ══════════════ SPLASH ══════════════ -->
@@ -3994,8 +3984,8 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
       </div>
     </div>
 
-    <!-- Create account button (logged out) -->
-    <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()">Crear cuenta</button>
+    <!-- Create account button (logged out) — oculto por defecto, _onLogout() lo muestra -->
+    <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()" style="display:none">Crear cuenta</button>
   </nav>
   <!-- CTA para observadores: aparece solo con body.observer-mode -->
   <div id="observer-cta-strip" style="display:none;align-items:center;justify-content:space-between;
@@ -6978,50 +6968,26 @@ let _authProfile = null  // perfil (alias, seat_number)
 let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
 
 // Inicializar auth al cargar
-;(() => {
-  let _overlayDone = false
-  const _hideOverlay = () => {
-    if (_overlayDone) return
-    _overlayDone = true
-    const el = document.getElementById('auth-loading-overlay')
-    if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 280) }
-  }
-
-  // Timeout de seguridad: si nada resolvió en 5s, mostrar la UI igual
-  setTimeout(_hideOverlay, 5000)
-
+;(async () => {
+  // onAuthStateChange para eventos posteriores (login, logout, cambio de pestaña)
   sb.auth.onAuthStateChange(async (event, session) => {
     if (event === 'PASSWORD_RECOVERY') {
       _isPasswordRecovery = true
       showScreen('congress')
       setTimeout(() => abrirAuth('reset'), 80)
-      _hideOverlay()
       return
     }
-
-    if (event === 'SIGNED_OUT') {
-      _isPasswordRecovery = false
-      _onLogout()
-      _hideOverlay()
-      return
-    }
-
-    if (_isPasswordRecovery) { _hideOverlay(); return }
-
-    if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-      try { await _onLogin(session.user) } catch(e) { console.error('_onLogin error:', e) }
-      _hideOverlay()
-      return
-    }
-
-    if (event === 'INITIAL_SESSION' && !session?.user) {
-      // Bug conocido en supabase-js v2: INITIAL_SESSION puede llegar con null
-      // mientras TOKEN_REFRESHED aún está en camino. Esperar 800ms antes de asumir logout.
-      setTimeout(() => {
-        if (!_authUser) { _onLogout(); _hideOverlay() }
-      }, 800)
-    }
+    if (event === 'SIGNED_OUT') { _isPasswordRecovery = false; _onLogout(); return }
+    if (_isPasswordRecovery) return
+    if (event === 'SIGNED_IN' && session?.user) await _onLogin(session.user)
+    if (event === 'TOKEN_REFRESHED' && session?.user && !_authUser) await _onLogin(session.user)
   })
+
+  // getSession() espera a que el token se refresque si está vencido
+  const { data: { session } } = await sb.auth.getSession()
+  if (_isPasswordRecovery) { showScreen('congress'); return }
+  if (session?.user) await _onLogin(session.user)
+  else _onLogout()
 })()
 
 async function _onLogin(user) {
