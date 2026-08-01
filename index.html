@@ -6154,7 +6154,14 @@ function showCard(seat, cx, cy) {
   else          { badge.textContent = 'Público';  badge.className = 'pc-anon-badge pub'; }
 
   document.getElementById('pc-phrase').textContent  = `"${p.phrase}"`
-  document.getElementById('pc-votes-n').textContent = p.votes
+  const pcVotesEl = document.getElementById('pc-votes-n')
+  const pcVotesRow = pcVotesEl?.closest('.pc-votes')
+  if (p.votes > 0) {
+    pcVotesEl.textContent = p.votes
+    if (pcVotesRow) pcVotesRow.style.display = ''
+  } else {
+    if (pcVotesRow) pcVotesRow.style.display = 'none'
+  }
 
   const fbtn    = document.getElementById('pc-follow-btn')
   const voteBtn = document.getElementById('profile-card').querySelector('.pc-vote-btn')
@@ -6632,7 +6639,7 @@ function clRow(num, isMe) {
         <span class="cl-badge-sm ${badgeCls}">${badgeTxt}</span>
       </div>
       <div class="cl-phrase">${p.phrase}</div>
-      <div class="cl-meta">${p.votes} votaciones</div>
+      ${p.votes > 0 ? `<div class="cl-meta">${p.votes} votaciones</div>` : ''}
     </div>
     <div class="cl-num">#${num}</div>
     <button class="cl-follow-sm ${followCls}" ${followDis}
@@ -11831,7 +11838,13 @@ async function abrirUserProfile(seatNum, fromTab) {
   document.getElementById('upm-phrase-hero').textContent = isPrivate
     ? 'Este ciudadano eligió mantener su identidad privada.'
     : (phrase ? `"${phrase}"` : '')
-  document.getElementById('upm-stat-votes').textContent  = votes  // siempre el número real
+  const upmVotesStat = document.getElementById('upm-stat-votes')?.closest('.upm-stat')
+  if (showVotes) {
+    if (upmVotesStat) upmVotesStat.style.display = ''
+    document.getElementById('upm-stat-votes').textContent = votes
+  } else {
+    if (upmVotesStat) upmVotesStat.style.display = 'none'
+  }
 
   // Seguir button
   const fbtn = document.getElementById('upm-follow-btn')
