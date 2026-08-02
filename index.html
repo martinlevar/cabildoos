@@ -4453,6 +4453,16 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
       </button>
     </div>
 
+    <!-- Mobile-only: botón que despliega navegación -->
+    <button class="mob-nav-btn" id="mob-nav-btn" onclick="mobNavToggle()">
+      <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x=".5"  y=".5"  width="6.5" height="6.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="10" y=".5"  width="6.5" height="6.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <rect x=".5"  y="10" width="6.5" height="6.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="10" y="10" width="6.5" height="6.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+
     <!-- Divider + User pill (logged in) -->
     <div class="nav-vdiv" id="nav-user-divider" style="display:none"></div>
     <div class="nav-upill-wrap" id="nav-upill-wrap" style="display:none">
