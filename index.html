@@ -5977,9 +5977,8 @@ function draw() {
     } else {
       // ── Asiento ocupado: relleno ──
       let fill, glow = null
-      if (isMine)        { fill = '#f76a1e'; glow = 'rgba(247,106,30,.5)'; }
-      else if (isFollow) { fill = '#1e40af'; }
-      else               { fill = '#1a1f3c'; }
+      if (isMine) { fill = '#f76a1e'; glow = 'rgba(247,106,30,.5)'; }
+      else        { fill = '#1a1f3c'; }
 
       if (cam.scale < 0.5) {
         const alpha = 0.35 + 0.65 * (s.row % 2 === 0 ? 1 : 0.7)
@@ -5997,15 +5996,6 @@ function draw() {
       ctx.fill()
       ctx.shadowBlur  = 0
       ctx.globalAlpha = 1
-
-      // Follow ring
-      if (isFollow && r > 3) {
-        ctx.beginPath()
-        ctx.arc(sx, sy, r + 3, 0, Math.PI * 2)
-        ctx.strokeStyle = 'rgba(30,64,175,.35)'
-        ctx.lineWidth   = 1.5
-        ctx.stroke()
-      }
     }
   })
 
