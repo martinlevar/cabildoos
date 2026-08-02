@@ -1366,6 +1366,45 @@ html, body {
 .vav-urna-btn.show { animation:fade-up .35s ease 1.5s both; }
 .vav-urna-btn:hover { background:#1a2f4f; transform:translateY(-2px); }
 
+/* ── Votación cerrada overlay ── */
+#vav-closed-overlay {
+  position:fixed; inset:0; z-index:1200;
+  background:rgba(10,10,20,.65); backdrop-filter:blur(12px);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px; opacity:0; pointer-events:none;
+  transition:opacity .25s ease;
+}
+#vav-closed-overlay.open { opacity:1; pointer-events:all; }
+.vav-closed-inner {
+  background:#fff; border-radius:20px;
+  padding:36px 32px; max-width:360px; width:100%;
+  text-align:center;
+  box-shadow:0 24px 64px rgba(0,0,0,.22);
+  transform:scale(.92);
+  transition:transform .3s cubic-bezier(.34,1.4,.64,1);
+}
+#vav-closed-overlay.open .vav-closed-inner { transform:scale(1); }
+.vav-closed-icon {
+  width:64px; height:64px; border-radius:50%; margin:0 auto 20px;
+  background:#fff7ed; display:flex; align-items:center; justify-content:center;
+  color:#f97316;
+  box-shadow:0 0 0 8px rgba(249,115,22,.08);
+}
+.vav-closed-title {
+  font-size:20px; font-weight:800; color:#0d1b2e;
+  margin-bottom:10px; letter-spacing:-.3px;
+}
+.vav-closed-msg {
+  font-size:14px; color:#6b7280; line-height:1.65; margin-bottom:28px;
+}
+.vav-closed-btn {
+  padding:13px 32px; border-radius:12px; border:none;
+  background:#0d1b2e; color:#fff;
+  font-size:14px; font-weight:700; font-family:inherit;
+  cursor:pointer; transition:background .15s, transform .15s;
+}
+.vav-closed-btn:hover { background:#1a2f4f; transform:translateY(-1px); }
+
 /* ── MODAL ── */
 .modal-bd {
   position:fixed; inset:0; z-index:300;
@@ -11724,6 +11763,27 @@ function _showUrnaOverlay(voto) {
   ;[badgeEl,titleEl,subEl,quoteEl,noteEl,btnEl].forEach(el => { if(el) el.classList.add('show') })
 }
 
+function _mostrarVotacionCerrada() {
+  const existing = document.getElementById('vav-closed-overlay')
+  if (existing) { existing.classList.add('open'); return }
+
+  const el = document.createElement('div')
+  el.id = 'vav-closed-overlay'
+  el.innerHTML = `
+    <div class="vav-closed-inner">
+      <div class="vav-closed-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <h3 class="vav-closed-title">Votación cerrada</h3>
+      <p class="vav-closed-msg">No pudiste emitir tu voto porque la votación ya cerró. Los resultados estarán disponibles en la pantalla de revelación.</p>
+      <button class="vav-closed-btn" onclick="document.getElementById('vav-closed-overlay').classList.remove('open')">Entendido</button>
+    </div>`
+  document.body.appendChild(el)
+  requestAnimationFrame(() => el.classList.add('open'))
+}
+
 function _urnaOverlayClose() {
   document.getElementById('vav-urna-overlay')?.classList.remove('open')
   cerrarModal()
@@ -11755,6 +11815,15 @@ async function confirmarVoto() {
   const voto = document.getElementById('voto-txt').value
   const qId  = PREGUNTAS_IDS[qIdx]
   if (!qId || !_authUser || !MY_SEAT) { showToast('Error: sesión no lista, recargá la página'); return }
+
+  // Verificar que la votación sigue abierta
+  const qdata = PREGUNTAS_DATA[qIdx]
+  if (qdata?.ends_at && new Date(qdata.ends_at) <= new Date()) {
+    showPh(1)
+    cerrarModal()
+    _mostrarVotacionCerrada()
+    return
+  }
 
   const btn = document.querySelector('#modal-bd .btn-ok')
   if (btn) { btn.disabled=true; btn.textContent='Sellando…' }
