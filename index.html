@@ -3890,21 +3890,79 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
    MOBILE RESPONSIVE  (≤640px)
 ══════════════════════════════════════════════ */
 
-/* Tab bar: hidden by default, shown on mobile */
+/* Defaults (hidden on desktop) */
 #mobile-tab-bar { display: none; }
+.mob-nav-btn    { display: none; }
+
+/* ── Nav sheet (bottom sheet de navegación, mobile) ── */
+#mob-nav-sheet {
+  display: none;
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(0,0,0,.38);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  align-items: flex-end;
+}
+#mob-nav-sheet.open { display: flex; }
+#mob-nav-inner {
+  width: 100%; background: #fff;
+  border-radius: 24px 24px 0 0;
+  padding: 12px 20px calc(32px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 32px rgba(0,0,0,.12);
+}
+.mob-nav-drag {
+  width: 36px; height: 4px;
+  background: rgba(0,0,0,.12); border-radius: 2px;
+  margin: 0 auto 20px;
+}
+#mob-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.mob-nav-item {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 7px;
+  padding: 14px 8px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 14px; background: #fafafa;
+  cursor: pointer; font-family: 'Manrope', sans-serif;
+  transition: background .14s, transform .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.mob-nav-item:active { background: #f0f0f0; transform: scale(.97); }
+.mob-nav-ic {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.mob-nav-lbl {
+  font-size: 11px; font-weight: 600;
+  color: var(--dark); letter-spacing: -.1px;
+}
+.mob-nav-sep {
+  height: 1px; background: rgba(0,0,0,.07);
+  margin: 0 0 12px;
+}
+.mob-nav-sign-out {
+  width: 100%; padding: 13px;
+  border: 1px solid rgba(0,0,0,.08); border-radius: 12px;
+  background: none; cursor: pointer; font-family: 'Manrope', sans-serif;
+  font-size: 13px; font-weight: 600; color: var(--red);
+  -webkit-tap-highlight-color: transparent;
+}
 
 @media (max-width:640px) {
 
-  /* ── Nav congress: logo izquierda + user-pill derecha, nada más ── */
+  /* ── Nav: logo + mob-nav-btn + user-pill ── */
   #congress .nav {
     display: flex !important;
     align-items: center;
-    justify-content: space-between;
     padding: 0 16px !important;
     height: 50px !important;
     gap: 0;
   }
-  /* Ocultar todo excepto logo y user pill */
+  /* Ocultar todo menos logo, mob-nav-btn y user-pill */
   #congress .nav .nav-cabildo-brand,
   #congress .nav #nav-vdiv-cong,
   #congress .nav #nav-user-divider,
@@ -3914,44 +3972,76 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
   #congress .nav #nav-group-sep,
   #congress .nav #nav-social-btns,
   #congress .nav #nav-btn-notif { display: none !important; }
-  /* Colapsar spacer (el div con flex:1 que separa grupos) */
   #congress .nav > div[style*="flex:1"] { display: none !important; }
 
-  /* ── Body: espacio para tab bar ── */
-  #congress > .body,
-  #congress > div.body {
-    padding-bottom: calc(60px + env(safe-area-inset-bottom)) !important;
+  /* Botón grid: empuja hacia la derecha con margin-left:auto */
+  .mob-nav-btn {
+    display: flex !important;
+    align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0;
+    border: 1.5px solid rgba(0,0,0,.12); border-radius: 10px;
+    background: none; cursor: pointer; color: var(--dark);
+    margin-left: auto; margin-right: 10px;
+    transition: background .14s;
+    -webkit-tap-highlight-color: transparent;
   }
+  .mob-nav-btn.open { background: rgba(0,0,0,.06); }
 
-  /* ── Map controls: solo las esenciales, encima del tab bar ── */
+  /* ── Body: reservar espacio para bottom bar ── */
+  #congress > .body { padding-bottom: calc(58px + env(safe-area-inset-bottom)) !important; }
+
+  /* ── Map controls → bottom bar fija ── */
   .map-controls {
-    position: absolute;
-    bottom: calc(70px + env(safe-area-inset-bottom)) !important;
-    left: 8px !important; right: 8px !important;
-    transform: none !important;
-    width: auto !important;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: center;
-    pointer-events: all;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important; right: 0 !important;
+    transform: none !important; width: 100% !important;
+    height: calc(58px + env(safe-area-inset-bottom)) !important;
+    display: flex !important; flex-direction: row !important;
+    align-items: stretch !important;
+    padding: 0 0 env(safe-area-inset-bottom) !important;
+    gap: 0 !important;
+    background: rgba(255,255,255,.97) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-top: 1px solid rgba(0,0,0,.09) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    z-index: 498 !important;
+    flex-wrap: nowrap !important;
   }
-  /* Botones más pequeños y táctiles */
-  .map-btn {
-    padding: 9px 13px !important;
-    font-size: 12px !important;
-    min-height: 36px;
-    border-radius: 10px !important;
+  /* Cada botón: columna igual-ancho */
+  .map-controls .map-btn {
+    flex: 1 1 0 !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
+    border: none !important; border-radius: 0 !important;
+    background: none !important; padding: 6px 2px !important;
+    font-size: 9.5px !important; font-weight: 700 !important;
+    color: var(--mid) !important; gap: 3px !important;
+    min-height: 44px !important; white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .12s;
   }
-  .citizen-count {
-    padding: 9px 13px !important;
-    font-size: 12px !important;
-    min-height: 36px;
+  .map-controls .map-btn:active { background: rgba(0,0,0,.05) !important; }
+  .map-controls .map-btn.orange { color: var(--orange) !important; }
+  .map-controls .citizen-count {
+    flex: 1 1 0 !important;
+    display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
+    border-radius: 0 !important; backdrop-filter: none !important;
+    background: none !important; padding: 6px 2px !important;
+    font-size: 9.5px !important; font-weight: 600 !important;
+    color: var(--mid) !important; gap: 1px !important;
+    -webkit-tap-highlight-color: transparent;
   }
-  /* Ocultar botones menos usados en mobile */
+  .map-controls .citizen-count b { font-size: 13px; color: var(--dark); display: block; }
+  /* Ocultar menos usados */
   #btn-simular, #btn-hemi-config { display: none !important; }
+  /* Tab bar viejo: ocultar */
+  #mobile-tab-bar { display: none !important; }
 
-  /* ── Zoom hint: texto mobile ── */
+  /* ── Zoom hint mobile ── */
   .zoom-hint p { font-size:12px !important; }
 
   /* ── Profile card → bottom sheet ── */
@@ -3959,103 +4049,43 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     position: fixed !important;
     left: 0 !important; right: 0 !important;
     top: auto !important; bottom: 0 !important;
-    width: 100% !important; max-width: 100% !important;
+    width: 100% !important;
     border-radius: 24px 24px 0 0 !important;
-    padding: 24px 20px calc(80px + env(safe-area-inset-bottom)) !important;
+    padding: 24px 20px calc(76px + env(safe-area-inset-bottom)) !important;
     transform: translateY(105%) !important;
     opacity: 1 !important;
     box-shadow: 0 -8px 40px rgba(0,0,0,.18) !important;
-    z-index: 499 !important;
+    z-index: 500 !important;
     transition: transform .3s cubic-bezier(.4,0,.2,1) !important;
   }
   #profile-card::before {
-    content: '';
-    display: block;
+    content: ''; display: block;
     width: 36px; height: 4px;
-    background: rgba(0,0,0,.12);
-    border-radius: 2px;
+    background: rgba(0,0,0,.12); border-radius: 2px;
     margin: -10px auto 16px;
   }
-  #profile-card.visible {
-    transform: translateY(0) !important;
-  }
-  .pc-follow, .pc-vote-btn {
-    padding: 13px !important;
-    font-size: 13px !important;
-    min-height: 44px;
-  }
+  #profile-card.visible { transform: translateY(0) !important; }
+  .pc-follow, .pc-vote-btn { padding: 13px !important; font-size: 13px !important; min-height: 44px; }
 
-  /* ── Modales: bottom sheet ── */
-  .modal-bd {
-    align-items: flex-end !important;
-    padding: 0 !important;
-  }
+  /* ── Modales → bottom sheet ── */
+  .modal-bd { align-items: flex-end !important; padding: 0 !important; }
   .modal {
-    border-radius: 24px 24px 0 0 !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-height: 92dvh;
+    border-radius: 24px 24px 0 0 !important; margin: 0 !important;
+    width: 100% !important; max-height: 92dvh;
     padding: 24px 20px calc(24px + env(safe-area-inset-bottom)) !important;
   }
 
-  /* ── Footer del congreso: ocultar ── */
+  /* ── Footer congreso: ocultar ── */
   .cong-footer { display: none !important; }
 
-  /* ── Simulación: footer sobre tab bar ── */
+  /* ── Sim footer: sobre el bottom bar ── */
   #sim-footer-bar {
     padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
     z-index: 600 !important;
   }
 
-  /* ── mi-perfil overlay: scroll seguro ── */
-  #mi-perfil-overlay { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
-
-  /* ── Bottom tab bar ── */
-  #mobile-tab-bar {
-    display: flex;
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: calc(60px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-    background: rgba(255,255,255,.97);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(0,0,0,.09);
-    z-index: 498;
-    align-items: stretch;
-  }
-  .mob-tab {
-    flex: 1;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 3px;
-    border: none; background: none; cursor: pointer;
-    font-family: 'Manrope', sans-serif;
-    padding: 0 4px; min-height: 44px;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .mob-tab-ic {
-    width: 26px; height: 26px;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 9px;
-    transition: background .15s, transform .12s;
-  }
-  .mob-tab-lbl {
-    font-size: 9.5px; font-weight: 600;
-    color: var(--mid); letter-spacing: .01em;
-    transition: color .15s;
-    white-space: nowrap;
-  }
-  .mob-tab.active .mob-tab-ic {
-    background: rgba(247,106,30,.13);
-    transform: scale(1.06);
-  }
-  .mob-tab.active .mob-tab-lbl { color: var(--orange); }
-  /* Colorear íconos activos — stroke y fill via currentColor */
-  .mob-tab { color: var(--mid); }
-  .mob-tab.active { color: var(--orange); }
-  .mob-tab svg [stroke="#8a8a8a"] { stroke: currentColor; }
-  .mob-tab svg [fill="#8a8a8a"]   { fill:   currentColor; }
+  /* ── Mi perfil overlay ── */
+  #mi-perfil-overlay { padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
 }
 </style>
 </head>
@@ -6950,39 +6980,39 @@ const SIM = {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  MOBILE BOTTOM TAB BAR
+//  MOBILE NAV SHEET (botón ⊞ en top-right → bottom sheet)
 // ══════════════════════════════════════════════════════════════
-function _mobSetActiveTab(id) {
-  document.querySelectorAll('.mob-tab').forEach(b => b.classList.remove('active'))
-  const el = document.getElementById(id)
-  if (el) el.classList.add('active')
+function mobNavToggle() {
+  const sheet = document.getElementById('mob-nav-sheet')
+  const btn   = document.getElementById('mob-nav-btn')
+  if (!sheet) return
+  const isOpen = sheet.classList.contains('open')
+  if (isOpen) {
+    mobNavClose()
+  } else {
+    // Mostrar/ocultar botón de salir según sesión
+    const signOut = document.getElementById('mob-sign-out-btn')
+    if (signOut) signOut.style.display = _authUser ? '' : 'none'
+    sheet.classList.add('open')
+    btn?.classList.add('open')
+  }
 }
-function mobTabHemiciclo() {
-  _mobSetActiveTab('mob-tab-hemiciclo')
-  hideCard()
-}
-function mobTabVotar() {
-  _mobSetActiveTab('mob-tab-votar')
-  abrirPreguntas()
-}
-function mobTabSocial() {
-  _mobSetActiveTab('mob-tab-social')
-  sfSelectTab('seguidos')
-}
-function mobTabStats() {
-  _mobSetActiveTab('mob-tab-stats')
-  abrirEstadisticas()
-}
-function mobTabPerfil() {
-  _mobSetActiveTab('mob-tab-perfil')
-  abrirMiPerfil()
+function mobNavClose() {
+  document.getElementById('mob-nav-sheet')?.classList.remove('open')
+  document.getElementById('mob-nav-btn')?.classList.remove('open')
 }
 
-// ── Adapt zoom hint text for touch devices ──────────────────
+// ── Mobile: adaptaciones al arrancar ────────────────────────
 ;(function() {
-  if (window.innerWidth <= 640 || navigator.maxTouchPoints > 0) {
-    const hint = document.getElementById('zoom-hint-txt')
-    if (hint) hint.innerHTML = 'Deslizá para explorar<br>Pellizcá para hacer zoom'
+  if (window.innerWidth > 640) return
+  // Zoom hint
+  const hint = document.getElementById('zoom-hint-txt')
+  if (hint) hint.innerHTML = 'Deslizá para explorar · Pellizcá para hacer zoom'
+  // Reformatear citizen-count para layout vertical (número encima, label debajo)
+  const cc = document.querySelector('.citizen-count')
+  if (cc) {
+    const num = document.getElementById('citizen-num')?.textContent || '0'
+    cc.innerHTML = `<b id="citizen-num" style="font-size:14px;color:var(--dark)">${num}</b><span>ciudadanos</span>`
   }
 })()
 
@@ -13612,74 +13642,100 @@ function _syncBugFab() {
   </div>
 </div>
 
-<!-- ══════════════ MOBILE BOTTOM TAB BAR ══════════════ -->
-<nav id="mobile-tab-bar">
+<!-- ══════════════ MOBILE NAV SHEET ══════════════ -->
+<div id="mob-nav-sheet" onclick="if(event.target===this)mobNavClose()">
+  <div id="mob-nav-inner">
+    <div class="mob-nav-drag"></div>
 
-  <!-- Hemiciclo -->
-  <button class="mob-tab active" id="mob-tab-hemiciclo" onclick="mobTabHemiciclo()">
-    <div class="mob-tab-ic">
-      <svg width="22" height="17" viewBox="0 0 22 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2 15.5 C2 8.5 6 3 11 3 C16 3 20 8.5 20 15.5" stroke="#8a8a8a" stroke-width="1.7" stroke-linecap="round" fill="none"/>
-        <circle cx="6.5"  cy="12.5" r="1.5" fill="#8a8a8a"/>
-        <circle cx="11"   cy="9.5"  r="1.5" fill="#8a8a8a"/>
-        <circle cx="15.5" cy="12.5" r="1.5" fill="#8a8a8a"/>
-        <circle cx="3.5"  cy="15.5" r="1.5" fill="#8a8a8a"/>
-        <circle cx="18.5" cy="15.5" r="1.5" fill="#8a8a8a"/>
-      </svg>
+    <div id="mob-nav-grid">
+
+      <!-- Hemiciclo -->
+      <button class="mob-nav-item" onclick="mobNavClose()">
+        <div class="mob-nav-ic" style="background:rgba(26,31,60,.08)">
+          <svg width="22" height="17" viewBox="0 0 22 17" fill="none">
+            <path d="M2 15.5C2 8.5 6 3 11 3s9 5.5 9 12.5" stroke="#1a1f3c" stroke-width="1.7" stroke-linecap="round"/>
+            <circle cx="6.5"  cy="12.5" r="1.6" fill="#1a1f3c"/>
+            <circle cx="11"   cy="9.5"  r="1.6" fill="#1a1f3c"/>
+            <circle cx="15.5" cy="12.5" r="1.6" fill="#1a1f3c"/>
+            <circle cx="3.5"  cy="15.5" r="1.6" fill="#1a1f3c"/>
+            <circle cx="18.5" cy="15.5" r="1.6" fill="#f76a1e"/>
+          </svg>
+        </div>
+        <span class="mob-nav-lbl">Hemiciclo</span>
+      </button>
+
+      <!-- Votar -->
+      <button class="mob-nav-item" onclick="abrirPreguntas();mobNavClose()">
+        <div class="mob-nav-ic" style="background:rgba(247,106,30,.1)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#f76a1e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5.5" width="16" height="11.5" rx="2.5"/>
+            <path d="M6.5 10.5l2.5 2.5 4.5-4.5"/>
+            <path d="M7.5 2.5L10 5l2.5-2.5"/>
+          </svg>
+        </div>
+        <span class="mob-nav-lbl">Votar</span>
+      </button>
+
+      <!-- Seguidos -->
+      <button class="mob-nav-item" onclick="sfSelectTab('seguidos');mobNavClose()">
+        <div class="mob-nav-ic" style="background:rgba(99,102,241,.1)">
+          <svg width="22" height="20" viewBox="0 0 22 20" fill="none" stroke="#4f46e5" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="6.5" r="3"/>
+            <path d="M1.5 18.5c0-3.59 2.91-6.5 6.5-6.5s6.5 2.91 6.5 6.5"/>
+            <circle cx="17.5" cy="5.5" r="2.2" opacity=".5"/>
+            <path d="M15.5 14c.9-.45 1.9-.6 2.8-.4 1.8.4 3 2 3 3.9" opacity=".5"/>
+          </svg>
+        </div>
+        <span class="mob-nav-lbl">Seguidos</span>
+      </button>
+
+      <!-- Estadísticas -->
+      <button class="mob-nav-item" onclick="abrirEstadisticas();mobNavClose()">
+        <div class="mob-nav-ic" style="background:rgba(109,40,217,.09)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect x="1"   y="11" width="4.5" height="8"    rx="1.4" fill="#7c3aed" opacity=".5"/>
+            <rect x="7.5" y="6"  width="4.5" height="13"   rx="1.4" fill="#7c3aed"/>
+            <rect x="14"  y="8"  width="4.5" height="11"   rx="1.4" fill="#7c3aed" opacity=".7"/>
+            <circle cx="9.8" cy="2.8" r="2.2" fill="#f76a1e"/>
+          </svg>
+        </div>
+        <span class="mob-nav-lbl">Estadísticas</span>
+      </button>
+
+      <!-- Propuestas -->
+      <button class="mob-nav-item" onclick="sfSelectTab('propuestas');mobNavClose()">
+        <div class="mob-nav-ic" style="background:rgba(16,185,129,.1)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#059669" stroke-width="1.7" stroke-linecap="round">
+            <rect x="2" y="2" width="16" height="3" rx="1.2"/>
+            <rect x="2" y="7.5" width="11" height="2.5" rx="1.2"/>
+            <rect x="2" y="12.5" width="7.5" height="2.5" rx="1.2"/>
+            <circle cx="16.5" cy="14" r="3" stroke="#059669" stroke-width="1.5"/>
+            <path d="M16.5 12.5v3M15 14h3" stroke="#059669" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="mob-nav-lbl">Propuestas</span>
+      </button>
+
+      <!-- Mi perfil -->
+      <button class="mob-nav-item" onclick="abrirMiPerfil();mobNavClose()">
+        <div class="mob-nav-ic" style="background:rgba(247,106,30,.08)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#f76a1e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="10" cy="7" r="3.3"/>
+            <path d="M3 19c0-3.87 3.13-7 7-7s7 3.13 7 7"/>
+          </svg>
+        </div>
+        <span class="mob-nav-lbl">Mi perfil</span>
+      </button>
+
     </div>
-    <span class="mob-tab-lbl">Hemiciclo</span>
-  </button>
 
-  <!-- Votar -->
-  <button class="mob-tab" id="mob-tab-votar" onclick="mobTabVotar()">
-    <div class="mob-tab-ic">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#8a8a8a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-        <rect x="2" y="5.5" width="16" height="11.5" rx="2.5"/>
-        <path d="M6.5 10.5l2.5 2.5 4.5-4.5"/>
-        <path d="M7.5 2.5L10 5l2.5-2.5"/>
-      </svg>
-    </div>
-    <span class="mob-tab-lbl">Votar</span>
-  </button>
+    <div class="mob-nav-sep"></div>
+    <button class="mob-nav-sign-out" id="mob-sign-out-btn" onclick="cerrarSesion();mobNavClose()" style="display:none">↩ Cerrar sesión</button>
+  </div>
+</div>
 
-  <!-- Seguidos -->
-  <button class="mob-tab" id="mob-tab-social" onclick="mobTabSocial()">
-    <div class="mob-tab-ic">
-      <svg width="22" height="20" viewBox="0 0 22 20" fill="none" stroke="#8a8a8a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="8" cy="6.5" r="3"/>
-        <path d="M1.5 18.5c0-3.59 2.91-6.5 6.5-6.5s6.5 2.91 6.5 6.5"/>
-        <circle cx="17.5" cy="5.5" r="2.2" opacity=".5"/>
-        <path d="M15.5 14c.9-.45 1.9-.6 2.8-.4 1.8.4 3 2 3 3.9" opacity=".5"/>
-      </svg>
-    </div>
-    <span class="mob-tab-lbl">Seguidos</span>
-  </button>
-
-  <!-- Estadísticas -->
-  <button class="mob-tab" id="mob-tab-stats" onclick="mobTabStats()">
-    <div class="mob-tab-ic">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="1"  y="11" width="4.5" height="8" rx="1.5" fill="#8a8a8a" opacity=".5"/>
-        <rect x="7.5" y="6" width="4.5" height="13" rx="1.5" fill="#8a8a8a"/>
-        <rect x="14" y="8.5" width="4.5" height="10.5" rx="1.5" fill="#8a8a8a" opacity=".7"/>
-        <circle cx="9.8" cy="2.8" r="2.2" fill="#f76a1e"/>
-      </svg>
-    </div>
-    <span class="mob-tab-lbl">Estadísticas</span>
-  </button>
-
-  <!-- Mi perfil -->
-  <button class="mob-tab" id="mob-tab-perfil" onclick="mobTabPerfil()">
-    <div class="mob-tab-ic">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#8a8a8a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="10" cy="7" r="3.3"/>
-        <path d="M3 19c0-3.87 3.13-7 7-7s7 3.13 7 7"/>
-      </svg>
-    </div>
-    <span class="mob-tab-lbl">Mi perfil</span>
-  </button>
-
-</nav>
+<!-- legacy tab bar (hidden) -->
+<nav id="mobile-tab-bar" style="display:none"></nav>
 
 </body>
 </html>
