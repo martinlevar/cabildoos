@@ -6766,25 +6766,27 @@ function simDraw() {
 
   // ── Reveal frame-driven (curva cúbica + jitter aleatorio) ────────────────
   const _simTotal = SIM.order.length
-  if (_simTotal > 0 && SIM.revealed < _simTotal && SIM.startTime) {
-    const elapsed = t - SIM.startTime
-    const rawT    = Math.min(elapsed / SIM.REVEAL_DUR, 1)
-    // Cubic ease-in-out: tensión al inicio, explosión en el medio, suspenso al final
-    const eased   = rawT < 0.5
-      ? 4 * rawT * rawT * rawT
-      : 1 - Math.pow(-2 * rawT + 2, 3) / 2
-    const target  = Math.min(Math.floor(eased * _simTotal), _simTotal)
-    const prev    = SIM.revealed
-    while (SIM.revealed < target) {
-      const snum = SIM.order[SIM.revealed]
-      SIM.revealedArr[snum] = 1
-      SIM.flashMap[snum]    = t   // timestamp para flash pop
-      SIM.revealed++
+  if (_simTotal > 0 && SIM.startTime) {
+    // ── Revelar seats según curva de tiempo ──
+    if (SIM.revealed < _simTotal) {
+      const elapsed = t - SIM.startTime
+      const rawT    = Math.min(elapsed / SIM.REVEAL_DUR, 1)
+      const eased   = rawT < 0.5
+        ? 4 * rawT * rawT * rawT
+        : 1 - Math.pow(-2 * rawT + 2, 3) / 2
+      const target = Math.min(Math.floor(eased * _simTotal), _simTotal)
+      const prev   = SIM.revealed
+      while (SIM.revealed < target) {
+        const snum = SIM.order[SIM.revealed]
+        SIM.revealedArr[snum] = 1
+        SIM.flashMap[snum]    = t
+        SIM.revealed++
+      }
+      if (SIM.revealed > prev)
+        document.getElementById('sim-progress').textContent =
+          SIM.revealed.toLocaleString('es-AR')
     }
-    if (SIM.revealed > prev) {
-      document.getElementById('sim-progress').textContent =
-        SIM.revealed.toLocaleString('es-AR')
-    }
+    // ── Detectar fin (separado del bloque anterior para que se evalúe siempre) ──
     if (SIM.revealed >= _simTotal && !SIM._done) {
       SIM._done = true
       const fs = document.getElementById('sim-floating-status')
