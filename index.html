@@ -7679,8 +7679,8 @@ function abrirCertificado() {
   const pctSi  = total > 0 ? ((cntSi  / total) * 100).toFixed(1) : '0.0'
   const pctNo  = total > 0 ? ((cntNo  / total) * 100).toFixed(1) : '0.0'
   const pctAbs = total > 0 ? ((cntAbs / total) * 100).toFixed(1) : '0.0'
-  const participacion = SEATS.length > 0
-    ? ((total / SEATS.length) * 100).toFixed(0) + '%'
+  const participacion = TOTAL_SEATS > 0
+    ? ((total / TOTAL_SEATS) * 100).toFixed(0) + '%'
     : '—'
 
   const pregunta = PREGUNTAS[qIdx] || ''
