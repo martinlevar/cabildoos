@@ -5715,7 +5715,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <div id="cert-modal">
       <div class="cert-hdr">
         <div class="cert-hdr-top">
-          <img id="cert-logo-img" src="logo-cabildo.jpg" alt="Cabildo de Venezuela" style="width:80px;height:80px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(255,255,255,.15)">
+          <img id="cert-logo-img" src="logo-cabildo.jpg" alt="Cabildo de Venezuela" style="width:80px;height:80px;object-fit:cover;flex-shrink:0">
           <div class="cert-hdr-brand">
             <p class="cert-hdr-bname">Cabildo de Venezuela</p>
             <p class="cert-hdr-bsub">Generación Independencia 2026</p>
@@ -7621,16 +7621,30 @@ function cerrarBanner() {
 }
 
 // ── CERTIFICATE ─────────────────────────────────────────────────────────────
-// Preload logo as base64 so html2canvas captures it correctly
+// Preload logo pre-clipped as a circle so html2canvas captures it perfectly
 let _certLogoB64 = null
 ;(function _preloadCertLogo() {
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.onload = () => {
+    const SIZE = 240  // output circle size in px
     const c = document.createElement('canvas')
-    c.width = img.naturalWidth; c.height = img.naturalHeight
-    c.getContext('2d').drawImage(img, 0, 0)
-    _certLogoB64 = c.toDataURL('image/jpeg', 0.95)
+    c.width = SIZE; c.height = SIZE
+    const ctx = c.getContext('2d')
+    // Clip to circle
+    ctx.beginPath()
+    ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2, 0, Math.PI * 2)
+    ctx.closePath()
+    ctx.clip()
+    // Draw image centered & squared (crop to square first)
+    const side = Math.min(img.naturalWidth, img.naturalHeight)
+    const sx = (img.naturalWidth  - side) / 2
+    const sy = (img.naturalHeight - side) / 2
+    ctx.drawImage(img, sx, sy, side, side, 0, 0, SIZE, SIZE)
+    _certLogoB64 = c.toDataURL('image/png')
+    // Update img element if already in DOM
+    const el = document.getElementById('cert-logo-img')
+    if (el) el.src = _certLogoB64
   }
   img.src = 'logo-cabildo.jpg'
 })()
