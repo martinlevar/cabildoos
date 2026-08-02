@@ -10305,6 +10305,8 @@ async function _loadUnreadMessages() {
 // ── Realtime global para mensajes entrantes ───────────────────────────────────
 function initMessagesRealtime() {
   try {
+    const existing = sb.getChannels().find(c => c.topic === 'realtime:messages-inbox')
+    if (existing) sb.removeChannel(existing)
     sb.channel('messages-inbox')
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'messages'
@@ -10451,7 +10453,10 @@ async function _loadNotifications() {
 function initNotificationsRealtime() {
   if (!MY_SEAT) return
   try {
-    sb.channel('notifications-live-' + MY_SEAT)
+    const chName  = 'notifications-live-' + MY_SEAT
+    const existing = sb.getChannels().find(c => c.topic === 'realtime:' + chName)
+    if (existing) sb.removeChannel(existing)
+    sb.channel(chName)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'notifications',
         filter: `to_seat=eq.${MY_SEAT}`
