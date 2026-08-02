@@ -1062,6 +1062,22 @@ html, body {
 .cert-meta-v { font-size:14px; font-weight:800; color:#1a1a1a; margin:0; }
 .cert-meta-v.win-si  { color:#15803d; }
 .cert-meta-v.win-no  { color:#b91c1c; }
+/* Stats bars */
+.cert-stats-block { margin-bottom:16px; display:flex; flex-direction:column; gap:8px; }
+.cert-stats-row { display:flex; align-items:center; gap:8px; }
+.cert-stats-lbl { font-size:11px; font-weight:800; width:28px; text-align:right; flex-shrink:0; }
+.cert-stats-lbl.si  { color:#15803d; }
+.cert-stats-lbl.no  { color:#b91c1c; }
+.cert-stats-lbl.abs { color:#92400e; }
+.cert-stats-track { flex:1; height:10px; background:#f0f0f0; border-radius:99px; overflow:hidden; }
+.cert-stats-fill { height:100%; border-radius:99px; width:0%; transition:width 1s cubic-bezier(.4,0,.2,1); }
+.cert-stats-fill.si  { background:#15803d; }
+.cert-stats-fill.no  { background:#b91c1c; }
+.cert-stats-fill.abs { background:#d97706; }
+.cert-stats-num { font-size:12px; font-weight:700; color:#444; width:36px; text-align:right; flex-shrink:0; }
+.cert-stats-pct { font-size:11px; font-weight:600; color:#aaa; width:34px; flex-shrink:0; }
+.cert-stats-total { font-size:11px; color:#aaa; margin-top:4px; padding-top:8px; border-top:1px solid #f0f0f0; }
+.cert-stats-total b { color:#1a1a1a; font-weight:700; }
 .cert-copy-block {
   font-size:13px; color:#555; line-height:1.65;
   margin:0 0 16px;
@@ -5699,7 +5715,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <div id="cert-modal">
       <div class="cert-hdr">
         <div class="cert-hdr-top">
-          <img src="logo-cabildo.jpg" alt="Cabildo de Venezuela" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0">
+          <img id="cert-logo-img" src="logo-cabildo.jpg" alt="Cabildo de Venezuela" style="width:80px;height:80px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid rgba(255,255,255,.15)">
           <div class="cert-hdr-brand">
             <p class="cert-hdr-bname">Cabildo de Venezuela</p>
             <p class="cert-hdr-bsub">Generación Independencia 2026</p>
@@ -5717,14 +5733,40 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
             <p class="cert-vote-sub" id="cert-vote-sub"></p>
           </div>
         </div>
+
+        <!-- Estadísticas completas -->
+        <div class="cert-stats-block">
+          <div class="cert-stats-row">
+            <span class="cert-stats-lbl si">SÍ</span>
+            <div class="cert-stats-track"><div class="cert-stats-fill si" id="cs-bar-si"></div></div>
+            <span class="cert-stats-num" id="cs-num-si">0</span>
+            <span class="cert-stats-pct" id="cs-pct-si">0%</span>
+          </div>
+          <div class="cert-stats-row">
+            <span class="cert-stats-lbl no">NO</span>
+            <div class="cert-stats-track"><div class="cert-stats-fill no" id="cs-bar-no"></div></div>
+            <span class="cert-stats-num" id="cs-num-no">0</span>
+            <span class="cert-stats-pct" id="cs-pct-no">0%</span>
+          </div>
+          <div class="cert-stats-row" id="cs-row-abs">
+            <span class="cert-stats-lbl abs">ABS</span>
+            <div class="cert-stats-track"><div class="cert-stats-fill abs" id="cs-bar-abs"></div></div>
+            <span class="cert-stats-num" id="cs-num-abs">0</span>
+            <span class="cert-stats-pct" id="cs-pct-abs">0%</span>
+          </div>
+          <div class="cert-stats-total">
+            <span id="cs-total-votos">0</span> votos emitidos · <span id="cs-winner-txt"></span>
+          </div>
+        </div>
+
         <div class="cert-meta">
           <div class="cert-meta-item">
             <p class="cert-meta-k">Butaca</p>
             <p class="cert-meta-v" id="cert-butaca"></p>
           </div>
           <div class="cert-meta-item">
-            <p class="cert-meta-k">Resultado</p>
-            <p class="cert-meta-v" id="cert-resultado"></p>
+            <p class="cert-meta-k">Participación</p>
+            <p class="cert-meta-v" id="cert-participacion"></p>
           </div>
           <div class="cert-meta-item">
             <p class="cert-meta-k">Fecha</p>
@@ -5740,11 +5782,11 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
           </div>
         </div>
         <div class="cert-dl-btns">
-          <button class="cert-dl-btn primary" onclick="descargarCertImagen()">
+          <button class="cert-dl-btn primary" onclick="descargarCertImagen(event)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <span>Imagen<span class="cert-dl-sub">Para compartir en redes</span></span>
           </button>
-          <button class="cert-dl-btn" onclick="descargarCertPDF()">
+          <button class="cert-dl-btn" onclick="descargarCertPDF(event)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
             <span>PDF<span class="cert-dl-sub">Para guardar o imprimir</span></span>
           </button>
@@ -7579,16 +7621,28 @@ function cerrarBanner() {
 }
 
 // ── CERTIFICATE ─────────────────────────────────────────────────────────────
-function _generarCopy(voto, gana, empate, pregunta) {
-  const q = (pregunta || '').toLowerCase()
+// Preload logo as base64 so html2canvas captures it correctly
+let _certLogoB64 = null
+;(function _preloadCertLogo() {
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.onload = () => {
+    const c = document.createElement('canvas')
+    c.width = img.naturalWidth; c.height = img.naturalHeight
+    c.getContext('2d').drawImage(img, 0, 0)
+    _certLogoB64 = c.toDataURL('image/jpeg', 0.95)
+  }
+  img.src = 'logo-cabildo.jpg'
+})()
+
+function _generarCopy(voto, gana, empate) {
   if (voto === 'abs') {
     return `"La abstención también es una postura. Butaca <b>#${MY_SEAT}</b> estuvo presente y eligió el silencio — que habla más fuerte de lo que parece."`
   }
+  if (empate) {
+    return `"El hemiciclo quedó dividido. Pero la butaca <b>#${MY_SEAT}</b> estuvo ahí, y eso no se borra."`
+  }
   const votoGano = (voto === 'si' && gana === 'si') || (voto === 'no' && gana === 'no')
-  const empateStr = empate
-    ? `"El hemiciclo quedó dividido. Pero la butaca <b>#${MY_SEAT}</b> estuvo ahí, y eso no se borra."`
-    : null
-  if (empateStr) return empateStr
   if (votoGano) {
     return `"Tu voz fue parte de la mayoría. La butaca <b>#${MY_SEAT}</b> habló — y Venezuela escuchó."`
   } else {
@@ -7599,90 +7653,114 @@ function _generarCopy(voto, gana, empate, pregunta) {
 function abrirCertificado() {
   if (!MY_SEAT) return
   const voto = SIM.results ? SIM.results[MY_SEAT] : null
-  if (!voto) {
-    alert('No se encontró tu voto para esta votación.')
-    return
-  }
+  if (!voto) { alert('No se encontró tu voto para esta votación.'); return }
+
   const cntSi  = SIM._realSi  || 0
   const cntNo  = SIM._realNo  || 0
   const cntAbs = SIM._realAbs || 0
+  const total  = cntSi + cntNo + cntAbs
   const ganaSi = cntSi > cntNo
-  const empate = cntSi === cntNo && (cntSi + cntNo + cntAbs) > 0
+  const empate = cntSi === cntNo && total > 0
   const gana   = empate ? 'empate' : (ganaSi ? 'si' : 'no')
+  const pctSi  = total > 0 ? ((cntSi  / total) * 100).toFixed(1) : '0.0'
+  const pctNo  = total > 0 ? ((cntNo  / total) * 100).toFixed(1) : '0.0'
+  const pctAbs = total > 0 ? ((cntAbs / total) * 100).toFixed(1) : '0.0'
+  const participacion = SEATS.length > 0
+    ? ((total / SEATS.length) * 100).toFixed(0) + '%'
+    : '—'
 
   const pregunta = PREGUNTAS[qIdx] || ''
   const fecha = new Date().toLocaleDateString('es-AR', { day:'numeric', month:'short', year:'numeric' })
   const hash  = 'cert·' + Math.random().toString(36).slice(2,6) + '·' + MY_SEAT.toString(16).padStart(4,'0')
 
+  // Logo: usar base64 si está disponible (garantiza captura en html2canvas)
+  const logoEl = document.getElementById('cert-logo-img')
+  if (logoEl && _certLogoB64) logoEl.src = _certLogoB64
+
   const votoLabels = { si:'SÍ', no:'NO', abs:'ABS' }
   const votoSubs   = { si:'A favor de la propuesta', no:'En contra de la propuesta', abs:'Se abstuvo de votar' }
-  const resLabels  = { si:'SÍ ganó', no:'NO ganó', empate:'Empate' }
-  const resClasses = { si:'win-si', no:'win-no', empate:'' }
+  const winnerTxts = {
+    si: `<b>Ganó el SÍ</b> con ${pctSi}%`,
+    no: `<b>Ganó el NO</b> con ${pctNo}%`,
+    empate: `<b>Empate</b> — ${pctSi}% SÍ · ${pctNo}% NO`
+  }
 
   document.getElementById('cert-question-txt').textContent = pregunta
   const pill = document.getElementById('cert-pill')
   pill.textContent = votoLabels[voto] || voto.toUpperCase()
   pill.className = 'cert-pill ' + voto
   document.getElementById('cert-vote-sub').textContent = votoSubs[voto] || ''
+
+  // Stats
+  document.getElementById('cs-num-si').textContent  = cntSi.toLocaleString('es-AR')
+  document.getElementById('cs-num-no').textContent  = cntNo.toLocaleString('es-AR')
+  document.getElementById('cs-num-abs').textContent = cntAbs.toLocaleString('es-AR')
+  document.getElementById('cs-pct-si').textContent  = pctSi + '%'
+  document.getElementById('cs-pct-no').textContent  = pctNo + '%'
+  document.getElementById('cs-pct-abs').textContent = pctAbs + '%'
+  document.getElementById('cs-total-votos').textContent = total.toLocaleString('es-AR')
+  document.getElementById('cs-winner-txt').innerHTML = winnerTxts[gana] || ''
+  if (cntAbs === 0) document.getElementById('cs-row-abs').style.display = 'none'
+  else document.getElementById('cs-row-abs').style.display = ''
+
   document.getElementById('cert-butaca').textContent = '#' + MY_SEAT
-  const resEl = document.getElementById('cert-resultado')
-  resEl.textContent = resLabels[gana] || '—'
-  resEl.className = 'cert-meta-v ' + (resClasses[gana] || '')
+  document.getElementById('cert-participacion').textContent = participacion
   document.getElementById('cert-fecha').textContent = fecha
-  document.getElementById('cert-copy').innerHTML = _generarCopy(voto, gana, empate, pregunta)
+  document.getElementById('cert-copy').innerHTML = _generarCopy(voto, gana, empate)
   document.getElementById('cert-hash').textContent = hash
 
-  // Mostrar el botón sólo si el usuario votó
-  const certBtn = document.getElementById('sim-cert-btn')
-  if (certBtn) certBtn.style.display = 'flex'
-
   document.getElementById('cert-overlay').classList.add('open')
+
+  // Animar barras con pequeño delay
+  setTimeout(() => {
+    document.getElementById('cs-bar-si').style.width  = pctSi  + '%'
+    document.getElementById('cs-bar-no').style.width  = pctNo  + '%'
+    document.getElementById('cs-bar-abs').style.width = pctAbs + '%'
+  }, 120)
 }
 
 function cerrarCertificado() {
   document.getElementById('cert-overlay').classList.remove('open')
 }
 
-async function descargarCertImagen() {
+async function _loadHtml2Canvas() {
+  if (window.html2canvas) return
+  await new Promise((res, rej) => {
+    const s = document.createElement('script')
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+    s.onload = res; s.onerror = rej
+    document.head.appendChild(s)
+  })
+}
+
+async function descargarCertImagen(ev) {
   const modal = document.getElementById('cert-modal')
   if (!modal) return
-  const btn = event.currentTarget
-  btn.textContent = 'Generando…'
-  btn.disabled = true
+  const btn = ev.currentTarget
+  const origHTML = btn.innerHTML
+  btn.textContent = 'Generando…'; btn.disabled = true
   try {
-    if (!window.html2canvas) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script')
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
-        s.onload = res; s.onerror = rej
-        document.head.appendChild(s)
-      })
-    }
-    const canvas = await html2canvas(modal, { scale:3, useCORS:true, backgroundColor:'#ffffff', logging:false })
+    await _loadHtml2Canvas()
+    const canvas = await html2canvas(modal, {
+      scale: 3, useCORS: true, allowTaint: false,
+      backgroundColor: '#ffffff', logging: false
+    })
     const link = document.createElement('a')
     link.download = 'certificado-voto-cabildo.png'
     link.href = canvas.toDataURL('image/png')
     link.click()
   } catch(e) { console.error(e); alert('Error al generar imagen.') }
-  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span>Imagen<span class="cert-dl-sub">Para compartir en redes</span></span>'
-  btn.disabled = false
+  btn.innerHTML = origHTML; btn.disabled = false
 }
 
-async function descargarCertPDF() {
+async function descargarCertPDF(ev) {
   const modal = document.getElementById('cert-modal')
   if (!modal) return
-  const btn = event.currentTarget
-  btn.textContent = 'Generando…'
-  btn.disabled = true
+  const btn = ev.currentTarget
+  const origHTML = btn.innerHTML
+  btn.textContent = 'Generando…'; btn.disabled = true
   try {
-    if (!window.html2canvas) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script')
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
-        s.onload = res; s.onerror = rej
-        document.head.appendChild(s)
-      })
-    }
+    await _loadHtml2Canvas()
     if (!window.jspdf) {
       await new Promise((res, rej) => {
         const s = document.createElement('script')
@@ -7691,7 +7769,10 @@ async function descargarCertPDF() {
         document.head.appendChild(s)
       })
     }
-    const canvas = await html2canvas(modal, { scale:3, useCORS:true, backgroundColor:'#ffffff', logging:false })
+    const canvas = await html2canvas(modal, {
+      scale: 3, useCORS: true, allowTaint: false,
+      backgroundColor: '#ffffff', logging: false
+    })
     const imgData = canvas.toDataURL('image/png')
     const { jsPDF } = window.jspdf
     const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' })
@@ -7705,8 +7786,7 @@ async function descargarCertPDF() {
     pdf.addImage(imgData, 'PNG', x, y, iW * ratio, iH * ratio)
     pdf.save('certificado-voto-cabildo.pdf')
   } catch(e) { console.error(e); alert('Error al generar PDF.') }
-  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg><span>PDF<span class="cert-dl-sub">Para guardar o imprimir</span></span>'
-  btn.disabled = false
+  btn.innerHTML = origHTML; btn.disabled = false
 }
 // ────────────────────────────────────────────────────────────────────────────
 
