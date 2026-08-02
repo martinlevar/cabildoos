@@ -1407,6 +1407,49 @@ html, body {
 .v-btn.abs { background:rgba(0,0,0,.05); color:#777; font-size:13px; flex:unset; width:100%; padding:13px 12px; margin-top:4px; }
 .v-btn.abs:hover { background:rgba(0,0,0,.1); color:#444; transform:translateY(-1px); }
 .v-small { font-size:11px; color:#c8c8c8; text-align:center; }
+/* ── ph2 redesign ── */
+.ph2-vote-display {
+  display:flex; flex-direction:column; align-items:center;
+  gap:10px; padding:24px 20px 20px; margin-bottom:16px;
+  border-radius:16px;
+  background:var(--bg);
+}
+.ph2-vote-icon {
+  width:52px; height:52px; border-radius:16px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px;
+}
+.ph2-vote-display.si  { background:#f0fdf4; }
+.ph2-vote-display.no  { background:#fff1f1; }
+.ph2-vote-display.abs { background:#fefce8; }
+.ph2-vote-icon.si  { background:#dcfce7; }
+.ph2-vote-icon.no  { background:#fee2e2; }
+.ph2-vote-icon.abs { background:#fef9c3; }
+.ph2-vote-label {
+  font-size:28px; font-weight:800; letter-spacing:-.5px;
+}
+.ph2-vote-label.si  { color:#15803d; }
+.ph2-vote-label.no  { color:#b91c1c; }
+.ph2-vote-label.abs { color:#92400e; }
+.ph2-question {
+  font-size:12px; color:var(--mid); text-align:center;
+  margin-bottom:18px; line-height:1.5; padding:0 4px;
+}
+.ph2-privacy-pills {
+  display:flex; flex-wrap:wrap; gap:7px;
+  justify-content:center; margin-bottom:20px;
+}
+.ph2-pill {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:6px 12px; border-radius:20px;
+  background:rgba(0,0,0,.04); border:1px solid rgba(0,0,0,.07);
+  font-size:11px; font-weight:600; color:#555;
+}
+.ph2-pill svg { opacity:.6; }
+.ph2-irrev {
+  text-align:center; font-size:11px; color:#bbb;
+  margin-top:12px;
+}
 .conf-txt { font-size:14px; color:var(--mid); margin-bottom:14px; line-height:1.6; }
 .conf-txt strong { color:var(--dark); font-size:16px; }
 .vav-block {
@@ -4588,17 +4631,31 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
         <p class="v-small">El voto es irrevocable una vez confirmado</p>
       </div>
       <div class="phase" id="ph2">
-        <p class="conf-txt">Vas a votar <strong id="elec-lbl">SÍ</strong>. ¿Confirmás?</p>
-        <div class="vav-block">
-          <b>Sistema VaV — Commit</b>
-          SHA-256("<span id="voto-txt">si</span>" + ":" + nonce_secreto)<br>
-          → Solo el hash se envía al servidor<br>
-          → El nonce queda guardado en tu dispositivo
+        <input type="hidden" id="voto-txt" value="si">
+        <div class="ph2-vote-display" id="ph2-vote-display">
+          <div class="ph2-vote-icon" id="ph2-vote-icon"></div>
+          <div class="ph2-vote-label" id="ph2-vote-label">SÍ</div>
         </div>
-        <div class="two-btns">
-          <button class="btn-back" onclick="showPh(1)">← Volver</button>
-          <button class="btn-ok"   onclick="confirmarVoto()">Confirmar y sellar</button>
+        <p class="ph2-question" id="ph2-question-echo"></p>
+        <div class="ph2-privacy-pills">
+          <div class="ph2-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Cifrado en tu dispositivo
+          </div>
+          <div class="ph2-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Anónimo e irrastreable
+          </div>
+          <div class="ph2-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Solo el hash viaja a la red
+          </div>
         </div>
+        <div class="two-btns" style="margin-top:4px">
+          <button class="btn-back" onclick="showPh(1)">← Cambiar voto</button>
+          <button class="btn-ok"   onclick="confirmarVoto()">Sellar y enviar</button>
+        </div>
+        <p class="ph2-irrev">El voto es irrevocable una vez sellado</p>
       </div>
       <div class="phase" id="ph3">
         <div class="commit-row">
@@ -11674,16 +11731,28 @@ function _urnaOverlayClose() {
 
 // ── Voting flow ──────────────────────────────────────────────────────
 function elegir(v) {
-  const lbl    = document.getElementById('elec-lbl')
-  const labels = {si:'SÍ', no:'NO', abs:'ABSTENCIÓN'}
-  const colors = {si:'#178a5b', no:'#c41e1e', abs:'#888'}
-  if (lbl) { lbl.textContent=labels[v]||v.toUpperCase(); lbl.style.color=colors[v]||'#555' }
-  document.getElementById('voto-txt').textContent = v
+  // Actualizar input hidden
+  const vtEl = document.getElementById('voto-txt')
+  if (vtEl) vtEl.value = v
+
+  // Poblar ph2 con el voto elegido
+  const labels  = {si:'SÍ', no:'NO', abs:'ABSTENCIÓN'}
+  const icons   = {si:'✓', no:'✕', abs:'—'}
+  const display = document.getElementById('ph2-vote-display')
+  const icon    = document.getElementById('ph2-vote-icon')
+  const label   = document.getElementById('ph2-vote-label')
+  const qEcho   = document.getElementById('ph2-question-echo')
+
+  if (display) { display.className = 'ph2-vote-display ' + v }
+  if (icon)    { icon.className    = 'ph2-vote-icon '    + v; icon.textContent = icons[v] || '' }
+  if (label)   { label.className   = 'ph2-vote-label '   + v; label.textContent = labels[v] || v.toUpperCase() }
+  if (qEcho)     qEcho.textContent = PREGUNTAS[qIdx] || ''
+
   _showSHAOverlay(v, () => showPh(2))
 }
 
 async function confirmarVoto() {
-  const voto = document.getElementById('voto-txt').textContent
+  const voto = document.getElementById('voto-txt').value
   const qId  = PREGUNTAS_IDS[qIdx]
   if (!qId || !_authUser || !MY_SEAT) { showToast('Error: sesión no lista, recargá la página'); return }
 
