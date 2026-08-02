@@ -1147,6 +1147,225 @@ html, body {
 }
 .pc-vote-btn:hover { background:#d45510; }
 
+/* ══════════════════════════════════════════════
+   SHA-256 CRYPTO OVERLAY
+══════════════════════════════════════════════ */
+#vav-sha-overlay {
+  position:fixed; inset:0; z-index:1100;
+  background:#060d1c;
+  display:flex; align-items:center; justify-content:center;
+  padding:24px 20px;
+  opacity:0; pointer-events:none;
+  transition:opacity .35s ease;
+  overflow-y:auto;
+}
+#vav-sha-overlay.open { opacity:1; pointer-events:all; }
+.vav-sha-inner { text-align:center; width:100%; max-width:460px; margin:auto; }
+
+.vav-sha-lock {
+  width:64px; height:64px; border-radius:20px; margin:0 auto 20px;
+  background:linear-gradient(135deg,#1e3a6e,#1a2d5a);
+  border:1px solid rgba(96,165,250,.25);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 32px rgba(59,130,246,.25);
+  animation:sha-glow 2s ease-in-out infinite;
+}
+@keyframes sha-glow {
+  0%,100%{ box-shadow:0 0 20px rgba(59,130,246,.2); }
+  50%    { box-shadow:0 0 40px rgba(96,165,250,.5); }
+}
+.vav-sha-lock svg { width:28px; height:28px; }
+
+.vav-sha-title { font-size:22px; font-weight:800; color:#f0f4ff; letter-spacing:-.4px; margin-bottom:6px; }
+.vav-sha-sub   { font-size:13px; color:rgba(255,255,255,.4); margin-bottom:28px; letter-spacing:.03em; }
+
+.vav-terminal {
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:14px; padding:20px 22px;
+  margin-bottom:18px; text-align:left;
+}
+.vav-term-row { display:flex; gap:14px; margin-bottom:14px; align-items:flex-start; }
+.vav-term-row:last-child { margin-bottom:0; }
+.vav-term-lbl {
+  font-family:'SF Mono','Fira Code','Consolas',monospace;
+  font-size:9px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:rgba(255,255,255,.25); width:64px; flex-shrink:0; padding-top:2px;
+}
+.vav-term-val {
+  font-family:'SF Mono','Fira Code','Consolas',monospace;
+  font-size:12px; color:#60a5fa; word-break:break-all; line-height:1.55;
+  flex:1;
+}
+.vav-term-val.green { color:#4ade80; }
+.vav-term-val.vote-si  { color:#4ade80; font-size:14px; font-weight:800; }
+.vav-term-val.vote-no  { color:#f87171; font-size:14px; font-weight:800; }
+.vav-term-val.vote-abs { color:#fbbf24; font-size:14px; font-weight:800; }
+
+.vav-sha-bar-wrap {
+  height:3px; background:rgba(255,255,255,.07);
+  border-radius:2px; margin-bottom:28px; overflow:hidden;
+}
+.vav-sha-bar {
+  height:100%; width:0%;
+  background:linear-gradient(90deg,#3b82f6,#60a5fa,#a78bfa);
+  border-radius:2px;
+}
+
+.vav-sha-done {
+  display:none; flex-direction:column; align-items:center;
+  margin-bottom:28px; gap:10px;
+}
+.vav-sha-done.show { display:flex; animation:fade-up .4s ease both; }
+@keyframes fade-up { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.vav-sha-done-badge {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.2);
+  border-radius:20px; padding:8px 18px;
+}
+.vav-sha-done-badge svg { flex-shrink:0; }
+.vav-sha-done-badge span { font-size:13px; font-weight:700; color:#4ade80; }
+.vav-sha-done-text {
+  font-size:13px; color:rgba(255,255,255,.45); max-width:320px;
+  line-height:1.6; text-align:center;
+}
+
+.vav-sha-btn {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:14px 32px; border-radius:12px; border:none;
+  background:linear-gradient(135deg,#2563eb,#3b82f6);
+  color:#fff; font-size:15px; font-weight:700; font-family:inherit;
+  cursor:pointer; opacity:0; pointer-events:none;
+  transition:opacity .3s, transform .15s, box-shadow .15s;
+  box-shadow:0 4px 20px rgba(59,130,246,.3);
+}
+.vav-sha-btn.show { opacity:1; pointer-events:all; }
+.vav-sha-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(59,130,246,.45); }
+
+/* ══════════════════════════════════════════════
+   URNA / BALLOT BOX OVERLAY
+══════════════════════════════════════════════ */
+#vav-urna-overlay {
+  position:fixed; inset:0; z-index:1100;
+  background:rgba(250,250,252,.97);
+  backdrop-filter:blur(24px);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px 20px;
+  opacity:0; pointer-events:none;
+  transition:opacity .4s ease;
+  overflow-y:auto;
+}
+#vav-urna-overlay.open { opacity:1; pointer-events:all; animation:none; }
+.vav-urna-inner { text-align:center; width:100%; max-width:380px; margin:auto; }
+
+/* La escena: sobre + urna */
+.vav-urna-scene {
+  position:relative; width:160px; height:160px; margin:0 auto 32px;
+}
+.vav-env-wrap {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:72px; height:52px;
+  animation:none;
+}
+.vav-env-wrap.dropping {
+  animation:env-drop .9s cubic-bezier(.4,.0,.2,1) forwards;
+}
+@keyframes env-drop {
+  0%  { top:0;    opacity:1; transform:translateX(-50%) rotate(-4deg) scale(1.05); }
+  60% { top:88px; opacity:1; transform:translateX(-50%) rotate(1deg) scale(.92); }
+  80% { top:84px; opacity:.7; transform:translateX(-50%) rotate(0deg) scale(.75); }
+  100%{ top:88px; opacity:0; transform:translateX(-50%) scale(.5); }
+}
+
+/* SVG envelope */
+.vav-env-svg { width:72px; height:52px; }
+
+/* SVG ballot box */
+.vav-box-wrap {
+  position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:110px;
+}
+.vav-box-svg { width:110px; height:88px; }
+
+/* Ripple on success */
+.vav-urna-ripple {
+  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  width:0; height:0; border-radius:50%;
+  background:rgba(34,197,94,.15);
+  pointer-events:none;
+}
+.vav-urna-ripple.go {
+  animation:ripple-out .8s ease-out .7s both;
+}
+@keyframes ripple-out {
+  from{ width:0;height:0;opacity:.8; margin-left:0;margin-top:0; }
+  to  { width:120px;height:120px;opacity:0; margin-left:-60px;margin-top:-60px; }
+}
+
+.vav-urna-check {
+  width:56px; height:56px; border-radius:50%; margin:0 auto 16px;
+  background:linear-gradient(135deg,#22c55e,#16a34a);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 24px rgba(34,197,94,.35);
+  opacity:0;
+}
+.vav-urna-check.show {
+  animation:check-pop .5s cubic-bezier(.34,1.56,.64,1) .6s both;
+}
+@keyframes check-pop {
+  from{ opacity:0; transform:scale(.4); }
+  to  { opacity:1; transform:scale(1); }
+}
+.vav-urna-check svg { width:26px; height:26px; }
+
+.vav-urna-vote-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  border-radius:20px; padding:6px 16px; margin-bottom:14px;
+  font-size:13px; font-weight:800; letter-spacing:.03em;
+  opacity:0;
+}
+.vav-urna-vote-badge.show { animation:fade-up .4s ease .9s both; }
+.vav-urna-vote-badge.si  { background:#dcfce7; color:#166534; }
+.vav-urna-vote-badge.no  { background:#fee2e2; color:#991b1b; }
+.vav-urna-vote-badge.abs { background:#fef9c3; color:#854d0e; }
+
+.vav-urna-title {
+  font-size:26px; font-weight:800; color:#0d1b2e;
+  letter-spacing:-.6px; margin-bottom:6px;
+  opacity:0;
+}
+.vav-urna-title.show { animation:fade-up .4s ease 1s both; }
+.vav-urna-sub {
+  font-size:14px; color:#6b7280; margin-bottom:20px;
+  opacity:0;
+}
+.vav-urna-sub.show { animation:fade-up .4s ease 1.1s both; }
+
+.vav-urna-quote {
+  font-size:13px; color:#374151; line-height:1.65;
+  padding:16px 18px; border-left:3px solid #3b82f6;
+  background:rgba(59,130,246,.05); border-radius:0 10px 10px 0;
+  text-align:left; margin-bottom:12px;
+  opacity:0;
+}
+.vav-urna-quote.show { animation:fade-up .4s ease 1.2s both; }
+.vav-urna-note {
+  font-size:11px; color:#9ca3af; margin-bottom:28px;
+  opacity:0;
+}
+.vav-urna-note.show { animation:fade-up .35s ease 1.35s both; }
+
+.vav-urna-btn {
+  padding:14px 36px; border-radius:12px; border:none;
+  background:#0d1b2e; color:#fff;
+  font-size:15px; font-weight:700; font-family:inherit;
+  cursor:pointer; transition:transform .15s,background .15s;
+  opacity:0;
+}
+.vav-urna-btn.show { animation:fade-up .35s ease 1.5s both; }
+.vav-urna-btn:hover { background:#1a2f4f; transform:translateY(-2px); }
+
 /* ── MODAL ── */
 .modal-bd {
   position:fixed; inset:0; z-index:300;
@@ -4415,6 +4634,97 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
       <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
       <button class="modal-x" onclick="cerrarModal()">×</button>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════ SHA-256 CRYPTO OVERLAY ══════════════ -->
+<div id="vav-sha-overlay">
+  <div class="vav-sha-inner">
+    <div class="vav-sha-lock">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <h2 class="vav-sha-title">Generando voto privado</h2>
+    <p class="vav-sha-sub">Sistema VaV — Commit Criptográfico SHA-256</p>
+
+    <div class="vav-terminal">
+      <div class="vav-term-row">
+        <span class="vav-term-lbl">Tu voto</span>
+        <span class="vav-term-val" id="vav-sha-voto-lbl">—</span>
+      </div>
+      <div class="vav-term-row">
+        <span class="vav-term-lbl">Nonce</span>
+        <span class="vav-term-val" id="vav-sha-nonce">—</span>
+      </div>
+      <div class="vav-term-row">
+        <span class="vav-term-lbl">SHA-256</span>
+        <span class="vav-term-val green" id="vav-sha-hash">—</span>
+      </div>
+    </div>
+
+    <div class="vav-sha-bar-wrap">
+      <div class="vav-sha-bar" id="vav-sha-bar"></div>
+    </div>
+
+    <div class="vav-sha-done" id="vav-sha-done">
+      <div class="vav-sha-done-badge">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span>Voto blindado — nadie puede saber qué votaste</span>
+      </div>
+      <p class="vav-sha-done-text">Solo el hash SHA-256 viajará al servidor. Ni el administrador puede leer tu elección.</p>
+    </div>
+
+    <button class="vav-sha-btn" id="vav-sha-btn" onclick="_shaOverlayContinue()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      Continuar a confirmar
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════ URNA OVERLAY ══════════════ -->
+<div id="vav-urna-overlay">
+  <div class="vav-urna-inner">
+    <div class="vav-urna-scene">
+      <!-- Envelope -->
+      <div class="vav-env-wrap" id="vav-env-wrap">
+        <svg class="vav-env-svg" viewBox="0 0 72 52" fill="none">
+          <rect x="1" y="8" width="70" height="43" rx="5" fill="#e8eeff" stroke="#c7d2fe" stroke-width="1.5"/>
+          <path d="M1 10 L36 32 L71 10" stroke="#a5b4fc" stroke-width="1.5" fill="none"/>
+          <rect x="26" y="22" width="20" height="14" rx="3" id="vav-env-color-bar" fill="#4ade80"/>
+        </svg>
+      </div>
+      <!-- Ballot box -->
+      <div class="vav-box-wrap">
+        <svg class="vav-box-svg" viewBox="0 0 110 88" fill="none">
+          <!-- Body -->
+          <rect x="5" y="28" width="100" height="56" rx="8" fill="#1a1f3c"/>
+          <!-- Slot -->
+          <rect x="36" y="24" width="38" height="8" rx="4" fill="#0d1220"/>
+          <rect x="38" y="26" width="34" height="4" rx="2" fill="#060c1a"/>
+          <!-- Shine line -->
+          <rect x="12" y="36" width="86" height="2" rx="1" fill="rgba(255,255,255,.08)"/>
+          <!-- VaV label -->
+          <text x="55" y="62" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="11" font-weight="700" font-family="'Manrope',sans-serif" letter-spacing="1">VaV</text>
+          <!-- Lock icon on box -->
+          <rect x="43" y="68" width="24" height="16" rx="3" fill="rgba(255,255,255,.07)"/>
+          <path d="M50 72v-3a5 5 0 0 1 10 0v3" stroke="rgba(255,255,255,.25)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+      <div class="vav-urna-ripple" id="vav-urna-ripple"></div>
+    </div>
+
+    <div class="vav-urna-check" id="vav-urna-check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+
+    <div class="vav-urna-vote-badge" id="vav-urna-vote-badge"></div>
+    <h2 class="vav-urna-title" id="vav-urna-title">Voto Emitido</h2>
+    <p class="vav-urna-sub" id="vav-urna-sub">Tu participación quedó registrada en el cabildo</p>
+
+    <div class="vav-urna-quote" id="vav-urna-quote">"La democracia real protege tu voz. Tu voto existe en la red, pero solo vos sabés qué elegiste — ni el servidor, ni el administrador pueden saberlo."</div>
+    <p class="vav-urna-note" id="vav-urna-note">Los resultados se revelarán cuando el administrador cierre la votación</p>
+    <button class="vav-urna-btn" id="vav-urna-btn" onclick="_urnaOverlayClose()">Volver al congreso</button>
   </div>
 </div>
 
@@ -11252,61 +11562,167 @@ function cerrarModal() {
 function checkBdClick(e) {
   if (e.target === document.getElementById('modal-bd')) cerrarModal()
 }
-function elegir(v) {
-  const lbl = document.getElementById('elec-lbl')
-  const labels = { si: 'SÍ', no: 'NO', abs: 'ABSTENCIÓN' }
-  const colors = { si: '#178a5b', no: '#c41e1e', abs: '#888' }
-  lbl.textContent = labels[v] || v.toUpperCase()
-  lbl.style.color = colors[v] || '#555'
-  document.getElementById('voto-txt').textContent = v
-  showPh(2)
-}
-async function confirmarVoto() {
-  const voto  = document.getElementById('voto-txt').textContent  // 'si' | 'no'
-  const qId   = PREGUNTAS_IDS[qIdx]
-  if (!qId || !_authUser || !MY_SEAT) {
-    showToast('Error: sesión no lista, recargá la página')
-    return
-  }
+// ══════════════════════════════════════════════════════════════
+//  ANIMACIONES DE VOTO — SHA-256 + URNA
+// ══════════════════════════════════════════════════════════════
+let _shaCallback = null
 
-  // Generar nonce criptográfico
+function _randHex(n) {
+  const H = '0123456789abcdef'
+  return Array.from({length:n}, () => H[Math.floor(Math.random()*16)]).join('')
+}
+function _cascade(el, final, duration) {
+  if (!el) return
+  const H = '0123456789abcdef', n = final.length, start = Date.now()
+  const tick = () => {
+    const t = Math.min((Date.now()-start)/duration, 1)
+    const rev = Math.floor(t*n)
+    let s = ''
+    for (let i=0;i<n;i++) s += i<rev ? final[i] : H[Math.floor(Math.random()*16)]
+    el.textContent = s
+    if (t<1) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+}
+function _progressTo(el, from, to, duration) {
+  if (!el) return
+  const start = Date.now()
+  const tick = () => {
+    const t = Math.min((Date.now()-start)/duration, 1)
+    const e = 1-Math.pow(1-t,3)
+    el.style.width = (from+(to-from)*e)+'%'
+    if (t<1) requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
+}
+
+function _showSHAOverlay(voto, onContinue) {
+  _shaCallback = onContinue
+  const labels = {si:'SÍ', no:'NO', abs:'ABSTENCIÓN'}
+  const cls    = {si:'vote-si', no:'vote-no', abs:'vote-abs'}
+
+  const nonceEl = document.getElementById('vav-sha-nonce')
+  const hashEl  = document.getElementById('vav-sha-hash')
+  const barEl   = document.getElementById('vav-sha-bar')
+  const doneEl  = document.getElementById('vav-sha-done')
+  const btnEl   = document.getElementById('vav-sha-btn')
+  const votoLbl = document.getElementById('vav-sha-voto-lbl')
+
+  if (nonceEl) nonceEl.textContent = '—'
+  if (hashEl)  hashEl.textContent  = '—'
+  if (barEl)   barEl.style.width   = '0%'
+  if (doneEl)  doneEl.classList.remove('show')
+  if (btnEl)   btnEl.classList.remove('show')
+  if (votoLbl) { votoLbl.textContent = labels[voto]||voto.toUpperCase(); votoLbl.className='vav-term-val '+(cls[voto]||'') }
+
+  document.getElementById('vav-sha-overlay').classList.add('open')
+
+  const fakeNonce = _randHex(64)
+  const fakeHash  = _randHex(64)
+
+  setTimeout(() => { _cascade(nonceEl, fakeNonce, 600); _progressTo(barEl, 0, 38, 600) }, 300)
+  setTimeout(() => { _cascade(hashEl,  fakeHash,  900); _progressTo(barEl, 38, 88, 900) }, 950)
+  setTimeout(() => {
+    _progressTo(barEl, 88, 100, 250)
+    setTimeout(() => {
+      if (doneEl) doneEl.classList.add('show')
+      if (btnEl)  btnEl.classList.add('show')
+    }, 280)
+  }, 2100)
+}
+
+function _shaOverlayContinue() {
+  document.getElementById('vav-sha-overlay').classList.remove('open')
+  if (_shaCallback) { _shaCallback(); _shaCallback = null }
+}
+
+function _showUrnaOverlay(voto) {
+  const labels   = {si:'✓ Votaste SÍ', no:'✓ Votaste NO', abs:'✓ Te abstuviste'}
+  const colBar   = {si:'#4ade80', no:'#f87171', abs:'#fbbf24'}
+  const badgeCls = {si:'si', no:'no', abs:'abs'}
+
+  const resetEl = id => { const el=document.getElementById(id); if(el){el.classList.remove('show','go','dropping');void el.offsetWidth}; return el }
+  const envEl    = resetEl('vav-env-wrap')
+  const checkEl  = resetEl('vav-urna-check')
+  const rippleEl = resetEl('vav-urna-ripple')
+  const badgeEl  = resetEl('vav-urna-vote-badge')
+  const titleEl  = resetEl('vav-urna-title')
+  const subEl    = resetEl('vav-urna-sub')
+  const quoteEl  = resetEl('vav-urna-quote')
+  const noteEl   = resetEl('vav-urna-note')
+  const btnEl    = resetEl('vav-urna-btn')
+
+  const bar = document.getElementById('vav-env-color-bar')
+  if (bar) bar.setAttribute('fill', colBar[voto]||'#60a5fa')
+
+  if (badgeEl) { badgeEl.textContent=labels[voto]||'✓ Voto emitido'; badgeEl.className='vav-urna-vote-badge '+(badgeCls[voto]||'') }
+
+  document.getElementById('vav-urna-overlay').classList.add('open')
+
+  setTimeout(() => { if(envEl)    envEl.classList.add('dropping') },    300)
+  setTimeout(() => { if(rippleEl) rippleEl.classList.add('go') },       700)
+  setTimeout(() => { if(checkEl)  checkEl.classList.add('show') },      600)
+  ;[badgeEl,titleEl,subEl,quoteEl,noteEl,btnEl].forEach(el => { if(el) el.classList.add('show') })
+}
+
+function _urnaOverlayClose() {
+  document.getElementById('vav-urna-overlay')?.classList.remove('open')
+  cerrarModal()
+}
+
+// ── Voting flow ──────────────────────────────────────────────────────
+function elegir(v) {
+  const lbl    = document.getElementById('elec-lbl')
+  const labels = {si:'SÍ', no:'NO', abs:'ABSTENCIÓN'}
+  const colors = {si:'#178a5b', no:'#c41e1e', abs:'#888'}
+  if (lbl) { lbl.textContent=labels[v]||v.toUpperCase(); lbl.style.color=colors[v]||'#555' }
+  document.getElementById('voto-txt').textContent = v
+  _showSHAOverlay(v, () => showPh(2))
+}
+
+async function confirmarVoto() {
+  const voto = document.getElementById('voto-txt').textContent
+  const qId  = PREGUNTAS_IDS[qIdx]
+  if (!qId || !_authUser || !MY_SEAT) { showToast('Error: sesión no lista, recargá la página'); return }
+
+  const btn = document.querySelector('#modal-bd .btn-ok')
+  if (btn) { btn.disabled=true; btn.textContent='Sellando…' }
+
   const arr   = new Uint8Array(32)
   crypto.getRandomValues(arr)
-  const nonce = Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('')
+  const nonce = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('')
 
-  // Hash(voto:nonce) — solo el hash viaja al servidor
-  const raw   = `${voto}:${nonce}`
-  const buf   = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
-  const hash  = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('')
+  const raw  = `${voto}:${nonce}`
+  const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
+  const hash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')
 
-  // identity_hash por usuario — evita conflicto con constraint votes_identity_hash_question_id_key
-  // Se deriva del auth.uid() del usuario para que sea único por persona pero estable
-  const uidBuf      = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cabildoos-id:' + _authUser.id))
-  const identityHash = Array.from(new Uint8Array(uidBuf)).map(b => b.toString(16).padStart(2,'0')).join('')
+  const uidBuf       = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cabildoos-id:'+_authUser.id))
+  const identityHash = Array.from(new Uint8Array(uidBuf)).map(b=>b.toString(16).padStart(2,'0')).join('')
 
-  // Guardar nonce localmente (para la fase de revelación)
-  const stored = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-  stored[qId]  = { voto, nonce, hash, ts: Date.now() }
+  const stored = JSON.parse(localStorage.getItem('cabildoos_votos')||'{}')
+  stored[qId]  = {voto, nonce, hash, ts:Date.now()}
   localStorage.setItem('cabildoos_votos', JSON.stringify(stored))
 
-  // Enviar hash a Supabase (upsert por question_id + seat_number)
   const { error } = await sb.from('votes').upsert({
     question_id:   qId,
     seat_number:   MY_SEAT,
     vote_hash:     hash,
     vote_plain:    voto,
-    identity_hash: identityHash  // único por usuario, evita NULL-collision en la constraint
+    identity_hash: identityHash
   }, { onConflict: 'question_id,seat_number' })
+
+  if (btn) { btn.disabled=false; btn.textContent='Confirmar y sellar' }
 
   if (error) {
     console.error('Vote commit error:', error)
-    showToast('Error al guardar voto: ' + (error.message || error.code || 'desconocido'))
+    showToast('Error al guardar voto: '+(error.message||error.code||'desconocido'))
     return
   }
-  showPh(3)
-  // Actualizar card para reflejar el voto emitido
+
+  _showUrnaOverlay(voto)
   renderQCards()
 }
+
 function showPh(n) {
   document.querySelectorAll('#modal-bd .phase').forEach((p,i) => p.classList.toggle('active', i+1===n))
 }
