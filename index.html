@@ -3691,10 +3691,10 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
   pointer-events: all;
 }
 .intro-title {
-  font-size: clamp(52px, 9vw, 100px);
+  font-size: clamp(28px, 4.5vw, 52px);
   font-weight: 800;
-  letter-spacing: -.05em;
-  line-height: 1;
+  letter-spacing: -.02em;
+  line-height: 1.15;
   color: #fff;
   margin-bottom: 14px;
 }
@@ -12702,19 +12702,9 @@ function _buildIntroSeats() {
 }
 
 function _introRevealComplete() {
-  // Mostrar hero con fade in (solo la primera vez)
+  // Revelación completa — mostrar hero y dejar los dots vivos (sin re-ciclar)
   const hero = document.getElementById('intro-hero')
-  if (hero && !hero.classList.contains('visible')) hero.classList.add('visible')
-  // Re-cycle: reasignar votos y volver a revelar para mantener la animación viva
-  if (_introRaf) {
-    _introRevealTimer = setTimeout(() => {
-      _introSeats.forEach(s => {
-        if (s.vote === 'me') return
-        s.vote = 'neutral'; s.revealed = false; s.glow = 0
-      })
-      _introRevealTimer = setTimeout(_introAssignAndReveal, 300)
-    }, 1800)
-  }
+  if (hero) hero.classList.add('visible')
 }
 
 function _introAssignAndReveal() {
