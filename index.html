@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>cabildoOS</title>
+<title>Cabildo de Venezuela</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -2822,19 +2822,25 @@ html, body {
 /* ── SPLASH SCREEN ── */
 #splash {
   position:fixed; inset:0; z-index:9999;
-  background:var(--bg);
+  background:#0a0f1e;
   display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:32px;
-  transition:opacity .65s ease, filter .65s ease;
+  align-items:center; justify-content:center; gap:24px;
+  transition:opacity .7s ease, filter .7s ease;
 }
-#splash.out { opacity:0; filter:blur(12px); pointer-events:none; }
+#splash.out { opacity:0; filter:blur(14px); pointer-events:none; }
+#splash-wordmark { color:#fff !important; }
 #splash-canvas { display:block; }
 #splash-wordmark {
-  font-family:'Space Grotesk','Manrope',sans-serif;
-  font-size:44px; font-weight:600; color:var(--dark);
-  letter-spacing:-.03em;
-  opacity:0; transform:translateY(10px);
-  transition:opacity .5s ease, transform .5s ease;
+  font-family:'Manrope',sans-serif;
+  font-size:20px; font-weight:800; color:var(--dark);
+  letter-spacing:.01em;
+  opacity:0; transform:translateY(8px);
+  transition:opacity .6s ease, transform .6s ease;
+  text-align:center;
+}
+#splash-wordmark .wm-sub {
+  display:block; font-size:11px; font-weight:600;
+  color:var(--mid); letter-spacing:.1em; text-transform:uppercase; margin-top:3px;
 }
 #splash-wordmark.show { opacity:1; transform:translateY(0); }
 
@@ -4237,7 +4243,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 <!-- ══════════════ SPLASH ══════════════ -->
 <div id="splash">
   <canvas id="splash-canvas"></canvas>
-  <p id="splash-wordmark">cabildoOS</p>
+  <p id="splash-wordmark">Cabildo de Venezuela</p>
 </div>
 
 <!-- ══════════════ LANDING ══════════════ -->
@@ -4516,7 +4522,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 <div class="screen" id="congress">
   <nav class="nav">
     <!-- Logo / Cabildo brand (se alterna según si estamos en un cabildo) -->
-    <span class="nav-logo" id="nav-logo-os">cabildoOS</span>
+    <span class="nav-logo" id="nav-logo-os">Cabildo de Venezuela</span>
     <div class="nav-cabildo-brand" id="nav-cabildo-brand">
       <div class="nav-cb-logo" id="nav-cb-logo-wrap"></div>
       <div class="nav-cb-texts">
@@ -12878,66 +12884,209 @@ _startIntroAnim()
 })()
 
 // ══════════════════════════════════════════════════════════════
-//  SPLASH — canvas, DPR-aware, same engine as vote simulation
+//  SPLASH — Cabildo de Venezuela badge animation
 // ══════════════════════════════════════════════════════════════
 ;(function runSplash() {
   const canvas = document.getElementById('splash-canvas')
   const ctx    = canvas.getContext('2d')
   const dpr    = window.devicePixelRatio || 1
 
-  // Grid constants (CSS pixels)
-  const R    = 22          // dot radius
-  const GAP  = 74          // center-to-center spacing
-  const COLS = 4, ROWS = 4
-  const SIZE = R + (COLS - 1) * GAP + R  // 22 + 222 + 22 = 266
-
+  const SIZE = 280
   canvas.width        = SIZE * dpr
   canvas.height       = SIZE * dpr
   canvas.style.width  = SIZE + 'px'
   canvas.style.height = SIZE + 'px'
   ctx.scale(dpr, dpr)
 
-  // Build 4×4 dot array — orange at row=1, col=2 (matches logo)
-  const dots = []
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
-      const isOrange = (row === 1 && col === 2)
-      dots.push({
-        x: R + col * GAP,
-        y: R + row * GAP,
-        isOrange,
-        color: isOrange ? '#f76a1e' : '#1d1d1d',
-        revealAt: Infinity,   // set below
-        scale: 0,
-        done: false,
-      })
-    }
-  }
+  const cx = SIZE / 2   // 140
+  const cy = SIZE / 2   // 140
+  const BADGE_R = 134
 
-  // Elastic-out easing — same springy feel as simulation
+  // ── Hemiciclo dots config ──────────────────────────────────
+  // Focal point slightly below center (like a real parliament chamber)
+  const hcx = cx, hcy = cy + 20
+  const ARC_START = 208 * Math.PI / 180   // lower-left
+  const ARC_END   = 332 * Math.PI / 180   // lower-right  (arc opens upward)
+
+  const rowDefs = [
+    { r: 82, count: 9, dr: 4.0 },
+    { r: 68, count: 8, dr: 3.7 },
+    { r: 54, count: 7, dr: 3.5 },
+    { r: 40, count: 6, dr: 3.2 },
+    { r: 26, count: 5, dr: 3.0 },
+  ]
+
+  const allDots = []
+  rowDefs.forEach((row, ri) => {
+    for (let i = 0; i < row.count; i++) {
+      const t = row.count === 1 ? 0.5 : i / (row.count - 1)
+      const angle = ARC_START + t * (ARC_END - ARC_START)
+      const x = hcx + Math.cos(angle) * row.r
+      const y = hcy + Math.sin(angle) * row.r
+      const isGreen = (ri === 3 && i === row.count - 2)
+      allDots.push({ x, y, dr: row.dr, isGreen, scale: 0, revealAt: Infinity, done: false })
+    }
+  })
+
+  // ── Easing ────────────────────────────────────────────────
   function elasticOut(t) {
-    if (t <= 0) return 0
-    if (t >= 1) return 1
+    if (t <= 0) return 0; if (t >= 1) return 1
     const c = (2 * Math.PI) / 3
     return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c) + 1
   }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3) }
 
-  // Shuffle dark dots (Fisher-Yates) for random reveal order
-  const dark   = dots.filter(d => !d.isOrange)
-  const orange = dots.find(d => d.isOrange)
+  // ── Stagger reveal — outer rows first, then inner ─────────
+  const DOT_DUR = 380
+  const STAGGER = 48
+  const t0 = performance.now()
+  const BADGE_IN_DUR = 500   // badge circle grows in first
 
-  for (let i = dark.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [dark[i], dark[j]] = [dark[j], dark[i]]
+  let dotIdx = 0
+  rowDefs.forEach((row, ri) => {
+    const rowDots = allDots.filter((_, i) => {
+      let base = 0; for (let r = 0; r < ri; r++) base += rowDefs[r].count
+      return i >= base && i < base + row.count
+    })
+    // shuffle within row for organic feel
+    for (let i = rowDots.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rowDots[i], rowDots[j]] = [rowDots[j], rowDots[i]]
+    }
+    rowDots.forEach(d => {
+      d.revealAt = t0 + BADGE_IN_DUR + dotIdx * STAGGER
+      dotIdx++
+    })
+  })
+  const greenDot = allDots.find(d => d.isGreen)
+  if (greenDot) greenDot.revealAt = t0 + BADGE_IN_DUR + (dotIdx - 1) * STAGGER + 60
+
+  // ── Draw badge background ─────────────────────────────────
+  function drawBadge(now, badgeT) {
+    const sc = easeOut(Math.min(badgeT, 1))
+    ctx.save()
+    ctx.translate(cx, cy)
+    ctx.scale(sc, sc)
+    ctx.translate(-cx, -cy)
+
+    // Navy circle
+    ctx.beginPath()
+    ctx.arc(cx, cy, BADGE_R, 0, Math.PI * 2)
+    ctx.fillStyle = '#1a3066'
+    ctx.fill()
+
+    // Outer dotted ring
+    const DOT_RING_R = BADGE_R - 4
+    const DOT_RING_N = 64
+    for (let i = 0; i < DOT_RING_N; i++) {
+      const a = (i / DOT_RING_N) * Math.PI * 2
+      const dx = cx + Math.cos(a) * DOT_RING_R
+      const dy = cy + Math.sin(a) * DOT_RING_R
+      ctx.beginPath()
+      ctx.arc(dx, dy, 2.2, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(255,255,255,0.45)'
+      ctx.fill()
+    }
+
+    // Inner solid ring
+    ctx.beginPath()
+    ctx.arc(cx, cy, BADGE_R - 12, 0, Math.PI * 2)
+    ctx.strokeStyle = 'rgba(255,255,255,0.65)'
+    ctx.lineWidth = 1.2
+    ctx.stroke()
+
+    // ── Text: Cabildo / de / Venezuela ──
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    // "Cabildo"
+    ctx.font = '800 33px Manrope, sans-serif'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText('Cabildo', cx, cy + 22)
+
+    // "— de —"
+    ctx.font = '700 12px Manrope, sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'
+    ctx.fillText('de', cx, cy + 42)
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'
+    ctx.fillRect(cx - 42, cy + 41.5, 28, 1)
+    ctx.fillRect(cx + 14, cy + 41.5, 28, 1)
+
+    // "Venezuela"
+    ctx.font = '800 31px Manrope, sans-serif'
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText('Venezuela', cx, cy + 62)
+
+    // Gold stars arc
+    const STAR_COLOR = '#e9b84a'
+    const STARS = 7
+    const STAR_ARC_R = 86
+    const STAR_ARC_START = (180 + 38) * Math.PI / 180
+    const STAR_ARC_END   = (360 - 38) * Math.PI / 180
+    ctx.font = '10px serif'
+    ctx.fillStyle = STAR_COLOR
+    for (let i = 0; i < STARS; i++) {
+      const t = STARS === 1 ? 0.5 : i / (STARS - 1)
+      const a = STAR_ARC_START + t * (STAR_ARC_END - STAR_ARC_START)
+      const sx = cx + Math.cos(a) * STAR_ARC_R
+      const sy = cy + Math.sin(a) * STAR_ARC_R
+      ctx.save()
+      ctx.translate(sx, sy)
+      ctx.rotate(a + Math.PI / 2)
+      ctx.fillText('★', 0, 0)
+      ctx.restore()
+    }
+
+    // Curved "Generación Independencia 2026" text
+    const CURVE_R = BADGE_R - 17
+    const CURVE_TEXT = 'Generación Independencia 2026'
+    const CURVE_START = -1.18   // radians (~-68°, top-right area)
+    const CURVE_END   =  0.22
+    ctx.font = '600 7.5px Manrope, sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const charSpan = CURVE_END - CURVE_START
+    for (let i = 0; i < CURVE_TEXT.length; i++) {
+      const t = CURVE_TEXT.length === 1 ? 0.5 : i / (CURVE_TEXT.length - 1)
+      const a = CURVE_START + t * charSpan
+      const lx = cx + Math.cos(a) * CURVE_R
+      const ly = cy + Math.sin(a) * CURVE_R
+      ctx.save()
+      ctx.translate(lx, ly)
+      ctx.rotate(a + Math.PI / 2)
+      ctx.fillText(CURVE_TEXT[i], 0, 0)
+      ctx.restore()
+    }
+
+    ctx.restore()
   }
 
-  const STAGGER  = 50    // ms between dots
-  const DOT_DUR  = 400   // ms each pop animation
+  // ── Draw hemiciclo dots ───────────────────────────────────
+  function drawDots(now) {
+    allDots.forEach(d => {
+      if (now < d.revealAt) return
+      const elapsed = now - d.revealAt
+      const t = Math.min(elapsed / DOT_DUR, 1)
+      d.scale = elasticOut(t)
+      if (t >= 1) d.done = true
+      if (d.scale <= 0) return
 
-  const t0 = performance.now()
-  dark.forEach((d, i)  => { d.revealAt = t0 + i * STAGGER })
-  orange.revealAt = t0 + dark.length * STAGGER + 60
+      if (d.isGreen && d.done) {
+        const pulse = (Math.sin(now / 500) + 1) / 2
+        ctx.shadowColor = `rgba(34,197,94,${0.6 + pulse * 0.4})`
+        ctx.shadowBlur  = d.dr * (5 + pulse * 8)
+      }
 
+      ctx.beginPath()
+      ctx.arc(d.x, d.y, d.dr * d.scale, 0, Math.PI * 2)
+      ctx.fillStyle = d.isGreen ? '#22c55e' : 'rgba(255,255,255,0.92)'
+      ctx.fill()
+      ctx.shadowBlur = 0
+    })
+  }
+
+  // ── Main loop ─────────────────────────────────────────────
   let textShown = false
   let finished  = false
   let raf
@@ -12945,36 +13094,16 @@ _startIntroAnim()
   function frame(now) {
     ctx.clearRect(0, 0, SIZE, SIZE)
 
-    dots.forEach(d => {
-      if (now < d.revealAt) return
+    const badgeT = (now - t0) / BADGE_IN_DUR
+    drawBadge(now, badgeT)
+    if (badgeT >= 0.3) drawDots(now)
 
-      const elapsed = now - d.revealAt
-      const t = Math.min(elapsed / DOT_DUR, 1)
-      d.scale = elasticOut(t)
-      if (t >= 1) d.done = true
-
-      if (d.scale <= 0) return
-
-      // Orange pulsing glow — exact same technique as simDraw()
-      if (d.isOrange && d.done) {
-        const pulse = (Math.sin(now / 600) + 1) / 2
-        ctx.shadowColor = `rgba(247,106,30,${0.5 + pulse * 0.45})`
-        ctx.shadowBlur  = R * (4 + pulse * 7)
-      }
-
-      ctx.beginPath()
-      ctx.arc(d.x, d.y, R * d.scale, 0, Math.PI * 2)
-      ctx.fillStyle = d.color
-      ctx.fill()
-      ctx.shadowBlur = 0
-    })
-
-    // Trigger wordmark once orange is done
-    if (!textShown && orange.done) {
+    const lastDot = allDots[allDots.length - 1]
+    if (!textShown && lastDot && lastDot.done) {
       textShown = true
-      setTimeout(() => {
-        document.getElementById('splash-wordmark').classList.add('show')
-      }, 80)
+      const wm = document.getElementById('splash-wordmark')
+      wm.innerHTML = 'Cabildo de Venezuela<span class="wm-sub">Generación Independencia 2026</span>'
+      setTimeout(() => wm.classList.add('show'), 60)
     }
 
     if (!finished) raf = requestAnimationFrame(frame)
@@ -12982,8 +13111,9 @@ _startIntroAnim()
 
   raf = requestAnimationFrame(frame)
 
-  // Fade out: hold long enough to see the full logo glowing
-  const holdMs = dark.length * STAGGER + DOT_DUR + 1100
+  // Total duration: badge in + all dots + hold
+  const totalDots = allDots.length
+  const holdMs = BADGE_IN_DUR + totalDots * STAGGER + DOT_DUR + 1200
   setTimeout(() => {
     finished = true
     cancelAnimationFrame(raf)
