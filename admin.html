@@ -1158,6 +1158,9 @@ select option { background: var(--surface); }
     </div>
 
     <div class="nav-section">Configuración</div>
+    <div class="nav-item admin-only" data-section="acceso-beta" onclick="navTo('acceso-beta', this)">
+      <span class="icon">🔐</span> Acceso beta
+    </div>
     <div class="nav-item" data-section="hemiciclo" onclick="navTo('hemiciclo', this)">
       <span class="icon">⬛</span> Hemiciclo
     </div>
@@ -1925,6 +1928,37 @@ select option { background: var(--surface); }
       </div>
     </div>
 
+    <!-- ══ SECCIÓN ACCESO BETA ══ -->
+    <div class="section" id="s-acceso-beta">
+      <h2 style="font-family:var(--f-display);font-size:20px;font-weight:800;margin-bottom:4px">Acceso beta</h2>
+      <p style="color:var(--muted2);font-size:13px;margin-bottom:24px">Controlá quién puede crear una cuenta nueva en la plataforma.</p>
+
+      <div class="config-card" style="max-width:500px">
+        <div class="config-title">Código de acceso</div>
+        <p style="font-size:13px;color:var(--muted2);margin-bottom:16px">Solo quienes tengan este código pueden registrarse. Cambiarlo invalida el anterior inmediatamente.</p>
+
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <input id="ab-code-input" type="text" placeholder="ej: CABILDO2026"
+            style="flex:1;background:var(--input-bg,#1a1a2e);border:1px solid var(--border2);border-radius:8px;
+                   padding:10px 14px;color:var(--text);font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">
+          <button onclick="abGuardarCodigo()" class="btn btn-primary">Guardar</button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:14px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid var(--border2)">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1">
+            <input type="checkbox" id="ab-active-toggle" onchange="abToggleActivo()"
+              style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+            <div>
+              <div style="font-size:13px;font-weight:600">Requerir código para registrarse</div>
+              <div style="font-size:11px;color:var(--muted2);margin-top:2px">Si está desactivado, cualquiera puede crear una cuenta</div>
+            </div>
+          </label>
+        </div>
+
+        <p id="ab-msg" style="margin-top:12px;font-size:13px;min-height:20px"></p>
+      </div>
+    </div>
+
     <!-- ══ SECCIÓN REPORTES ══ -->
     <div class="section" id="s-reportes">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
@@ -2202,6 +2236,7 @@ const SECTION_META = {
   votacion:     { title: 'Votación',             sub: 'Control y monitoreo de votaciones' },
   sistema:      { title: 'Sistema & Infraestructura', sub: 'Cuotas de uso, estado de servicios y alertas' },
   reportes:     { title: 'Reportes de usuarios',      sub: 'Errores y sugerencias reportadas desde la app' },
+  'acceso-beta':{ title: 'Acceso beta',               sub: 'Código de invitación para nuevos registros' },
 }
 
 function navTo(id, el) {
@@ -2224,6 +2259,7 @@ function navTo(id, el) {
   if (id === 'votacion')      cargarVotacion()
   if (id === 'sistema')      { _sisAlerts = []; const a = document.getElementById('sis-alerts'); if(a) a.innerHTML = ''; sisCargarTodo() }
   if (id === 'reportes')     cargarReportes()
+  if (id === 'acceso-beta') abCargarConfig()
 }
 
 // ── TOAST ──
@@ -4084,6 +4120,46 @@ async function _cargarBadgeReportes() {
     const badge = document.getElementById('badge-reportes')
     if (badge) { badge.textContent = n; badge.style.display = n > 0 ? '' : 'none' }
   } catch(_) {}
+}
+
+// ── Acceso Beta ──────────────────────────────────────────────────────────────
+async function abCargarConfig() {
+  try {
+    const { data } = await sb.from('system_config').select('key,value').in('key', ['beta_code','beta_active'])
+    if (!data) return
+    data.forEach(row => {
+      if (row.key === 'beta_code') {
+        const v = typeof row.value === 'string' ? row.value : JSON.stringify(row.value)
+        document.getElementById('ab-code-input').value = v.replace(/^"|"$/g, '')
+      }
+      if (row.key === 'beta_active') {
+        document.getElementById('ab-active-toggle').checked = row.value === true || row.value === 'true'
+      }
+    })
+  } catch(e) { console.warn('ab config:', e) }
+}
+
+async function abGuardarCodigo() {
+  const code = document.getElementById('ab-code-input').value.trim().toUpperCase()
+  const msg  = document.getElementById('ab-msg')
+  if (!code) { msg.textContent = 'El código no puede estar vacío.'; msg.style.color = 'var(--red)'; return }
+  try {
+    await sb.rpc('set_system_config', { p_key: 'beta_code', p_value: JSON.stringify(code), p_by: 'admin' })
+    msg.textContent = '✓ Código actualizado: ' + code
+    msg.style.color = '#4ade80'
+  } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color = 'var(--red)' }
+  setTimeout(() => { msg.textContent = '' }, 3000)
+}
+
+async function abToggleActivo() {
+  const active = document.getElementById('ab-active-toggle').checked
+  const msg    = document.getElementById('ab-msg')
+  try {
+    await sb.rpc('set_system_config', { p_key: 'beta_active', p_value: active, p_by: 'admin' })
+    msg.textContent = active ? '✓ Beta activada — se requiere código para registrarse' : '✓ Beta desactivada — registro libre'
+    msg.style.color = '#4ade80'
+  } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color = 'var(--red)' }
+  setTimeout(() => { msg.textContent = '' }, 3000)
 }
 </script>
 </body>
