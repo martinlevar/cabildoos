@@ -8018,9 +8018,10 @@ function _aplicarMarcaCabildo(cabildoId) {
   document.getElementById('nav-cb-name').textContent    = nombre
   document.getElementById('nav-cb-slogan').textContent  = slogan
 
-  // Mostrar botón de configuración si es admin (seat_number === 1)
+  // Mostrar botón de configuración si es admin (seat_number === 1 o rol admin/superadmin)
   const btnConfig = document.getElementById('nav-btn-config-cabildo')
-  if (btnConfig && MY_SEAT === 1) btnConfig.style.display = ''
+  const _role = window._MY_ROLE || ''
+  if (btnConfig && (MY_SEAT === 1 || _role === 'admin' || _role === 'superadmin')) btnConfig.style.display = ''
 }
 
 function _resetearMarcaCabildo() {
@@ -8318,6 +8319,7 @@ let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/,
 
 async function _onLogin(user) {
   _authUser = user
+  window._MY_ROLE = user?.user_metadata?.role || ''
   document.body.classList.remove('observer-mode')
 
   localStorage.removeItem('cabildoos_butaca')
