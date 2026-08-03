@@ -8698,8 +8698,16 @@ async function registrarse() {
   })
 
   if (error) {
-    const isExisting = error.message?.toLowerCase().includes('already') || error.status === 422
-    msg.textContent = isExisting ? 'Ese email ya tiene una cuenta. ¿Querés iniciar sesión?' : error.message
+    const msg422 = error.message?.toLowerCase() || ''
+    const isExisting = msg422.includes('already registered') || msg422.includes('user already')
+    const isDisabled = msg422.includes('signup') || msg422.includes('not allowed') || msg422.includes('disabled')
+    if (isExisting) {
+      msg.innerHTML = 'Ese email ya tiene una cuenta. <button type="button" onclick="authSetTab(\'login\')" style="background:none;border:none;color:#f97316;font-weight:700;cursor:pointer;font-size:inherit;padding:0;text-decoration:underline">Iniciar sesión →</button>'
+    } else if (isDisabled) {
+      msg.textContent = 'Los registros están temporalmente cerrados. Contactá al equipo de Cabildo de Venezuela.'
+    } else {
+      msg.textContent = error.message
+    }
     msg.className = 'auth-msg err'
     btn.disabled = false
     btn.textContent = 'Crear usuario →'
@@ -8707,7 +8715,15 @@ async function registrarse() {
   }
 
   // Supabase v2: email existente devuelve identities:[] en vez de error
-  if (!data.user || (data.user.identities && data.user.identities.length === 0)) {
+  if (!data.user) {
+    msg.textContent = 'Error al crear la cuenta. Intentá de nuevo.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false
+    btn.textContent = 'Crear usuario →'
+    return
+  }
+  // Si identities está vacío puede ser cuenta existente O email pendiente de confirmación
+  if (data.user.identities && data.user.identities.length === 0 && data.user.email_confirmed_at) {
     msg.innerHTML = 'Ese email ya tiene una cuenta. <button type="button" onclick="authSetTab(\'login\')" style="background:none;border:none;color:#f97316;font-weight:700;cursor:pointer;font-size:inherit;padding:0;text-decoration:underline">Iniciar sesión →</button>'
     msg.className = 'auth-msg err'
     btn.disabled = false
