@@ -4356,7 +4356,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <div class="intro-flag-pill">🇻🇪 Venezuela</div>
     <!-- Hero: aparece con fade-in tras la animación -->
     <div class="intro-hero" id="intro-hero">
-      <h1 class="intro-title">cabildoOS</h1>
+      <h1 class="intro-title">Cabildo de Venezuela</h1>
       <p class="intro-subtitle">Democracia participativa, anónima y verificada</p>
       <div class="intro-ctas">
         <button class="intro-btn-primary" onclick="abrirAuth('registro')">Crear usuario →</button>
@@ -12702,9 +12702,19 @@ function _buildIntroSeats() {
 }
 
 function _introRevealComplete() {
-  // Dots congelados — mostrar hero con fade in
+  // Mostrar hero con fade in (solo la primera vez)
   const hero = document.getElementById('intro-hero')
-  if (hero) hero.classList.add('visible')
+  if (hero && !hero.classList.contains('visible')) hero.classList.add('visible')
+  // Re-cycle: reasignar votos y volver a revelar para mantener la animación viva
+  if (_introRaf) {
+    _introRevealTimer = setTimeout(() => {
+      _introSeats.forEach(s => {
+        if (s.vote === 'me') return
+        s.vote = 'neutral'; s.revealed = false; s.glow = 0
+      })
+      _introRevealTimer = setTimeout(_introAssignAndReveal, 300)
+    }, 1800)
+  }
 }
 
 function _introAssignAndReveal() {
