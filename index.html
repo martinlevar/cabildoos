@@ -8343,6 +8343,32 @@ async function _onLogin(user) {
 
   // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
+
+  // ── Verificar estado de cuenta ──────────────────────────────────────────────
+  if (profile?.status === 'suspended') {
+    await sb.auth.signOut()
+    showScreen('intro')
+    setTimeout(() => {
+      document.getElementById('reg-msg') && (document.getElementById('reg-msg').textContent = '')
+      document.getElementById('login-msg').textContent = 'Tu cuenta está suspendida. Contactá al equipo de Cabildo de Venezuela.'
+      document.getElementById('login-msg').className = 'auth-msg err'
+      authSetTab('login')
+      document.getElementById('auth-overlay').classList.add('open')
+    }, 300)
+    return
+  }
+  if (profile?.status === 'banned') {
+    await sb.auth.signOut()
+    showScreen('intro')
+    setTimeout(() => {
+      document.getElementById('login-msg').textContent = 'Tu acceso está permanentemente bloqueado. No podés ingresar a Cabildo de Venezuela.'
+      document.getElementById('login-msg').className = 'auth-msg err'
+      authSetTab('login')
+      document.getElementById('auth-overlay').classList.add('open')
+    }, 300)
+    return
+  }
+
   _authProfile = profile
   _visibilidad.alias  = !!profile?.show_alias
   _visibilidad.phrase = !!profile?.show_phrase
@@ -8636,6 +8662,14 @@ async function registrarse() {
   const msg   = document.getElementById('reg-msg')
 
   const code = document.getElementById('reg-code')?.value.trim() || ''
+
+  // Verificar si el email está prohibido
+  const { data: isBanned } = await sb.rpc('check_email_banned', { p_email: email })
+  if (isBanned) {
+    msg.textContent = 'Este email no puede registrarse en Cabildo de Venezuela.'
+    msg.className = 'auth-msg err'
+    return
+  }
 
   // Validar código de acceso beta (sin exponer el código real al cliente)
   const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })

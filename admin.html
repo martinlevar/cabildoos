@@ -2800,6 +2800,11 @@ function renderUsuarios() {
 
   tbody.innerHTML = items.map(u => {
     const st = statusLabel[u.status] || statusLabel['sin_verificar']
+    const accountBadge = u.account_status === 'suspended'
+      ? ' <span class="badge" style="background:#f59e0b22;color:#fbbf24">⏸ Suspendido</span>'
+      : u.account_status === 'banned'
+      ? ' <span class="badge" style="background:#7c3aed22;color:#a855f7">🚫 Prohibido</span>'
+      : ''
     const ago = tiempoRelativo(u.created_at)
     const noVerif = u.status === 'sin_verificar' || !u.status
     const initials = (u.alias || u.email || '?').slice(0,2).toUpperCase()
@@ -2811,10 +2816,15 @@ function renderUsuarios() {
       </div>
       <div class="u-email">${u.email}</div>
       <div class="u-date">${ago}</div>
-      <div>${st}</div>
-      <div style="display:flex;gap:6px;align-items:center">
+      <div>${st}${accountBadge}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         ${noVerif ? `<button class="btn btn-ghost btn-sm" onclick="recordarVerificacion('${u.id}','${u.email}','${u.alias}')" style="font-size:11px;white-space:nowrap">📧 Recordar</button>` : ''}
+        ${u.account_status === 'suspended'
+          ? `<button class="btn btn-sm" onclick="reactivarUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#16a34a20;color:#4ade80;border-color:#16a34a40">✓ Reactivar</button>`
+          : `<button class="btn btn-sm" onclick="suspenderUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#f59e0b20;color:#fbbf24;border-color:#f59e0b40">⏸ Suspender</button>`
+        }
         <button class="btn btn-sm" onclick="eliminarUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#ef444420;color:#ef4444;border-color:#ef444440">🗑 Borrar</button>
+        <button class="btn btn-sm" onclick="prohibirUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#7c3aed20;color:#a855f7;border-color:#7c3aed40" title="Prohíbe permanentemente este email">🚫 Prohibir</button>
       </div>
     </div>`
   }).join('')
@@ -2843,24 +2853,49 @@ async function recordarVerificacion(uid, email, alias) {
   }
 }
 
-async function eliminarUsuario(uid, email) {
-  if (!confirm(`¿Borrar permanentemente al usuario ${email}?\n\nEsta acción no se puede deshacer.`)) return
+async function suspenderUsuario(uid, email) {
+  if (!confirm(`¿Suspender a ${email}?\n\nEl usuario no podrá ingresar pero su cuenta no se borra. Podés reactivarla en cualquier momento.`)) return
   try {
-    const { data: { session } } = await sb.auth.getSession()
-    const token = session?.access_token
-    const resp = await fetch(`${API_BASE}/api/admin/users/${uid}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!resp.ok) throw new Error((await resp.json()).detail)
+    await sb.rpc('admin_suspend_user', { p_user_id: uid })
+    const u = _usersCache.find(x => x.id === uid)
+    if (u) u.account_status = 'suspended'
+    renderUsuarios()
+    toast('⏸ Usuario suspendido')
+  } catch(e) { toast('Error: ' + e.message) }
+}
+
+async function reactivarUsuario(uid, email) {
+  if (!confirm(`¿Reactivar la cuenta de ${email}?`)) return
+  try {
+    await sb.rpc('admin_reactivate_user', { p_user_id: uid })
+    const u = _usersCache.find(x => x.id === uid)
+    if (u) u.account_status = 'active'
+    renderUsuarios()
+    toast('✓ Usuario reactivado')
+  } catch(e) { toast('Error: ' + e.message) }
+}
+
+async function eliminarUsuario(uid, email) {
+  if (!confirm(`¿Borrar permanentemente al usuario ${email}?\n\nSe borra la cuenta completamente. El email podrá volver a registrarse a menos que lo prohibas.\n\nEsta acción no se puede deshacer.`)) return
+  try {
+    await sb.rpc('admin_delete_user', { p_user_id: uid })
     document.getElementById('usr-' + uid)?.remove()
     _usersCache = _usersCache.filter(u => u.id !== uid)
     const label = document.getElementById('usr-count-label')
     if (label) label.textContent = `${_usersCache.length} usuarios`
     toast('✓ Usuario eliminado permanentemente')
-  } catch(e) {
-    toast('Error: ' + e.message)
-  }
+  } catch(e) { toast('Error: ' + e.message) }
+}
+
+async function prohibirUsuario(uid, email) {
+  if (!confirm(`¿PROHIBIR permanentemente a ${email}?\n\nEste email quedará vetado del sistema para siempre. Nunca más podrá registrarse.\n\n⚠ Esta acción es muy difícil de revertir.`)) return
+  try {
+    await sb.rpc('admin_ban_user', { p_user_id: uid })
+    const u = _usersCache.find(x => x.id === uid)
+    if (u) u.account_status = 'banned'
+    renderUsuarios()
+    toast('🚫 Usuario prohibido permanentemente')
+  } catch(e) { toast('Error: ' + e.message) }
 }
 
 // ── SEGUIMIENTO ──
