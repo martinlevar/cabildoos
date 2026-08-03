@@ -1161,6 +1161,9 @@ select option { background: var(--surface); }
     <div class="nav-item admin-only" data-section="acceso-beta" onclick="navTo('acceso-beta', this)">
       <span class="icon">🔐</span> Acceso beta
     </div>
+    <div class="nav-item admin-only" data-section="seguridad" onclick="navTo('seguridad', this)">
+      <span class="icon">🛡</span> Seguridad
+    </div>
     <div class="nav-item" data-section="hemiciclo" onclick="navTo('hemiciclo', this)">
       <span class="icon">⬛</span> Hemiciclo
     </div>
@@ -1984,6 +1987,150 @@ select option { background: var(--surface); }
       </div>
     </div>
 
+    <!-- ══ SECCIÓN SEGURIDAD: NEO + AGENTE SMITH ══ -->
+    <div class="section" id="s-seguridad">
+      <style>
+        .sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width:900px){ .sec-grid { grid-template-columns: 1fr; } }
+        .sec-panel {
+          background: #0a0a0a;
+          border: 1px solid #1e1e1e;
+          border-radius: 14px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        .sec-panel-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 18px 20px 14px;
+          border-bottom: 1px solid #1a1a1a;
+        }
+        .sec-panel-icon {
+          width: 40px; height: 40px;
+          border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 20px; flex-shrink: 0;
+        }
+        .sec-panel-icon.neo  { background: rgba(34,197,94,.12); }
+        .sec-panel-icon.smith{ background: rgba(59,130,246,.12); }
+        .sec-panel-title { font-family: var(--f-display); font-size: 17px; font-weight: 800; letter-spacing: -.5px; }
+        .sec-panel-sub   { font-size: 12px; color: var(--muted2); margin-top: 2px; }
+        .sec-terminal {
+          flex: 1;
+          background: #050505;
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 12.5px;
+          line-height: 1.6;
+          padding: 16px;
+          min-height: 340px;
+          max-height: 520px;
+          overflow-y: auto;
+          color: #4ade80;
+        }
+        .sec-terminal .t-line   { margin: 0; padding: 0; }
+        .sec-terminal .t-prompt { color: #555; }
+        .sec-terminal .t-ok     { color: #4ade80; }
+        .sec-terminal .t-warn   { color: #eab308; }
+        .sec-terminal .t-err    { color: #ef4444; }
+        .sec-terminal .t-info   { color: #60a5fa; }
+        .sec-terminal .t-title  { color: #f5a623; font-weight: bold; }
+        .sec-terminal .t-dim    { color: #333; }
+        .sec-footer {
+          padding: 14px 16px;
+          border-top: 1px solid #1a1a1a;
+          display: flex; align-items: center; gap: 10px;
+        }
+        .btn-neo   { background: rgba(34,197,94,.15);  color: #4ade80; border: 1px solid rgba(34,197,94,.3);  }
+        .btn-neo:hover  { background: rgba(34,197,94,.25); }
+        .btn-smith { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+        .btn-smith:hover{ background: rgba(59,130,246,.25); }
+        .sec-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .sec-status-dot.normal  { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+        .sec-status-dot.watch   { background: #eab308; box-shadow: 0 0 6px #eab308; }
+        .sec-status-dot.alert   { background: #ef4444; box-shadow: 0 0 6px #ef4444; animation: pulse-dot 1s infinite; }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .sec-badge-alerta  { background: rgba(239,68,68,.15);  color: #ef4444;  border: 1px solid rgba(239,68,68,.3);  border-radius:6px; font-size:11px; font-weight:700; padding:2px 8px; }
+        .sec-badge-normal  { background: rgba(34,197,94,.12);  color: #4ade80;  border: 1px solid rgba(34,197,94,.25); border-radius:6px; font-size:11px; font-weight:700; padding:2px 8px; }
+        .sec-badge-vigil   { background: rgba(234,179,8,.12);  color: #eab308;  border: 1px solid rgba(234,179,8,.25); border-radius:6px; font-size:11px; font-weight:700; padding:2px 8px; }
+        .sec-stats { display:flex; gap:12px; padding: 14px 16px 0; }
+        .sec-stat  { flex:1; background:#0f0f0f; border:1px solid #1e1e1e; border-radius:10px; padding:10px 14px; }
+        .sec-stat-val  { font-family:var(--f-display); font-size:22px; font-weight:800; }
+        .sec-stat-label{ font-size:11px; color:var(--muted2); margin-top:2px; }
+        .sec-spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      </style>
+
+      <!-- Estado general -->
+      <div id="sec-estado" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:14px 18px;background:#0a0a0a;border:1px solid #1a1a1a;border-radius:12px;max-width:500px">
+        <div class="sec-status-dot normal" id="sec-status-dot"></div>
+        <div>
+          <div style="font-size:14px;font-weight:700" id="sec-status-text">Sistema seguro</div>
+          <div style="font-size:12px;color:var(--muted2)" id="sec-status-sub">Última revisión: nunca</div>
+        </div>
+        <div id="sec-badge" class="sec-badge-normal" style="margin-left:auto">NORMAL</div>
+      </div>
+
+      <div class="sec-grid">
+
+        <!-- NEO -->
+        <div class="sec-panel">
+          <div class="sec-panel-header">
+            <div class="sec-panel-icon neo">◈</div>
+            <div>
+              <div class="sec-panel-title" style="color:#4ade80">NEO</div>
+              <div class="sec-panel-sub">Auditor de seguridad — el mejor hacker del mundo</div>
+            </div>
+          </div>
+          <div class="sec-terminal" id="neo-terminal">
+            <p class="t-line t-dim">── NEO listo. Ejecutá el escaneo para iniciar ──</p>
+          </div>
+          <div class="sec-footer">
+            <button class="btn btn-neo" id="neo-btn" onclick="neoEjecutar()">
+              ◈ Ejecutar NEO
+            </button>
+            <span style="font-size:11px;color:var(--muted2)" id="neo-last"></span>
+          </div>
+        </div>
+
+        <!-- AGENTE SMITH -->
+        <div class="sec-panel">
+          <div class="sec-panel-header">
+            <div class="sec-panel-icon smith">◇</div>
+            <div>
+              <div class="sec-panel-title" style="color:#60a5fa">AGENTE SMITH</div>
+              <div class="sec-panel-sub">Monitor de amenazas — el mejor policía</div>
+            </div>
+          </div>
+          <div class="sec-stats" id="smith-stats" style="display:none">
+            <div class="sec-stat">
+              <div class="sec-stat-val t-err" id="sst-codes">—</div>
+              <div class="sec-stat-label">Códigos incorrectos (24h)</div>
+            </div>
+            <div class="sec-stat">
+              <div class="sec-stat-val t-warn" id="sst-blocked">—</div>
+              <div class="sec-stat-label">Logins bloqueados (24h)</div>
+            </div>
+            <div class="sec-stat">
+              <div class="sec-stat-val t-info" id="sst-signups">—</div>
+              <div class="sec-stat-label">Registros nuevos (24h)</div>
+            </div>
+          </div>
+          <div class="sec-terminal" id="smith-terminal" style="margin-top:12px">
+            <p class="t-line t-dim">── AGENTE SMITH listo. Consultá el reporte ──</p>
+          </div>
+          <div class="sec-footer">
+            <button class="btn btn-smith" id="smith-btn" onclick="smithConsultar()">
+              ◇ Consultar Smith
+            </button>
+            <span style="font-size:11px;color:var(--muted2)" id="smith-last"></span>
+          </div>
+        </div>
+
+      </div><!-- /sec-grid -->
+    </div><!-- /s-seguridad -->
+
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -2113,7 +2260,7 @@ const sb = createClient(
 
 /// ── RBAC: qué secciones puede ver cada rol ──
 const ROLE_ACCESS = {
-  admin:     ['dashboard','usuarios','preguntas','identidades','seguimiento','verificadores','hemiciclo','votacion','sistema','reportes','acceso-beta'],
+  admin:     ['dashboard','usuarios','preguntas','identidades','seguimiento','verificadores','hemiciclo','votacion','sistema','reportes','acceso-beta','seguridad'],
   validator: ['identidades','seguimiento'],
   moderator: ['preguntas','identidades','seguimiento'],
 }
@@ -2237,6 +2384,7 @@ const SECTION_META = {
   sistema:      { title: 'Sistema & Infraestructura', sub: 'Cuotas de uso, estado de servicios y alertas' },
   reportes:     { title: 'Reportes de usuarios',      sub: 'Errores y sugerencias reportadas desde la app' },
   'acceso-beta':{ title: 'Acceso beta',               sub: 'Código de invitación para nuevos registros' },
+  'seguridad':  { title: '🛡 Seguridad',              sub: 'NEO y Agente Smith — auditoría activa y monitoreo de amenazas' },
 }
 
 function navTo(id, el) {
@@ -2260,6 +2408,7 @@ function navTo(id, el) {
   if (id === 'sistema')      { _sisAlerts = []; const a = document.getElementById('sis-alerts'); if(a) a.innerHTML = ''; sisCargarTodo() }
   if (id === 'reportes')     cargarReportes()
   if (id === 'acceso-beta') abCargarConfig()
+  if (id === 'seguridad')  secCargarEstado()
 }
 
 // ── TOAST ──
@@ -4196,6 +4345,191 @@ async function abToggleActivo() {
   } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color = 'var(--red)' }
   setTimeout(() => { msg.textContent = '' }, 3000)
 }
+
+// ══════════════════════════════════════════════════
+// SEGURIDAD — NEO + AGENTE SMITH
+// ══════════════════════════════════════════════════
+
+function secCargarEstado() {
+  // No auto-run, user initiates
+}
+
+// ── Helpers de terminal ──
+function termClear(id) {
+  document.getElementById(id).innerHTML = ''
+}
+function termLine(id, text, cls = '') {
+  const el = document.getElementById(id)
+  const p = document.createElement('p')
+  p.className = 't-line ' + cls
+  p.textContent = text
+  el.appendChild(p)
+  el.scrollTop = el.scrollHeight
+}
+function termHTML(id, html) {
+  const el = document.getElementById(id)
+  const p = document.createElement('p')
+  p.className = 't-line'
+  p.innerHTML = html
+  el.appendChild(p)
+  el.scrollTop = el.scrollHeight
+}
+
+// ── NEO ──
+async function neoEjecutar() {
+  const btn = document.getElementById('neo-btn')
+  btn.disabled = true
+  btn.innerHTML = '<span class="sec-spinner"></span> Escaneando...'
+
+  termClear('neo-terminal')
+  termLine('neo-terminal', '▶ NEO iniciando auditoría de seguridad...', 't-title')
+  termLine('neo-terminal', '  Accediendo a capas de la Matrix...', 't-dim')
+  await sleep(400)
+  termLine('neo-terminal', '  Escaneando Row Level Security...', 't-dim')
+  await sleep(300)
+  termLine('neo-terminal', '  Analizando políticas de acceso...', 't-dim')
+  await sleep(300)
+  termLine('neo-terminal', '  Probando funciones SECURITY DEFINER...', 't-dim')
+  await sleep(300)
+  termLine('neo-terminal', '  Verificando exposición de datos...', 't-dim')
+  await sleep(500)
+
+  try {
+    const { data, error } = await sb.rpc('run_neo_audit')
+    if (error) throw error
+
+    termLine('neo-terminal', '')
+    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+    termLine('neo-terminal', '  RESULTADO DEL ESCANEO', 't-title')
+    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+    termLine('neo-terminal', '')
+
+    let criticals = 0, highs = 0, mediums = 0, oks = 0
+    for (const f of data) {
+      let cls, icon
+      switch (f.severity) {
+        case 'CRITICAL': cls = 't-err';  icon = '✗ [CRÍTICO]'; criticals++; break
+        case 'HIGH':     cls = 't-warn'; icon = '⚠ [ALTO]';    highs++; break
+        case 'MEDIUM':   cls = 't-info'; icon = '→ [MEDIO]';   mediums++; break
+        default:         cls = 't-ok';   icon = '✓ [OK]';      oks++; break
+      }
+      termLine('neo-terminal', `${icon} ${f.title}`, cls)
+      if (f.severity !== 'OK') {
+        termLine('neo-terminal', `   ↳ ${f.detail}`, 't-dim')
+        if (f.fix) termLine('neo-terminal', `   🔧 ${f.fix}`, 't-info')
+      }
+      termLine('neo-terminal', '')
+    }
+
+    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+    const summary = `  Críticos: ${criticals} | Altos: ${highs} | Medios: ${mediums} | OK: ${oks}`
+    const sumCls = criticals > 0 ? 't-err' : highs > 0 ? 't-warn' : 't-ok'
+    termLine('neo-terminal', summary, sumCls)
+    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+
+    // Actualizar estado global
+    const dot  = document.getElementById('sec-status-dot')
+    const stxt = document.getElementById('sec-status-text')
+    const sbdg = document.getElementById('sec-badge')
+    if (criticals > 0) {
+      dot.className = 'sec-status-dot alert'
+      stxt.textContent = `${criticals} vulnerabilidad(es) crítica(s) detectada(s)`
+      sbdg.className = 'sec-badge-alerta'; sbdg.textContent = 'ALERTA'
+    } else if (highs > 0) {
+      dot.className = 'sec-status-dot watch'
+      stxt.textContent = `${highs} riesgo(s) alto(s) detectado(s)`
+      sbdg.className = 'sec-badge-vigil'; sbdg.textContent = 'VIGILANCIA'
+    } else {
+      dot.className = 'sec-status-dot normal'
+      stxt.textContent = 'Sistema seguro — sin vulnerabilidades críticas'
+      sbdg.className = 'sec-badge-normal'; sbdg.textContent = 'NORMAL'
+    }
+
+    const now = new Date().toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'})
+    document.getElementById('neo-last').textContent = `Última auditoría: ${now}`
+    document.getElementById('sec-status-sub').textContent = `Última auditoría NEO: ${now}`
+
+  } catch (e) {
+    termLine('neo-terminal', `✗ Error al ejecutar NEO: ${e.message || JSON.stringify(e)}`, 't-err')
+  }
+
+  btn.disabled = false
+  btn.innerHTML = '◈ Ejecutar NEO'
+}
+
+// ── AGENTE SMITH ──
+async function smithConsultar() {
+  const btn = document.getElementById('smith-btn')
+  btn.disabled = true
+  btn.innerHTML = '<span class="sec-spinner"></span> Monitoreando...'
+
+  termClear('smith-terminal')
+  termLine('smith-terminal', '▶ AGENTE SMITH activado — analizando amenazas...', 't-title')
+  await sleep(350)
+  termLine('smith-terminal', '  Escaneando registros de autenticación...', 't-dim')
+  await sleep(300)
+  termLine('smith-terminal', '  Analizando intentos de intrusión...', 't-dim')
+  await sleep(400)
+
+  try {
+    const { data, error } = await sb.rpc('run_smith_report')
+    if (error) throw error
+
+    // Stats cards
+    document.getElementById('smith-stats').style.display = 'flex'
+    document.getElementById('sst-codes').textContent   = data.wrong_beta_codes ?? 0
+    document.getElementById('sst-blocked').textContent = data.blocked_logins ?? 0
+    document.getElementById('sst-signups').textContent = data.new_signups ?? 0
+
+    termLine('smith-terminal', '')
+    termLine('smith-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+    termLine('smith-terminal', `  ESTADO DE AMENAZAS: ${data.status}`,
+      data.status === 'ALERTA' ? 't-err' : data.status === 'VIGILANCIA' ? 't-warn' : 't-ok')
+    termLine('smith-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+    termLine('smith-terminal', '')
+
+    termLine('smith-terminal', `  Período analizado:         ${data.period}`, 't-info')
+    termLine('smith-terminal', `  Códigos beta incorrectos:  ${data.wrong_beta_codes}`,
+      data.wrong_beta_codes > 3 ? 't-warn' : 't-ok')
+    termLine('smith-terminal', `  Logins bloqueados:         ${data.blocked_logins}`,
+      data.blocked_logins > 0 ? 't-warn' : 't-ok')
+    termLine('smith-terminal', `  Intentos con email vetado: ${data.banned_attempts}`,
+      data.banned_attempts > 0 ? 't-err' : 't-ok')
+    termLine('smith-terminal', `  Nuevos registros (24h):    ${data.new_signups}`, 't-info')
+    termLine('smith-terminal', `  Emails en lista negra:     ${data.total_banned_emails}`, 't-info')
+    termLine('smith-terminal', `  Cuentas suspendidas:       ${data.total_suspended}`, 't-info')
+    termLine('smith-terminal', '')
+
+    const threats = data.recent_threats || []
+    if (threats.length === 0) {
+      termLine('smith-terminal', '  ✓ Sin actividad sospechosa reciente.', 't-ok')
+    } else {
+      termLine('smith-terminal', '  ÚLTIMOS EVENTOS DETECTADOS:', 't-title')
+      termLine('smith-terminal', '')
+      for (const t of threats) {
+        const ts = t.at ? new Date(t.at).toLocaleString('es',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'
+        const emailTxt = t.email ? ` [${t.email}]` : ''
+        const typeCls = t.type === 'banned_attempt' ? 't-err' : t.type === 'wrong_beta_code' ? 't-warn' : 't-info'
+        termLine('smith-terminal', `  ${ts}  ${t.type}${emailTxt}`, typeCls)
+        if (t.detail) termLine('smith-terminal', `           ↳ ${t.detail}`, 't-dim')
+      }
+    }
+
+    termLine('smith-terminal', '')
+    termLine('smith-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+
+    const now = new Date().toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'})
+    document.getElementById('smith-last').textContent = `Último reporte: ${now}`
+
+  } catch (e) {
+    termLine('smith-terminal', `✗ Error al consultar Smith: ${e.message || JSON.stringify(e)}`, 't-err')
+  }
+
+  btn.disabled = false
+  btn.innerHTML = '◇ Consultar Smith'
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
 </script>
 </body>
 </html>
