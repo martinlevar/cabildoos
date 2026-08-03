@@ -8080,7 +8080,7 @@ async function ccGuardarBetaCode() {
   const msg  = document.getElementById('cc-beta-msg')
   if (!code) { msg.textContent = 'El código no puede estar vacío.'; msg.style.color='var(--red)'; return }
   try {
-    await sb.rpc('set_system_config', { p_key: 'beta_code', p_value: JSON.stringify(code), p_by: 'admin' })
+    await sb.rpc('set_system_config', { p_key: 'beta_code', p_value: code, p_by: 'admin' })
     msg.textContent = '✓ Código actualizado: ' + code
     msg.style.color = 'var(--green)'
   } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color='var(--red)' }
