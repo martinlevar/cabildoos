@@ -12825,8 +12825,7 @@ function _stopIntroAnim() {
 resizeCanvas()
 draw()
 document.body.classList.add('on-intro')
-// Arrancar la animación de intro inmediatamente
-_startIntroAnim()
+// _startIntroAnim() se llama desde el splash al terminar
 
 // ══════════════════════════════════════════════════════════════
 //  VENEZUELAN FLAG — generated via canvas for HD crispness
@@ -13118,6 +13117,8 @@ _startIntroAnim()
     finished = true
     cancelAnimationFrame(raf)
     document.getElementById('splash').classList.add('out')
+    // Arrancar hemiciclo intro justo cuando el splash empieza a desvanecerse
+    if (typeof _startIntroAnim === 'function') _startIntroAnim()
     setTimeout(() => {
       document.getElementById('splash').style.display = 'none'
     }, 700)
