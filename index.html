@@ -5166,6 +5166,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <!-- Tabs -->
     <div class="cc-tabs">
       <button class="cc-tab active" id="cc-tab-brand" onclick="ccShowTab('brand')">🎨 Cabildo</button>
+      <button class="cc-tab"        id="cc-tab-acceso" onclick="ccShowTab('acceso')">🔐 Acceso</button>
       <button class="cc-tab"        id="cc-tab-infra" onclick="ccShowTab('infra')">📊 Sistema</button>
     </div>
 
@@ -5198,6 +5199,34 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     </div>
 
     <!-- Tab: Sistema / Infraestructura -->
+    <!-- Tab: Acceso Beta -->
+    <div class="cc-tab-body" id="cc-body-acceso" style="display:none">
+      <p class="cc-title">🔐 Control de acceso beta</p>
+      <p class="cc-sub">Solo quienes tengan el código pueden crear una cuenta nueva.</p>
+
+      <div class="cc-field" style="margin-top:20px">
+        <p class="cc-label">Código de acceso actual</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="cc-input" id="cc-beta-code" placeholder="ej: CABILDO2026" style="flex:1;letter-spacing:.08em;text-transform:uppercase;font-weight:700">
+          <button onclick="ccGuardarBetaCode()" style="background:var(--orange);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">Guardar</button>
+        </div>
+        <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:6px">Cambiarlo invalida el código anterior inmediatamente.</p>
+      </div>
+
+      <div class="cc-field" style="margin-top:20px">
+        <p class="cc-label">Beta activa</p>
+        <div style="display:flex;align-items:center;gap:12px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="cc-beta-active" onchange="ccToggleBetaActive()" style="width:18px;height:18px;accent-color:var(--orange)">
+            <span style="font-size:13px;color:rgba(255,255,255,.7)">Requerir código para registrarse</span>
+          </label>
+        </div>
+        <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:6px">Si está desactivado, cualquiera puede registrarse libremente.</p>
+      </div>
+
+      <p class="cc-label" id="cc-beta-msg" style="margin-top:16px;font-size:12px;color:var(--green)"></p>
+    </div>
+
     <div class="cc-tab-body" id="cc-body-infra" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <p class="cc-title" style="margin:0">📊 Estado del sistema</p>
@@ -5619,6 +5648,11 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
       <div class="auth-field">
         <label>Contraseña</label>
         <input type="password" id="reg-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckRegistro()" autocomplete="new-password">
+      </div>
+      <div class="auth-field">
+        <label>Código de acceso beta</label>
+        <input type="text" id="reg-code" placeholder="Ej: CABILDO2026" oninput="authCheckRegistro()" autocomplete="off" style="letter-spacing:.05em;text-transform:uppercase">
+        <span class="auth-field-hint" id="reg-code-hint" style="font-size:11px;color:var(--mid)">Solicitalo al equipo de Cabildo de Venezuela</span>
       </div>
       <button class="auth-btn" id="reg-btn" onclick="registrarse()" disabled>Crear usuario →</button>
       <p class="auth-msg" id="reg-msg"></p>
@@ -8015,10 +8049,52 @@ function cerrarConfigCabildo() {
 // ── Admin tabs ──
 function ccShowTab(tab) {
   document.getElementById('cc-tab-brand').classList.toggle('active', tab === 'brand')
+  document.getElementById('cc-tab-acceso').classList.toggle('active', tab === 'acceso')
   document.getElementById('cc-tab-infra').classList.toggle('active', tab === 'infra')
   document.getElementById('cc-body-brand').style.display = tab === 'brand' ? '' : 'none'
+  document.getElementById('cc-body-acceso').style.display = tab === 'acceso' ? '' : 'none'
   document.getElementById('cc-body-infra').style.display = tab === 'infra' ? '' : 'none'
   if (tab === 'infra') sbCargarMetricas()
+  if (tab === 'acceso') ccCargarBetaConfig()
+}
+
+async function ccCargarBetaConfig() {
+  try {
+    const { data } = await sb.from('system_config').select('key,value').in('key', ['beta_code','beta_active'])
+    if (!data) return
+    data.forEach(row => {
+      if (row.key === 'beta_code') {
+        const v = typeof row.value === 'string' ? row.value : (row.value?.toString?.() ?? '')
+        document.getElementById('cc-beta-code').value = v.replace(/^"|"$/g,'')
+      }
+      if (row.key === 'beta_active') {
+        document.getElementById('cc-beta-active').checked = row.value === true || row.value === 'true'
+      }
+    })
+  } catch(e) { console.warn('beta config load:', e) }
+}
+
+async function ccGuardarBetaCode() {
+  const code = document.getElementById('cc-beta-code').value.trim().toUpperCase()
+  const msg  = document.getElementById('cc-beta-msg')
+  if (!code) { msg.textContent = 'El código no puede estar vacío.'; msg.style.color='var(--red)'; return }
+  try {
+    await sb.rpc('set_system_config', { p_key: 'beta_code', p_value: JSON.stringify(code), p_by: 'admin' })
+    msg.textContent = '✓ Código actualizado: ' + code
+    msg.style.color = 'var(--green)'
+  } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color='var(--red)' }
+  setTimeout(() => { msg.textContent = '' }, 3000)
+}
+
+async function ccToggleBetaActive() {
+  const active = document.getElementById('cc-beta-active').checked
+  const msg    = document.getElementById('cc-beta-msg')
+  try {
+    await sb.rpc('set_system_config', { p_key: 'beta_active', p_value: active, p_by: 'admin' })
+    msg.textContent = active ? '✓ Beta activada — se requiere código para registrarse' : '✓ Beta desactivada — registro libre'
+    msg.style.color = 'var(--green)'
+  } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color='var(--red)' }
+  setTimeout(() => { msg.textContent = '' }, 3000)
 }
 
 // ── Límites por plan ─────────────────────────────────────────────────────────
@@ -8538,7 +8614,8 @@ function authCheckRegistro() {
     hint.className = 'auth-field-hint'
   }
 
-  const ok = aliasOk && email.includes('@') && pass.length >= 8
+  const code = document.getElementById('reg-code')?.value.trim()
+  const ok = aliasOk && email.includes('@') && pass.length >= 8 && code?.length >= 4
   document.getElementById('reg-btn').disabled = !ok
 }
 
@@ -8555,6 +8632,16 @@ async function registrarse() {
   const pass  = document.getElementById('reg-pass').value
   const btn   = document.getElementById('reg-btn')
   const msg   = document.getElementById('reg-msg')
+
+  const code = document.getElementById('reg-code')?.value.trim() || ''
+
+  // Validar código de acceso beta (sin exponer el código real al cliente)
+  const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
+  if (codeErr || !codeOk) {
+    msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
+    msg.className = 'auth-msg err'
+    return
+  }
 
   // Verificar alias único antes de crear
   const { data: existing } = await sb.from('profiles').select('id').eq('alias', alias).limit(1)
