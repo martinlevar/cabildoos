@@ -4054,6 +4054,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
   transition: all .15s;
 }
 .intro-btn-ghost:hover { background: rgba(255,255,255,.13); color: #fff; }
+.intro-wp-link:hover { background: rgba(255,255,255,.11) !important; color: rgba(255,255,255,.8) !important; border-color: rgba(255,255,255,.22) !important; }
 
 /* ══════════════════════════════════════════════════════════
    VERIFY ONBOARD — pantalla para usuarios sin butaca
@@ -4695,6 +4696,25 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
                text-decoration:underline;text-underline-offset:3px">
         Ver el cabildo sin registrarme
       </button>
+
+      <!-- Whitepaper -->
+      <div style="margin-top:28px;display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:0.5px;background:rgba(255,255,255,.12)"></div>
+        <a href="/whitepaper.pdf" target="_blank"
+          style="display:flex;align-items:center;gap:7px;
+                 background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);
+                 border-radius:20px;padding:7px 16px;text-decoration:none;
+                 color:rgba(255,255,255,.5);font-size:11px;font-weight:600;
+                 letter-spacing:.03em;backdrop-filter:blur(8px);
+                 transition:all .2s">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.7">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          Leer el Whitepaper
+        </a>
+        <div style="width:36px;height:0.5px;background:rgba(255,255,255,.12)"></div>
+      </div>
     </div>
   </div>
 </div>
