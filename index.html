@@ -525,6 +525,102 @@ html, body {
   background:rgba(0,0,0,.03); margin:8px 16px; border-radius:10px;
 }
 
+/* ── CALENDARIO HISTÓRICO ── */
+#cal-panel {
+  position:fixed; top:66px; right:20px; z-index:500;
+  width:330px; background:#fff;
+  border:1px solid rgba(0,0,0,.1); border-radius:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.13);
+  display:none; flex-direction:column;
+  overflow:hidden; font-family:'Manrope',sans-serif;
+}
+#cal-panel.open { display:flex; }
+.cal-hdr {
+  display:flex; align-items:center; gap:6px;
+  padding:12px 14px 8px; border-bottom:1px solid #EFEFEC;
+}
+.cal-month-lbl {
+  flex:1; text-align:center; font-size:13px; font-weight:700;
+  color:#1D1F3C; letter-spacing:-.2px; text-transform:capitalize;
+}
+.cal-nav-btn {
+  background:none; border:none; cursor:pointer; color:#8B8FA8;
+  font-size:16px; line-height:1; padding:2px 8px;
+  border-radius:6px; transition:background .12s;
+}
+.cal-nav-btn:hover { background:#F0F0EC; }
+.cal-grid-wrap { padding:8px 10px 4px; }
+.cal-dow-row {
+  display:grid; grid-template-columns:repeat(7,1fr);
+  margin-bottom:2px;
+}
+.cal-dow-row span {
+  text-align:center; font-size:10px; font-weight:600;
+  color:#ABABAB; letter-spacing:.04em; padding:2px 0;
+}
+.cal-days {
+  display:grid; grid-template-columns:repeat(7,1fr); gap:2px;
+}
+.cal-day-cell {
+  aspect-ratio:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  border-radius:8px; cursor:pointer; gap:2px;
+}
+.cal-day-cell:hover { background:#F5F5F3; }
+.cal-day-cell .cdn { font-size:12px; font-weight:400; color:#1D1F3C; line-height:1; }
+.cal-day-cell.inactive .cdn { color:#C8C8C4; cursor:default; }
+.cal-day-cell.inactive:hover { background:none; }
+.cal-day-cell.today .cdn { font-weight:700; color:#1D1F3C; }
+.cal-day-cell.today { background:#F0F0EC; }
+.cal-day-cell.has-activity { cursor:pointer; }
+.cal-day-cell.selected { background:#1D1F3C; }
+.cal-day-cell.selected .cdn { color:#fff; font-weight:600; }
+.cal-dots { display:flex; gap:2px; justify-content:center; min-height:5px; }
+.cal-dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
+.cal-day-cell.selected .cal-dot { opacity:.8; }
+.cal-legend {
+  display:flex; gap:14px; padding:6px 14px 8px;
+  border-top:1px solid #EFEFEC;
+}
+.cal-leg {
+  display:flex; align-items:center; gap:4px;
+  font-size:10px; color:#8B8FA8; font-weight:500;
+}
+.cal-day-view {
+  border-top:1px solid #EFEFEC; max-height:300px; overflow-y:auto;
+}
+.cal-day-hdr {
+  padding:10px 14px 6px; font-size:11px; font-weight:700;
+  color:#8B8FA8; text-transform:uppercase; letter-spacing:.06em;
+}
+.cal-qs { display:flex; flex-direction:column; gap:8px; padding:0 10px 12px; }
+.cal-q-card {
+  background:#FAFAF8; border:1px solid #EFEFEC;
+  border-radius:10px; padding:10px 12px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.cal-q-top { display:flex; align-items:center; gap:6px; }
+.cal-q-cat {
+  font-size:9px; font-weight:700; padding:2px 7px;
+  border-radius:20px; letter-spacing:.04em; text-transform:uppercase;
+}
+.cal-q-time { font-size:10px; color:#ABABAB; margin-left:auto; }
+.cal-q-text { font-size:12px; font-weight:600; color:#1D1F3C; line-height:1.4; }
+.cal-q-bar-row { display:flex; align-items:center; gap:6px; }
+.cal-q-votes { font-size:10px; color:#8B8FA8; white-space:nowrap; }
+.cal-q-bar { flex:1; height:4px; background:#EFEFEC; border-radius:3px; overflow:hidden; }
+.cal-q-bar-fill { height:100%; border-radius:3px; transition:width .4s; }
+.cal-q-pct { font-size:10px; font-weight:700; white-space:nowrap; }
+.cal-q-actions { display:flex; gap:5px; margin-top:2px; }
+.cal-q-btn {
+  font-size:10px; font-weight:600; padding:4px 9px;
+  border-radius:6px; border:1px solid #E0E0DA;
+  background:#fff; color:#5F5E5A; cursor:pointer;
+  display:flex; align-items:center; gap:3px; transition:background .12s;
+}
+.cal-q-btn:hover { background:#F0F0EC; }
+.cal-q-btn svg { flex-shrink:0; }
+.cal-loading { text-align:center; padding:20px; font-size:12px; color:#ABABAB; }
 /* ── PREGUNTAS PANEL (same style as #citizens-panel) ── */
 #preguntas-panel {
   position:fixed; inset:0; z-index:400;
@@ -4694,7 +4790,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 
     <!-- Divisor + Fecha y hora en tiempo real -->
     <div class="nav-vdiv" id="nav-dt-divider"></div>
-    <div id="hemi-datetime">
+    <div id="hemi-datetime" onclick="calToggle()" title="Ver historial" style="cursor:pointer">
       <div id="hemi-dt-time"></div>
       <div id="hemi-dt-date"></div>
     </div>
@@ -4721,6 +4817,30 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <!-- Create account button (logged out) — oculto por defecto, _onLogout() lo muestra -->
     <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()" style="display:none">Crear cuenta</button>
   </nav>
+
+  <!-- ══ PANEL CALENDARIO HISTÓRICO ══ -->
+  <div id="cal-panel">
+    <div class="cal-hdr">
+      <button class="cal-nav-btn" id="cal-prev" onclick="calNavMonth(-1)">‹</button>
+      <span class="cal-month-lbl" id="cal-month-lbl"></span>
+      <button class="cal-nav-btn" id="cal-next" onclick="calNavMonth(1)">›</button>
+    </div>
+    <div class="cal-grid-wrap">
+      <div class="cal-dow-row">
+        <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+      </div>
+      <div class="cal-days" id="cal-days"></div>
+    </div>
+    <div class="cal-legend">
+      <div class="cal-leg"><div class="cal-dot" style="background:#1D9E75"></div>Preguntas</div>
+      <div class="cal-leg"><div class="cal-dot" style="background:#7F77DD"></div>Con debate</div>
+    </div>
+    <div class="cal-day-view" id="cal-day-view" style="display:none">
+      <div class="cal-day-hdr" id="cal-day-hdr"></div>
+      <div class="cal-qs" id="cal-qs"></div>
+    </div>
+  </div>
+
   <!-- CTA para observadores: aparece solo con body.observer-mode -->
   <div id="observer-cta-strip" style="display:none;align-items:center;justify-content:space-between;
     padding:10px 20px;background:linear-gradient(90deg,#1d1d1d,#2d2d2d);gap:16px;flex-shrink:0">
@@ -12782,6 +12902,244 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
   }
   tickClock()
   setInterval(tickClock, 1000)
+})()
+
+// ══════════════════════════════════════════════════════════════
+//  CALENDARIO HISTÓRICO
+// ══════════════════════════════════════════════════════════════
+;(function() {
+  const MONTHS_ES    = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+  const MONTHS_SHORT = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+  const CAT_COLORS = {
+    'Política':      { bg:'#E6F1FB', color:'#185FA5' },
+    'Economía':      { bg:'#FEF9C3', color:'#854d0e' },
+    'Derechos':      { bg:'#EDE9FE', color:'#5B21B6' },
+    'Social':        { bg:'#DCFCE7', color:'#166534' },
+    'Internacional': { bg:'#FFE4E6', color:'#9F1239' },
+    'Justicia':      { bg:'#FEF3C7', color:'#92400E' },
+    'Electoral':     { bg:'#ECFDF5', color:'#065F46' },
+  }
+
+  let _calYear   = new Date().getFullYear()
+  let _calMonth  = new Date().getMonth()
+  let _calData   = {}
+  let _calDebate = {}
+  let _calVotes  = {}
+  let _calSelDay = null
+  let _calOpen   = false
+  let _calLoading = false
+
+  window.calToggle = function() { _calOpen ? _calClose() : _calOpenPanel() }
+
+  function _calOpenPanel() {
+    const panel = document.getElementById('cal-panel')
+    if (!panel) return
+    _calOpen = true
+    panel.classList.add('open')
+    _calLoadMonth(_calYear, _calMonth)
+  }
+
+  function _calClose() {
+    const panel = document.getElementById('cal-panel')
+    if (!panel) return
+    _calOpen = false
+    panel.classList.remove('open')
+  }
+  window.calClose = _calClose
+
+  window.calNavMonth = function(dir) {
+    _calMonth += dir
+    if (_calMonth > 11) { _calMonth = 0;  _calYear++ }
+    if (_calMonth < 0)  { _calMonth = 11; _calYear-- }
+    _calData = {}; _calVotes = {}; _calSelDay = null
+    const v = document.getElementById('cal-day-view')
+    if (v) v.style.display = 'none'
+    _calLoadMonth(_calYear, _calMonth)
+  }
+
+  async function _calLoadMonth(year, month) {
+    if (_calLoading) return
+    _calLoading = true
+    const lbl = document.getElementById('cal-month-lbl')
+    if (lbl) lbl.textContent = MONTHS_ES[month] + ' ' + year
+
+    const startOf = new Date(year, month, 1).toISOString()
+    const endOf   = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
+
+    try {
+      const { data: qs, error } = await sb.from('questions')
+        .select('id, text, category, status, created_at, ends_at')
+        .gte('created_at', startOf)
+        .lte('created_at', endOf)
+        .order('created_at')
+
+      if (error) throw error
+      _calData = {}
+
+      if (qs && qs.length) {
+        const qIds = qs.map(q => q.id)
+
+        // Debate counts en un solo query
+        const { data: dmsgs } = await sb.from('debate_messages')
+          .select('question_id')
+          .in('question_id', qIds)
+
+        _calDebate = {}
+        if (dmsgs) dmsgs.forEach(m => {
+          _calDebate[m.question_id] = (_calDebate[m.question_id] || 0) + 1
+        })
+
+        // Agrupar por día
+        qs.forEach(q => {
+          const d   = new Date(q.created_at)
+          const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+          if (!_calData[key]) _calData[key] = []
+          _calData[key].push(q)
+        })
+      }
+      _calRenderGrid(year, month)
+    } catch(e) {
+      console.warn('calLoadMonth:', e)
+    } finally {
+      _calLoading = false
+    }
+  }
+
+  function _calRenderGrid(year, month) {
+    const container = document.getElementById('cal-days')
+    if (!container) return
+
+    const today    = new Date()
+    let startDow   = new Date(year, month, 1).getDay() - 1
+    if (startDow < 0) startDow = 6
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const daysInPrev  = new Date(year, month, 0).getDate()
+    let html = ''
+
+    for (let i = startDow - 1; i >= 0; i--)
+      html += `<div class="cal-day-cell inactive"><span class="cdn">${daysInPrev - i}</span></div>`
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const key   = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+      const qs    = _calData[key] || []
+      const isToday = year === today.getFullYear() && month === today.getMonth() && d === today.getDate()
+      const isSel = _calSelDay === key
+      let cls = 'cal-day-cell'
+      if (isToday) cls += ' today'
+      if (isSel)   cls += ' selected'
+      if (qs.length) cls += ' has-activity'
+      const hasDebate = qs.some(q => (_calDebate[q.id] || 0) > 0)
+      const dots = qs.length
+        ? `<div class="cal-dots">
+            <div class="cal-dot" style="background:#1D9E75"></div>
+            ${hasDebate ? '<div class="cal-dot" style="background:#7F77DD"></div>' : ''}
+           </div>`
+        : ''
+      const clickable = qs.length ? `onclick="calSelectDay('${key}','${d} ${MONTHS_SHORT[month]}')"` : ''
+      html += `<div class="${cls}" ${clickable}><span class="cdn">${d}</span>${dots}</div>`
+    }
+
+    const totalCells = startDow + daysInMonth
+    const trailing   = (7 - (totalCells % 7)) % 7
+    for (let d = 1; d <= trailing; d++)
+      html += `<div class="cal-day-cell inactive"><span class="cdn">${d}</span></div>`
+
+    container.innerHTML = html
+  }
+
+  window.calSelectDay = async function(key, label) {
+    const qs = _calData[key]
+    if (!qs || !qs.length) return
+    _calSelDay = key
+    _calRenderGrid(_calYear, _calMonth)
+
+    const view = document.getElementById('cal-day-view')
+    const hdr  = document.getElementById('cal-day-hdr')
+    const list = document.getElementById('cal-qs')
+    if (!view) return
+
+    view.style.display = 'block'
+    hdr.textContent    = label + ' — ' + qs.length + (qs.length === 1 ? ' pregunta' : ' preguntas')
+    list.innerHTML     = '<div class="cal-loading">Cargando resultados…</div>'
+
+    // Cargar votos para preguntas cerradas
+    const closed = qs.filter(q => q.status === 'cerrada' || new Date(q.ends_at) < new Date())
+    await Promise.all(closed.map(async q => {
+      if (_calVotes[q.id]) return
+      try {
+        const { data } = await sb.rpc('get_question_votes', { p_question_id: q.id })
+        if (data) {
+          let si = 0, no = 0, abs = 0
+          data.forEach(r => {
+            if (r.vote_plain === 'si')  si++
+            else if (r.vote_plain === 'no')  no++
+            else if (r.vote_plain === 'abs') abs++
+          })
+          _calVotes[q.id] = { si, no, abs }
+        }
+      } catch(e) {}
+    }))
+
+    list.innerHTML = qs.map(q => {
+      const cat    = CAT_COLORS[q.category] || { bg:'#F0F0EC', color:'#5F5E5A' }
+      const ended  = q.status === 'cerrada' || new Date(q.ends_at) < new Date()
+      const v      = _calVotes[q.id]
+      const total  = v ? v.si + v.no + v.abs : 0
+      const pctSi  = total > 0 ? Math.round(v.si / total * 100) : 0
+      const dcount = _calDebate[q.id] || 0
+      const color  = v && v.si >= v.no ? '#1D9E75' : '#EF4444'
+      const timeStr = new Date(q.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })
+
+      let barHtml = ''
+      if (ended && v && total > 0) {
+        barHtml = `<div class="cal-q-bar-row">
+          <span class="cal-q-votes">${total} votos</span>
+          <div class="cal-q-bar"><div class="cal-q-bar-fill" style="width:${pctSi}%;background:${color}"></div></div>
+          <span class="cal-q-pct" style="color:${color}">${pctSi}% SÍ</span>
+        </div>`
+      } else if (!ended) {
+        barHtml = `<div class="cal-q-bar-row"><span class="cal-q-votes" style="color:#F5A623">En curso</span></div>`
+      }
+
+      const debateBtn = dcount > 0
+        ? `<button class="cal-q-btn" onclick="calAbrirDebate('${q.id}')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Debate (${dcount})</button>` : ''
+
+      return `<div class="cal-q-card">
+        <div class="cal-q-top">
+          <span class="cal-q-cat" style="background:${cat.bg};color:${cat.color}">${q.category||'—'}</span>
+          <span class="cal-q-time">${timeStr}</span>
+        </div>
+        <div class="cal-q-text">${q.text}</div>
+        ${barHtml}
+        ${debateBtn ? `<div class="cal-q-actions">${debateBtn}</div>` : ''}
+      </div>`
+    }).join('')
+  }
+
+  window.calAbrirDebate = function(qId) {
+    const allQs = Object.values(_calData).flat()
+    const q = allQs.find(x => x.id === qId)
+    if (!q) return
+    _calClose()
+    _debateQId   = qId
+    _debateEnded = true
+    _debateTheme = (window._CAT_THEME?.[q.category] || _CAT_DEFAULT)
+    const subtitle = document.getElementById('dp-subtitle')
+    if (subtitle) subtitle.textContent = q.text
+    _loadDebateMessages(qId)
+    _dpSetEndedUI(true)
+    document.getElementById('debate-panel')?.classList.add('open')
+    debateOpen = true
+  }
+
+  // Cerrar al hacer click fuera
+  document.addEventListener('click', e => {
+    if (!_calOpen) return
+    if (e.target.closest('#cal-panel') || e.target.closest('#hemi-datetime')) return
+    _calClose()
+  })
 })()
 
 // ══════════════════════════════════════════════════════════════
