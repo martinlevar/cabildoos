@@ -526,15 +526,18 @@ html, body {
 }
 
 /* ── CALENDARIO HISTÓRICO ── */
-#cal-panel {
-  position:fixed; top:66px; right:20px; z-index:500;
-  width:330px; background:#fff;
-  border:1px solid rgba(0,0,0,.1); border-radius:14px;
-  box-shadow:0 8px 32px rgba(0,0,0,.13);
-  display:none; flex-direction:column;
-  overflow:hidden; font-family:'Manrope',sans-serif;
+#cal-overlay {
+  position:fixed; inset:0; z-index:600;
+  background:rgba(0,0,0,.45);
+  display:none; align-items:center; justify-content:center;
 }
-#cal-panel.open { display:flex; }
+#cal-overlay.open { display:flex; }
+#cal-panel {
+  width:340px; max-height:90vh; background:#fff;
+  border-radius:16px; overflow:hidden;
+  display:flex; flex-direction:column;
+  font-family:'Manrope',sans-serif;
+}
 .cal-hdr {
   display:flex; align-items:center; gap:6px;
   padding:12px 14px 8px; border-bottom:1px solid #EFEFEC;
@@ -4790,7 +4793,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 
     <!-- Divisor + Fecha y hora en tiempo real -->
     <div class="nav-vdiv" id="nav-dt-divider"></div>
-    <div id="hemi-datetime" onclick="calToggle()" title="Ver historial" style="cursor:pointer">
+    <div id="hemi-datetime" onclick="calToggle(event)" title="Ver historial" style="cursor:pointer">
       <div id="hemi-dt-time"></div>
       <div id="hemi-dt-date"></div>
     </div>
@@ -4819,25 +4822,28 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
   </nav>
 
   <!-- ══ PANEL CALENDARIO HISTÓRICO ══ -->
-  <div id="cal-panel">
-    <div class="cal-hdr">
-      <button class="cal-nav-btn" id="cal-prev" onclick="calNavMonth(-1)">‹</button>
-      <span class="cal-month-lbl" id="cal-month-lbl"></span>
-      <button class="cal-nav-btn" id="cal-next" onclick="calNavMonth(1)">›</button>
-    </div>
-    <div class="cal-grid-wrap">
-      <div class="cal-dow-row">
-        <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+  <div id="cal-overlay" onclick="if(event.target===this)calClose()">
+    <div id="cal-panel">
+      <div class="cal-hdr">
+        <button class="cal-nav-btn" id="cal-prev" onclick="calNavMonth(-1)">‹</button>
+        <span class="cal-month-lbl" id="cal-month-lbl"></span>
+        <button class="cal-nav-btn" id="cal-next" onclick="calNavMonth(1)">›</button>
+        <button class="cal-nav-btn" onclick="calClose()" style="margin-left:4px;font-size:18px">×</button>
       </div>
-      <div class="cal-days" id="cal-days"></div>
-    </div>
-    <div class="cal-legend">
-      <div class="cal-leg"><div class="cal-dot" style="background:#1D9E75"></div>Preguntas</div>
-      <div class="cal-leg"><div class="cal-dot" style="background:#7F77DD"></div>Con debate</div>
-    </div>
-    <div class="cal-day-view" id="cal-day-view" style="display:none">
-      <div class="cal-day-hdr" id="cal-day-hdr"></div>
-      <div class="cal-qs" id="cal-qs"></div>
+      <div class="cal-grid-wrap">
+        <div class="cal-dow-row">
+          <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+        </div>
+        <div class="cal-days" id="cal-days"></div>
+      </div>
+      <div class="cal-legend">
+        <div class="cal-leg"><div class="cal-dot" style="background:#1D9E75"></div>Preguntas</div>
+        <div class="cal-leg"><div class="cal-dot" style="background:#7F77DD"></div>Con debate</div>
+      </div>
+      <div class="cal-day-view" id="cal-day-view" style="display:none">
+        <div class="cal-day-hdr" id="cal-day-hdr"></div>
+        <div class="cal-qs" id="cal-qs"></div>
+      </div>
     </div>
   </div>
 
@@ -12929,21 +12935,21 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
   let _calOpen   = false
   let _calLoading = false
 
-  window.calToggle = function() { _calOpen ? _calClose() : _calOpenPanel() }
+  window.calToggle = function(e) { if (e) e.stopPropagation(); _calOpen ? _calClose() : _calOpenPanel() }
 
   function _calOpenPanel() {
-    const panel = document.getElementById('cal-panel')
-    if (!panel) return
+    const overlay = document.getElementById('cal-overlay')
+    if (!overlay) return
     _calOpen = true
-    panel.classList.add('open')
+    overlay.classList.add('open')
     _calLoadMonth(_calYear, _calMonth)
   }
 
   function _calClose() {
-    const panel = document.getElementById('cal-panel')
-    if (!panel) return
+    const overlay = document.getElementById('cal-overlay')
+    if (!overlay) return
     _calOpen = false
-    panel.classList.remove('open')
+    overlay.classList.remove('open')
   }
   window.calClose = _calClose
 
@@ -13134,11 +13140,9 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     debateOpen = true
   }
 
-  // Cerrar al hacer click fuera
-  document.addEventListener('click', e => {
-    if (!_calOpen) return
-    if (e.target.closest('#cal-panel') || e.target.closest('#hemi-datetime')) return
-    _calClose()
+  // Cerrar con Escape
+  document.addEventListener('keydown', e => {
+    if (_calOpen && e.key === 'Escape') _calClose()
   })
 })()
 
