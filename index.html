@@ -6617,6 +6617,22 @@ let SEATS = []
 let bx0, bx1, by0, by1
 let MY_SEAT_POS
 
+// ── Zoom limits ──────────────────────────────────────────────
+let   MIN_SCALE = 0.12   // se recalcula dinámicamente → zoom-out máximo = ver todo
+const MAX_SCALE = 14
+
+function calcMinScale() {
+  if (!bx0 && !bx1) return          // seats aún no generados
+  const cv = document.getElementById('hemiciclo')
+  if (!cv) return
+  const W = cv.clientWidth  || cv.width
+  const H = cv.clientHeight || cv.height
+  if (!W || !H) return
+  const scX = W / (bx1 - bx0 + DOT_R * 4)
+  const scY = H / (by1 - by0 + DOT_R * 4)
+  MIN_SCALE = Math.min(scX, scY) * 0.88
+}
+
 // Devuelve el orden de índices de posición para llenar una fila
 // de centro hacia los costados (1ro centro, 2do izq, 3ro der, ...)
 function centerOutOrder(n) {
@@ -6780,20 +6796,6 @@ document.addEventListener('click', e => {
 // ══════════════════════════════════════════════════════════════
 //  CAMERA
 // ══════════════════════════════════════════════════════════════
-let   MIN_SCALE = 0.12   // se recalcula dinámicamente → zoom-out máximo = ver todo
-const MAX_SCALE = 14
-
-function calcMinScale() {
-  if (!bx0 && !bx1) return          // seats aún no generados
-  const cv = document.getElementById('hemiciclo')
-  if (!cv) return
-  const W = cv.clientWidth  || cv.width
-  const H = cv.clientHeight || cv.height
-  if (!W || !H) return
-  const scX = W / (bx1 - bx0 + DOT_R * 4)
-  const scY = H / (by1 - by0 + DOT_R * 4)
-  MIN_SCALE = Math.min(scX, scY) * 0.88
-}
 
 const cam = {
   x: MY_SEAT_POS.x,
