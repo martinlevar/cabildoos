@@ -6664,6 +6664,7 @@ function buildSeats() {
   MY_SEAT_POS = SEATS[Math.min(MY_SEAT, SEAT_CAPACITY) - 1] || SEATS[0] || { x: 0, y: 0 }
 }
 buildSeats()
+calcMinScale()   // límite de zoom-out = ver todas las sillas
 // Sincronizar labels y ocultar botones de demo según modo
 ;(function() {
   const fmt = TOTAL_SEATS > 0 ? TOTAL_SEATS.toLocaleString('es-VE').replace(',','.') : '0'
@@ -6699,10 +6700,11 @@ function rebuildHemiciclo(count) {
   const cl = document.querySelector('.cl-sub')
   if (cl) cl.textContent = `— ${fmt.replace(',','.')} butacas en el hemiciclo`
   // Fly to full view
+  calcMinScale()   // actualizar límite con nuevo bounding box
   const W = canvas.clientWidth, H = canvas.clientHeight
   const scX = W / (bx1 - bx0 + DOT_R * 4)
   const scY = H / (by1 - by0 + DOT_R * 4)
-  cam.ts = Math.max(0.05, Math.min(scX, scY) * 0.88)
+  cam.ts = Math.max(MIN_SCALE, Math.min(scX, scY) * 0.88)
   cam.tx = (bx0 + bx1) / 2
   cam.ty = (by0 + by1) / 2
   // Update counter display in panel
@@ -6778,8 +6780,18 @@ document.addEventListener('click', e => {
 // ══════════════════════════════════════════════════════════════
 //  CAMERA
 // ══════════════════════════════════════════════════════════════
-const MIN_SCALE = 0.12
+let   MIN_SCALE = 0.12   // se recalcula dinámicamente → zoom-out máximo = ver todo
 const MAX_SCALE = 14
+
+function calcMinScale() {
+  if (!bx0 && !bx1) return          // seats aún no generados
+  const W = canvas.clientWidth  || canvas.width
+  const H = canvas.clientHeight || canvas.height
+  if (!W || !H) return
+  const scX = W / (bx1 - bx0 + DOT_R * 4)
+  const scY = H / (by1 - by0 + DOT_R * 4)
+  MIN_SCALE = Math.min(scX, scY) * 0.88
+}
 
 const cam = {
   x: MY_SEAT_POS.x,
@@ -7122,6 +7134,7 @@ canvas.addEventListener('touchend', e => {
 function resizeCanvas() {
   canvas.width  = area.clientWidth
   canvas.height = area.clientHeight
+  calcMinScale()   // recalcular límite de zoom-out al nuevo tamaño de ventana
 }
 window.addEventListener('resize', resizeCanvas)
 
