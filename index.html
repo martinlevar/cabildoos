@@ -737,28 +737,29 @@ html, body {
 /* Fecha y hora en el nav */
 #hemi-datetime {
   display: flex; flex-direction: column; align-items: flex-end; gap: 0px;
-  padding: 0 4px;
+  padding: 0 6px;
   user-select: none;
   flex-shrink: 0;
 }
 #hemi-dt-time {
   font-family: 'Manrope', sans-serif;
-  font-size: 13px; font-weight: 800;
-  color: #f0f0f0;
-  letter-spacing: -.3px;
+  font-size: 15px; font-weight: 800;
+  color: #111111;
+  letter-spacing: -.4px;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
 #hemi-dt-date {
   font-family: 'Manrope', sans-serif;
-  font-size: 10px; font-weight: 600;
-  color: #F5A623;
-  letter-spacing: .3px;
+  font-size: 11px; font-weight: 600;
+  color: #111111;
+  letter-spacing: .2px;
   text-transform: capitalize;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 @media(max-width:600px) {
   #hemi-datetime { display: none; }
+  #nav-dt-divider { display: none; }
 }
 
 /* Overlay controls */
@@ -4644,7 +4645,8 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
       </svg>
     </button>
 
-    <!-- Fecha y hora en tiempo real -->
+    <!-- Divisor + Fecha y hora en tiempo real -->
+    <div class="nav-vdiv" id="nav-dt-divider"></div>
     <div id="hemi-datetime">
       <div id="hemi-dt-time"></div>
       <div id="hemi-dt-date"></div>
