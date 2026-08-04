@@ -528,20 +528,21 @@ html, body {
 /* ── CALENDARIO HISTÓRICO ── */
 #cal-overlay {
   position:fixed; inset:0; z-index:600;
-  background:rgba(0,0,0,.48);
+  background:rgba(0,0,0,.72);
   display:none; align-items:center; justify-content:center;
   padding:20px;
 }
 #cal-overlay.open { display:flex; }
 #cal-panel {
-  width:min(720px,95vw); max-height:88vh; background:#fff;
+  width:auto; height:min(560px,88vh); background:#fff;
   border-radius:18px; overflow:hidden;
   display:flex; flex-direction:row;
   font-family:'Manrope',sans-serif;
+  box-shadow:0 24px 80px rgba(0,0,0,.35);
 }
 /* Columna izquierda — calendario */
 .cal-left {
-  width:340px; flex-shrink:0;
+  width:310px; flex-shrink:0;
   display:flex; flex-direction:column;
   border-right:1px solid #EFEFEC;
 }
@@ -596,27 +597,80 @@ html, body {
   display:flex; align-items:center; gap:5px;
   font-size:10px; color:#8B8FA8; font-weight:600;
 }
-/* Columna derecha — detalle del día */
-.cal-right {
-  flex:1; display:flex; flex-direction:column; overflow:hidden;
+/* Columna central — detalle del día (tamaño fijo) */
+.cal-mid {
+  width:290px; flex-shrink:0;
+  display:flex; flex-direction:column; overflow:hidden;
+  border-right:1px solid #EFEFEC;
 }
-.cal-right-hdr {
+.cal-mid-hdr {
   display:flex; align-items:center; gap:8px;
   padding:14px 16px 12px; border-bottom:1px solid #EFEFEC;
+  flex-shrink:0;
 }
-.cal-right-title {
-  flex:1; font-size:14px; font-weight:700; color:#1D1F3C;
+.cal-mid-title {
+  flex:1; font-size:13px; font-weight:700; color:#1D1F3C;
   letter-spacing:-.2px; text-transform:capitalize;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .cal-close-btn {
   background:none; border:none; cursor:pointer; color:#8B8FA8;
   font-size:20px; line-height:1; padding:0 4px; border-radius:6px;
-  transition:background .12s;
+  transition:background .12s; flex-shrink:0;
 }
 .cal-close-btn:hover { background:#F0F0EC; }
 .cal-day-view {
-  flex:1; overflow-y:auto; padding:12px 14px 16px;
-  display:flex; flex-direction:column; gap:10px;
+  flex:1; overflow-y:auto; padding:10px 12px 14px;
+  display:flex; flex-direction:column; gap:8px;
+}
+/* Columna debate — se abre como tercera columna */
+.cal-debate-col {
+  width:0; flex-shrink:0; overflow:hidden;
+  transition:width .28s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column; background:#fff;
+}
+.cal-debate-col.open { width:320px; }
+.cal-deb-hdr {
+  display:flex; align-items:flex-start; gap:8px;
+  padding:14px 14px 12px; border-bottom:1px solid #EFEFEC;
+  flex-shrink:0;
+}
+.cal-deb-hdr-icon {
+  width:26px; height:26px; border-radius:7px;
+  background:#F3F2FF; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; color:#7F77DD; margin-top:1px;
+}
+.cal-deb-title {
+  flex:1; font-size:12px; font-weight:600; color:#1D1F3C;
+  line-height:1.45; overflow:hidden;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+}
+.cal-deb-close {
+  background:none; border:none; cursor:pointer; color:#8B8FA8;
+  font-size:18px; line-height:1; padding:0 2px; border-radius:6px;
+  transition:background .12s; flex-shrink:0;
+}
+.cal-deb-close:hover { background:#F0F0EC; }
+.cal-deb-msgs {
+  flex:1; overflow-y:auto;
+  padding:10px 12px 14px;
+  display:flex; flex-direction:column; gap:7px;
+}
+.cal-dm {
+  font-size:12px; color:#3D3F52; line-height:1.5;
+  background:#F8F8F6; border-radius:9px; padding:7px 10px;
+}
+.cal-dm-meta {
+  font-size:10px; color:#ABABAB; font-weight:700; margin-bottom:3px;
+  display:flex; align-items:center; gap:4px;
+}
+.cal-dm-seat {
+  background:#EFEFEC; border-radius:4px; padding:0 5px;
+  font-size:9px; font-weight:800; color:#8B8FA8; letter-spacing:.03em;
+}
+.cal-deb-empty {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:#ABABAB; text-align:center; padding:20px;
 }
 .cal-empty {
   flex:1; display:flex; flex-direction:column; align-items:center;
@@ -652,27 +706,16 @@ html, body {
 .cal-q-btn svg { flex-shrink:0; }
 .cal-loading { text-align:center; padding:30px; font-size:12px; color:#ABABAB; }
 .cal-debate-toggle {
-  display:flex; align-items:center; gap:5px;
-  font-size:11px; font-weight:600; color:#5C67E8;
-  cursor:pointer; padding:4px 0 0;
-  user-select:none;
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:11px; font-weight:600; color:#7F77DD;
+  cursor:pointer; padding:4px 9px 4px 7px; margin-top:4px;
+  border-radius:7px; border:1px solid #E0DEFF;
+  background:#F8F7FF; user-select:none;
+  transition:background .12s, color .12s, border-color .12s;
 }
-.cal-debate-toggle:hover { opacity:.8; }
-.cal-debate-toggle span { flex:1; }
-.cal-chev { transition:transform .2s; color:#5C67E8; }
-.cal-debate-toggle.open .cal-chev { transform:rotate(180deg); }
-.cal-debate-msgs {
-  margin-top:8px; display:flex; flex-direction:column; gap:5px;
-  border-left:2px solid #EFEFEC; padding-left:10px;
-  max-height:220px; overflow-y:auto;
-}
-.cal-dm {
-  font-size:11px; color:#3D3F52; line-height:1.45;
-}
-.cal-dm-meta {
-  font-size:10px; color:#ABABAB; font-weight:600; margin-bottom:1px;
-}
-.cal-dm-loading { font-size:11px; color:#ABABAB; padding:4px 0; }
+.cal-debate-toggle:hover { background:#EFEDFF; }
+.cal-debate-toggle.active { background:#7F77DD; color:#fff; border-color:#7F77DD; }
+.cal-dm-loading { font-size:11px; color:#ABABAB; padding:4px 0; text-align:center; }
 /* ── PREGUNTAS PANEL (same style as #citizens-panel) ── */
 #preguntas-panel {
   position:fixed; inset:0; z-index:400;
@@ -4893,10 +4936,10 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
         </div>
       </div>
 
-      <!-- Columna derecha: detalle del día -->
-      <div class="cal-right">
-        <div class="cal-right-hdr">
-          <span class="cal-right-title" id="cal-right-title">Historial</span>
+      <!-- Columna central: detalle del día -->
+      <div class="cal-mid">
+        <div class="cal-mid-hdr">
+          <span class="cal-mid-title" id="cal-mid-title">Historial</span>
           <button class="cal-close-btn" onclick="calClose()">×</button>
         </div>
         <div class="cal-day-view" id="cal-day-view">
@@ -4904,6 +4947,20 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
             <div class="cal-empty-icon">📅</div>
             <span>Seleccioná un día<br>con actividad para ver el detalle</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Columna debate: se abre al presionar un debate -->
+      <div class="cal-debate-col" id="cal-debate-col">
+        <div class="cal-deb-hdr">
+          <div class="cal-deb-hdr-icon">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <span class="cal-deb-title" id="cal-deb-title">Debate</span>
+          <button class="cal-deb-close" onclick="calCloseDebate()" title="Cerrar debate">×</button>
+        </div>
+        <div class="cal-deb-msgs" id="cal-deb-msgs">
+          <div class="cal-deb-empty">Seleccioná un debate para leer el chat</div>
         </div>
       </div>
 
@@ -13017,6 +13074,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     if (!overlay) return
     _calOpen = false
     overlay.classList.remove('open')
+    calCloseDebate()
   }
   window.calClose = _calClose
 
@@ -13025,7 +13083,8 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     if (_calMonth > 11) { _calMonth = 0;  _calYear++ }
     if (_calMonth < 0)  { _calMonth = 11; _calYear-- }
     _calData = {}; _calVotes = {}; _calSelDay = null
-    const title = document.getElementById('cal-right-title')
+    calCloseDebate()
+    const title = document.getElementById('cal-mid-title')
     const view  = document.getElementById('cal-day-view')
     if (title) title.textContent = 'Historial'
     if (view)  view.innerHTML = '<div class="cal-empty"><div class="cal-empty-icon">📅</div><span>Seleccioná un día<br>con actividad para ver el detalle</span></div>'
@@ -13126,10 +13185,11 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     const qs = _calData[key]
     if (!qs || !qs.length) return
     _calSelDay = key
+    calCloseDebate()
     _calRenderGrid(_calYear, _calMonth)
 
     const view  = document.getElementById('cal-day-view')
-    const title = document.getElementById('cal-right-title')
+    const title = document.getElementById('cal-mid-title')
     if (!view) return
 
     if (title) title.textContent = label + ' · ' + qs.length + (qs.length === 1 ? ' pregunta' : ' preguntas')
@@ -13175,12 +13235,10 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
       }
 
       const debateSection = dcount > 0
-        ? `<div class="cal-debate-toggle" onclick="calToggleDebate(this,'${q.id}',${dcount})">
+        ? `<div class="cal-debate-toggle" onclick="calToggleDebate(this,'${q.id}',${dcount})" data-qid="${q.id}">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            <span>${dcount} mensajes en el debate</span>
-            <svg class="cal-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="cal-debate-msgs" id="cdm-${q.id}" style="display:none"></div>`
+            <span>${dcount} mensajes</span>
+          </div>`
         : ''
 
       return `<div class="cal-q-card">
@@ -13195,35 +13253,65 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     }).join('')
   }
 
-  window.calToggleDebate = async function(btn, qId, dcount) {
-    const box = document.getElementById('cdm-' + qId)
-    if (!box) return
-    const isOpen = btn.classList.toggle('open')
-    box.style.display = isOpen ? 'flex' : 'none'
-    if (!isOpen || box.dataset.loaded) return
+  window.calCloseDebate = function() {
+    const col = document.getElementById('cal-debate-col')
+    if (col) col.classList.remove('open')
+    document.querySelectorAll('.cal-debate-toggle.active').forEach(b => b.classList.remove('active'))
+  }
 
-    box.innerHTML = '<div class="cal-dm-loading">Cargando debate…</div>'
+  window.calToggleDebate = async function(btn, qId, dcount) {
+    const col    = document.getElementById('cal-debate-col')
+    const msgsEl = document.getElementById('cal-deb-msgs')
+    const titleEl = document.getElementById('cal-deb-title')
+    if (!col || !msgsEl) return
+
+    // Si ya está mostrando este debate → cerrar
+    if (col.classList.contains('open') && col.dataset.qid === String(qId)) {
+      calCloseDebate()
+      return
+    }
+
+    // Marcar toggle activo
+    document.querySelectorAll('.cal-debate-toggle').forEach(b => b.classList.remove('active'))
+    btn.classList.add('active')
+
+    // Buscar texto de la pregunta
+    const allQs = Object.values(_calData).flat()
+    const q = allQs.find(x => x.id === qId)
+    if (titleEl) titleEl.textContent = q ? q.text : `Debate · ${dcount} mensajes`
+
+    col.dataset.qid = String(qId)
+    col.classList.add('open')
+
+    // Si ya cargamos este qId, no volver a fetchear
+    if (col.dataset.loaded === String(qId)) return
+
+    msgsEl.innerHTML = '<div class="cal-dm-loading">Cargando debate…</div>'
     try {
       const { data, error } = await sb.from('debate_messages')
         .select('seat_number, alias, text, created_at')
         .eq('question_id', qId)
         .order('created_at', { ascending: true })
       if (error) throw error
-      box.dataset.loaded = '1'
+      col.dataset.loaded = String(qId)
       if (!data || !data.length) {
-        box.innerHTML = '<div class="cal-dm-loading">Sin mensajes.</div>'
+        msgsEl.innerHTML = '<div class="cal-deb-empty">Sin mensajes en este debate.</div>'
         return
       }
-      box.innerHTML = data.map(m => {
+      msgsEl.innerHTML = data.map(m => {
         const t   = new Date(m.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })
-        const who = m.alias || `#${m.seat_number}`
+        const who = m.alias || `Butaca #${m.seat_number}`
         return `<div class="cal-dm">
-          <div class="cal-dm-meta">${who} · ${t}</div>
+          <div class="cal-dm-meta">
+            <span class="cal-dm-seat">#${m.seat_number}</span>
+            ${m.alias ? escapeHtml(m.alias) + ' ·' : ''} ${t}
+          </div>
           ${escapeHtml(m.text)}
         </div>`
       }).join('')
+      msgsEl.scrollTop = msgsEl.scrollHeight
     } catch(e) {
-      box.innerHTML = '<div class="cal-dm-loading">Error al cargar.</div>'
+      msgsEl.innerHTML = '<div class="cal-deb-empty">Error al cargar el debate.</div>'
     }
   }
 
