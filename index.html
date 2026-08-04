@@ -8420,20 +8420,16 @@ async function _onLogin(user) {
   // Obtener número de butaca (Option B: no está en profiles, vive en verifications)
   let _seatNum = 0
   if (profile?.verification_id) {
-    // Fast-path: si localStorage tiene la misma verification_id, usarla inmediatamente
+    // Fast-path: localStorage cache válido
     if (_prevVid === profile.verification_id && _prevSeat > 0) {
       _seatNum = _prevSeat
     } else {
-      // Slow-path: consultar verifications (RLS: user_read_own_verification)
+      // Usar my_seat_number() SECURITY DEFINER — hace el JOIN internamente, sin problemas de RLS
       try {
-        const { data: vd } = await sb
-          .from('verifications')
-          .select('butaca_numero')
-          .eq('id', profile.verification_id)
-          .maybeSingle()
-        _seatNum = vd?.butaca_numero || 0
-      } catch(e) { console.warn('verifications seat lookup:', e) }
-      // Último recurso: API pública de status
+        const { data: seatData } = await sb.rpc('my_seat_number')
+        if (seatData) _seatNum = seatData
+      } catch(e) { console.warn('my_seat_number RPC:', e) }
+      // Fallback: API pública con service role (si el RPC devuelve null)
       if (!_seatNum) {
         try {
           const r = await fetch(`${VP_API_URL}/api/verify/status/${profile.verification_id}`)
