@@ -2917,7 +2917,7 @@ function renderUsuarios() {
   if (_usrFiltro !== 'all') {
     items = items.filter(u => {
       if (_usrFiltro === 'sin_verificar') return u.status === 'sin_verificar' || !u.status
-      if (_usrFiltro === 'verificado')    return u.status === 'verificado' || !!u.seat_number
+      if (_usrFiltro === 'verificado')    return u.status === 'verificado' || !!u.verified
       if (_usrFiltro === 'pendiente')     return ['pendiente_revision','en_proceso','info_requerida'].includes(u.status)
       return true
     })
@@ -2955,7 +2955,7 @@ function renderUsuarios() {
     <div class="user-row" id="usr-${u.id}">
       <div class="u-alias" style="display:flex;align-items:center;gap:8px">
         <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
-        ${u.alias}${u.seat_number ? ` <span style="font-size:10px;color:var(--accent)">#${u.seat_number}</span>` : ''}
+        ${u.alias}${u.verified ? ` <span style="font-size:10px;color:var(--green)">✓</span>` : ''}
       </div>
       <div class="u-email">${u.email}</div>
       <div class="u-date">${ago}</div>
