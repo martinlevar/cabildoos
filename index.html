@@ -1032,32 +1032,29 @@ html, body {
 
 /* Fecha y hora en el nav */
 #hemi-datetime {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 0px;
-  padding: 0 6px;
-  user-select: none;
-  flex-shrink: 0;
+  display: flex; align-items: center;
+  padding: 0 4px; user-select: none; flex-shrink: 0;
 }
+#hemi-dt-pill {
+  display: flex; align-items: center; gap: 8px;
+  background: #F2F1ED; border-radius: 11px;
+  padding: 5px 11px 5px 8px;
+  transition: background .15s;
+}
+#hemi-datetime:hover #hemi-dt-pill { background: #EAEAE5; }
+#hemi-dt-flag { font-size: 18px; line-height: 1; flex-shrink: 0; }
+#hemi-dt-texts { display: flex; flex-direction: column; align-items: flex-start; gap: 0px; }
 #hemi-dt-time {
   font-family: 'Manrope', sans-serif;
-  font-size: 15px; font-weight: 800;
-  color: #111111;
-  letter-spacing: -.4px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.15;
+  font-size: 14px; font-weight: 800;
+  color: #1D1F3C; letter-spacing: -.3px;
+  font-variant-numeric: tabular-nums; line-height: 1.15;
 }
 #hemi-dt-date {
   font-family: 'Manrope', sans-serif;
-  font-size: 11px; font-weight: 600;
-  color: #111111;
-  letter-spacing: .2px;
-  text-transform: capitalize;
-  line-height: 1.25;
-}
-#hemi-dt-tz {
-  font-family: 'Manrope', sans-serif;
-  font-size: 9px; font-weight: 700;
-  color: #ABABAB; letter-spacing: .08em;
-  text-transform: uppercase; line-height: 1.2;
+  font-size: 10px; font-weight: 600;
+  color: #8B8FA8; letter-spacing: .05px;
+  text-transform: capitalize; line-height: 1.3;
 }
 @media(max-width:600px) {
   #hemi-datetime { display: none; }
@@ -4950,9 +4947,13 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <!-- Divisor + Fecha y hora en tiempo real -->
     <div class="nav-vdiv" id="nav-dt-divider"></div>
     <div id="hemi-datetime" onclick="calToggle(event)" title="Ver historial" style="cursor:pointer">
-      <div id="hemi-dt-time"></div>
-      <div id="hemi-dt-date"></div>
-      <div id="hemi-dt-tz">Caracas VET</div>
+      <div id="hemi-dt-pill">
+        <span id="hemi-dt-flag">🇻🇪</span>
+        <div id="hemi-dt-texts">
+          <div id="hemi-dt-time"></div>
+          <div id="hemi-dt-date"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Divider + User pill (logged in) -->
@@ -13207,7 +13208,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     const mm  = String(ve.getMinutes()).padStart(2,'0')
     const ss  = String(ve.getSeconds()).padStart(2,'0')
     if (elTime) elTime.textContent = hh + ':' + mm + ':' + ss
-    if (elDate) elDate.textContent = DAYS[ve.getDay()] + ' ' + ve.getDate() + ' ' + MONTHS[ve.getMonth()]
+    if (elDate) elDate.textContent = DAYS[ve.getDay()] + ' ' + ve.getDate() + ' ' + MONTHS[ve.getMonth()] + ' · VET'
   }
   tickClock()
   setInterval(tickClock, 1000)
