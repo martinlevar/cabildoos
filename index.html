@@ -8333,6 +8333,9 @@ async function _onLogin(user) {
   window._MY_ROLE = user?.user_metadata?.role || ''
   document.body.classList.remove('observer-mode')
 
+  // Guardar caché antes de limpiar — lo usamos como fast-path si Supabase falla
+  const _prevSeat = parseInt(localStorage.getItem('cabildoos_butaca')) || 0
+  const _prevVid  = localStorage.getItem('cabildoos_vid') || ''
   localStorage.removeItem('cabildoos_butaca')
   localStorage.removeItem('cabildoos_vid')
   MY_SEAT = 0
@@ -8414,18 +8417,30 @@ async function _onLogin(user) {
     if (ddButaca) ddButaca.textContent = ''
   }
 
-  // Obtener número de butaca desde verifications (Option B: no está en profiles)
-  // El usuario puede leer su propia verificación via RLS "user_read_own_verification"
+  // Obtener número de butaca (Option B: no está en profiles, vive en verifications)
   let _seatNum = 0
   if (profile?.verification_id) {
-    try {
-      const { data: vd } = await sb
-        .from('verifications')
-        .select('butaca_numero')
-        .eq('id', profile.verification_id)
-        .single()
-      _seatNum = vd?.butaca_numero || 0
-    } catch(e) { console.warn('verifications seat lookup:', e) }
+    // Fast-path: si localStorage tiene la misma verification_id, usarla inmediatamente
+    if (_prevVid === profile.verification_id && _prevSeat > 0) {
+      _seatNum = _prevSeat
+    } else {
+      // Slow-path: consultar verifications (RLS: user_read_own_verification)
+      try {
+        const { data: vd } = await sb
+          .from('verifications')
+          .select('butaca_numero')
+          .eq('id', profile.verification_id)
+          .maybeSingle()
+        _seatNum = vd?.butaca_numero || 0
+      } catch(e) { console.warn('verifications seat lookup:', e) }
+      // Último recurso: API pública de status
+      if (!_seatNum) {
+        try {
+          const r = await fetch(`${VP_API_URL}/api/verify/status/${profile.verification_id}`)
+          if (r.ok) { const d = await r.json(); _seatNum = d?.butaca_numero || 0 }
+        } catch(e) {}
+      }
+    }
   }
 
   if (_seatNum > 0) {
