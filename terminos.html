@@ -209,7 +209,7 @@ body {
       <p>Condiciones de uso de la plataforma Cabildo de Venezuela, operada por CabildoOS.</p>
       <div class="version-tag">
         <span class="dot"></span>
-        Versión 1.1 · Agosto 2026 · Última actualización: 03/08/2026
+        Versión 1.2 · Agosto 2026 · Última actualización: 04/08/2026
       </div>
     </div>
 
@@ -258,6 +258,14 @@ body {
         <li>Confirmás que el documento presentado es legítimo, vigente y te pertenece.</li>
         <li>Aceptás que CabildoOS almacene el hash criptográfico de tu número de documento a efectos anti-duplicación, de acuerdo con la <a href="privacidad.html" style="color:var(--accent)">Política de Privacidad</a>.</li>
       </ul>
+      <h3>Separación identidad — butaca (privacidad por diseño)</h3>
+      <p>El sistema está diseñado para que <strong>nadie</strong> — ni siquiera los administradores de CabildoOS — pueda vincular directamente tu email con tu número de butaca o con el sentido de tus votos. La arquitectura funciona así:</p>
+      <ul>
+        <li>El verificador humano ve una foto de tu cara (con el documento pixelado) y asigna una butaca. No ve tu email.</li>
+        <li>Tu email está en una tabla separada vinculada a un UUID aleatorio. Ese UUID es el que conecta con la butaca — no tu email.</li>
+        <li>Un administrador necesitaría acceder manualmente a dos tablas distintas y hacer una correlación explícita para intentar unir esa información.</li>
+        <li>Ningún dato del proceso de verificación (foto censurada, hash de documento) se vincula a tu historial de votos.</li>
+      </ul>
       <p>La verificación es <strong>permanente y no transferible</strong>. Tu butaca asignada no puede cederse, venderse ni transferirse a otra persona.</p>
     </div>
 
@@ -298,6 +306,7 @@ body {
       <ul>
         <li>Tu voto es personal e intransferible. No podés votar bajo instrucción de un tercero de manera que constituya coerción o compra de voto.</li>
         <li>El protocolo VaV garantiza el secreto del voto durante la fase de votación. CabildoOS no puede conocer el contenido de tu voto antes del reveal.</li>
+        <li>La arquitectura de separación identidad-butaca (descripta en la sección 4) garantiza que los administradores no puedan vincular tu email con el sentido de tu voto.</li>
         <li>Una vez emitido el commit de tu voto, no puede ser modificado. Solo podés emitirlo una vez por pregunta.</li>
         <li>Los resultados son calculados automáticamente por el sistema a partir de los votos individuales. CabildoOS no puede alterar los resultados.</li>
       </ul>
@@ -362,7 +371,7 @@ body {
     </div>
 
     <div class="doc-footer">
-      <p>Cabildo de Venezuela — operado por CabildoOS · Versión 1.0 · Agosto 2026</p>
+      <p>Cabildo de Venezuela — operado por CabildoOS · Versión 1.2 · Agosto 2026</p>
       <p style="margin-top:8px">Ver también: <a href="faq.html">Preguntas Frecuentes</a> · <a href="privacidad.html">Política de Privacidad</a></p>
     </div>
   </main>
