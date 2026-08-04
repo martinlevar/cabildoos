@@ -10342,7 +10342,7 @@ function crearIdentidad() {
     abrirAuth('registro')
     return
   }
-  if (_authProfile?.seat_number) {
+  if (_authProfile?.butaca_numero) {
     // Ya verificado
     abrirMiPerfil()
     return
@@ -11939,7 +11939,7 @@ function abrirVotoForQ(i) {
   abrirModal()
 }
 async function abrirDebateForQ(i) {
-  if (!_authUser || !_authProfile?.seat_number) {
+  if (!_authUser || !MY_SEAT) {
     showToast('Verificá tu identidad para participar en el debate')
     if (_authUser) showScreen('verify-onboard'); else abrirAuth('registro')
     return
@@ -12496,7 +12496,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
 //  MODAL
 // ══════════════════════════════════════════════════════════════
 function abrirModal() {
-  if (!_authUser || !_authProfile?.seat_number) {
+  if (!_authUser || !MY_SEAT) {
     showToast('Verificá tu identidad para poder votar')
     return
   }
