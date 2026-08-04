@@ -734,6 +734,44 @@ html, body {
 .canvas-area.dragging { cursor:grabbing; }
 #hemiciclo { position:absolute; inset:0; width:100%; height:100%; }
 
+/* Fecha y hora flotante sobre el hemiciclo */
+#hemi-datetime {
+  position: absolute;
+  top: 14px; right: 16px;
+  z-index: 10;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  background: rgba(8,8,8,.72);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  padding: 7px 12px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  user-select: none;
+}
+#hemi-dt-time {
+  font-family: 'Manrope', sans-serif;
+  font-size: 18px; font-weight: 800;
+  color: #f0f0f0;
+  letter-spacing: -.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+#hemi-dt-date {
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px; font-weight: 600;
+  color: #F5A623;
+  letter-spacing: .5px;
+  text-transform: capitalize;
+  line-height: 1;
+  margin-top: 3px;
+}
+@media(max-width:600px) {
+  #hemi-datetime { top:10px; right:10px; padding:5px 10px; }
+  #hemi-dt-time { font-size:15px; }
+  #hemi-dt-date { font-size:10px; }
+}
+
 /* Overlay controls */
 .map-controls {
   position:absolute; bottom:20px; left:50%;
@@ -4655,6 +4693,10 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <div id="q-cards-strip"></div>
     <div class="canvas-area" id="canvas-area">
       <canvas id="hemiciclo"></canvas>
+      <div id="hemi-datetime">
+        <div id="hemi-dt-time"></div>
+        <div id="hemi-dt-date"></div>
+      </div>
       <div class="zoom-hint" id="zoom-hint">
         <p id="zoom-hint-txt">Usá la rueda del mouse para explorar<br>el hemiciclo completo</p>
       </div>
@@ -12485,6 +12527,24 @@ function checkBloqueMatch() {
 }
 // Run on first open of perfil
 document.addEventListener('DOMContentLoaded', checkBloqueMatch)
+
+// ── Reloj en tiempo real sobre el hemiciclo ──────────────────────────────────
+;(function() {
+  const DAYS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
+  const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+  const elTime = document.getElementById('hemi-dt-time')
+  const elDate = document.getElementById('hemi-dt-date')
+  function tickClock() {
+    const d  = new Date()
+    const hh = String(d.getHours()).padStart(2,'0')
+    const mm = String(d.getMinutes()).padStart(2,'0')
+    const ss = String(d.getSeconds()).padStart(2,'0')
+    if (elTime) elTime.textContent = hh + ':' + mm + ':' + ss
+    if (elDate) elDate.textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()]
+  }
+  tickClock()
+  setInterval(tickClock, 1000)
+})()
 
 // ══════════════════════════════════════════════════════════════
 //  MODAL
