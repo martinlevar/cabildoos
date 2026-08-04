@@ -2194,11 +2194,15 @@ select option { background: var(--surface); }
 <div class="modal-overlay" id="modal-editar-propuesta">
   <div class="modal">
     <div class="modal-title">Editar propuesta ciudadana</div>
-    <p style="font-size:12px;color:var(--muted2);margin-bottom:16px;line-height:1.5">
-      Podés corregir redacción o categoría antes de dar de alta. El ciudadano verá la versión editada.
+    <p style="font-size:12px;color:var(--muted2);margin-bottom:12px;line-height:1.5">
+      Si modificás el texto o categoría, el ciudadano recibirá una notificación para aceptar o rechazar los cambios antes de que se publique con su atribución.
     </p>
     <input type="hidden" id="ep-id">
     <input type="hidden" id="ep-seat">
+    <input type="hidden" id="ep-orig-text">
+    <input type="hidden" id="ep-orig-cat">
+    <!-- Indicador de estado de consentimiento -->
+    <div id="ep-consent-banner" style="display:none;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:600;margin-bottom:12px;"></div>
     <div class="field">
       <div class="field-label">Texto de la propuesta</div>
       <textarea id="ep-texto" rows="5" placeholder="Texto de la propuesta…"></textarea>
@@ -3479,20 +3483,41 @@ async function cargarPropuestasCiudadanas() {
   }
 
   tbody.innerHTML = data.map(p => {
-    const date = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    const date    = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
     const textEsc = p.text.replace(/'/g, "\\'").replace(/\n/g, '\\n')
     const catEsc  = (p.cat || '').replace(/'/g, "\\'")
+    const cs      = p.consent_status  // null | 'pending' | 'accepted' | 'declined'
+
+    // Badge de consentimiento
+    let consentBadge = ''
+    if (cs === 'pending')  consentBadge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#FFF8E1;color:#8B5000;">⏳ Esperando</span>`
+    if (cs === 'accepted') consentBadge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#E8F5E9;color:#1B5E20;">✓ Aceptado</span>`
+    if (cs === 'declined') consentBadge = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:#FFEBEE;color:#7F0000;">✗ Rechazado</span>`
+
+    // Botón de aprobar según estado de consentimiento
+    let approveBtn = ''
+    if (cs === 'pending') {
+      approveBtn = `<button class="btn btn-sm" disabled style="opacity:.4;cursor:default">Esperando…</button>`
+    } else if (cs === 'declined') {
+      approveBtn = `<button class="btn btn-sm btn-orange" onclick="aprobarSinAtribucion('${p.id}',${p.seat_number},this)">Aprobar sin atribución</button>`
+    } else {
+      approveBtn = `<button class="btn btn-green btn-sm" onclick="aprobarPropuestaDB('${p.id}',${p.seat_number},this)">✓ Aprobar</button>`
+    }
+
     return `<tr>
-      <td style="max-width:320px">${p.text}</td>
+      <td style="max-width:280px">
+        <div>${p.text}</div>
+        ${cs ? `<div style="margin-top:5px">${consentBadge}</div>` : ''}
+      </td>
       <td><span class="tag">${p.cat || '—'}</span></td>
       <td class="mono">#${p.seat_number}</td>
       <td style="text-align:center;font-weight:700;color:${p.likes > 0 ? 'var(--accent)' : 'var(--muted)'}">${p.likes}</td>
       <td class="mono text-muted">${date}</td>
       <td>
         <div class="action-row">
-          <button class="btn btn-sm" style="background:var(--surface2);color:var(--text)" onclick="abrirEditarPropuesta('${p.id}','${textEsc}','${catEsc}',${p.seat_number})">✎ Editar</button>
-          <button class="btn btn-green btn-sm" onclick="aprobarPropuestaDB('${p.id}',${p.seat_number},this)">✓ Aprobar</button>
-          <button class="btn btn-red btn-sm"   onclick="rechazarPropuestaDB('${p.id}',this)">✗ Rechazar</button>
+          <button class="btn btn-sm" style="background:var(--surface2);color:var(--text)" onclick="abrirEditarPropuesta('${p.id}','${textEsc}','${catEsc}',${p.seat_number},'${cs||''}')">✎ Editar</button>
+          ${approveBtn}
+          <button class="btn btn-red btn-sm" onclick="rechazarPropuestaDB('${p.id}',this)">✗ Rechazar</button>
         </div>
       </td>
     </tr>`
@@ -3518,28 +3543,61 @@ async function aprobarPropuestaDB(id, seatNum, btn) {
   }
 }
 
-function abrirEditarPropuesta(id, text, cat, seat) {
-  document.getElementById('ep-id').value    = id
-  document.getElementById('ep-seat').value  = seat
-  document.getElementById('ep-texto').value = text.replace(/\\n/g, '\n')
+function abrirEditarPropuesta(id, text, cat, seat, consentStatus) {
+  const cleanText = text.replace(/\\n/g, '\n')
+  document.getElementById('ep-id').value        = id
+  document.getElementById('ep-seat').value      = seat
+  document.getElementById('ep-texto').value     = cleanText
+  document.getElementById('ep-orig-text').value = cleanText
+  document.getElementById('ep-orig-cat').value  = cat
+
   const sel = document.getElementById('ep-cat')
   for (let i = 0; i < sel.options.length; i++) {
     if (sel.options[i].value === cat || sel.options[i].text === cat) {
       sel.selectedIndex = i; break
     }
   }
-  document.getElementById('ep-btn-guardar').disabled = false
-  document.getElementById('ep-btn-guardar').textContent = 'Guardar cambios'
-  document.getElementById('ep-btn-aprobar').disabled = false
-  document.getElementById('ep-btn-aprobar').textContent = 'Guardar y aprobar'
+  document.getElementById('ep-orig-cat').value = sel.options[sel.selectedIndex].text
+
+  // Banner de estado de consentimiento
+  const banner  = document.getElementById('ep-consent-banner')
+  const btnG    = document.getElementById('ep-btn-guardar')
+  const btnA    = document.getElementById('ep-btn-aprobar')
+  btnG.disabled = false; btnG.textContent = 'Guardar cambios'
+  btnA.disabled = false; btnA.textContent = 'Guardar y aprobar'
+
+  if (consentStatus === 'pending') {
+    banner.style.display = ''
+    banner.style.background = '#FFF8E1'
+    banner.style.color = '#8B5000'
+    banner.innerHTML = '⏳ Esperando respuesta del ciudadano a los cambios enviados.'
+    btnA.disabled = true
+    btnA.textContent = 'Esperando usuario…'
+  } else if (consentStatus === 'accepted') {
+    banner.style.display = ''
+    banner.style.background = '#E8F5E9'
+    banner.style.color = '#1B5E20'
+    banner.innerHTML = '✓ El ciudadano aceptó los cambios. Podés aprobar con atribución.'
+  } else if (consentStatus === 'declined') {
+    banner.style.display = ''
+    banner.style.background = '#FFEBEE'
+    banner.style.color = '#7F0000'
+    banner.innerHTML = '✗ El ciudadano rechazó los cambios. Podés aprobar sin atribución.'
+    btnA.textContent = 'Aprobar sin atribución'
+  } else {
+    banner.style.display = 'none'
+  }
+
   abrirModal('editar-propuesta')
 }
 
 async function guardarEdicionPropuesta(aprobar) {
-  const id   = document.getElementById('ep-id').value
-  const seat = parseInt(document.getElementById('ep-seat').value)
-  const text = document.getElementById('ep-texto').value.trim()
-  const cat  = document.getElementById('ep-cat').value
+  const id       = document.getElementById('ep-id').value
+  const seat     = parseInt(document.getElementById('ep-seat').value)
+  const text     = document.getElementById('ep-texto').value.trim()
+  const cat      = document.getElementById('ep-cat').value
+  const origText = document.getElementById('ep-orig-text').value
+  const origCat  = document.getElementById('ep-orig-cat').value
   if (!text) { toast('El texto no puede estar vacío'); return }
 
   const btnG = document.getElementById('ep-btn-guardar')
@@ -3547,6 +3605,34 @@ async function guardarEdicionPropuesta(aprobar) {
   btnG.disabled = true; btnA.disabled = true
   btnG.textContent = '…'; btnA.textContent = '…'
 
+  const textChanged = text !== origText || cat !== origCat
+
+  // Si el texto fue modificado, activar flujo de consentimiento
+  if (textChanged) {
+    const { error } = await sb.from('proposals').update({
+      text,
+      cat,
+      original_text:      origText,
+      original_cat:       origCat,
+      consent_status:     'pending',
+      attribution_granted: null
+    }).eq('id', id)
+
+    if (error) {
+      toast('Error al guardar: ' + error.message)
+      btnG.disabled = false; btnA.disabled = false
+      btnG.textContent = 'Guardar cambios'; btnA.textContent = 'Guardar y aprobar'
+      return
+    }
+
+    cerrarModal('editar-propuesta')
+    toast(`Cambios guardados — esperando confirmación de Butaca #${seat}`)
+    cargarPropuestasCiudadanas()
+    return
+  }
+
+  // Sin cambios: guardar y opcionalmente aprobar
+  // Si consent_status es 'declined', aprobar sin atribución
   const { error } = await sb.from('proposals').update({ text, cat }).eq('id', id)
   if (error) {
     toast('Error al guardar: ' + error.message)
@@ -3558,11 +3644,10 @@ async function guardarEdicionPropuesta(aprobar) {
   cerrarModal('editar-propuesta')
 
   if (aprobar) {
-    // Aprobar directamente después de editar
     try {
       const { error: errA } = await sb.rpc('approve_proposal', { p_proposal_id: id, p_duration_min: 1440 })
       if (errA) throw errA
-      toast(`Propuesta de Butaca #${seat} editada y aprobada`)
+      toast(`Propuesta de Butaca #${seat} aprobada`)
     } catch(e) {
       toast('Guardada pero error al aprobar: ' + (e.message || 'intente de nuevo'))
     }
@@ -3572,6 +3657,23 @@ async function guardarEdicionPropuesta(aprobar) {
 
   cargarPropuestasCiudadanas()
   if (aprobar) cargarPreguntas()
+}
+
+async function aprobarSinAtribucion(id, seatNum, btn) {
+  if (!confirm(`¿Aprobar la propuesta de Butaca #${seatNum} SIN atribución al ciudadano?`)) return
+  btn.disabled = true; btn.textContent = '…'
+  try {
+    // Marcar attribution_granted = false definitivamente
+    await sb.from('proposals').update({ attribution_granted: false }).eq('id', id)
+    const { error } = await sb.rpc('approve_proposal', { p_proposal_id: id, p_duration_min: 1440 })
+    if (error) throw error
+    toast(`Propuesta aprobada sin atribución`)
+    cargarPropuestasCiudadanas()
+    cargarPreguntas()
+  } catch(e) {
+    toast('Error: ' + (e.message || 'intente de nuevo'))
+    btn.disabled = false; btn.textContent = 'Aprobar sin atribución'
+  }
 }
 
 async function rechazarPropuestaDB(id, btn) {

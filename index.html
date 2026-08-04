@@ -793,6 +793,64 @@ html, body {
 .q-card-inner:hover .q-card-expand-hint { opacity:1; }
 
 /* ── INFO MODAL ── */
+/* ── CONSENT MODAL ── */
+#consent-overlay {
+  position:fixed; inset:0; z-index:700;
+  background:rgba(10,10,25,.72);
+  display:none; align-items:center; justify-content:center;
+  padding:20px;
+}
+#consent-overlay.open { display:flex; }
+#consent-modal {
+  width:min(520px,95vw); background:#fff;
+  border-radius:20px; overflow:hidden;
+  display:flex; flex-direction:column;
+  font-family:'Manrope',sans-serif;
+  box-shadow:0 24px 80px rgba(0,0,0,.3);
+}
+#consent-hdr {
+  display:flex; align-items:flex-start; gap:14px;
+  padding:22px 22px 18px; border-bottom:1px solid #EFEFEC;
+  background:#FAFAF8;
+}
+#consent-icon { font-size:26px; line-height:1; flex-shrink:0; }
+#consent-title { font-size:16px; font-weight:800; color:#1D1F3C; letter-spacing:-.3px; }
+#consent-sub { font-size:12px; color:#8B8FA8; margin-top:3px; line-height:1.4; }
+#consent-body { padding:20px 22px; display:flex; flex-direction:column; gap:10px; }
+.consent-section { display:flex; flex-direction:column; gap:5px; }
+.consent-lbl { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#8B8FA8; }
+.consent-text {
+  font-size:14px; line-height:1.55; padding:11px 14px;
+  border-radius:10px; color:#1D1F3C;
+}
+.consent-orig { background:#FFF8F8; border:1px solid #FDDCDC; color:#8B3030; text-decoration:line-through; opacity:.8; }
+.consent-new  { background:#F0FAF5; border:1px solid #A8E6C8; font-weight:600; }
+.consent-arrow { text-align:center; font-size:18px; color:#ABABAB; margin:-4px 0; }
+#consent-note {
+  margin:0 22px 14px; font-size:12px; color:#8B8FA8; line-height:1.5;
+  padding:10px 13px; background:#FAFAF8; border-radius:9px;
+  border:1px solid #EFEFEC;
+}
+#consent-note strong { color:#5F5E5A; }
+#consent-actions {
+  display:flex; gap:10px; padding:0 22px 22px;
+}
+#consent-btn-decline {
+  flex:1; padding:12px; border-radius:11px;
+  border:1.5px solid #E0E0DA; background:#fff;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:700;
+  color:#5F5E5A; cursor:pointer; transition:background .12s;
+}
+#consent-btn-decline:hover { background:#F8F8F6; }
+#consent-btn-accept {
+  flex:2; padding:12px; border-radius:11px;
+  border:none; background:#1D9E75;
+  font-family:'Manrope',sans-serif; font-size:13px; font-weight:700;
+  color:#fff; cursor:pointer; transition:background .12s;
+}
+#consent-btn-accept:hover { background:#178763; }
+#consent-btn-decline:disabled, #consent-btn-accept:disabled { opacity:.5; pointer-events:none; }
+
 #info-modal-overlay {
   position:fixed; inset:0; z-index:500;
   background:rgba(10,10,25,.6); backdrop-filter:blur(8px);
@@ -5056,6 +5114,37 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 </div>
 
 <!-- ══════════════ INFO MODAL ══════════════ -->
+<!-- ══ MODAL CONSENTIMIENTO DE PROPUESTA ══ -->
+<div id="consent-overlay" onclick="if(event.target===this)_consentClose()">
+  <div id="consent-modal">
+    <div id="consent-hdr">
+      <div id="consent-icon">✏️</div>
+      <div>
+        <div id="consent-title">Tu propuesta fue modificada</div>
+        <div id="consent-sub">El equipo de moderación realizó ajustes antes de publicarla.</div>
+      </div>
+    </div>
+    <div id="consent-body">
+      <div class="consent-section">
+        <div class="consent-lbl">Tu versión original</div>
+        <div class="consent-text consent-orig" id="consent-orig-text"></div>
+      </div>
+      <div class="consent-arrow">↓</div>
+      <div class="consent-section">
+        <div class="consent-lbl">Versión modificada por moderación</div>
+        <div class="consent-text consent-new" id="consent-new-text"></div>
+      </div>
+    </div>
+    <div id="consent-note">
+      Si rechazás, la propuesta puede publicarse igualmente pero <strong>sin atribución a tu butaca</strong>.
+    </div>
+    <div id="consent-actions">
+      <button id="consent-btn-decline" onclick="_consentRespond(false)">Rechazar cambios</button>
+      <button id="consent-btn-accept"  onclick="_consentRespond(true)">Aceptar y publicar con mi nombre</button>
+    </div>
+  </div>
+</div>
+
 <div id="info-modal-overlay" onclick="if(event.target===this)cerrarInfoModal()">
   <div id="info-modal">
     <!-- Hero: category + question text -->
@@ -8798,6 +8887,7 @@ async function _onLogin(user) {
     initMessagesRealtime()
     _loadNotifications()
     initNotificationsRealtime()
+    _checkProposalConsent()
     _syncBugFab()
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
     if (_cabildo) {
@@ -11414,6 +11504,89 @@ function _renderNotifBadge() {
   const dot = document.getElementById('nav-notif-live-dot')
   if (dot) dot.style.display = total > 0 ? '' : 'none'
 }
+
+// ══════════════════════════════════════════════════════════════
+//  CONSENTIMIENTO DE PROPUESTA MODIFICADA
+// ══════════════════════════════════════════════════════════════
+;(function() {
+  let _consentProposalId = null
+  let _consentChannel    = null
+
+  // Chequear si hay propuestas pendientes de consentimiento para esta butaca
+  window._checkProposalConsent = async function() {
+    if (!MY_SEAT) return
+    try {
+      const { data } = await sb.from('proposals')
+        .select('id, text, original_text, original_cat, cat, consent_status, seat_number')
+        .eq('seat_number', MY_SEAT)
+        .eq('consent_status', 'pending')
+        .eq('status', 'pending')
+        .limit(1)
+        .single()
+
+      if (data) _openConsentModal(data)
+    } catch(e) { /* sin propuestas pendientes */ }
+
+    // Suscribir a cambios en proposals de este seat para detectar nuevas solicitudes
+    _initConsentRealtime()
+  }
+
+  function _initConsentRealtime() {
+    const chName = 'consent-proposals-' + MY_SEAT
+    if (_consentChannel) sb.removeChannel(_consentChannel)
+    _consentChannel = sb.channel(chName)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'proposals',
+        filter: `seat_number=eq.${MY_SEAT}`
+      }, payload => {
+        const p = payload.new
+        if (p.consent_status === 'pending' && p.status === 'pending') {
+          _openConsentModal(p)
+        }
+      })
+      .subscribe()
+  }
+
+  function _openConsentModal(proposal) {
+    _consentProposalId = proposal.id
+    const origText = proposal.original_text || '(texto no disponible)'
+    const newText  = proposal.text || ''
+
+    document.getElementById('consent-orig-text').textContent = origText
+    document.getElementById('consent-new-text').textContent  = newText
+    document.getElementById('consent-overlay').classList.add('open')
+  }
+
+  window._consentClose = function() {
+    document.getElementById('consent-overlay').classList.remove('open')
+    _consentProposalId = null
+  }
+
+  window._consentRespond = async function(accepted) {
+    if (!_consentProposalId) return
+    const btnA = document.getElementById('consent-btn-accept')
+    const btnD = document.getElementById('consent-btn-decline')
+    btnA.disabled = true; btnD.disabled = true
+
+    try {
+      const { error } = await sb.rpc('respond_proposal_consent', {
+        p_proposal_id: _consentProposalId,
+        p_accepted:    accepted
+      })
+      if (error) throw error
+
+      _consentClose()
+      if (accepted) {
+        showToast('✓ Aceptaste los cambios — tu propuesta se publicará con tu atribución')
+      } else {
+        showToast('Cambios rechazados — la moderación decidirá si la publica sin atribución')
+      }
+    } catch(e) {
+      showToast('Error al responder: ' + (e.message || 'intentá de nuevo'))
+      btnA.disabled = false; btnD.disabled = false
+    }
+  }
+})()
 
 // ── Panel de Notificaciones ────────────────────────────────────────────────────
 function abrirNotifModal() {
