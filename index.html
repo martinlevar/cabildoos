@@ -528,102 +528,129 @@ html, body {
 /* ── CALENDARIO HISTÓRICO ── */
 #cal-overlay {
   position:fixed; inset:0; z-index:600;
-  background:rgba(0,0,0,.45);
+  background:rgba(0,0,0,.48);
   display:none; align-items:center; justify-content:center;
+  padding:20px;
 }
 #cal-overlay.open { display:flex; }
 #cal-panel {
-  width:340px; max-height:90vh; background:#fff;
-  border-radius:16px; overflow:hidden;
-  display:flex; flex-direction:column;
+  width:min(720px,95vw); max-height:88vh; background:#fff;
+  border-radius:18px; overflow:hidden;
+  display:flex; flex-direction:row;
   font-family:'Manrope',sans-serif;
 }
+/* Columna izquierda — calendario */
+.cal-left {
+  width:340px; flex-shrink:0;
+  display:flex; flex-direction:column;
+  border-right:1px solid #EFEFEC;
+}
 .cal-hdr {
-  display:flex; align-items:center; gap:6px;
-  padding:12px 14px 8px; border-bottom:1px solid #EFEFEC;
+  display:flex; align-items:center; gap:4px;
+  padding:14px 16px 10px;
 }
 .cal-month-lbl {
-  flex:1; text-align:center; font-size:13px; font-weight:700;
-  color:#1D1F3C; letter-spacing:-.2px; text-transform:capitalize;
+  flex:1; text-align:center; font-size:14px; font-weight:700;
+  color:#1D1F3C; letter-spacing:-.3px; text-transform:capitalize;
 }
 .cal-nav-btn {
   background:none; border:none; cursor:pointer; color:#8B8FA8;
-  font-size:16px; line-height:1; padding:2px 8px;
+  font-size:18px; line-height:1; padding:2px 8px;
   border-radius:6px; transition:background .12s;
 }
 .cal-nav-btn:hover { background:#F0F0EC; }
-.cal-grid-wrap { padding:8px 10px 4px; }
+.cal-grid-wrap { padding:4px 14px 8px; flex:1; }
 .cal-dow-row {
   display:grid; grid-template-columns:repeat(7,1fr);
-  margin-bottom:2px;
+  margin-bottom:4px;
 }
 .cal-dow-row span {
   text-align:center; font-size:10px; font-weight:600;
-  color:#ABABAB; letter-spacing:.04em; padding:2px 0;
+  color:#ABABAB; letter-spacing:.05em; padding:3px 0;
 }
 .cal-days {
-  display:grid; grid-template-columns:repeat(7,1fr); gap:2px;
+  display:grid; grid-template-columns:repeat(7,1fr); gap:3px;
 }
 .cal-day-cell {
   aspect-ratio:1; display:flex; flex-direction:column;
   align-items:center; justify-content:center;
-  border-radius:8px; cursor:pointer; gap:2px;
+  border-radius:9px; gap:3px;
+  pointer-events:auto;
 }
-.cal-day-cell:hover { background:#F5F5F3; }
-.cal-day-cell .cdn { font-size:12px; font-weight:400; color:#1D1F3C; line-height:1; }
-.cal-day-cell.inactive .cdn { color:#C8C8C4; cursor:default; }
-.cal-day-cell.inactive:hover { background:none; }
-.cal-day-cell.today .cdn { font-weight:700; color:#1D1F3C; }
+.cal-day-cell.inactive { pointer-events:none; }
+.cal-day-cell:not(.inactive):hover { background:#F0F0EC; cursor:pointer; }
+.cal-day-cell .cdn { font-size:13px; font-weight:400; color:#1D1F3C; line-height:1; pointer-events:none; }
+.cal-day-cell.inactive .cdn { color:#CACAC6; }
 .cal-day-cell.today { background:#F0F0EC; }
-.cal-day-cell.has-activity { cursor:pointer; }
-.cal-day-cell.selected { background:#1D1F3C; }
-.cal-day-cell.selected .cdn { color:#fff; font-weight:600; }
-.cal-dots { display:flex; gap:2px; justify-content:center; min-height:5px; }
-.cal-dot { width:4px; height:4px; border-radius:50%; flex-shrink:0; }
-.cal-day-cell.selected .cal-dot { opacity:.8; }
+.cal-day-cell.today .cdn { font-weight:800; }
+.cal-day-cell.selected { background:#1D1F3C !important; }
+.cal-day-cell.selected .cdn { color:#fff; font-weight:700; }
+.cal-dots { display:flex; gap:2px; justify-content:center; pointer-events:none; min-height:6px; }
+.cal-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; pointer-events:none; }
+.cal-day-cell.selected .cal-dot { opacity:.75; }
 .cal-legend {
-  display:flex; gap:14px; padding:6px 14px 8px;
+  display:flex; gap:16px; padding:8px 16px 14px;
   border-top:1px solid #EFEFEC;
 }
 .cal-leg {
-  display:flex; align-items:center; gap:4px;
-  font-size:10px; color:#8B8FA8; font-weight:500;
+  display:flex; align-items:center; gap:5px;
+  font-size:10px; color:#8B8FA8; font-weight:600;
 }
+/* Columna derecha — detalle del día */
+.cal-right {
+  flex:1; display:flex; flex-direction:column; overflow:hidden;
+}
+.cal-right-hdr {
+  display:flex; align-items:center; gap:8px;
+  padding:14px 16px 12px; border-bottom:1px solid #EFEFEC;
+}
+.cal-right-title {
+  flex:1; font-size:14px; font-weight:700; color:#1D1F3C;
+  letter-spacing:-.2px; text-transform:capitalize;
+}
+.cal-close-btn {
+  background:none; border:none; cursor:pointer; color:#8B8FA8;
+  font-size:20px; line-height:1; padding:0 4px; border-radius:6px;
+  transition:background .12s;
+}
+.cal-close-btn:hover { background:#F0F0EC; }
 .cal-day-view {
-  border-top:1px solid #EFEFEC; max-height:300px; overflow-y:auto;
+  flex:1; overflow-y:auto; padding:12px 14px 16px;
+  display:flex; flex-direction:column; gap:10px;
 }
-.cal-day-hdr {
-  padding:10px 14px 6px; font-size:11px; font-weight:700;
-  color:#8B8FA8; text-transform:uppercase; letter-spacing:.06em;
+.cal-empty {
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:40px 20px;
+  font-size:13px; color:#ABABAB; text-align:center; gap:8px;
 }
-.cal-qs { display:flex; flex-direction:column; gap:8px; padding:0 10px 12px; }
+.cal-empty-icon { font-size:32px; opacity:.4; }
 .cal-q-card {
   background:#FAFAF8; border:1px solid #EFEFEC;
-  border-radius:10px; padding:10px 12px;
-  display:flex; flex-direction:column; gap:6px;
+  border-radius:11px; padding:12px 14px;
+  display:flex; flex-direction:column; gap:7px;
 }
-.cal-q-top { display:flex; align-items:center; gap:6px; }
+.cal-q-top { display:flex; align-items:center; gap:7px; }
 .cal-q-cat {
-  font-size:9px; font-weight:700; padding:2px 7px;
+  font-size:9px; font-weight:700; padding:2px 8px;
   border-radius:20px; letter-spacing:.04em; text-transform:uppercase;
 }
 .cal-q-time { font-size:10px; color:#ABABAB; margin-left:auto; }
-.cal-q-text { font-size:12px; font-weight:600; color:#1D1F3C; line-height:1.4; }
-.cal-q-bar-row { display:flex; align-items:center; gap:6px; }
-.cal-q-votes { font-size:10px; color:#8B8FA8; white-space:nowrap; }
-.cal-q-bar { flex:1; height:4px; background:#EFEFEC; border-radius:3px; overflow:hidden; }
-.cal-q-bar-fill { height:100%; border-radius:3px; transition:width .4s; }
-.cal-q-pct { font-size:10px; font-weight:700; white-space:nowrap; }
-.cal-q-actions { display:flex; gap:5px; margin-top:2px; }
+.cal-q-text { font-size:13px; font-weight:600; color:#1D1F3C; line-height:1.45; }
+.cal-q-bar-row { display:flex; align-items:center; gap:7px; }
+.cal-q-votes { font-size:11px; color:#8B8FA8; white-space:nowrap; }
+.cal-q-bar { flex:1; height:5px; background:#EFEFEC; border-radius:3px; overflow:hidden; }
+.cal-q-bar-fill { height:100%; border-radius:3px; transition:width .5s; }
+.cal-q-pct { font-size:11px; font-weight:700; white-space:nowrap; }
+.cal-q-actions { display:flex; gap:6px; margin-top:2px; }
 .cal-q-btn {
-  font-size:10px; font-weight:600; padding:4px 9px;
-  border-radius:6px; border:1px solid #E0E0DA;
+  font-size:11px; font-weight:600; padding:5px 11px;
+  border-radius:7px; border:1px solid #E0E0DA;
   background:#fff; color:#5F5E5A; cursor:pointer;
-  display:flex; align-items:center; gap:3px; transition:background .12s;
+  display:flex; align-items:center; gap:4px; transition:background .12s;
 }
 .cal-q-btn:hover { background:#F0F0EC; }
 .cal-q-btn svg { flex-shrink:0; }
-.cal-loading { text-align:center; padding:20px; font-size:12px; color:#ABABAB; }
+.cal-loading { text-align:center; padding:30px; font-size:12px; color:#ABABAB; }
 /* ── PREGUNTAS PANEL (same style as #citizens-panel) ── */
 #preguntas-panel {
   position:fixed; inset:0; z-index:400;
@@ -4824,26 +4851,40 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
   <!-- ══ PANEL CALENDARIO HISTÓRICO ══ -->
   <div id="cal-overlay" onclick="if(event.target===this)calClose()">
     <div id="cal-panel">
-      <div class="cal-hdr">
-        <button class="cal-nav-btn" id="cal-prev" onclick="calNavMonth(-1)">‹</button>
-        <span class="cal-month-lbl" id="cal-month-lbl"></span>
-        <button class="cal-nav-btn" id="cal-next" onclick="calNavMonth(1)">›</button>
-        <button class="cal-nav-btn" onclick="calClose()" style="margin-left:4px;font-size:18px">×</button>
-      </div>
-      <div class="cal-grid-wrap">
-        <div class="cal-dow-row">
-          <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+
+      <!-- Columna izquierda: calendari -->
+      <div class="cal-left">
+        <div class="cal-hdr">
+          <button class="cal-nav-btn" id="cal-prev" onclick="calNavMonth(-1)">‹</button>
+          <span class="cal-month-lbl" id="cal-month-lbl"></span>
+          <button class="cal-nav-btn" id="cal-next" onclick="calNavMonth(1)">›</button>
         </div>
-        <div class="cal-days" id="cal-days"></div>
+        <div class="cal-grid-wrap">
+          <div class="cal-dow-row">
+            <span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span>
+          </div>
+          <div class="cal-days" id="cal-days"></div>
+        </div>
+        <div class="cal-legend">
+          <div class="cal-leg"><div class="cal-dot" style="background:#1D9E75"></div>Preguntas</div>
+          <div class="cal-leg"><div class="cal-dot" style="background:#7F77DD"></div>Con debate</div>
+        </div>
       </div>
-      <div class="cal-legend">
-        <div class="cal-leg"><div class="cal-dot" style="background:#1D9E75"></div>Preguntas</div>
-        <div class="cal-leg"><div class="cal-dot" style="background:#7F77DD"></div>Con debate</div>
+
+      <!-- Columna derecha: detalle del día -->
+      <div class="cal-right">
+        <div class="cal-right-hdr">
+          <span class="cal-right-title" id="cal-right-title">Historial</span>
+          <button class="cal-close-btn" onclick="calClose()">×</button>
+        </div>
+        <div class="cal-day-view" id="cal-day-view">
+          <div class="cal-empty">
+            <div class="cal-empty-icon">📅</div>
+            <span>Seleccioná un día<br>con actividad para ver el detalle</span>
+          </div>
+        </div>
       </div>
-      <div class="cal-day-view" id="cal-day-view" style="display:none">
-        <div class="cal-day-hdr" id="cal-day-hdr"></div>
-        <div class="cal-qs" id="cal-qs"></div>
-      </div>
+
     </div>
   </div>
 
@@ -12958,8 +12999,10 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     if (_calMonth > 11) { _calMonth = 0;  _calYear++ }
     if (_calMonth < 0)  { _calMonth = 11; _calYear-- }
     _calData = {}; _calVotes = {}; _calSelDay = null
-    const v = document.getElementById('cal-day-view')
-    if (v) v.style.display = 'none'
+    const title = document.getElementById('cal-right-title')
+    const view  = document.getElementById('cal-day-view')
+    if (title) title.textContent = 'Historial'
+    if (view)  view.innerHTML = '<div class="cal-empty"><div class="cal-empty-icon">📅</div><span>Seleccioná un día<br>con actividad para ver el detalle</span></div>'
     _calLoadMonth(_calYear, _calMonth)
   }
 
@@ -13059,14 +13102,12 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     _calSelDay = key
     _calRenderGrid(_calYear, _calMonth)
 
-    const view = document.getElementById('cal-day-view')
-    const hdr  = document.getElementById('cal-day-hdr')
-    const list = document.getElementById('cal-qs')
+    const view  = document.getElementById('cal-day-view')
+    const title = document.getElementById('cal-right-title')
     if (!view) return
 
-    view.style.display = 'block'
-    hdr.textContent    = label + ' — ' + qs.length + (qs.length === 1 ? ' pregunta' : ' preguntas')
-    list.innerHTML     = '<div class="cal-loading">Cargando resultados…</div>'
+    if (title) title.textContent = label + ' · ' + qs.length + (qs.length === 1 ? ' pregunta' : ' preguntas')
+    view.innerHTML = '<div class="cal-loading">Cargando resultados…</div>'
 
     // Cargar votos para preguntas cerradas
     const closed = qs.filter(q => q.status === 'cerrada' || new Date(q.ends_at) < new Date())
@@ -13086,7 +13127,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
       } catch(e) {}
     }))
 
-    list.innerHTML = qs.map(q => {
+    view.innerHTML = qs.map(q => {
       const cat    = CAT_COLORS[q.category] || { bg:'#F0F0EC', color:'#5F5E5A' }
       const ended  = q.status === 'cerrada' || new Date(q.ends_at) < new Date()
       const v      = _calVotes[q.id]
