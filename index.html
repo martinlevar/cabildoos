@@ -446,9 +446,54 @@ html, body {
   text-align:center; font-size:10px; font-weight:700;
   letter-spacing:.08em; color:#CCCEDC; padding:4px 0;
 }
+.dp-mod-bar {
+  flex-shrink:0; padding:10px 14px 6px;
+  background:#FAFAF8; border-top:1px solid #EFEFEC;
+  display:flex; align-items:center; gap:10px;
+}
+.dp-hand-btn {
+  width:36px; height:36px; border-radius:50%; border:2px solid #D8D8D3;
+  background:#F0F0EC; cursor:pointer; font-size:17px;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:all .22s; user-select:none;
+}
+.dp-hand-btn.ready {
+  border-color:#22c55e; background:#dcfce7;
+  box-shadow:0 0 0 4px rgba(34,197,94,.18);
+  animation:hand-pulse 1.8s ease-in-out infinite;
+}
+.dp-hand-btn.waiting {
+  border-color:rgba(239,68,68,.45);
+  background:rgba(239,68,68,.07);
+  opacity:.75; cursor:default;
+}
+.dp-hand-btn.cooldown {
+  border-color:rgba(239,68,68,.45);
+  background:rgba(239,68,68,.07);
+  opacity:.75; cursor:default;
+}
+@keyframes hand-pulse {
+  0%,100% { box-shadow:0 0 0 4px rgba(34,197,94,.18); }
+  50%      { box-shadow:0 0 0 7px rgba(34,197,94,.08); }
+}
+.dp-mod-status {
+  flex:1; font-size:11px; font-weight:600;
+  color:#9B9FA8; letter-spacing:.02em; line-height:1.3;
+}
+.dp-mod-status b { color:#1D1F3C; font-weight:700; }
+.dp-mod-status.green { color:#16a34a; }
+.dp-mod-status.red   { color:#dc2626; }
+.dp-cooldown-track {
+  flex-shrink:0; height:2px; background:#EFEFEC;
+  margin:0 14px;
+}
+.dp-cooldown-fill {
+  height:100%; background:#22c55e; border-radius:2px;
+  transition:width 1s linear;
+}
 .dp-input-row {
-  flex-shrink:0; padding:12px 16px 14px;
-  border-top:1px solid #EFEFEC; background:#FAFAF8;
+  flex-shrink:0; padding:8px 14px 14px;
+  background:#FAFAF8;
   display:flex; gap:8px; align-items:center;
 }
 .dp-input {
@@ -458,13 +503,15 @@ html, body {
   transition:border-color .15s; background:#fff;
 }
 .dp-input:focus { border-color:#5C67E8; background:#fff; }
+.dp-input:disabled { background:#F5F5F3; color:#aaa; cursor:not-allowed; }
 .dp-send {
   width:36px; height:36px; border-radius:50%;
   background:#1D1F3C; border:none; cursor:pointer;
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
   transition:background .15s; flex-shrink:0;
 }
-.dp-send:hover { background:#5C67E8; }
+.dp-send:hover:not(:disabled) { background:#5C67E8; }
+.dp-send:disabled { background:#C8C8C4; cursor:not-allowed; }
 .dp-closed-note {
   display:none; flex-shrink:0;
   padding:14px 20px; background:#FAFAF8;
@@ -4740,10 +4787,19 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
   <div class="dp-messages" id="dp-messages">
     <div class="dp-loading">Cargando mensajes…</div>
   </div>
+  <!-- Moderación: mano + estado -->
+  <div class="dp-mod-bar" id="dp-mod-bar">
+    <button class="dp-hand-btn" id="dp-hand-btn" onclick="_dpToggleHand()" title="Levantar mano para hablar">✋</button>
+    <span class="dp-mod-status" id="dp-mod-status">Levantá la mano para hablar</span>
+  </div>
+  <!-- Barra de cooldown -->
+  <div class="dp-cooldown-track" id="dp-cooldown-track" style="display:none">
+    <div class="dp-cooldown-fill" id="dp-cooldown-fill" style="width:100%"></div>
+  </div>
   <!-- Input -->
   <div class="dp-input-row" id="dp-input-row">
-    <input class="dp-input" id="dp-input" placeholder="Escribí tu argumento..." maxlength="280" onkeydown="if(event.key==='Enter')dpEnviar()">
-    <button class="dp-send" onclick="dpEnviar()" title="Enviar">
+    <input class="dp-input" id="dp-input" placeholder="Escribí tu argumento..." maxlength="280" onkeydown="if(event.key==='Enter')dpEnviar()" disabled>
+    <button class="dp-send" id="dp-send-btn" onclick="dpEnviar()" title="Enviar" disabled>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
@@ -12211,6 +12267,143 @@ let _debateTheme    = _CAT_DEFAULT // active category theme
 let _debateEndsAt   = null   // Date of question end
 let _debateCdIv     = null   // countdown interval
 
+// ── MODERACIÓN: cola de manos ─────────────────────────────────
+const DP_COOLDOWN_SEC  = 60   // segundos entre mensajes
+const DP_QUEUE_DIRECT  = 3    // si ≤ estas personas en cola → mano verde automática
+
+let _dpHandState    = 'idle'  // 'idle' | 'queued' | 'ready' | 'cooldown'
+let _dpQueue        = []      // [{seat, raisedAt}] — cola de manos levantadas
+let _dpCooldownEnd  = 0       // timestamp fin de cooldown
+let _dpCooldownTick = null    // setInterval para la barra
+
+// Actualiza UI según estado actual
+function _dpRenderHand() {
+  const btn    = document.getElementById('dp-hand-btn')
+  const status = document.getElementById('dp-mod-status')
+  const inp    = document.getElementById('dp-input')
+  const snd    = document.getElementById('dp-send-btn')
+  const track  = document.getElementById('dp-cooldown-track')
+  if (!btn) return
+
+  const myPos = _dpQueue.findIndex(e => e.seat === MY_SEAT)
+
+  btn.className = 'dp-hand-btn'
+  if (status) { status.className = 'dp-mod-status'; status.innerHTML = '' }
+  if (track)  track.style.display = 'none'
+
+  if (_dpHandState === 'ready') {
+    btn.className = 'dp-hand-btn ready'
+    btn.title = 'Podés hablar — click para bajar la mano'
+    if (status) { status.className = 'dp-mod-status green'; status.innerHTML = '<b>Podés hablar</b> — enviá tu argumento' }
+    if (inp) inp.disabled = false
+    if (snd) snd.disabled = false
+
+  } else if (_dpHandState === 'queued') {
+    btn.className = 'dp-hand-btn waiting'
+    btn.title = 'Esperando turno'
+    if (status) status.innerHTML = myPos >= 0 ? `Esperando turno — posición <b>${myPos + 1}</b> en cola` : 'En cola…'
+    if (inp) inp.disabled = true
+    if (snd) snd.disabled = true
+
+  } else if (_dpHandState === 'cooldown') {
+    btn.className = 'dp-hand-btn cooldown'
+    btn.title = 'Cooldown activo'
+    const rem = Math.max(0, Math.ceil((_dpCooldownEnd - Date.now()) / 1000))
+    if (status) { status.className = 'dp-mod-status red'; status.innerHTML = `Esperá <b>${rem}s</b> antes de volver a hablar` }
+    if (inp) inp.disabled = true
+    if (snd) snd.disabled = true
+    if (track) { track.style.display = 'block' }
+
+  } else {
+    // idle
+    btn.title = 'Levantar mano para hablar'
+    if (status) status.innerHTML = 'Levantá la mano para hablar'
+    if (inp) inp.disabled = true
+    if (snd) snd.disabled = true
+  }
+}
+
+// Recalcula si yo debo pasar de 'queued' → 'ready'
+function _dpEvalQueue() {
+  if (_dpHandState !== 'queued') return
+  const myPos = _dpQueue.findIndex(e => e.seat === MY_SEAT)
+  if (myPos >= 0 && myPos < DP_QUEUE_DIRECT) {
+    _dpHandState = 'ready'
+    _dpRenderHand()
+  }
+}
+
+// Toggle mano — levantar / bajar
+function _dpToggleHand() {
+  if (_debateEnded || !MY_SEAT) return
+  if (_dpHandState === 'cooldown') return   // no puede mientras cooldown
+  if (_dpHandState === 'ready' || _dpHandState === 'queued') {
+    // Bajar la mano
+    _dpQueue = _dpQueue.filter(e => e.seat !== MY_SEAT)
+    _dpHandState = 'idle'
+    _dpBroadcast({ type: 'hand_down', seat: MY_SEAT })
+    _dpRenderHand()
+    return
+  }
+  // Levantar la mano
+  if (_dpQueue.find(e => e.seat === MY_SEAT)) return  // ya está
+  const entry = { seat: MY_SEAT, raisedAt: Date.now() }
+  _dpQueue.push(entry)
+  _dpQueue.sort((a, b) => a.raisedAt - b.raisedAt)
+  _dpBroadcast({ type: 'hand_up', seat: MY_SEAT, raisedAt: entry.raisedAt })
+
+  const myPos = _dpQueue.findIndex(e => e.seat === MY_SEAT)
+  if (myPos < DP_QUEUE_DIRECT) {
+    _dpHandState = 'ready'
+  } else {
+    _dpHandState = 'queued'
+  }
+  _dpRenderHand()
+}
+
+// Inicia cooldown de 60s
+function _dpStartCooldown() {
+  if (_dpCooldownTick) clearInterval(_dpCooldownTick)
+  _dpCooldownEnd = Date.now() + DP_COOLDOWN_SEC * 1000
+  _dpHandState   = 'cooldown'
+  _dpRenderHand()
+
+  const fill = document.getElementById('dp-cooldown-fill')
+  const track = document.getElementById('dp-cooldown-track')
+  if (track) track.style.display = 'block'
+
+  _dpCooldownTick = setInterval(() => {
+    const rem  = Math.max(0, _dpCooldownEnd - Date.now())
+    const pct  = (rem / (DP_COOLDOWN_SEC * 1000)) * 100
+    if (fill) fill.style.width = pct + '%'
+    _dpRenderHand()
+    if (rem <= 0) {
+      clearInterval(_dpCooldownTick)
+      _dpCooldownTick = null
+      _dpHandState = 'idle'
+      if (track) track.style.display = 'none'
+      _dpRenderHand()
+    }
+  }, 1000)
+}
+
+// Broadcast al canal de debate
+function _dpBroadcast(payload) {
+  if (!_debateChannel) return
+  try { _debateChannel.send({ type: 'broadcast', event: 'hand', payload }) } catch(e) {}
+}
+
+// Reset completo de moderación al abrir/cerrar debate
+function _dpResetMod() {
+  if (_dpCooldownTick) { clearInterval(_dpCooldownTick); _dpCooldownTick = null }
+  _dpHandState = 'idle'
+  _dpQueue     = []
+  _dpCooldownEnd = 0
+  const track = document.getElementById('dp-cooldown-track')
+  if (track) track.style.display = 'none'
+  _dpRenderHand()
+}
+
 function _dpStartCountdown(endsAt) {
   if (_debateCdIv) clearInterval(_debateCdIv)
   _debateEndsAt = endsAt ? new Date(endsAt) : null
@@ -12297,6 +12490,8 @@ function _subscribeDebate(questionId) {
     sb.removeChannel(_debateChannel)
     _debateChannel = null
   }
+  _dpResetMod()  // limpiar cola al cambiar de debate
+
   _debateChannel = sb.channel(`debate:${questionId}`)
     .on('postgres_changes', {
       event: 'INSERT',
@@ -12305,9 +12500,25 @@ function _subscribeDebate(questionId) {
       filter: `question_id=eq.${questionId}`
     }, payload => {
       const msg = payload.new
-      // Avoid duplicates (we already appended own message optimistically)
       if (document.querySelector(`[data-msg-id="${msg.id}"]`)) return
       _dpAppendMsg(msg, msg.seat_number === MY_SEAT)
+    })
+    // ── Manos levantadas ──────────────────────────────────────
+    .on('broadcast', { event: 'hand' }, ({ payload }) => {
+      if (!payload) return
+      if (payload.type === 'hand_up') {
+        // Agregar a cola si no existe
+        if (!_dpQueue.find(e => e.seat === payload.seat)) {
+          _dpQueue.push({ seat: payload.seat, raisedAt: payload.raisedAt || Date.now() })
+          _dpQueue.sort((a, b) => a.raisedAt - b.raisedAt)
+        }
+        _dpEvalQueue()   // evaluar si yo subo de posición
+        _dpRenderHand()
+      } else if (payload.type === 'hand_down') {
+        _dpQueue = _dpQueue.filter(e => e.seat !== payload.seat)
+        _dpEvalQueue()
+        _dpRenderHand()
+      }
     })
     .subscribe()
 }
@@ -12315,14 +12526,20 @@ function _subscribeDebate(questionId) {
 function _dpSetEndedUI(ended) {
   _debateEnded = ended
   const inputRow   = document.getElementById('dp-input-row')
+  const modBar     = document.getElementById('dp-mod-bar')
+  const cdTrack    = document.getElementById('dp-cooldown-track')
   const closedNote = document.getElementById('dp-closed-note')
   const liveBadge  = document.getElementById('dp-live-badge')
   if (ended) {
-    inputRow.style.display = 'none'
+    if (inputRow)   inputRow.style.display  = 'none'
+    if (modBar)     modBar.style.display    = 'none'
+    if (cdTrack)    cdTrack.style.display   = 'none'
     closedNote.classList.add('show')
     if (liveBadge) { liveBadge.innerHTML = '🔒 Cerrado'; liveBadge.classList.add('closed') }
+    _dpResetMod()
   } else {
-    inputRow.style.display = ''
+    if (inputRow) inputRow.style.display = ''
+    if (modBar)   modBar.style.display   = ''
     closedNote.classList.remove('show')
     if (liveBadge) {
       liveBadge.innerHTML = '<span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo'
@@ -12347,15 +12564,18 @@ function cerrarDebate() {
   debateOpen = false
   if (_debateChannel) { sb.removeChannel(_debateChannel); _debateChannel = null }
   if (_debateCdIv)    { clearInterval(_debateCdIv); _debateCdIv = null }
+  _dpResetMod()
 }
 
 async function dpEnviar() {
   if (_debateEnded) return
+  if (_dpHandState !== 'ready') return   // solo puede hablar si la mano está verde
   const inp = document.getElementById('dp-input')
   const txt = inp.value.trim()
   if (!txt || !_debateQId || !MY_SEAT) return
   inp.value = ''
-  // Insert — Realtime subscription delivers it back (no optimistic duplicate)
+  inp.disabled = true
+
   try {
     const { error } = await sb.from('debate_messages').insert({
       question_id: _debateQId,
@@ -12365,12 +12585,20 @@ async function dpEnviar() {
     })
     if (error) {
       console.warn('dpEnviar error:', error)
-      inp.value = txt // restore so user can retry
+      inp.value = txt
+      inp.disabled = false
       showToast('Error al enviar mensaje')
+      return
     }
+    // Éxito → bajar mano y arrancar cooldown
+    _dpQueue = _dpQueue.filter(e => e.seat !== MY_SEAT)
+    _dpBroadcast({ type: 'hand_down', seat: MY_SEAT })
+    _dpEvalQueue()    // siguiente en cola puede subir
+    _dpStartCooldown()
   } catch(e) {
     console.warn('dpEnviar:', e)
     inp.value = txt
+    inp.disabled = false
     showToast('Error al enviar mensaje')
   }
 }
