@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preguntas Frecuentes — Cabildo de Venezuela</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080808;
+  --surface: #111111;
+  --card:    #161616;
+  --border:  #222222;
+  --text:    #f0f0f0;
+  --muted:   #888888;
+  --accent:  #F5A623;
+  --green:   #22c55e;
+  --blue:    #60a5fa;
+  --f-display: 'Space Grotesk', sans-serif;
+  --f-body:    'Manrope', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,8,8,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 32px;
+}
+.topbar-logo {
+  font-family: var(--f-display);
+  font-size: 17px; font-weight: 800; letter-spacing: -.6px;
+  color: var(--text); text-decoration: none;
+}
+.topbar-logo span { color: var(--accent); }
+.topbar-links { display: flex; gap: 4px; margin-left: auto; }
+.topbar-links a {
+  color: var(--muted); font-size: 13px; font-weight: 500;
+  text-decoration: none; padding: 6px 12px; border-radius: 8px;
+  transition: color .15s, background .15s;
+}
+.topbar-links a:hover { color: var(--text); background: rgba(255,255,255,.06); }
+.topbar-links a.active { color: var(--accent); }
+
+/* ── LAYOUT ── */
+.layout {
+  max-width: 900px; margin: 0 auto;
+  padding: 48px 24px 96px;
+}
+
+/* ── HERO ── */
+.hero { margin-bottom: 56px; }
+.hero-tag {
+  display: inline-block;
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  color: var(--accent); text-transform: uppercase;
+  border: 1px solid rgba(245,166,35,.3);
+  border-radius: 20px; padding: 4px 12px; margin-bottom: 16px;
+}
+.hero h1 {
+  font-family: var(--f-display);
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 800; letter-spacing: -1px;
+  line-height: 1.15; margin-bottom: 14px;
+}
+.hero p { font-size: 16px; color: var(--muted); max-width: 600px; }
+.version-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 16px;
+  font-size: 12px; color: var(--muted);
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 12px;
+}
+.version-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+/* ── CATEGORIES ── */
+.cat-pills {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px;
+}
+.cat-pill {
+  font-size: 12px; font-weight: 600;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 14px;
+  cursor: pointer; color: var(--muted);
+  transition: all .15s;
+}
+.cat-pill:hover, .cat-pill.active {
+  background: rgba(245,166,35,.12);
+  border-color: rgba(245,166,35,.4);
+  color: var(--accent);
+}
+
+/* ── SECTION ── */
+.faq-section { margin-bottom: 48px; }
+.section-title {
+  font-family: var(--f-display);
+  font-size: 13px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── FAQ ITEM ── */
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  transition: border-color .2s;
+}
+.faq-item:hover { border-color: #333; }
+.faq-item.open { border-color: rgba(245,166,35,.35); }
+.faq-q {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 18px 20px;
+  cursor: pointer;
+  background: var(--card);
+  font-weight: 600; font-size: 14.5px;
+  transition: background .15s;
+  user-select: none;
+}
+.faq-q:hover { background: #1a1a1a; }
+.faq-item.open .faq-q { background: rgba(245,166,35,.06); }
+.faq-icon {
+  flex-shrink: 0; margin-top: 2px;
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--border);
+  font-size: 11px; font-weight: 800;
+  color: var(--muted);
+  transition: all .2s;
+}
+.faq-item.open .faq-icon {
+  background: rgba(245,166,35,.2);
+  color: var(--accent);
+  transform: rotate(45deg);
+}
+.faq-chevron {
+  margin-left: auto; flex-shrink: 0;
+  color: var(--muted); font-size: 13px;
+  transition: transform .25s;
+}
+.faq-item.open .faq-chevron { transform: rotate(180deg); color: var(--accent); }
+.faq-a {
+  max-height: 0; overflow: hidden;
+  transition: max-height .35s ease, padding .25s ease;
+  background: var(--surface);
+}
+.faq-item.open .faq-a { max-height: 600px; }
+.faq-a-inner {
+  padding: 0 20px 20px 54px;
+  font-size: 14px; color: #bbb; line-height: 1.8;
+}
+.faq-a-inner p { margin-bottom: 10px; }
+.faq-a-inner p:last-child { margin-bottom: 0; }
+.faq-a-inner ul { padding-left: 18px; margin: 8px 0; }
+.faq-a-inner li { margin-bottom: 6px; }
+.faq-a-inner strong { color: var(--text); font-weight: 600; }
+.faq-a-inner .highlight {
+  display: inline-block;
+  background: rgba(245,166,35,.1);
+  border: 1px solid rgba(245,166,35,.25);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.faq-a-inner .tech-badge {
+  display: inline-block;
+  background: rgba(96,165,250,.1);
+  border: 1px solid rgba(96,165,250,.2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--blue);
+  font-family: 'Courier New', monospace;
+  margin: 0 2px;
+}
+
+/* ── FOOTER ── */
+.doc-footer {
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+  flex-wrap: wrap;
+}
+.doc-footer p { font-size: 12px; color: var(--muted); }
+.doc-footer a { color: var(--accent); text-decoration: none; }
+.doc-footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a href="index.html" class="topbar-logo">Cabildo<span>OS</span></a>
+  <div class="topbar-links">
+    <a href="faq.html" class="active">FAQ</a>
+    <a href="terminos.html">Términos</a>
+    <a href="privacidad.html">Privacidad</a>
+    <a href="index.html">← Plataforma</a>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <div class="hero">
+    <div class="hero-tag">Documentos legales</div>
+    <h1>Preguntas Frecuentes</h1>
+    <p>Todo lo que necesitás saber sobre cómo funciona Cabildo de Venezuela, cómo protegemos tu privacidad y cómo garantizamos la integridad del voto.</p>
+    <div class="version-tag">
+      <span class="dot"></span>
+      Versión 1.2 · Agosto 2026 · cabildodevenezuela.com
+    </div>
+  </div>
+
+  <!-- CATEGORÍA: LA PLATAFORMA -->
+  <div class="faq-section">
+    <div class="section-title">La plataforma</div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué es Cabildo de Venezuela?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Cabildo de Venezuela es una plataforma de democracia participativa digital que permite a ciudadanos venezolanos verificados ejercer su voto de forma anónima y auditable. Cada ciudadano verificado ocupa una butaca numerada en un hemiciclo virtual — la sala crece orgánicamente con cada persona que se suma.</p>
+          <p>La plataforma es operada por <strong>CabildoOS</strong>, la infraestructura tecnológica que sustenta el sistema. CabildoOS es una empresa de tecnología cívica independiente sin afiliación política.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Quién puede crear una cuenta?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Cualquier ciudadano venezolano mayor de 18 años con un documento de identidad válido (cédula de identidad venezolana, pasaporte u otro documento oficial). Durante la fase beta, el registro requiere además un <strong>código de acceso</strong> que emite el equipo de Cabildo de Venezuela.</p>
+          <p>Cada persona puede tener <strong>una sola cuenta</strong>. El sistema rechaza automáticamente intentos de registrar el mismo documento de identidad más de una vez, incluso desde cuentas de email diferentes.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Cómo funciona el hemiciclo?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>El hemiciclo es la representación visual de todos los ciudadanos verificados. Cada butaca numerada corresponde a un ciudadano real. Las butacas se asignan en orden cronológico de verificación — el primero en verificarse ocupa la butaca N°1.</p>
+          <p>Durante una votación, el hemiciclo revela los resultados butaca por butaca en tiempo real mediante el protocolo <span class="highlight">VaV</span> (Voto Anónimo Verificable). El color de cada butaca indica el voto (sí / no / abstención / no votó), pero <strong>no revela la identidad de quien ocupa esa butaca</strong>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿CabildoOS tiene afiliación política?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>No. CabildoOS es infraestructura tecnológica neutral. No tomamos posición en ninguna de las preguntas o votaciones que se realizan en la plataforma. Nuestro rol es garantizar que el proceso sea justo, seguro y auditable, independientemente del resultado.</p>
+          <p>Las preguntas que se someten a votación son definidas por los administradores del cabildo específico, no por CabildoOS.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORÍA: VERIFICACIÓN -->
+  <div class="faq-section">
+    <div class="section-title">Verificación de identidad</div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Por qué necesito verificar mi identidad?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>La verificación garantiza dos cosas fundamentales: que cada butaca corresponde a una persona real (no un bot), y que ninguna persona ocupa más de una butaca. Sin verificación, el sistema sería vulnerable a ataques donde alguien cree miles de cuentas falsas y controle el resultado de las votaciones.</p>
+          <p>La verificación se hace <strong>una sola vez</strong>. Una vez aprobada, tu butaca es permanente y no necesitás repetir el proceso.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué información se analiza durante la verificación?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Durante la verificación, el sistema analiza tu documento de identidad y un selfie en vivo para confirmar:</p>
+          <ul>
+            <li>Que el documento es real (no una copia digital de pantalla)</li>
+            <li>Que el nombre en el documento coincide con el que declaraste</li>
+            <li>Que el número de documento coincide</li>
+            <li>Que el selfie corresponde a una persona real (prueba de vida)</li>
+          </ul>
+          <p>Este análisis lo realiza <strong>inteligencia artificial (Gemini Vision)</strong> de forma automática, seguido de una revisión humana por un verificador autorizado. El análisis ocurre en tiempo real y <strong>los datos originales no se almacenan</strong>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué ve el verificador humano cuando revisa mi solicitud?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>El verificador ve únicamente tu <strong>selfie sosteniendo el documento con los datos del documento pixelados</strong>. El sistema aplica automáticamente un pixelado sobre el nombre, número, fecha de nacimiento y dirección antes de mostrar la imagen al verificador.</p>
+          <p>El verificador solo confirma que:</p>
+          <ul>
+            <li>La persona en el selfie parece ser una persona real</li>
+            <li>Hay un documento oficial visible (aunque los datos estén pixelados)</li>
+          </ul>
+          <p>El verificador <strong>nunca accede ni ve</strong> tu nombre, número de documento, fecha de nacimiento, dirección, ni ningún otro dato personal escrito en el documento.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿CabildoOS guarda mis datos personales?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p><strong>No guardamos tu nombre, número de documento, fecha de nacimiento, dirección ni ningún dato escrito en tu documento de identidad.</strong></p>
+          <p>Lo que sí guardamos es:</p>
+          <ul>
+            <li><strong>Hash del documento</strong> — una huella matemática irreversible del número de documento (<span class="tech-badge">HMAC-SHA256</span> con clave secreta del servidor). Sirve para detectar duplicados sin guardar el número real. Matemáticamente imposible revertirlo al número original.</li>
+            <li><strong>Foto censurada del selfie</strong> — con los datos del documento pixelados. Necesaria para que el verificador humano confirme que sos una persona real.</li>
+            <li><strong>Resultado del análisis</strong> — solo verdadero/falso: el documento coincidió o no.</li>
+          </ul>
+          <p>Una vez aprobada la verificación, la foto censurada puede ser eliminada a tu solicitud.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Puedo verificarme con el mismo documento desde dos cuentas diferentes?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>No. El sistema detecta automáticamente intentos de usar el mismo documento de identidad en más de una cuenta. Esta verificación ocurre a nivel de base de datos antes de cualquier procesamiento — el sistema compara el hash del número de documento y rechaza el intento con un error antes de continuar.</p>
+          <p>Esto aplica aunque uses un email diferente, un dispositivo diferente, o pases meses entre los intentos.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORÍA: VOTO Y VAV -->
+  <div class="faq-section">
+    <div class="section-title">Voto y tecnología VaV</div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué es VaV (Voto Anónimo Verificable)?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>VaV es el protocolo criptográfico propio de CabildoOS que permite que tu voto sea <strong>a la vez anónimo y verificable</strong> — dos propiedades que parecen contradictorias pero que la criptografía moderna permite combinar.</p>
+          <p>Funciona en dos fases:</p>
+          <ul>
+            <li><strong>Commit (compromiso):</strong> cuando votás, el sistema registra un <span class="tech-badge">hash SHA-256</span> de tu voto más un número aleatorio secreto (nonce). Nadie puede deducir tu voto a partir de ese hash. Es como poner tu voto en un sobre sellado.</li>
+            <li><strong>Reveal (revelación):</strong> al cerrar la votación, el sistema revela el contenido del sobre. El hash del commit se verifica contra el voto revelado — si no coinciden, el voto es inválido. El resultado aparece en el hemiciclo butaca por butaca.</li>
+          </ul>
+          <p>Durante la fase de commit, <strong>ni nosotros ni nadie sabe cómo votaste</strong>. El sobre solo se abre cuando la votación termina.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Puedo votar dos veces?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>No. El sistema tiene dos capas de protección independientes que impiden el doble voto, ambas aplicadas a nivel de base de datos (no solo en el código):</p>
+          <ul>
+            <li>Un <strong>constraint único</strong> por (número de pregunta + butaca): la misma butaca no puede tener dos votos en la misma pregunta.</li>
+            <li>Un <strong>constraint único</strong> por (número de pregunta + identity hash): el mismo identity hash no puede votar dos veces.</li>
+          </ul>
+          <p>Estas son reglas de integridad de base de datos — no pueden ser eludidas por bugs de código ni por modificar las solicitudes de red.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿CabildoOS puede votar en mi nombre o fabricar votos?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>No. Hay varios mecanismos que lo impiden:</p>
+          <ul>
+            <li>El voto solo puede insertarse desde una sesión autenticada con tu cuenta — el sistema no puede impersonarte.</li>
+            <li>El campo <span class="tech-badge">vote_plain</span> solo acepta los valores <span class="tech-badge">'si'</span>, <span class="tech-badge">'no'</span>, <span class="tech-badge">'abs'</span> — constraint verificado a nivel de base de datos.</li>
+            <li>No hay "butacas vacías" que el sistema pueda usar: cada butaca solo existe si hay un usuario verificado que la ocupa, y cada usuario ocupa exactamente una butaca (constraint <span class="tech-badge">UNIQUE (seat_number)</span> en profiles).</li>
+            <li>El commit-reveal hace que modificar un voto después del commit lo invalide — el hash no coincidiría.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Mi voto es secreto? ¿Alguien puede saber cómo voté?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Tu voto es secreto durante toda la fase de votación. Solo se revela el resultado (el color en el hemiciclo) al finalizar. Sin embargo, hay una aclaración importante:</p>
+          <p>En el hemiciclo, cada butaca tiene un color que indica el voto de quien la ocupa. Si alguien sabe cuál es tu número de butaca, podría saber cómo votaste mirando el hemiciclo después del reveal. <strong>El número de butaca es público</strong>; la identidad detrás de cada butaca depende de cuánta información personal hayas elegido compartir en tu perfil.</p>
+          <p>Si configurás tu perfil como anónimo (sin alias visible ni foto), nadie puede vincular tu butaca a tu identidad real — ni CabildoOS puede hacerlo, ya que los datos de identidad no fueron almacenados.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORÍA: SEGURIDAD -->
+  <div class="faq-section">
+    <div class="section-title">Seguridad y bots</div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Un hacker puede crear butacas falsas con bots?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Es extremadamente difícil por el conjunto de capas de defensa:</p>
+          <ul>
+            <li><strong>Código de acceso beta</strong> — el registro requiere un código secreto que el equipo distribuye manualmente.</li>
+            <li><strong>Verificación de documento por IA</strong> — Gemini Vision analiza si el documento es real. No pasa una pantalla, no pasa un documento impreso.</li>
+            <li><strong>Prueba de vida (liveness)</strong> — el sistema pide al usuario realizar una acción específica y aleatoria frente a la cámara.</li>
+            <li><strong>Revisión humana</strong> — cada solicitud pasa por un verificador antes de ser aprobada.</li>
+            <li><strong>Hash único del documento</strong> — el mismo documento no puede usarse dos veces aunque se intente desde cuentas distintas.</li>
+          </ul>
+          <p>Para crear una butaca falsa, un atacante tendría que: obtener el código beta, tener un documento real diferente para cada cuenta, pasar la prueba de vida con cada uno, y convencer a un verificador humano en cada caso. En la práctica, esto requiere el mismo esfuerzo que crear una cuenta legítima.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué pasa si alguien accede sin autorización a la base de datos?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Diseñamos el sistema asumiendo que la base de datos podría ser comprometida. Por eso:</p>
+          <ul>
+            <li>Los nombres, números de documento y fechas de nacimiento <strong>nunca se guardaron</strong> — no hay nada que robar.</li>
+            <li>Los hashes de documentos son <span class="tech-badge">HMAC-SHA256</span> con una clave secreta que vive en el servidor de la API, no en la base de datos. Sin esa clave, los hashes son inútiles.</li>
+            <li>Todas las tablas tienen <strong>Row Level Security (RLS)</strong> activo — los usuarios solo pueden ver y modificar sus propios datos.</li>
+            <li>La tabla de verificaciones solo es accesible por admins y verificadores autorizados.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Mi cuenta puede ser suspendida o prohibida?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Sí. Los administradores pueden aplicar tres tipos de acciones:</p>
+          <ul>
+            <li><strong>Suspender</strong> — la cuenta queda temporalmente inactiva. El usuario no puede ingresar al sistema, pero la cuenta y la butaca se conservan. Es reversible.</li>
+            <li><strong>Borrar</strong> — la cuenta se elimina de la plataforma.</li>
+            <li><strong>Prohibir</strong> — el email queda en lista negra y no puede usarse para registrarse nuevamente.</li>
+          </ul>
+          <p>Estas acciones se aplican ante violaciones de los <a href="terminos.html">Términos y Condiciones</a>, incluyendo intento de manipulación del sistema, creación de cuentas falsas o conducta que comprometa la integridad del proceso democrático.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORÍA: CONFIANZA Y CENTRALIZACIÓN -->
+  <div class="faq-section">
+    <div class="section-title">Modelo de confianza</div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿CabildoOS puede conocer mi número de cédula o pasaporte?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Esta es una pregunta que merece una respuesta honesta, no tranquilizadora.</p>
+          <p>El número de documento se almacena como un hash <span class="tech-badge">HMAC-SHA256</span>: una huella matemática irreversible. Un atacante externo que robe la base de datos <strong>no puede</strong> reconstruir ningún número de documento — eso es cierto.</p>
+          <p>Pero CabildoOS, como operador, posee la clave con la que se generó ese hash. Los números de cédula venezolana tienen un formato conocido y un espacio finito (~30 millones de combinaciones). Con esa clave, técnicamente podríamos calcular el hash de cada número posible y comparar contra los almacenados — y en segundos, identificar el número de cualquier usuario.</p>
+          <p><strong>Lo que esto significa:</strong> el hash te protege ante filtraciones externas. No te protege ante un eventual mal uso por parte de CabildoOS. En última instancia, usar esta plataforma implica confiar en que no realizaremos esa enumeración. Preferimos declararlo explícitamente antes que ocultarlo detrás de lenguaje técnico.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué significa que CabildoOS sea un sistema centralizado?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Significa que hay un único operador — CabildoOS — que controla el servidor, la base de datos, las claves criptográficas y el código. Todo el sistema depende de que ese operador actúe de buena fe.</p>
+          <p>Las implicaciones concretas son:</p>
+          <ul>
+            <li>CabildoOS tiene acceso técnico total a los datos almacenados.</li>
+            <li>Si CabildoOS es comprometido (hackeo, presión gubernamental, cambio de manos), no hay mecanismo técnico que proteja los datos de los usuarios.</li>
+            <li>Los resultados de las votaciones son calculados por el servidor de CabildoOS — aunque el protocolo VaV hace que manipularlos sea difícil, la confianza no es matemática sino institucional.</li>
+          </ul>
+          <p>La alternativa sería un sistema descentralizado — pero tiene sus propias limitaciones. Ver la siguiente pregunta.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Por qué no usan blockchain o pruebas de conocimiento cero?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Las <strong>pruebas de conocimiento cero (ZK-proofs)</strong> son la tecnología ideal para este problema: permitirían verificar "esta persona es venezolana con documento válido" sin almacenar ni revelar cuál es ese documento. Es criptografía pura — la confianza sería matemática, no institucional.</p>
+          <p>El <strong>voto en blockchain</strong> distribuiría el control de los resultados entre múltiples nodos independientes, eliminando el punto único de falla.</p>
+          <p>Entonces, ¿por qué no? Porque ambas tecnologías, aplicadas a un sistema de verificación de identidad con revisión humana, accesible para ciudadanos venezolanos sin experiencia técnica, con la experiencia visual del hemiciclo en tiempo real, están fuera del alcance técnico y económico de esta fase.</p>
+          <p>Los sistemas de voto descentralizados que existen (Helios, Vocdoni) resuelven la parte del voto pero siguen dependiendo de sistemas centralizados para la verificación de identidad, o requieren documentos de identidad digitales que en Venezuela no existen universalmente.</p>
+          <p><strong>La posición honesta:</strong> CabildoOS es lo posible hoy. Aspira a incorporar elementos de descentralización progresivamente. Eso no lo convierte en ideal — lo convierte en transparente sobre lo que es.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿CabildoOS puede saber quién es cada usuario y cómo votó?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Las dos preguntas tienen respuestas distintas. Respuesta directa, sin rodeos:</p>
+
+          <p style="font-size:13px;font-weight:700;color:var(--accent);margin-top:4px;margin-bottom:6px">¿Quién es cada usuario?</p>
+          <p>CabildoOS conoce tu email, tu alias (que puede ser anónimo) y tu número de butaca. Técnicamente puede derivar tu número de cédula enumerando el hash. Lo que <strong>no tiene</strong> es tu nombre — no fue almacenado y no puede recuperarlo de su propia base de datos. Para vincular un número de cédula a un nombre real necesitaría fuentes externas (registros del gobierno venezolano) que no controla.</p>
+
+          <p style="font-size:13px;font-weight:700;color:var(--accent);margin-top:12px;margin-bottom:6px">¿Cómo votó cada usuario?</p>
+          <p>Depende del momento:</p>
+          <ul>
+            <li><strong>Durante la votación (fase commit): no.</strong> El voto viaja como <span class="tech-badge">SHA-256(voto + nonce_aleatorio)</span>. El nonce lo genera tu dispositivo aleatoriamente — CabildoOS nunca lo ve. A diferencia del número de cédula (que tiene ~30 millones de combinaciones conocidas), el nonce tiene un espacio efectivamente infinito: imposible de enumerar aunque se conozca el algoritmo.</li>
+            <li><strong>Después del reveal: sí.</strong> El voto queda en claro en la base de datos, vinculado al número de butaca. CabildoOS sabe qué email corresponde a qué butaca. Por lo tanto, después del reveal, pueden ver: email → butaca → voto.</li>
+          </ul>
+
+          <p style="font-size:13px;font-weight:700;color:var(--accent);margin-top:12px;margin-bottom:6px">Conclusión exacta</p>
+          <p>Después del reveal, CabildoOS puede saber qué email votó qué. Si usaste un email sin tu nombre real y un alias anónimo, ese vínculo no llega a tu identidad real. Si usaste tu email personal con tu nombre como alias, sí llega.</p>
+          <p>Lo que CabildoOS <strong>no puede</strong> saber en ningún momento: cómo votás durante la fase de votación (protección criptográfica real), y tu nombre (no fue almacenado). Lo que el sistema <strong>sí protege</strong> de forma matemática es el secreto del voto durante el período de votación. Lo que descansa en confianza institucional es el período posterior al reveal.</p>
+          <p>Preferimos que esto quede claro antes de que lo señale alguien más.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué garantías existen ante el mal uso por parte de CabildoOS?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Las garantías son de tres tipos — ninguna es técnica en el sentido criptográfico:</p>
+          <ul>
+            <li><strong>Legal:</strong> esta Política de Privacidad constituye un compromiso vinculante. Cualquier evidencia de que CabildoOS enumera hashes o vincula identidades con votos es una violación de este documento y de la confianza que sustenta la plataforma.</li>
+            <li><strong>Reputacional:</strong> el valor de CabildoOS depende completamente de que los usuarios confíen en ella. Abusar de los datos o manipular resultados destruiría la plataforma. El incentivo es estructuralmente contrario al abuso.</li>
+            <li><strong>Transparencia:</strong> declaramos públicamente qué datos guardamos, cuáles son nuestras capacidades técnicas reales, y dónde terminan las garantías matemáticas y empieza la confianza institucional. Una plataforma con intención de abusar no haría eso.</li>
+          </ul>
+          <p>Son garantías reales pero imperfectas. Si no estás dispuesto a confiar en ese modelo, la plataforma no es para vos — y eso es una respuesta válida.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CATEGORÍA: CUENTA -->
+  <div class="faq-section">
+    <div class="section-title">Mi cuenta</div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Puedo cambiar mi alias o datos del perfil?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Podés modificar tu alias (nombre de usuario visible), tu frase de perfil y las preferencias de visibilidad desde la sección <strong>Mi Perfil</strong> dentro de la plataforma. Tu número de butaca, sin embargo, es permanente y no puede cambiarse — está vinculado al orden en que te verificaste.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Qué pasa si olvido mi contraseña?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Podés restablecer tu contraseña desde la pantalla de inicio de sesión usando la opción "Olvidé mi contraseña". Recibirás un link de restablecimiento en el email con el que te registraste.</p>
+          <p>Si perdés el acceso al email, contactá al equipo de Cabildo de Venezuela. La verificación de identidad puede usarse para recuperar el acceso en casos excepcionales.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggle(this)">
+        <div class="faq-icon">+</div>
+        ¿Puedo pedir que eliminen mis datos?
+        <span class="faq-chevron">▾</span>
+      </div>
+      <div class="faq-a">
+        <div class="faq-a-inner">
+          <p>Sí. Podés solicitar la eliminación de tu cuenta y tus datos contactando al equipo de Cabildo de Venezuela. Al eliminar tu cuenta:</p>
+          <ul>
+            <li>Tu perfil y alias son eliminados.</li>
+            <li>Tu butaca queda vacía (el número puede reasignarse).</li>
+            <li>El hash de documento asociado puede permanecer en el sistema para prevenir que el mismo documento cree una nueva cuenta (medida anti-fraude).</li>
+          </ul>
+          <p>Para más detalles ver nuestra <a href="privacidad.html">Política de Privacidad</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <p>¿Tenés más preguntas? Escribinos a <a href="mailto:contacto@cabildodevenezuela.com">contacto@cabildodevenezuela.com</a></p>
+    <p style="margin-left:auto">Ver también: <a href="terminos.html">Términos</a> · <a href="privacidad.html">Privacidad</a></p>
+  </div>
+
+</div>
+
+<script>
+function toggle(qEl) {
+  const item = qEl.closest('.faq-item')
+  const wasOpen = item.classList.contains('open')
+  document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'))
+  if (!wasOpen) item.classList.add('open')
+}
+// Abrir si hay hash en URL
+window.addEventListener('DOMContentLoaded', () => {
+  if (location.hash) {
+    const target = document.querySelector(location.hash)
+    if (target) { target.classList.add('open'); target.scrollIntoView({behavior:'smooth', block:'center'}) }
+  }
+})
+</script>
+</body>
+</html>
