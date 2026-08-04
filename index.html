@@ -8414,13 +8414,18 @@ async function _onLogin(user) {
     if (ddButaca) ddButaca.textContent = ''
   }
 
-  // Obtener número de butaca desde verifications (no desde profiles)
+  // Obtener número de butaca desde verifications (Option B: no está en profiles)
+  // El usuario puede leer su propia verificación via RLS "user_read_own_verification"
   let _seatNum = 0
   if (profile?.verification_id) {
     try {
-      const { data: sn } = await sb.rpc('my_seat_number')
-      _seatNum = sn || 0
-    } catch(e) { console.warn('my_seat_number:', e) }
+      const { data: vd } = await sb
+        .from('verifications')
+        .select('butaca_numero')
+        .eq('id', profile.verification_id)
+        .single()
+      _seatNum = vd?.butaca_numero || 0
+    } catch(e) { console.warn('verifications seat lookup:', e) }
   }
 
   if (_seatNum > 0) {
