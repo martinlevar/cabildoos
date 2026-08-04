@@ -6785,8 +6785,10 @@ const MAX_SCALE = 14
 
 function calcMinScale() {
   if (!bx0 && !bx1) return          // seats aún no generados
-  const W = canvas.clientWidth  || canvas.width
-  const H = canvas.clientHeight || canvas.height
+  const cv = document.getElementById('hemiciclo')
+  if (!cv) return
+  const W = cv.clientWidth  || cv.width
+  const H = cv.clientHeight || cv.height
   if (!W || !H) return
   const scX = W / (bx1 - bx0 + DOT_R * 4)
   const scY = H / (by1 - by0 + DOT_R * 4)
