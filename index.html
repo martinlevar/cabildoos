@@ -8295,7 +8295,7 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 // ══════════════════════════════════════════════════════════════
 
 let _authUser = null     // usuario logueado actual
-let _authProfile = null  // perfil (alias, seat_number)
+let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
 // Detectar flujo de recovery desde el hash de la URL (sincrónico, antes del await)
 let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
@@ -8333,9 +8333,6 @@ async function _onLogin(user) {
   window._MY_ROLE = user?.user_metadata?.role || ''
   document.body.classList.remove('observer-mode')
 
-  // Guardar caché antes de limpiar — lo usamos como fast-path si Supabase falla
-  const _prevSeat = parseInt(localStorage.getItem('cabildoos_butaca')) || 0
-  const _prevVid  = localStorage.getItem('cabildoos_vid') || ''
   localStorage.removeItem('cabildoos_butaca')
   localStorage.removeItem('cabildoos_vid')
   MY_SEAT = 0
@@ -8400,11 +8397,7 @@ async function _onLogin(user) {
   const ddBadge = document.getElementById('nav-dd-status-badge')
   const ddButaca = document.getElementById('nav-dd-butaca')
 
-  // OPTION B: seat_number ya no está en profiles.
-  // Se recupera via profiles.verification_id → verifications.butaca_numero
-  // El admin ve email → verification_id (UUID) | verification_id → seat (join separado)
   if (profile?.verification_id) {
-    // Sincronizar cabildoos_vid con el verification_id del servidor
     localStorage.setItem('cabildoos_vid', profile.verification_id)
     if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
   } else {
