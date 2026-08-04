@@ -651,6 +651,28 @@ html, body {
 .cal-q-btn:hover { background:#F0F0EC; }
 .cal-q-btn svg { flex-shrink:0; }
 .cal-loading { text-align:center; padding:30px; font-size:12px; color:#ABABAB; }
+.cal-debate-toggle {
+  display:flex; align-items:center; gap:5px;
+  font-size:11px; font-weight:600; color:#5C67E8;
+  cursor:pointer; padding:4px 0 0;
+  user-select:none;
+}
+.cal-debate-toggle:hover { opacity:.8; }
+.cal-debate-toggle span { flex:1; }
+.cal-chev { transition:transform .2s; color:#5C67E8; }
+.cal-debate-toggle.open .cal-chev { transform:rotate(180deg); }
+.cal-debate-msgs {
+  margin-top:8px; display:flex; flex-direction:column; gap:5px;
+  border-left:2px solid #EFEFEC; padding-left:10px;
+  max-height:220px; overflow-y:auto;
+}
+.cal-dm {
+  font-size:11px; color:#3D3F52; line-height:1.45;
+}
+.cal-dm-meta {
+  font-size:10px; color:#ABABAB; font-weight:600; margin-bottom:1px;
+}
+.cal-dm-loading { font-size:11px; color:#ABABAB; padding:4px 0; }
 /* ── PREGUNTAS PANEL (same style as #citizens-panel) ── */
 #preguntas-panel {
   position:fixed; inset:0; z-index:400;
@@ -7233,9 +7255,10 @@ window.addEventListener('mousemove', e => {
     return
   }
 
-  // Only show profiles on the congress screen, and not while zooming
+  // Only show profiles on the congress screen, and not while zooming or with overlays open
   if (!document.getElementById('congress').classList.contains('active')) return
   if (isZooming) return
+  if (document.getElementById('cal-overlay')?.classList.contains('open')) return
 
   // Block cards when hovering the footer controls
   const ctrls = document.getElementById('map-controls')
@@ -12983,6 +13006,9 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
     if (!overlay) return
     _calOpen = true
     overlay.classList.add('open')
+    // Ocultar profile card del hemiciclo
+    document.getElementById('profile-card')?.classList.remove('visible')
+    hoveredSeat = null
     _calLoadMonth(_calYear, _calMonth)
   }
 
@@ -13148,10 +13174,14 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
         barHtml = `<div class="cal-q-bar-row"><span class="cal-q-votes" style="color:#F5A623">En curso</span></div>`
       }
 
-      const debateBtn = dcount > 0
-        ? `<button class="cal-q-btn" onclick="calAbrirDebate('${q.id}')">
+      const debateSection = dcount > 0
+        ? `<div class="cal-debate-toggle" onclick="calToggleDebate(this,'${q.id}',${dcount})">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Debate (${dcount})</button>` : ''
+            <span>${dcount} mensajes en el debate</span>
+            <svg class="cal-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cal-debate-msgs" id="cdm-${q.id}" style="display:none"></div>`
+        : ''
 
       return `<div class="cal-q-card">
         <div class="cal-q-top">
@@ -13160,9 +13190,41 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
         </div>
         <div class="cal-q-text">${q.text}</div>
         ${barHtml}
-        ${debateBtn ? `<div class="cal-q-actions">${debateBtn}</div>` : ''}
+        ${debateSection}
       </div>`
     }).join('')
+  }
+
+  window.calToggleDebate = async function(btn, qId, dcount) {
+    const box = document.getElementById('cdm-' + qId)
+    if (!box) return
+    const isOpen = btn.classList.toggle('open')
+    box.style.display = isOpen ? 'flex' : 'none'
+    if (!isOpen || box.dataset.loaded) return
+
+    box.innerHTML = '<div class="cal-dm-loading">Cargando debate…</div>'
+    try {
+      const { data, error } = await sb.from('debate_messages')
+        .select('seat_number, alias, text, created_at')
+        .eq('question_id', qId)
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      box.dataset.loaded = '1'
+      if (!data || !data.length) {
+        box.innerHTML = '<div class="cal-dm-loading">Sin mensajes.</div>'
+        return
+      }
+      box.innerHTML = data.map(m => {
+        const t   = new Date(m.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' })
+        const who = m.alias || `#${m.seat_number}`
+        return `<div class="cal-dm">
+          <div class="cal-dm-meta">${who} · ${t}</div>
+          ${escapeHtml(m.text)}
+        </div>`
+      }).join('')
+    } catch(e) {
+      box.innerHTML = '<div class="cal-dm-loading">Error al cargar.</div>'
+    }
   }
 
   window.calAbrirDebate = function(qId) {
