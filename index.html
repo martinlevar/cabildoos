@@ -1053,6 +1053,12 @@ html, body {
   text-transform: capitalize;
   line-height: 1.25;
 }
+#hemi-dt-tz {
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px; font-weight: 700;
+  color: #ABABAB; letter-spacing: .08em;
+  text-transform: uppercase; line-height: 1.2;
+}
 @media(max-width:600px) {
   #hemi-datetime { display: none; }
   #nav-dt-divider { display: none; }
@@ -4946,6 +4952,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
     <div id="hemi-datetime" onclick="calToggle(event)" title="Ver historial" style="cursor:pointer">
       <div id="hemi-dt-time"></div>
       <div id="hemi-dt-date"></div>
+      <div id="hemi-dt-tz">Caracas VET</div>
     </div>
 
     <!-- Divider + User pill (logged in) -->
