@@ -13193,12 +13193,14 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
   const elTime = document.getElementById('hemi-dt-time')
   const elDate = document.getElementById('hemi-dt-date')
   function tickClock() {
-    const d  = new Date()
-    const hh = String(d.getHours()).padStart(2,'0')
-    const mm = String(d.getMinutes()).padStart(2,'0')
-    const ss = String(d.getSeconds()).padStart(2,'0')
+    // Siempre en hora de Venezuela (America/Caracas, UTC-4)
+    const now = new Date()
+    const ve  = new Date(now.toLocaleString('en-US', { timeZone: 'America/Caracas' }))
+    const hh  = String(ve.getHours()).padStart(2,'0')
+    const mm  = String(ve.getMinutes()).padStart(2,'0')
+    const ss  = String(ve.getSeconds()).padStart(2,'0')
     if (elTime) elTime.textContent = hh + ':' + mm + ':' + ss
-    if (elDate) elDate.textContent = DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()]
+    if (elDate) elDate.textContent = DAYS[ve.getDay()] + ' ' + ve.getDate() + ' ' + MONTHS[ve.getMonth()]
   }
   tickClock()
   setInterval(tickClock, 1000)
