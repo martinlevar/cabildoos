@@ -5545,6 +5545,17 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
       </div>
       <p class="vp-seat-sub" style="text-align:center">Ciudadano verificado · identidad oculta · VaV activo</p>
       <p style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px;font-family:monospace" id="vp-hash-display"></p>
+
+      <!-- Recovery ID — guardalo para recuperar tu butaca si perdés el dispositivo -->
+      <div id="vp-recovery-wrap" style="display:none;margin:16px 0;background:rgba(255,165,0,.07);border:1px solid rgba(255,165,0,.2);border-radius:12px;padding:14px 16px">
+        <p style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">🔑 ID de recuperación</p>
+        <p style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.5">Si perdés este dispositivo, necesitás este código para recuperar tu butaca. Guardalo en un lugar seguro.</p>
+        <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);border-radius:8px;padding:10px 12px">
+          <code id="vp-recovery-id" style="font-size:9px;color:#f59e0b;word-break:break-all;flex:1;line-height:1.6"></code>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('vp-recovery-id').textContent);this.textContent='✓'" style="flex-shrink:0;padding:4px 10px;border:1px solid rgba(245,158,11,.4);background:transparent;color:#f59e0b;border-radius:6px;font-size:10px;cursor:pointer">Copiar</button>
+        </div>
+      </div>
+
       <button class="vp-btn-main" onclick="vpFinalizar()">Ir al Cabildo →</button>
     </div>
 
@@ -8385,9 +8396,14 @@ async function _onLogin(user) {
   // Badge de verificación en el dropdown
   const ddBadge = document.getElementById('nav-dd-status-badge')
   const ddButaca = document.getElementById('nav-dd-butaca')
-  if (profile?.seat_number) {
+
+  // OPTION B: seat_number ya no está en profiles.
+  // Se recupera via profiles.verification_id → verifications.butaca_numero
+  // El admin ve email → verification_id (UUID) | verification_id → seat (join separado)
+  if (profile?.verification_id) {
+    // Sincronizar cabildoos_vid con el verification_id del servidor
+    localStorage.setItem('cabildoos_vid', profile.verification_id)
     if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
-    if (ddButaca) ddButaca.textContent = '· Butaca #' + profile.seat_number
   } else {
     const { data: req } = await sb.from('verification_requests')
       .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
@@ -8398,17 +8414,24 @@ async function _onLogin(user) {
     if (ddButaca) ddButaca.textContent = ''
   }
 
-  // Landing: VaV — fuente de verdad es Supabase (profile.seat_number)
-  // localStorage es solo caché; si falta, lo reconstruimos desde el perfil
-  if (profile?.seat_number) {
-    // Siempre usar la butaca del perfil (sobrevive al borrado de localStorage)
-    MY_SEAT = profile.seat_number          // ← ahora asignamos la butaca real
-    localStorage.setItem('cabildoos_butaca', profile.seat_number)
-    cargarPerfilesPublicos().then(() => {  // cargar perfiles reales de otros miembros
-      buildSeats()                         // re-build hemiciclo con MY_SEAT + caché correcto
-      if (MY_SEAT_POS) resetCamera()       // centrar cámara en nuestra butaca
+  // Obtener número de butaca desde verifications (no desde profiles)
+  let _seatNum = 0
+  if (profile?.verification_id) {
+    try {
+      const { data: sn } = await sb.rpc('my_seat_number')
+      _seatNum = sn || 0
+    } catch(e) { console.warn('my_seat_number:', e) }
+  }
+
+  if (_seatNum > 0) {
+    MY_SEAT = _seatNum
+    localStorage.setItem('cabildoos_butaca', _seatNum)
+    if (ddButaca) ddButaca.textContent = '· Butaca #' + _seatNum
+    cargarPerfilesPublicos().then(() => {
+      buildSeats()
+      if (MY_SEAT_POS) resetCamera()
     })
-    vpAplicarButacaEnUI(profile.seat_number)
+    vpAplicarButacaEnUI(_seatNum)
     // Mostrar action buttons, grupo separador y social buttons
     const actBtns = document.getElementById('nav-action-btns')
     if (actBtns) actBtns.style.display = 'flex'
@@ -8417,19 +8440,18 @@ async function _onLogin(user) {
     const socBtns = document.getElementById('nav-social-btns')
     if (socBtns) socBtns.style.display = 'flex'
     const seatLbl = document.getElementById('nav-seat-lbl')
-    if (seatLbl) seatLbl.textContent = '#' + profile.seat_number
+    if (seatLbl) seatLbl.textContent = '#' + _seatNum
     const butacaInfo = document.getElementById('nav-umenu-butaca')
-    if (butacaInfo) butacaInfo.textContent = 'Butaca #' + profile.seat_number
+    if (butacaInfo) butacaInfo.textContent = 'Butaca #' + _seatNum
     voActualizarAlias(displayName)
-    _actualizarBtnButaca()  // "↵ Mi butaca"
-    _refreshMyVoteCount()    // sincronizar conteo de votos desde Supabase
-    _loadFollows()           // cargar follows reales desde Supabase
-    _loadUnreadMessages()    // cargar mensajes no leídos
-    initMessagesRealtime()        // escuchar mensajes entrantes en tiempo real
-    _loadNotifications()          // cargar notificaciones no leídas
-    initNotificationsRealtime()   // escuchar propuestas de seguidos en tiempo real
-    _syncBugFab()                 // mostrar botón de reporte en footer
-    // Usuario verificado → selector de cabildos solo si no hay preferencia guardada
+    _actualizarBtnButaca()
+    _refreshMyVoteCount()
+    _loadFollows()
+    _loadUnreadMessages()
+    initMessagesRealtime()
+    _loadNotifications()
+    initNotificationsRealtime()
+    _syncBugFab()
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
     if (_cabildo) {
       entrarCabildo(_cabildo)
@@ -10632,11 +10654,19 @@ function vpIniciarPolling(verification_id) {
         // Persistir en localStorage
         localStorage.setItem('cabildoos_butaca', data.butaca_numero)
         localStorage.setItem('cabildoos_vid',    verification_id)
+        // OPTION B: vincular verification_id al profile (fuente de verdad para login futuro)
+        // profiles.verification_id → verifications.butaca_numero (sin seat_number directo)
+        try { await sb.rpc('claim_seat', { p_verification_id: verification_id }) } catch(e) { console.warn('claim_seat:', e) }
         // Mostrar #butaca en paso 8
         const numEl = document.getElementById('vp-seat-num')
         if (numEl) numEl.textContent = data.butaca_numero
         const hashEl = document.getElementById('vp-hash-display')
         if (hashEl) hashEl.textContent = `ID: ${verification_id.slice(0,8).toUpperCase()}`
+        // Mostrar ID de recuperación completo
+        const recovEl = document.getElementById('vp-recovery-id')
+        if (recovEl) recovEl.textContent = verification_id
+        const recovWrap = document.getElementById('vp-recovery-wrap')
+        if (recovWrap) recovWrap.style.display = 'block'
         vpShowStep(8)
         // Actualizar UI principal
         vpAplicarButacaEnUI(data.butaca_numero)
