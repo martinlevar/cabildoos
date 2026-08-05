@@ -2708,7 +2708,7 @@ async function aprobarId(requestId, btn) {
   btn.textContent = 'Procesando...'
   try {
     // Llama la función SQL que asigna el próximo #butaca y marca como aprobado
-    const { data, error } = await sb.rpc('assign_butaca', { verification_id: requestId })
+    const { data, error } = await sb.rpc('assign_butaca', { p_verification_id: requestId })
     if (error) throw error
 
     const butaca = data
