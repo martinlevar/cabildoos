@@ -7,7 +7,10 @@
 export async function onRequest(context) {
   const url = new URL(context.request.url)
 
-  if (url.pathname === '/' || url.pathname === '') {
+  const esDominioPrincipal = url.hostname === 'cabildodevenezuela.com'
+    || url.hostname === 'www.cabildodevenezuela.com'
+
+  if (esDominioPrincipal && (url.pathname === '/' || url.pathname === '')) {
     const proximamente = new URL('/proximamente.html', url)
     return context.env.ASSETS.fetch(proximamente)
   }
