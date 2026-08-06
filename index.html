@@ -5756,12 +5756,12 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
       <p class="vp-sub">Ingresá los datos tal como aparecen en tu documento. La IA los comparará contra la foto — si no coinciden, el proceso se rechaza automáticamente.</p>
       <div class="vp-field">
         <label class="vp-label">Nombre completo <span style="color:var(--orange)">*</span></label>
-        <input class="vp-input" id="vp-nombre" placeholder="Exactamente como figura en el documento" maxlength="80" oninput="vpCheckStep1()">
+        <input class="vp-input" id="vp-nombre" placeholder="Exactamente como figura en el documento" maxlength="80" oninput="vpSanitizeNombre(this);vpCheckStep1()" autocomplete="off">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="vp-field">
           <label class="vp-label">Tipo de documento <span style="color:var(--orange)">*</span></label>
-          <select class="vp-input" id="vp-tipo-doc" onchange="vpCheckStep1()">
+          <select class="vp-input" id="vp-tipo-doc" onchange="vpOnTipoDocChange()">
             <option value="">Seleccioná...</option>
             <option value="DNI">DNI / Cédula</option>
             <option value="PASAPORTE">Pasaporte</option>
@@ -5769,13 +5769,13 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
         </div>
         <div class="vp-field">
           <label class="vp-label">Número de documento <span style="color:var(--orange)">*</span></label>
-          <input class="vp-input" id="vp-num-doc" placeholder="Sin espacios ni guiones" maxlength="20" oninput="vpCheckStep1()">
+          <input class="vp-input" id="vp-num-doc" placeholder="Sin espacios ni guiones" maxlength="20" oninput="vpSanitizeDoc(this);vpCheckStep1()" autocomplete="off" inputmode="numeric">
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="vp-field">
           <label class="vp-label">Fecha de nacimiento <span style="color:var(--orange)">*</span></label>
-          <input class="vp-input" id="vp-fecha-nac" type="date" oninput="vpCheckStep1()" onchange="vpCheckStep1()">
+          <input class="vp-input" id="vp-fecha-nac" type="date" oninput="vpCheckStep1()" onchange="vpCheckStep1()" min="1900-01-01">
         </div>
         <div class="vp-field">
           <label class="vp-label">País emisor del documento <span style="color:var(--orange)">*</span></label>
@@ -10932,14 +10932,75 @@ function vpShowStep(n) {
 
 function vpGoStep(n) { vpShowStep(n) }
 
+// ── Validación de inputs de verificación ──────────────────────────
+function vpSanitizeNombre(el) {
+  // Solo letras (incluye tildes, ñ, ü), espacios, guiones y puntos
+  const cur = el.value
+  const san = cur.replace(/[^a-zA-ZáéíóúÁÉÍÓÚàèìòùÀÈÌÒÙâêîôûÂÊÎÔÛäëïöüÄËÏÖÜñÑçÇ'\- .]/g, '')
+  if (san !== cur) { const pos = el.selectionStart - (cur.length - san.length); el.value = san; try { el.setSelectionRange(pos, pos) } catch(e){} }
+}
+
+function vpSanitizeDoc(el) {
+  const tipo = document.getElementById('vp-tipo-doc')?.value
+  const cur = el.value
+  // DNI/Cédula = solo números; Pasaporte = alfanumérico
+  const san = tipo === 'PASAPORTE'
+    ? cur.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+    : cur.replace(/\D/g, '')
+  if (san !== cur) { el.value = san }
+}
+
+function vpOnTipoDocChange() {
+  const tipo = document.getElementById('vp-tipo-doc')?.value
+  const docEl = document.getElementById('vp-num-doc')
+  if (!docEl) return
+  if (tipo === 'PASAPORTE') {
+    docEl.setAttribute('inputmode', 'text')
+    docEl.placeholder = 'Ej: AA123456 (sin espacios)'
+  } else {
+    docEl.setAttribute('inputmode', 'numeric')
+    docEl.placeholder = 'Solo números, sin espacios'
+  }
+  // Re-sanitizar si ya había algo escrito
+  vpSanitizeDoc(docEl)
+  vpCheckStep1()
+}
+
+function vpSetFechaNacMax() {
+  const el = document.getElementById('vp-fecha-nac')
+  if (!el) return
+  const max = new Date()
+  max.setFullYear(max.getFullYear() - 16)
+  el.max = max.toISOString().split('T')[0]
+}
+
 function vpCheckStep1() {
+  vpSetFechaNacMax()  // asegura el max siempre actualizado
   const nombre   = document.getElementById('vp-nombre')?.value.trim()
   const tipoDoc  = document.getElementById('vp-tipo-doc')?.value
   const numDoc   = document.getElementById('vp-num-doc')?.value.trim()
   const fechaNac = document.getElementById('vp-fecha-nac')?.value
   const pais     = document.getElementById('vp-pais')?.value
-  const ok = nombre?.length > 1 && tipoDoc && numDoc?.length > 3 && fechaNac && pais
+
+  // Validar edad mínima 16 años
+  let edadOk = false
+  if (fechaNac) {
+    const max = new Date(); max.setFullYear(max.getFullYear() - 16)
+    edadOk = new Date(fechaNac) <= max
+  }
+
+  const ok = nombre?.length > 1 && tipoDoc && numDoc?.length > 3 && fechaNac && edadOk && pais
   document.getElementById('vp-btn-s1').disabled = !ok
+
+  // Mostrar hint de edad si la fecha está puesta pero no cumple
+  const fechaEl = document.getElementById('vp-fecha-nac')
+  if (fechaNac && !edadOk) {
+    fechaEl.style.borderColor = 'rgba(239,68,68,.6)'
+    fechaEl.title = 'Debés tener al menos 16 años para registrarte'
+  } else {
+    fechaEl.style.borderColor = ''
+    fechaEl.title = ''
+  }
 }
 
 function vpPreview(input, type) {
