@@ -118,7 +118,25 @@ body {
   gap: 56px;
   align-items: start;
 }
-@media(max-width:720px){ .wrap { grid-template-columns: 1fr; } }
+@media(max-width:720px){
+  .wrap { grid-template-columns: 1fr; gap: 24px; padding: 32px 16px 80px; }
+  .toc { position: static; }
+  .toc-mobile-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+  }
+  .toc-mobile-toggle::after {
+    content: '▾';
+    font-size: 13px; color: var(--muted);
+    transition: transform .2s;
+  }
+  .toc.collapsed .toc-mobile-toggle::after { transform: rotate(-90deg); }
+  .toc.collapsed .toc-inner { display: none; }
+}
+@media(min-width:721px){
+  .toc-mobile-toggle { cursor: default; }
+  .toc-mobile-toggle::after { display: none; }
+}
 
 /* ── TOC ── */
 .toc {
@@ -344,23 +362,25 @@ body {
 
 <div class="wrap">
   <!-- TOC -->
-  <aside class="toc" id="toc">
-    <div class="toc-title">Contenido</div>
-    <div class="toc-section">Contexto</div>
-    <a href="#s1">1. El problema</a>
-    <a href="#s2">2. La visión</a>
-    <div class="toc-section">La plataforma</div>
-    <a href="#s3">3. Cómo funciona</a>
-    <a href="#s4">4. Privacidad por diseño</a>
-    <a href="#s5">5. Protocolo VaV</a>
-    <div class="toc-section">Hoja de ruta</div>
-    <a href="#s6">6. Dónde estamos</a>
-    <a href="#s7">7. Hacia la descentralización</a>
-    <a href="#s8">8. Open Source</a>
-    <div class="toc-section">Cierre</div>
-    <a href="#s9">9. Para inversores</a>
-    <a href="#s10">10. Para la política</a>
-    <a href="#s11">11. Llamado a acción</a>
+  <aside class="toc collapsed" id="toc">
+    <div class="toc-title toc-mobile-toggle" onclick="this.closest('.toc').classList.toggle('collapsed')">Contenido</div>
+    <div class="toc-inner">
+      <div class="toc-section">Contexto</div>
+      <a href="#s1">1. El problema</a>
+      <a href="#s2">2. La visión</a>
+      <div class="toc-section">La plataforma</div>
+      <a href="#s3">3. Cómo funciona</a>
+      <a href="#s4">4. Privacidad por diseño</a>
+      <a href="#s5">5. Protocolo VaV</a>
+      <div class="toc-section">Hoja de ruta</div>
+      <a href="#s6">6. Dónde estamos</a>
+      <a href="#s7">7. Hacia la descentralización</a>
+      <a href="#s8">8. Open Source</a>
+      <div class="toc-section">Cierre</div>
+      <a href="#s9">9. Para inversores</a>
+      <a href="#s10">10. Para la política</a>
+      <a href="#s11">11. Llamado a acción</a>
+    </div>
   </aside>
 
   <!-- CONTENT -->
@@ -748,6 +768,23 @@ const observer = new IntersectionObserver(entries => {
   })
 }, { rootMargin: '-20% 0px -70% 0px' })
 sections.forEach(s => observer.observe(s))
+
+// En desktop el TOC siempre abierto; en mobile empieza colapsado
+function syncToc() {
+  const toc = document.getElementById('toc')
+  if (window.innerWidth >= 721) toc.classList.remove('collapsed')
+}
+syncToc()
+window.addEventListener('resize', syncToc)
+
+// Al hacer clic en un link del TOC en mobile, cerrar el acordeón
+tocLinks.forEach(a => {
+  a.addEventListener('click', () => {
+    if (window.innerWidth < 721) {
+      document.getElementById('toc').classList.add('collapsed')
+    }
+  })
+})
 </script>
 </body>
 </html>
