@@ -43,6 +43,7 @@ body {
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 16px;
   padding: 14px 32px;
+  flex-wrap: wrap;
 }
 .topbar-logo {
   font-family: var(--f-display);
@@ -58,6 +59,36 @@ body {
 }
 .topbar-links a:hover { color: var(--text); background: rgba(255,255,255,.06); }
 .topbar-links a.active { color: var(--accent); }
+
+/* Hamburguesa — solo mobile */
+.topbar-burger {
+  display: none;
+  margin-left: auto;
+  background: none; border: none;
+  cursor: pointer; padding: 6px;
+  flex-direction: column; gap: 5px;
+}
+.topbar-burger span {
+  display: block; width: 22px; height: 2px;
+  background: var(--text); border-radius: 2px;
+  transition: all .2s;
+}
+.topbar-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.topbar-burger.open span:nth-child(2) { opacity: 0; }
+.topbar-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media(max-width:600px) {
+  .topbar { padding: 12px 16px; }
+  .topbar-burger { display: flex; }
+  .topbar-links {
+    display: none; flex-direction: column;
+    width: 100%; margin-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 10px; padding-bottom: 4px; gap: 2px;
+  }
+  .topbar-links.open { display: flex; }
+  .topbar-links a { font-size: 14px; padding: 10px 12px; }
+}
 
 /* ── HERO ── */
 .hero-section {
@@ -339,7 +370,10 @@ body {
 
 <nav class="topbar">
   <a href="index.html" class="topbar-logo">Cabildo<span>OS</span></a>
-  <div class="topbar-links">
+  <button class="topbar-burger" id="nav-burger" aria-label="Menú" onclick="this.classList.toggle('open');document.getElementById('nav-links').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="topbar-links" id="nav-links">
     <a href="faq.html">FAQ</a>
     <a href="terminos.html">Términos</a>
     <a href="privacidad.html">Privacidad</a>
