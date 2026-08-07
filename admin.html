@@ -2285,6 +2285,17 @@ select option { background: var(--surface); }
 </div>
 
 <script>
+// ── Sanitización HTML — previene XSS en innerHTML ──────────────────────────
+function esc(str) {
+  if (str == null) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 // ── API Backend ──
 const API_BASE = 'https://cabildoos-api.onrender.com'
 
@@ -2987,24 +2998,25 @@ function renderUsuarios() {
       : ''
     const ago = tiempoRelativo(u.created_at)
     const noVerif = u.status === 'sin_verificar' || !u.status
-    const initials = (u.alias || u.email || '?').slice(0,2).toUpperCase()
+    const initials = esc((u.alias || u.email || '?').slice(0,2).toUpperCase())
     return `
-    <div class="user-row" id="usr-${u.id}">
+    <div class="user-row" id="usr-${esc(u.id)}"
+         data-uid="${esc(u.id)}" data-email="${esc(u.email)}" data-alias="${esc(u.alias)}">
       <div class="u-alias" style="display:flex;align-items:center;gap:8px">
         <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#a855f7,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">${initials}</div>
-        ${u.alias}${u.verified ? ` <span style="font-size:10px;color:var(--green)">✓</span>` : ''}
+        ${esc(u.alias)}${u.verified ? ` <span style="font-size:10px;color:var(--green)">✓</span>` : ''}
       </div>
-      <div class="u-email">${u.email}</div>
+      <div class="u-email">${esc(u.email)}</div>
       <div class="u-date">${ago}</div>
       <div>${st}${accountBadge}</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        ${noVerif ? `<button class="btn btn-ghost btn-sm" onclick="recordarVerificacion('${u.id}','${u.email}','${u.alias}')" style="font-size:11px;white-space:nowrap">📧 Recordar</button>` : ''}
+        ${noVerif ? `<button class="btn btn-ghost btn-sm" onclick="recordarVerificacion(this.closest('[data-uid]').dataset.uid,this.closest('[data-uid]').dataset.email,this.closest('[data-uid]').dataset.alias)" style="font-size:11px;white-space:nowrap">📧 Recordar</button>` : ''}
         ${u.account_status === 'suspended'
-          ? `<button class="btn btn-sm" onclick="reactivarUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#16a34a20;color:#4ade80;border-color:#16a34a40">✓ Reactivar</button>`
-          : `<button class="btn btn-sm" onclick="suspenderUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#f59e0b20;color:#fbbf24;border-color:#f59e0b40">⏸ Suspender</button>`
+          ? `<button class="btn btn-sm" onclick="reactivarUsuario(this.closest('[data-uid]').dataset.uid,this.closest('[data-uid]').dataset.email)" style="font-size:11px;white-space:nowrap;background:#16a34a20;color:#4ade80;border-color:#16a34a40">✓ Reactivar</button>`
+          : `<button class="btn btn-sm" onclick="suspenderUsuario(this.closest('[data-uid]').dataset.uid,this.closest('[data-uid]').dataset.email)" style="font-size:11px;white-space:nowrap;background:#f59e0b20;color:#fbbf24;border-color:#f59e0b40">⏸ Suspender</button>`
         }
-        <button class="btn btn-sm" onclick="eliminarUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#ef444420;color:#ef4444;border-color:#ef444440">🗑 Borrar</button>
-        <button class="btn btn-sm" onclick="prohibirUsuario('${u.id}','${u.email}')" style="font-size:11px;white-space:nowrap;background:#7c3aed20;color:#a855f7;border-color:#7c3aed40" title="Prohíbe permanentemente este email">🚫 Prohibir</button>
+        <button class="btn btn-sm" onclick="eliminarUsuario(this.closest('[data-uid]').dataset.uid,this.closest('[data-uid]').dataset.email)" style="font-size:11px;white-space:nowrap;background:#ef444420;color:#ef4444;border-color:#ef444440">🗑 Borrar</button>
+        <button class="btn btn-sm" onclick="prohibirUsuario(this.closest('[data-uid]').dataset.uid,this.closest('[data-uid]').dataset.email)" style="font-size:11px;white-space:nowrap;background:#7c3aed20;color:#a855f7;border-color:#7c3aed40" title="Prohíbe permanentemente este email">🚫 Prohibir</button>
       </div>
     </div>`
   }).join('')
@@ -3361,7 +3373,7 @@ function _syncCatSelect() {
   const sel = document.getElementById('np-cat')
   if (!sel) return
   const current = sel.value
-  sel.innerHTML = _catsCache.map(c => `<option value="${c.name}">${c.name}</option>`).join('')
+  sel.innerHTML = _catsCache.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')
   if (current && _catsCache.find(c => c.name === current)) sel.value = current
 }
 
@@ -3506,10 +3518,10 @@ async function cargarPropuestasCiudadanas() {
 
     return `<tr>
       <td style="max-width:280px">
-        <div>${p.text}</div>
+        <div>${esc(p.text)}</div>
         ${cs ? `<div style="margin-top:5px">${consentBadge}</div>` : ''}
       </td>
-      <td><span class="tag">${p.cat || '—'}</span></td>
+      <td><span class="tag">${esc(p.cat || '—')}</span></td>
       <td class="mono">#${p.seat_number}</td>
       <td style="text-align:center;font-weight:700;color:${p.likes > 0 ? 'var(--accent)' : 'var(--muted)'}">${p.likes}</td>
       <td class="mono text-muted">${date}</td>
@@ -4011,11 +4023,11 @@ async function cargarVerificadores() {
     }
     tbody.innerHTML = rows.map(v => `
       <tr>
-        <td>${v.email}</td>
+        <td>${esc(v.email)}</td>
         <td><span class="badge ${v.last_sign_in_at ? 'approved' : 'pending'}">${v.last_sign_in_at ? '● Activo' : 'Pendiente'}</span></td>
         <td class="mono text-muted">${v.last_sign_in_at ? tiempoRelativo(v.last_sign_in_at) : 'Nunca'}</td>
         <td class="mono">${v.verif_count ?? '—'}</td>
-        <td><button class="btn btn-red btn-sm" onclick="revocarVerificador('${v.id}')">Revocar</button></td>
+        <td><button class="btn btn-red btn-sm" data-vid="${esc(v.id)}" onclick="revocarVerificador(this.dataset.vid)">Revocar</button></td>
       </tr>`).join('')
   } catch {
     // Fallback demo
@@ -4454,17 +4466,17 @@ async function cargarReportes() {
 
   listEl.innerHTML = rows.map(r => {
     const ts = new Date(r.created_at).toLocaleString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' })
-    const who = r.alias ? `${r.alias} (butaca #${r.seat_number || '?'})` : `Butaca #${r.seat_number || '?'}`
-    return `<div class="rep-card rep-status-${r.status}" id="rep-${r.id}">
+    const who = r.alias ? `${esc(r.alias)} (butaca #${r.seat_number || '?'})` : `Butaca #${r.seat_number || '?'}`
+    return `<div class="rep-card rep-status-${esc(r.status)}" id="rep-${esc(r.id)}" data-rid="${esc(r.id)}">
       <div class="rep-cat">${REP_CAT_ICON[r.category] || '📝'}</div>
       <div class="rep-body">
-        <div class="rep-meta">${REP_CAT_LBL[r.category] || r.category} · ${who} · ${ts}</div>
-        <div class="rep-msg">${r.message.replace(/</g,'&lt;')}</div>
-        ${r.admin_notes ? `<div class="rep-notes">📝 Nota: ${r.admin_notes}</div>` : ''}
+        <div class="rep-meta">${esc(REP_CAT_LBL[r.category] || r.category)} · ${who} · ${ts}</div>
+        <div class="rep-msg">${esc(r.message)}</div>
+        ${r.admin_notes ? `<div class="rep-notes">📝 Nota: ${esc(r.admin_notes)}</div>` : ''}
         <div class="rep-actions">
-          ${r.status !== 'revisado'   ? `<button onclick="cambiarStatusRep('${r.id}','revisado')">👁 Revisar</button>` : ''}
-          ${r.status !== 'resuelto'   ? `<button onclick="cambiarStatusRep('${r.id}','resuelto')">✓ Resolver</button>` : ''}
-          ${r.status !== 'descartado' ? `<button onclick="cambiarStatusRep('${r.id}','descartado')">✕ Descartar</button>` : ''}
+          ${r.status !== 'revisado'   ? `<button onclick="cambiarStatusRep(this.closest('[data-rid]').dataset.rid,'revisado')">👁 Revisar</button>` : ''}
+          ${r.status !== 'resuelto'   ? `<button onclick="cambiarStatusRep(this.closest('[data-rid]').dataset.rid,'resuelto')">✓ Resolver</button>` : ''}
+          ${r.status !== 'descartado' ? `<button onclick="cambiarStatusRep(this.closest('[data-rid]').dataset.rid,'descartado')">✕ Descartar</button>` : ''}
           <button onclick="abrirNotaRep('${r.id}')">✏ Nota</button>
         </div>
       </div>
