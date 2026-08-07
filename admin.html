@@ -4580,6 +4580,7 @@ const NEO_URL      = 'https://ayxscmxmnoguktfgveud.supabase.co'
 const NEO_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
 const NEO_EDGE_REG = `${NEO_URL}/functions/v1/secure-register`
 let   NEO_SCORE    = { critical: 0, high: 0, medium: 0, ok: 0, info: 0 }
+let   NEO_EDGE_DOWN = false  // true si la edge function no responde
 
 // helpers de log con severidad
 function neoLog(sev, label, detail = '') {
@@ -4624,7 +4625,7 @@ async function neoAnonFetch(path, opts = {}, timeoutMs = 8000) {
 }
 
 // fetch a edge functions con timeout (pueden tener cold start)
-async function neoEdgeFetch(url, opts = {}, timeoutMs = 12000) {
+async function neoEdgeFetch(url, opts = {}, timeoutMs = 30000) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
@@ -4635,7 +4636,7 @@ async function neoEdgeFetch(url, opts = {}, timeoutMs = 12000) {
     return { status: r.status, ok: r.ok, data }
   } catch(e) {
     clearTimeout(timer)
-    if (e.name === 'AbortError') return { status: 0, ok: false, data: null, err: 'timeout (12s — edge function cold start?)' }
+    if (e.name === 'AbortError') return { status: 0, ok: false, data: null, err: 'timeout (30s — edge function sin respuesta, puede estar inactiva)' }
     return { status: 0, ok: false, data: null, err: e.message }
   }
 }
@@ -4657,6 +4658,7 @@ async function neoEjecutar() {
   btn.disabled = true
   btn.innerHTML = '<span class="sec-spinner"></span> Ejecutando...'
   NEO_SCORE = { critical:0, high:0, medium:0, ok:0, info:0 }
+  NEO_EDGE_DOWN = false
 
   termClear('neo-terminal')
   termLine('neo-terminal', '█▓▒░ NEO v2 — WHITE-HAT SECURITY RESEARCHER ░▒▓█', 't-title')
@@ -4765,48 +4767,37 @@ async function neoEjecutar() {
   neoSection('FASE 2 ▸ Bypass de autenticación — ¿se puede saltar el beta code?')
   await sleep(200)
 
-  // 2a: edge function sin parámetros
-  {
+  // 2a–2c: testear edge function (cold start puede causar timeout en free tier)
+  let neoEdgeTimeouts = 0
+  const EDGE_TESTS = [
+    { label: 'sin parámetros',      body: '{}',
+      ok: s => s===400||s===422, fail: s => true,
+      okMsg: 'Rechazado correctamente', failMsg: 'Aceptó payload vacío!' },
+    { label: 'código falso "HACKED123"', body: JSON.stringify({ beta_code:'HACKED123', email:'neo@attacker.com', password:'password123' }),
+      ok: s => s===403, fail: s => s===201,
+      okMsg: 'Rechazado (403)', failMsg: '¡Creó usuario con código falso!' },
+    { label: "password='abc' (3 chars)",  body: JSON.stringify({ beta_code:'X', email:'neo@test.com', password:'abc' }),
+      ok: s => s>=400, fail: s => s<400,
+      okMsg: 'Rechazado', failMsg: '¡Aceptó contraseña débil!' },
+  ]
+  for (const t of EDGE_TESTS) {
     const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
-      headers:{'Content-Type':'application/json'}, body:'{}' })
+      headers:{'Content-Type':'application/json'}, body: t.body })
     if (r.err) {
-      neoLog('MEDIO', `secure-register sin parámetros → error de red`, r.err)
+      neoEdgeTimeouts++
+      neoLog('MEDIO', `secure-register ${t.label} → sin respuesta`, r.err)
+    } else if (t.ok(r.status)) {
+      neoLog('OK', `secure-register ${t.label} → HTTP ${r.status}`, t.okMsg)
+    } else if (t.fail(r.status)) {
+      neoLog('CRÍTICO', `secure-register ${t.label} → HTTP ${r.status}`, t.failMsg)
     } else {
-      neoLog(r.status===400||r.status===422?'OK':'CRÍTICO',
-        `secure-register sin parámetros → HTTP ${r.status}`,
-        r.status===400||r.status===422 ? 'Rechazado correctamente' : 'Aceptó payload vacío!')
+      neoLog('MEDIO', `secure-register ${t.label} → HTTP ${r.status}`, 'Respuesta inesperada')
     }
     await sleep(200)
   }
-
-  // 2b: código beta completamente falso
-  {
-    const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ beta_code:'HACKED123', email:'neo@attacker.com', password:'password123' }) })
-    if (r.err) {
-      neoLog('MEDIO', `secure-register código falso → error de red`, r.err)
-    } else {
-      neoLog(r.status===403?'OK': r.status===201?'CRÍTICO':'MEDIO',
-        `secure-register código falso "HACKED123" → HTTP ${r.status}`,
-        r.status===403 ? 'Rechazado (403)' : r.status===201 ? '¡Creó usuario con código falso!' : 'Respuesta inesperada')
-    }
-    await sleep(300)
-  }
-
-  // 2c: password de 3 caracteres
-  {
-    const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ beta_code:'X', email:'neo@test.com', password:'abc' }) })
-    if (r.err) {
-      neoLog('MEDIO', `secure-register pass débil → error de red`, r.err)
-    } else {
-      neoLog(r.status>=400?'OK':'ALTO',
-        `secure-register password='abc' (3 chars) → HTTP ${r.status}`,
-        r.status>=400 ? 'Rechazado' : '¡Aceptó contraseña débil!')
-    }
-    await sleep(200)
+  if (neoEdgeTimeouts >= 2) {
+    NEO_EDGE_DOWN = true
+    termLine('neo-terminal', '  ⚠ Edge function no responde (cold start / inactiva) — tests de overflow se saltearán', 't-warn')
   }
 
   // 2d: signUp DIRECTO de Supabase (sin pasar por edge function) — ¿endpoint abierto?
@@ -4997,43 +4988,42 @@ async function neoEjecutar() {
     neoLog('OK', `SQLi/XSS fuzzing: ${PAYLOADS.length} payloads probados sin crashes de DB`, '')
   }
 
-  // Overflow en edge function
-  {
-    const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ beta_code:'A'.repeat(100000), email:'x@x.com', password:'test' }) })
-    if (r.err) {
-      neoLog('MEDIO', `Edge Function overflow → error de red`, r.err)
-    } else {
-      neoLog(r.status===400||r.status===413||r.status===403?'OK':
-             r.status===500?'ALTO':'MEDIO',
-        `Edge Function overflow (100k chars beta_code) → HTTP ${r.status}`,
-        r.status===400||r.status===413||r.status===403 ? 'Rechazado correctamente' :
-        r.status===500 ? '¡Crash del Edge Function con payload gigante!' : 'Respuesta inesperada')
+  // Overflow en edge function (saltar si ya sabemos que la edge function no responde)
+  if (NEO_EDGE_DOWN) {
+    neoLog('INFO', 'Edge Function overflow: saltado (edge function no respondió en FASE 2)', '')
+    neoLog('INFO', 'Header injection: saltado (edge function no respondió en FASE 2)', '')
+  } else {
+    // Overflow
+    {
+      const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ beta_code:'A'.repeat(100000), email:'x@x.com', password:'test' }) })
+      if (r.err) {
+        neoLog('MEDIO', `Edge Function overflow → sin respuesta`, r.err)
+      } else {
+        neoLog(r.status===400||r.status===413||r.status===403?'OK': r.status===500?'ALTO':'MEDIO',
+          `Edge Function overflow (100k chars) → HTTP ${r.status}`,
+          r.status===400||r.status===413||r.status===403 ? 'Rechazado correctamente' :
+          r.status===500 ? '¡Crash con payload gigante!' : 'Respuesta inesperada')
+      }
+      await sleep(200)
     }
-    await sleep(200)
-  }
-
-  // Header injection en requests al edge function
-  {
-    const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'X-Original-URL':'/admin',
-        'X-Forwarded-For':'127.0.0.1',
-        'X-Admin':'true',
-        'CF-Connecting-IP':'10.0.0.1'
-      },
-      body: JSON.stringify({ beta_code:'HACKED', email:'x@x.com', password:'test' }) })
-    if (r.err) {
-      neoLog('MEDIO', `Header injection → error de red`, r.err)
-    } else {
-      neoLog(r.status===403?'OK':'MEDIO',
-        `Header injection (X-Admin, X-Forwarded-For falso) → HTTP ${r.status}`,
-        r.status===403 ? 'Sin efecto — código beta aún inválido' :
-        'Verificar si headers especiales alteran el comportamiento')
+    // Header injection
+    {
+      const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
+        headers:{ 'Content-Type':'application/json', 'X-Original-URL':'/admin',
+          'X-Forwarded-For':'127.0.0.1', 'X-Admin':'true', 'CF-Connecting-IP':'10.0.0.1' },
+        body: JSON.stringify({ beta_code:'HACKED', email:'x@x.com', password:'test' }) })
+      if (r.err) {
+        neoLog('MEDIO', `Header injection → sin respuesta`, r.err)
+      } else {
+        neoLog(r.status===403?'OK':'MEDIO',
+          `Header injection (X-Admin, X-Forwarded-For falso) → HTTP ${r.status}`,
+          r.status===403 ? 'Sin efecto — código beta aún inválido' :
+          'Verificar si headers alteran el comportamiento')
+      }
+      await sleep(200)
     }
-    await sleep(200)
   }
 
   // ════════════════════════════════════════════════════════════
