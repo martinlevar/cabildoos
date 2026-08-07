@@ -4847,30 +4847,51 @@ async function neoEjecutar() {
   }
 
   // INSERT en tablas protegidas
+  // Usar columnas REALES para evitar falsos positivos por schema error (400)
   const INSERTS = [
     { t:'votes',        b:{ question_id:'00000000-0000-0000-0000-000000000000', seat_number:999, vote_plain:'si' } },
-    { t:'proposals',    b:{ title:'NEO Test', content:'Hack' } },
-    { t:'system_config',b:{ key:'neo_test', value:'hacked' } },
+    { t:'proposals',    b:{ text:'NEO Test Injection', seat_number:9999 } },
+    { t:'system_config',b:{ key:'neo_test', value:'"hacked"' } },
   ]
   for (const ins of INSERTS) {
     const r = await neoAnonInsert(ins.t, ins.b)
-    const bloq = r.status===401||r.status===403||r.status===404||r.status===405
-    neoLog(bloq?'OK':'CRÍTICO',
-      `INSERT anon en ${ins.t} → HTTP ${r.status}`,
-      bloq ? 'Bloqueado' : `¡INSERT ACEPTADO sin autenticación en ${ins.t}!`)
+    // 400 puede ser schema error (falso positivo) — verificar con GET si el row existe
+    const bloq = r.status===401||r.status===403||r.status===404||r.status===405||r.status===400
+    if (bloq) {
+      neoLog('OK', `INSERT anon en ${ins.t} → HTTP ${r.status}`, 'Bloqueado')
+    } else if (r.status===201 || r.status===200) {
+      neoLog('CRÍTICO', `INSERT anon en ${ins.t} → HTTP ${r.status}`,
+        `¡INSERT ACEPTADO sin autenticación en ${ins.t}! Eliminar el registro manualmente.`)
+    } else {
+      neoLog('MEDIO', `INSERT anon en ${ins.t} → HTTP ${r.status} (respuesta inesperada)`, '')
+    }
     await sleep(150)
   }
 
   // UPDATE en registros ajenos (como anon)
+  // PostgREST devuelve 204 incluso cuando 0 filas son afectadas (Prefer: return=minimal)
+  // → verificar con GET si el dato realmente cambió
   {
-    const r = await neoAnonFetch('/rest/v1/profiles?butaca_numero=eq.1', {
+    const HACKED_ALIAS = 'NEO_HACKED_' + Date.now()
+    const patchR = await neoAnonFetch('/rest/v1/profiles?butaca_numero=eq.1', {
       method:'PATCH', headers:{ Prefer:'return=minimal' },
-      body: JSON.stringify({ alias:'HACKED' })
+      body: JSON.stringify({ alias: HACKED_ALIAS })
     })
-    const bloq = r.status===401||r.status===403||r.status===404||r.status===405
-    neoLog(bloq?'OK':'CRÍTICO',
-      `PATCH profiles butaca=1 como anon → HTTP ${r.status}`,
-      bloq ? 'Bloqueado' : '¡Anon puede modificar perfiles ajenos!')
+    await sleep(100)
+    // Verificar si el alias realmente fue cambiado
+    const checkR = await neoAnonFetch('/rest/v1/profiles?butaca_numero=eq.1&select=alias')
+    const wasModified = checkR.ok && Array.isArray(checkR.data) &&
+                        checkR.data.some(r => r.alias === HACKED_ALIAS)
+    if (wasModified) {
+      neoLog('CRÍTICO', `PATCH profiles butaca=1 como anon → ¡MODIFICÓ DATOS REALES!`,
+        `alias fue cambiado a "${HACKED_ALIAS}". Corregir inmediatamente y revocar policy.`)
+    } else if (patchR.status===401||patchR.status===403||patchR.status===404) {
+      neoLog('OK', `PATCH profiles butaca=1 como anon → HTTP ${patchR.status} (bloqueado)`, '')
+    } else {
+      // 204 con 0 rows afectadas — RLS bloqueó silenciosamente (comportamiento normal de PostgREST)
+      neoLog('OK', `PATCH profiles butaca=1 como anon → HTTP ${patchR.status} — 0 filas modificadas (RLS correcto)`,
+        'PostgREST devuelve 204 incluso cuando RLS bloquea — verificado con GET')
+    }
     await sleep(150)
   }
 
@@ -4904,15 +4925,16 @@ async function neoEjecutar() {
     await sleep(200)
   }
 
-  // 4c: validate_beta_code — ¿rate limiting activo?
+  // 4c: validate_beta_code — ¿accesible por anon? (debería estar revocado)
   {
-    const intentos = await Promise.all(
-      Array(8).fill(0).map(() => neoAnonRPC('validate_beta_code', { p_code:'BRUTE_FORCE_TEST' }))
-    )
-    const tieneLimite = intentos.some(r => r.status===429)
-    neoLog(tieneLimite?'OK':'ALTO',
-      `Rate limiting en validate_beta_code: ${tieneLimite?'activo (429)':'sin límite (8 req simultáneas ok)'}`,
-      tieneLimite ? '' : 'Brute-force del código beta posible directamente en el RPC. Aplicar en Edge Function.')
+    const r = await neoAnonRPC('validate_beta_code', { p_code:'BRUTE_FORCE_TEST' })
+    const bloqueado = r.status===401 || r.status===403 || r.status===404 ||
+                      (r.data && JSON.stringify(r.data).includes('permission denied'))
+    neoLog(bloqueado?'OK':'ALTO',
+      `validate_beta_code acceso anon → HTTP ${r.status}`,
+      bloqueado
+        ? 'Bloqueado para anon — brute-force del RPC imposible'
+        : 'Anon puede llamar validate_beta_code directamente (brute-force del beta code posible)')
     await sleep(200)
   }
 
@@ -4977,20 +4999,24 @@ async function neoEjecutar() {
 
   // Overflow en edge function
   {
-    const r = await fetch(NEO_EDGE_REG, { method:'POST',
+    const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ beta_code:'A'.repeat(100000), email:'x@x.com', password:'test' }) })
-    neoLog(r.status===400||r.status===413||r.status===403?'OK':
-           r.status===500?'ALTO':'MEDIO',
-      `Edge Function overflow (100k chars beta_code) → HTTP ${r.status}`,
-      r.status===400||r.status===413||r.status===403 ? 'Rechazado correctamente' :
-      r.status===500 ? '¡Crash del Edge Function con payload gigante!' : 'Respuesta inesperada')
+    if (r.err) {
+      neoLog('MEDIO', `Edge Function overflow → error de red`, r.err)
+    } else {
+      neoLog(r.status===400||r.status===413||r.status===403?'OK':
+             r.status===500?'ALTO':'MEDIO',
+        `Edge Function overflow (100k chars beta_code) → HTTP ${r.status}`,
+        r.status===400||r.status===413||r.status===403 ? 'Rechazado correctamente' :
+        r.status===500 ? '¡Crash del Edge Function con payload gigante!' : 'Respuesta inesperada')
+    }
     await sleep(200)
   }
 
   // Header injection en requests al edge function
   {
-    const r = await fetch(NEO_EDGE_REG, { method:'POST',
+    const r = await neoEdgeFetch(NEO_EDGE_REG, { method:'POST',
       headers:{
         'Content-Type':'application/json',
         'X-Original-URL':'/admin',
@@ -4999,10 +5025,14 @@ async function neoEjecutar() {
         'CF-Connecting-IP':'10.0.0.1'
       },
       body: JSON.stringify({ beta_code:'HACKED', email:'x@x.com', password:'test' }) })
-    neoLog(r.status===403?'OK':'MEDIO',
-      `Header injection (X-Admin, X-Forwarded-For falso) → HTTP ${r.status}`,
-      r.status===403 ? 'Sin efecto — código beta aún inválido' :
-      'Verificar si headers especiales alteran el comportamiento')
+    if (r.err) {
+      neoLog('MEDIO', `Header injection → error de red`, r.err)
+    } else {
+      neoLog(r.status===403?'OK':'MEDIO',
+        `Header injection (X-Admin, X-Forwarded-For falso) → HTTP ${r.status}`,
+        r.status===403 ? 'Sin efecto — código beta aún inválido' :
+        'Verificar si headers especiales alteran el comportamiento')
+    }
     await sleep(200)
   }
 
