@@ -4805,12 +4805,16 @@ async function neoEjecutar() {
     const r = await neoAnonFetch('/auth/v1/signup', { method:'POST',
       body: JSON.stringify({ email:`neo-pentest-${Date.now()}@neo.internal.invalid`, password:'test12345678!' }) })
     const msg = JSON.stringify(r.data||'').toLowerCase()
-    const esAbierto = r.status===200 || r.status===201 || msg.includes('confirmation') || msg.includes('check your email')
-    const esCerrado = msg.includes('signups not allowed') || msg.includes('disabled') || r.status===422 || r.status===400
+    // 429 = email rate limit = el endpoint processó el signup (abierto pero rate-limited)
+    const esAbierto = r.status===200 || r.status===201 || r.status===429 ||
+                      msg.includes('confirmation') || msg.includes('check your email') ||
+                      msg.includes('rate_limit')
+    const esCerrado = msg.includes('signups not allowed') || msg.includes('disabled') ||
+                      r.status===422 || r.status===400
     neoLog(esCerrado?'OK': esAbierto?'CRÍTICO':'ALTO',
       `signUp directo (/auth/v1/signup) → HTTP ${r.status}`,
       esCerrado ? 'Bloqueado — signups directos deshabilitados' :
-      esAbierto ? '¡ENDPOINT ABIERTO! Un atacante puede registrarse sin beta code desde la API' :
+      esAbierto ? '¡ENDPOINT ABIERTO! Atacante puede registrarse sin beta code (429=rate-limited pero procesado). Fix: Supabase Auth Hook.' :
       `Respuesta: ${JSON.stringify(r.data||'').slice(0,100)}`)
     await sleep(300)
   }
