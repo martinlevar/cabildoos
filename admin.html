@@ -2109,12 +2109,20 @@ select option { background: var(--surface); }
               <div class="sec-stat-label">Códigos incorrectos (24h)</div>
             </div>
             <div class="sec-stat">
-              <div class="sec-stat-val t-warn" id="sst-blocked">—</div>
-              <div class="sec-stat-label">Logins bloqueados (24h)</div>
+              <div class="sec-stat-val t-warn" id="sst-rates">—</div>
+              <div class="sec-stat-label">Rate limits (24h)</div>
+            </div>
+            <div class="sec-stat">
+              <div class="sec-stat-val t-err" id="sst-banned">—</div>
+              <div class="sec-stat-label">Emails vetados (24h)</div>
             </div>
             <div class="sec-stat">
               <div class="sec-stat-val t-info" id="sst-signups">—</div>
               <div class="sec-stat-label">Registros nuevos (24h)</div>
+            </div>
+            <div class="sec-stat">
+              <div class="sec-stat-val t-warn" id="sst-suspects">—</div>
+              <div class="sec-stat-label">IPs sospechosas (7d)</div>
             </div>
           </div>
           <div class="sec-terminal" id="smith-terminal" style="margin-top:12px">
@@ -5031,12 +5039,148 @@ async function neoEjecutar() {
   }
 
   // ════════════════════════════════════════════════════════════
+  // FASE 6 — ATAQUES AVANZADOS
+  // ════════════════════════════════════════════════════════════
+  neoSection('FASE 6 ▸ Ataques avanzados — IDOR · JWT injection · Race conditions · Enumeración')
+
+  // --- 6a: IDOR --- anon no debe poder leer perfiles de otros usuarios
+  {
+    const r = await neoAnonFetch('/rest/v1/profiles?select=id,alias&limit=1')
+    const canRead = r.ok && Array.isArray(r.data) && r.data.length > 0
+    neoLog(canRead ? 'CRÍTICO' : 'OK',
+      `IDOR profiles: lectura anon → HTTP ${r.status}`,
+      canRead ? '¡Anon puede leer perfiles ajenos! Revisar RLS.' : 'Bloqueado — RLS correcto')
+    const fakeId = '00000000-0000-0000-0000-000000000001'
+    const r2 = await neoAnonFetch(`/rest/v1/profiles?id=eq.${fakeId}&select=*`)
+    const leaked = r2.ok && Array.isArray(r2.data) && r2.data.length > 0
+    neoLog(leaked ? 'CRÍTICO' : 'OK',
+      `IDOR UUID forjado → HTTP ${r2.status}`,
+      leaked ? '¡Expone datos por UUID predicho!' : 'UUID forjado no devuelve datos')
+  }
+
+  // --- 6b: JWT role injection --- JWT falso con role=service_role
+  {
+    const h = btoa(JSON.stringify({alg:'HS256',typ:'JWT'})).replace(/=/g,'')
+    const p = btoa(JSON.stringify({role:'service_role',iss:'supabase',iat:Math.floor(Date.now()/1000)})).replace(/=/g,'')
+    const fakeJwt = `${h}.${p}.fakesig_neo_test`
+    const r = await neoAnonFetch('/rest/v1/profiles?select=*&limit=1', {
+      headers: { Authorization: `Bearer ${fakeJwt}` }
+    })
+    const accepted = r.ok && Array.isArray(r.data) && r.data.length > 0
+    neoLog(accepted ? 'CRÍTICO' : 'OK',
+      `JWT injection (role=service_role) → HTTP ${r.status}`,
+      accepted ? '¡JWT falso aceptado! Vulnerabilidad crítica.' : 'JWT falso rechazado — firma verificada correctamente')
+  }
+
+  // --- 6c: Metadata role injection --- signup con data:{role:'admin'}
+  {
+    const r = await neoAnonFetch('/auth/v1/signup', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: `neo_roleinject_${Date.now()}@test.invalid`,
+        password: 'TestPass123!',
+        options: { data: { role: 'admin', is_admin: true } }
+      })
+    })
+    const safe = r.status === 400 || r.status === 422
+    const rateLimited = r.status === 429
+    neoLog(safe ? 'OK' : 'MEDIO',
+      `Metadata role injection → HTTP ${r.status}`,
+      safe ? 'Signup bloqueado por Auth Hook — metadata no llega al usuario' :
+      rateLimited ? 'Rate limited — endpoint abierto pero controlado' :
+      'Signup pasó — verificar que user.role no sea "admin"')
+  }
+
+  // --- 6d: Race condition en votación --- 5 votos simultáneos
+  {
+    const rQ = await neoAnonFetch('/rest/v1/questions?select=id&status=eq.active&limit=1')
+    if (rQ.ok && rQ.data?.length > 0) {
+      const qid = rQ.data[0].id
+      const tasks = Array.from({length: 5}, () =>
+        neoAnonFetch('/rest/v1/rpc/cast_vote', {
+          method: 'POST',
+          body: JSON.stringify({ p_question_id: qid, p_vote: 'yes' })
+        })
+      )
+      const results = await Promise.all(tasks)
+      const anyOk = results.some(r => r.ok)
+      neoLog(anyOk ? 'ALTO' : 'OK',
+        `Race condition voto x5: ${results.map(r=>r.status).join(' | ')}`,
+        anyOk ? '¡Voto duplicado! Race condition detectada.' : 'Anon rechazado en todos los intentos — correcto')
+    } else {
+      neoLog('INFO', 'Race condition voto: sin preguntas activas', 'Test omitido')
+    }
+  }
+
+  // --- 6e: Email enumeration timing ---
+  {
+    const t0 = Date.now()
+    await neoAnonFetch('/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'admin@cabildodevenezuela.com', password: 'wrong_NEO_test_123' })
+    })
+    const knownMs = Date.now() - t0
+    const t1 = Date.now()
+    await neoAnonFetch('/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      body: JSON.stringify({ email: `neo_noexiste_${Date.now()}@xxxxxx.invalid`, password: 'wrong_NEO_test_123' })
+    })
+    const unknownMs = Date.now() - t1
+    const diff = Math.abs(knownMs - unknownMs)
+    neoLog(diff > 500 ? 'MEDIO' : 'OK',
+      `Email timing: conocido=${knownMs}ms vs desconocido=${unknownMs}ms (Δ${diff}ms)`,
+      diff > 500 ? 'Diferencia significativa — posible enumeración de emails válidos' : 'Tiempos similares — sin fuga por timing')
+  }
+
+  // --- 6f: GraphQL introspection ---
+  {
+    const r = await neoAnonFetch('/graphql/v1', {
+      method: 'POST',
+      body: JSON.stringify({ query: '{ __schema { types { name } } }' })
+    })
+    const hasSchema = r.ok && r.data?.data?.__schema
+    neoLog(hasSchema ? 'MEDIO' : 'OK',
+      `GraphQL introspection → HTTP ${r.status}`,
+      hasSchema
+        ? `Introspeción habilitada — expone ${r.data.data.__schema.types?.length ?? '?'} tipos públicamente`
+        : 'GraphQL bloqueado o introspeción deshabilitada')
+  }
+
+  // --- 6g: Storage bucket enumeration ---
+  {
+    const r = await neoAnonFetch('/storage/v1/bucket')
+    const leaked = r.ok && Array.isArray(r.data) && r.data.length > 0
+    neoLog(leaked ? 'MEDIO' : 'OK',
+      `Storage buckets → HTTP ${r.status}`,
+      leaked
+        ? `¡Buckets visibles para anon! ${r.data.map(b=>b.name).join(', ')}`
+        : 'Buckets no accesibles para anon')
+  }
+
+  // --- 6h: HTTP method bypass ---
+  {
+    const methodTests = [
+      { method: 'DELETE', path: '/rest/v1/profiles?limit=1',                label: 'DELETE profiles' },
+      { method: 'PUT',    path: '/rest/v1/profiles?limit=1',                label: 'PUT profiles' },
+      { method: 'PATCH',  path: '/rest/v1/system_config?key=eq.beta_active', label: 'PATCH system_config' },
+      { method: 'DELETE', path: '/rest/v1/questions?limit=1',               label: 'DELETE questions' },
+    ]
+    for (const mt of methodTests) {
+      const r = await neoAnonFetch(mt.path, { method: mt.method })
+      const safe = [401,403,405].includes(r.status) || (mt.method==='DELETE' && r.status===404)
+      neoLog(safe ? 'OK' : 'ALTO',
+        `${mt.label} → HTTP ${r.status}`,
+        !safe ? `¡HTTP ${r.status}! Método ${mt.method} no bloqueado correctamente` : 'Bloqueado')
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
   // RESUMEN FINAL
   // ════════════════════════════════════════════════════════════
   const T = 'neo-terminal'
   termLine(T, '')
   termLine(T, '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
-  termLine(T, '  RESUMEN FINAL — NEO v2', 't-title')
+  termLine(T, '  RESUMEN FINAL — NEO v3', 't-title')
   termLine(T, '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
   const { critical, high, medium, ok } = NEO_SCORE
   const total = critical + high + medium + ok
@@ -5071,35 +5215,39 @@ async function neoEjecutar() {
   }
   const now = new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})
   document.getElementById('neo-last').textContent=`Última auditoría: ${now}`
-  document.getElementById('sec-status-sub').textContent=`Última auditoría NEO v2: ${now}`
+  document.getElementById('sec-status-sub').textContent=`Última auditoría NEO v3: ${now}`
 
   btn.disabled = false
-  btn.innerHTML = '◈ Ejecutar NEO'
+  btn.innerHTML = '◈ Ejecutar NEO v3'
 }
 
-// ── AGENTE SMITH ──
+// ── AGENTE SMITH v2 ──
 async function smithConsultar() {
   const btn = document.getElementById('smith-btn')
   btn.disabled = true
   btn.innerHTML = '<span class="sec-spinner"></span> Monitoreando...'
 
   termClear('smith-terminal')
-  termLine('smith-terminal', '▶ AGENTE SMITH activado — analizando amenazas...', 't-title')
+  termLine('smith-terminal', '▶ AGENTE SMITH v2 — analizando amenazas e IPs...', 't-title')
   await sleep(350)
-  termLine('smith-terminal', '  Escaneando registros de autenticación...', 't-dim')
+  termLine('smith-terminal', '  Escaneando registros de seguridad...', 't-dim')
   await sleep(300)
-  termLine('smith-terminal', '  Analizando intentos de intrusión...', 't-dim')
+  termLine('smith-terminal', '  Construyendo perfiles de atacantes...', 't-dim')
   await sleep(400)
 
   try {
     const { data, error } = await sb.rpc('run_smith_report')
     if (error) throw error
 
+    const suspects = data.suspicious_ips || []
+
     // Stats cards
     document.getElementById('smith-stats').style.display = 'flex'
-    document.getElementById('sst-codes').textContent   = data.wrong_beta_codes ?? 0
-    document.getElementById('sst-blocked').textContent = data.blocked_logins ?? 0
-    document.getElementById('sst-signups').textContent = data.new_signups ?? 0
+    document.getElementById('sst-codes').textContent    = data.wrong_beta_codes ?? 0
+    document.getElementById('sst-rates').textContent    = data.rate_limit_hits  ?? 0
+    document.getElementById('sst-banned').textContent   = data.banned_attempts  ?? 0
+    document.getElementById('sst-signups').textContent  = data.new_signups      ?? 0
+    document.getElementById('sst-suspects').textContent = suspects.length
 
     termLine('smith-terminal', '')
     termLine('smith-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
@@ -5108,29 +5256,59 @@ async function smithConsultar() {
     termLine('smith-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
     termLine('smith-terminal', '')
 
-    termLine('smith-terminal', `  Período analizado:         ${data.period}`, 't-info')
-    termLine('smith-terminal', `  Códigos beta incorrectos:  ${data.wrong_beta_codes}`,
+    // ── RESUMEN 24H
+    termLine('smith-terminal', '  ── RESUMEN 24H ──', 't-title')
+    termLine('smith-terminal', `  Códigos beta incorrectos:   ${data.wrong_beta_codes}`,
       data.wrong_beta_codes > 3 ? 't-warn' : 't-ok')
-    termLine('smith-terminal', `  Logins bloqueados:         ${data.blocked_logins}`,
-      data.blocked_logins > 0 ? 't-warn' : 't-ok')
-    termLine('smith-terminal', `  Intentos con email vetado: ${data.banned_attempts}`,
+    termLine('smith-terminal', `  Rate limits (IP bloqueada):  ${data.rate_limit_hits ?? 0}`,
+      (data.rate_limit_hits ?? 0) > 0 ? 't-warn' : 't-ok')
+    termLine('smith-terminal', `  Emails en lista negra:       ${data.banned_attempts}`,
       data.banned_attempts > 0 ? 't-err' : 't-ok')
-    termLine('smith-terminal', `  Nuevos registros (24h):    ${data.new_signups}`, 't-info')
-    termLine('smith-terminal', `  Emails en lista negra:     ${data.total_banned_emails}`, 't-info')
-    termLine('smith-terminal', `  Cuentas suspendidas:       ${data.total_suspended}`, 't-info')
+    termLine('smith-terminal', `  Logins bloqueados:           ${data.blocked_logins}`,
+      data.blocked_logins > 0 ? 't-warn' : 't-ok')
+    termLine('smith-terminal', `  Nuevos registros:            ${data.new_signups}`, 't-info')
+    termLine('smith-terminal', `  Emails vetados (total):      ${data.total_banned_emails}`, 't-info')
+    termLine('smith-terminal', `  Cuentas suspendidas:         ${data.total_suspended}`, 't-info')
     termLine('smith-terminal', '')
 
-    const threats = data.recent_threats || []
-    if (threats.length === 0) {
-      termLine('smith-terminal', '  ✓ Sin actividad sospechosa reciente.', 't-ok')
+    // ── LISTA DE SOSPECHOSOS
+    termLine('smith-terminal', '  ── LISTA DE SOSPECHOSOS (7 días) ──', 't-title')
+    if (suspects.length === 0) {
+      termLine('smith-terminal', '  ✓ Sin IPs sospechosas detectadas.', 't-ok')
     } else {
-      termLine('smith-terminal', '  ÚLTIMOS EVENTOS DETECTADOS:', 't-title')
+      termLine('smith-terminal', `  ${suspects.length} IP(s) con actividad hostil repetida:`, 't-warn')
       termLine('smith-terminal', '')
+      for (const s of suspects) {
+        const first = s.first_seen ? new Date(s.first_seen).toLocaleString('es',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'
+        const last  = s.last_seen  ? new Date(s.last_seen).toLocaleString('es',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'
+        const tc    = s.banned > 0 ? 't-err' : s.rate_hits > 0 ? 't-warn' : 't-info'
+        termLine('smith-terminal', `  ▸ ${s.ip}   [${s.total} intentos]`, tc)
+        const parts = []
+        if (s.wrong_codes > 0) parts.push(`${s.wrong_codes} códigos incorrectos`)
+        if (s.rate_hits > 0)   parts.push(`${s.rate_hits} rate limits`)
+        if (s.banned > 0)      parts.push(`${s.banned} email vetado`)
+        if (s.blocked > 0)     parts.push(`${s.blocked} login bloqueado`)
+        termLine('smith-terminal', `     ↳ ${parts.join(' · ')}`, 't-dim')
+        termLine('smith-terminal', `     ↳ Primera vez: ${first}  |  Última: ${last}`, 't-dim')
+      }
+    }
+    termLine('smith-terminal', '')
+
+    // ── TIMELINE
+    const threats = data.recent_threats || []
+    termLine('smith-terminal', '  ── TIMELINE DE EVENTOS RECIENTES ──', 't-title')
+    if (threats.length === 0) {
+      termLine('smith-terminal', '  ✓ Sin actividad reciente.', 't-ok')
+    } else {
       for (const t of threats) {
         const ts = t.at ? new Date(t.at).toLocaleString('es',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'
-        const emailTxt = t.email ? ` [${t.email}]` : ''
-        const typeCls = t.type === 'banned_attempt' ? 't-err' : t.type === 'wrong_beta_code' ? 't-warn' : 't-info'
-        termLine('smith-terminal', `  ${ts}  ${t.type}${emailTxt}`, typeCls)
+        const ipTxt    = t.ip    ? ` 🖧 ${t.ip}`    : ''
+        const emailTxt = t.email ? ` ✉ ${t.email}` : ''
+        const typeCls  = t.type === 'banned_email_attempt' ? 't-err'
+                       : t.type === 'wrong_beta_code'      ? 't-warn'
+                       : t.type === 'rate_limit_hit'       ? 't-err'
+                       : 't-info'
+        termLine('smith-terminal', `  ${ts}  ${t.type}${ipTxt}${emailTxt}`, typeCls)
         if (t.detail) termLine('smith-terminal', `           ↳ ${t.detail}`, 't-dim')
       }
     }
@@ -5146,7 +5324,7 @@ async function smithConsultar() {
   }
 
   btn.disabled = false
-  btn.innerHTML = '◇ Consultar Smith'
+  btn.innerHTML = '◇ Consultar Smith v2'
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
