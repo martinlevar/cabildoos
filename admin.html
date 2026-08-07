@@ -4892,7 +4892,7 @@ async function neoEjecutar() {
     { name:'SQLi UNION',           val:"' UNION SELECT table_name,null FROM information_schema.tables--" },
     { name:'SQLi OR bypass',       val:"' OR '1'='1" },
     { name:'SQLi stacked queries', val:"'; SELECT pg_sleep(5)--" },
-    { name:'XSS básico',           val:'<script>alert(document.cookie)</script>' },
+    { name:'XSS básico',           val:'<scr'+'ipt>alert(document.cookie)</scr'+'ipt>' },
     { name:'XSS img onerror',      val:'<img src=x onerror=alert(1)>' },
     { name:'XSS template literal', val:'${alert(1)}' },
     { name:'Path traversal',       val:'../../../etc/passwd' },
