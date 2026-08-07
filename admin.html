@@ -4563,83 +4563,426 @@ function termHTML(id, html) {
   el.scrollTop = el.scrollHeight
 }
 
-// ── NEO ──
+// ── NEO v2 — White-Hat Security Researcher ──────────────────────────────
+const NEO_URL      = 'https://ayxscmxmnoguktfgveud.supabase.co'
+const NEO_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
+const NEO_EDGE_REG = `${NEO_URL}/functions/v1/secure-register`
+let   NEO_SCORE    = { critical: 0, high: 0, medium: 0, ok: 0, info: 0 }
+
+// helpers de log con severidad
+function neoLog(sev, label, detail = '') {
+  const T = 'neo-terminal'
+  const icons = { CRÍTICO:'✗ [CRÍTICO]', ALTO:'⚠ [ALTO]', MEDIO:'→ [MEDIO]', OK:'✓ [OK]', INFO:'  ·' }
+  const cls   = { CRÍTICO:'t-err', ALTO:'t-warn', MEDIO:'t-info', OK:'t-ok', INFO:'t-dim' }
+  termLine(T, `${icons[sev]||'?'} ${label}`, cls[sev]||'')
+  if (detail) termLine(T, `   ↳ ${detail}`, 't-dim')
+  if      (sev==='CRÍTICO') NEO_SCORE.critical++
+  else if (sev==='ALTO')    NEO_SCORE.high++
+  else if (sev==='MEDIO')   NEO_SCORE.medium++
+  else if (sev==='OK')      NEO_SCORE.ok++
+  else                      NEO_SCORE.info++
+}
+function neoSection(title) {
+  const T = 'neo-terminal'
+  termLine(T, '')
+  termLine(T, `┌─ ${title}`, 't-title')
+  termLine(T, '')
+}
+
+// petición REST como anon (sin sesión)
+async function neoAnonFetch(path, opts = {}) {
+  try {
+    const r = await fetch(`${NEO_URL}${path}`, {
+      ...opts,
+      headers: { apikey: NEO_ANON_KEY, Authorization: `Bearer ${NEO_ANON_KEY}`,
+                 'Content-Type': 'application/json', ...(opts.headers||{}) }
+    })
+    let data = null
+    try { data = await r.clone().json() } catch {}
+    return { status: r.status, ok: r.ok, data }
+  } catch(e) { return { status: 0, ok: false, data: null, err: e.message } }
+}
+async function neoAnonTable(table, select='*') {
+  return neoAnonFetch(`/rest/v1/${table}?select=${select}&limit=5`)
+}
+async function neoAnonRPC(fn, params={}) {
+  return neoAnonFetch(`/rest/v1/rpc/${fn}`, { method:'POST', body: JSON.stringify(params) })
+}
+async function neoAnonInsert(table, body) {
+  return neoAnonFetch(`/rest/v1/${table}`, {
+    method:'POST', headers:{ Prefer:'return=minimal' }, body: JSON.stringify(body)
+  })
+}
+
+// ── ENTRY POINT ──────────────────────────────────────────────────────────
 async function neoEjecutar() {
   const btn = document.getElementById('neo-btn')
   btn.disabled = true
-  btn.innerHTML = '<span class="sec-spinner"></span> Escaneando...'
+  btn.innerHTML = '<span class="sec-spinner"></span> Ejecutando...'
+  NEO_SCORE = { critical:0, high:0, medium:0, ok:0, info:0 }
 
   termClear('neo-terminal')
-  termLine('neo-terminal', '▶ NEO iniciando auditoría de seguridad...', 't-title')
-  termLine('neo-terminal', '  Accediendo a capas de la Matrix...', 't-dim')
-  await sleep(400)
-  termLine('neo-terminal', '  Escaneando Row Level Security...', 't-dim')
-  await sleep(300)
-  termLine('neo-terminal', '  Analizando políticas de acceso...', 't-dim')
-  await sleep(300)
-  termLine('neo-terminal', '  Probando funciones SECURITY DEFINER...', 't-dim')
-  await sleep(300)
-  termLine('neo-terminal', '  Verificando exposición de datos...', 't-dim')
-  await sleep(500)
+  termLine('neo-terminal', '█▓▒░ NEO v2 — WHITE-HAT SECURITY RESEARCHER ░▒▓█', 't-title')
+  termLine('neo-terminal', `  Target: ${NEO_URL}`, 't-dim')
+  termLine('neo-terminal', `  Fecha:  ${new Date().toLocaleString('es-VE')}`, 't-dim')
+  termLine('neo-terminal', '  Iniciando secuencia completa de auditoría...', 't-dim')
+  await sleep(600)
 
+  // ════════════════════════════════════════════════════════════
+  // FASE 0 — ANÁLISIS ESTÁTICO DE BASE DE DATOS
+  // ════════════════════════════════════════════════════════════
+  neoSection('FASE 0 ▸ Análisis estático DB (RLS · policies · funciones)')
+  await sleep(200)
   try {
-    const { data, error } = await sb.rpc('run_neo_audit')
+    const { data: dbRes, error } = await sb.rpc('run_neo_audit')
     if (error) throw error
-
-    termLine('neo-terminal', '')
-    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
-    termLine('neo-terminal', '  RESULTADO DEL ESCANEO', 't-title')
-    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
-    termLine('neo-terminal', '')
-
-    let criticals = 0, highs = 0, mediums = 0, oks = 0
-    for (const f of data) {
-      let cls, icon
-      switch (f.severity) {
-        case 'CRITICAL': cls = 't-err';  icon = '✗ [CRÍTICO]'; criticals++; break
-        case 'HIGH':     cls = 't-warn'; icon = '⚠ [ALTO]';    highs++; break
-        case 'MEDIUM':   cls = 't-info'; icon = '→ [MEDIO]';   mediums++; break
-        default:         cls = 't-ok';   icon = '✓ [OK]';      oks++; break
-      }
-      termLine('neo-terminal', `${icon} ${f.title}`, cls)
-      if (f.severity !== 'OK') {
-        termLine('neo-terminal', `   ↳ ${f.detail}`, 't-dim')
-        if (f.fix) termLine('neo-terminal', `   🔧 ${f.fix}`, 't-info')
-      }
-      termLine('neo-terminal', '')
+    for (const f of dbRes) {
+      const sev = f.severity==='CRITICAL'?'CRÍTICO': f.severity==='HIGH'?'ALTO':
+                  f.severity==='MEDIUM'?'MEDIO':'OK'
+      neoLog(sev, f.title,
+        f.severity!=='OK' ? (f.detail + (f.fix ? ' | FIX: '+f.fix : '')) : '')
+      await sleep(40)
     }
-
-    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
-    const summary = `  Críticos: ${criticals} | Altos: ${highs} | Medios: ${mediums} | OK: ${oks}`
-    const sumCls = criticals > 0 ? 't-err' : highs > 0 ? 't-warn' : 't-ok'
-    termLine('neo-terminal', summary, sumCls)
-    termLine('neo-terminal', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
-
-    // Actualizar estado global
-    const dot  = document.getElementById('sec-status-dot')
-    const stxt = document.getElementById('sec-status-text')
-    const sbdg = document.getElementById('sec-badge')
-    if (criticals > 0) {
-      dot.className = 'sec-status-dot alert'
-      stxt.textContent = `${criticals} vulnerabilidad(es) crítica(s) detectada(s)`
-      sbdg.className = 'sec-badge-alerta'; sbdg.textContent = 'ALERTA'
-    } else if (highs > 0) {
-      dot.className = 'sec-status-dot watch'
-      stxt.textContent = `${highs} riesgo(s) alto(s) detectado(s)`
-      sbdg.className = 'sec-badge-vigil'; sbdg.textContent = 'VIGILANCIA'
-    } else {
-      dot.className = 'sec-status-dot normal'
-      stxt.textContent = 'Sistema seguro — sin vulnerabilidades críticas'
-      sbdg.className = 'sec-badge-normal'; sbdg.textContent = 'NORMAL'
-    }
-
-    const now = new Date().toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit'})
-    document.getElementById('neo-last').textContent = `Última auditoría: ${now}`
-    document.getElementById('sec-status-sub').textContent = `Última auditoría NEO: ${now}`
-
-  } catch (e) {
-    termLine('neo-terminal', `✗ Error al ejecutar NEO: ${e.message || JSON.stringify(e)}`, 't-err')
+  } catch(e) {
+    termLine('neo-terminal', `  ✗ Error en run_neo_audit: ${e.message}`, 't-err')
   }
+
+  // ════════════════════════════════════════════════════════════
+  // FASE 1 — SUPERFICIE EXPUESTA A ANON (ataques reales)
+  // ════════════════════════════════════════════════════════════
+  neoSection('FASE 1 ▸ Superficie anon — ¿qué puede leer un atacante SIN cuenta?')
+  await sleep(200)
+
+  const TABLAS = [
+    { n:'votes',           sens:['seat_number','vote_plain','vote_hash','revealed_at'] },
+    { n:'verifications',   sens:['imagen_b64','selfie_b64','numero_doc','nombres','fecha_nac'] },
+    { n:'profiles',        sens:['email','telefono','verification_id','numero_doc'] },
+    { n:'system_config',   sens:['value'],  keyFilter:'beta' },
+    { n:'security_events', sens:['ip_address','detail','email','type'] },
+    { n:'banned_emails',   sens:['email'] },
+    { n:'beta_attempts',   sens:['ip_hash'] },
+    { n:'system_errors',   sens:['stack_trace','detail','endpoint'] },
+    { n:'verifications',   sens:['imagen_b64','selfie_b64'] },
+  ]
+  const vistas = new Set()
+  for (const t of TABLAS) {
+    if (vistas.has(t.n)) continue
+    vistas.add(t.n)
+    const r = await neoAnonTable(t.n)
+    if (r.err) { termLine('neo-terminal', `  ⚡ ${t.n}: error de red`, 't-dim'); continue }
+    if (r.ok && Array.isArray(r.data) && r.data.length > 0) {
+      const campos = Object.keys(r.data[0]||{})
+      const leak = campos.filter(c => t.sens.includes(c))
+      const betaLeak = t.keyFilter && r.data.some(row => String(row.key||'').includes(t.keyFilter))
+      if (leak.length > 0 || betaLeak) {
+        neoLog('CRÍTICO', `${t.n}: ${r.data.length} registros accesibles con datos sensibles`,
+          `Campos expuestos: ${[...leak, betaLeak?'[beta_code visible]':''].filter(Boolean).join(', ')}`)
+      } else {
+        neoLog('ALTO', `${t.n}: accesible para anon (${r.data.length} rows) sin campos críticos detectados`,
+          `Campos: ${campos.join(', ')}`)
+      }
+    } else if (r.status===200 && Array.isArray(r.data) && r.data.length===0) {
+      neoLog('MEDIO', `${t.n}: accesible pero sin datos (RLS filtra o tabla vacía)`, '')
+    } else if (r.status===401 || r.status===403 || r.status===404) {
+      neoLog('OK', `${t.n}: bloqueada para anon (HTTP ${r.status})`, '')
+    } else {
+      neoLog('OK', `${t.n}: sin acceso (HTTP ${r.status})`, '')
+    }
+    await sleep(120)
+  }
+
+  // tablas públicas — auditar qué PII exponen
+  for (const table of ['proposals','questions','debate_entries']) {
+    const r = await neoAnonTable(table)
+    if (r.ok && r.data?.length > 0) {
+      const campos = Object.keys(r.data[0]||{})
+      const pii = campos.filter(c => ['email','phone','user_id','auth_id','seat_number'].includes(c))
+      if (pii.length > 0) {
+        neoLog('ALTO', `${table}: pública pero expone PII`, `Campos: ${pii.join(', ')}`)
+      } else {
+        neoLog('OK', `${table}: pública sin PII`, `Campos: ${campos.join(', ')}`)
+      }
+    }
+    await sleep(80)
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // FASE 2 — BYPASS DE AUTENTICACIÓN Y REGISTRO
+  // ════════════════════════════════════════════════════════════
+  neoSection('FASE 2 ▸ Bypass de autenticación — ¿se puede saltar el beta code?')
+  await sleep(200)
+
+  // 2a: edge function sin parámetros
+  {
+    const r = await fetch(NEO_EDGE_REG, { method:'POST',
+      headers:{'Content-Type':'application/json'}, body:'{}' })
+    neoLog(r.status===400||r.status===422?'OK':'CRÍTICO',
+      `secure-register sin parámetros → HTTP ${r.status}`,
+      r.status===400||r.status===422 ? 'Rechazado correctamente' : 'Aceptó payload vacío!')
+    await sleep(200)
+  }
+
+  // 2b: código beta completamente falso
+  {
+    const r = await fetch(NEO_EDGE_REG, { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ beta_code:'HACKED123', email:'neo@attacker.com', password:'password123' }) })
+    neoLog(r.status===403?'OK': r.status===201?'CRÍTICO':'MEDIO',
+      `secure-register código falso "HACKED123" → HTTP ${r.status}`,
+      r.status===403 ? 'Rechazado (403)' : r.status===201 ? '¡Creó usuario con código falso!' : 'Respuesta inesperada')
+    await sleep(300)
+  }
+
+  // 2c: password de 3 caracteres
+  {
+    const r = await fetch(NEO_EDGE_REG, { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ beta_code:'X', email:'neo@test.com', password:'abc' }) })
+    neoLog(r.status>=400?'OK':'ALTO',
+      `secure-register password='abc' (3 chars) → HTTP ${r.status}`,
+      r.status>=400 ? 'Rechazado' : '¡Aceptó contraseña débil!')
+    await sleep(200)
+  }
+
+  // 2d: signUp DIRECTO de Supabase (sin pasar por edge function) — ¿endpoint abierto?
+  {
+    const r = await neoAnonFetch('/auth/v1/signup', { method:'POST',
+      body: JSON.stringify({ email:`neo-pentest-${Date.now()}@neo.internal.invalid`, password:'test12345678!' }) })
+    const msg = JSON.stringify(r.data||'').toLowerCase()
+    const esAbierto = r.status===200 || r.status===201 || msg.includes('confirmation') || msg.includes('check your email')
+    const esCerrado = msg.includes('signups not allowed') || msg.includes('disabled') || r.status===422 || r.status===400
+    neoLog(esCerrado?'OK': esAbierto?'CRÍTICO':'ALTO',
+      `signUp directo (/auth/v1/signup) → HTTP ${r.status}`,
+      esCerrado ? 'Bloqueado — signups directos deshabilitados' :
+      esAbierto ? '¡ENDPOINT ABIERTO! Un atacante puede registrarse sin beta code desde la API' :
+      `Respuesta: ${JSON.stringify(r.data||'').slice(0,100)}`)
+    await sleep(300)
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // FASE 3 — ESCALADA DE PRIVILEGIOS
+  // ════════════════════════════════════════════════════════════
+  neoSection('FASE 3 ▸ Escalada de privilegios — ¿puede un atacante hacer cosas de admin?')
+  await sleep(200)
+
+  // RPCs admin como anon
+  const ADMIN_RPCS = [
+    { fn:'admin_ban_user',     p:{ p_user_id:'00000000-0000-0000-0000-000000000000' } },
+    { fn:'admin_delete_user',  p:{ p_user_id:'00000000-0000-0000-0000-000000000000' } },
+    { fn:'admin_suspend_user', p:{ p_user_id:'00000000-0000-0000-0000-000000000000', p_days:1 } },
+  ]
+  for (const rpc of ADMIN_RPCS) {
+    const r = await neoAnonRPC(rpc.fn, rpc.p)
+    const bloq = r.status===401||r.status===403||r.status===404||
+                 JSON.stringify(r.data||'').toLowerCase().includes('permission')
+    neoLog(bloq?'OK':'CRÍTICO',
+      `${rpc.fn} como anon → HTTP ${r.status}`,
+      bloq ? 'Bloqueado correctamente' : '¡Función admin ejecutable sin autenticación!')
+    await sleep(150)
+  }
+
+  // INSERT en tablas protegidas
+  const INSERTS = [
+    { t:'votes',        b:{ question_id:'00000000-0000-0000-0000-000000000000', seat_number:999, vote_plain:'si' } },
+    { t:'proposals',    b:{ title:'NEO Test', content:'Hack' } },
+    { t:'system_config',b:{ key:'neo_test', value:'hacked' } },
+  ]
+  for (const ins of INSERTS) {
+    const r = await neoAnonInsert(ins.t, ins.b)
+    const bloq = r.status===401||r.status===403||r.status===404||r.status===405
+    neoLog(bloq?'OK':'CRÍTICO',
+      `INSERT anon en ${ins.t} → HTTP ${r.status}`,
+      bloq ? 'Bloqueado' : `¡INSERT ACEPTADO sin autenticación en ${ins.t}!`)
+    await sleep(150)
+  }
+
+  // UPDATE en registros ajenos (como anon)
+  {
+    const r = await neoAnonFetch('/rest/v1/profiles?butaca_numero=eq.1', {
+      method:'PATCH', headers:{ Prefer:'return=minimal' },
+      body: JSON.stringify({ alias:'HACKED' })
+    })
+    const bloq = r.status===401||r.status===403||r.status===404||r.status===405
+    neoLog(bloq?'OK':'CRÍTICO',
+      `PATCH profiles butaca=1 como anon → HTTP ${r.status}`,
+      bloq ? 'Bloqueado' : '¡Anon puede modificar perfiles ajenos!')
+    await sleep(150)
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // FASE 4 — LÓGICA DE NEGOCIO
+  // ════════════════════════════════════════════════════════════
+  neoSection('FASE 4 ▸ Lógica de negocio — ¿se pueden saltar flujos del sistema?')
+  await sleep(200)
+
+  // 4a: get_question_votes ya no devuelve seat_number?
+  {
+    const r = await neoAnonRPC('get_question_votes', { p_question_id:'00000000-0000-0000-0000-000000000000' })
+    if (r.ok && Array.isArray(r.data) && r.data.length > 0) {
+      const hasSeat = r.data.some(row => 'seat_number' in row)
+      neoLog(hasSeat?'CRÍTICO':'OK',
+        `get_question_votes: ${hasSeat?'aún expone seat_number':'solo devuelve vote_plain + total'}`,
+        hasSeat ? 'Votos linkables a identidades' : 'Anonimato de votos preservado')
+    } else {
+      neoLog('OK', 'get_question_votes: sin datos de prueba (pregunta inexistente devuelve vacío)', '')
+    }
+    await sleep(200)
+  }
+
+  // 4b: get_my_vote como anon (no debe devolver votos ajenos)
+  {
+    const r = await neoAnonRPC('get_my_vote', { p_question_id:'00000000-0000-0000-0000-000000000000' })
+    const leakedData = r.ok && Array.isArray(r.data) && r.data.length > 0
+    neoLog(leakedData?'CRÍTICO':'OK',
+      `get_my_vote como anon → HTTP ${r.status}`,
+      leakedData ? `¡Devuelve votos a anon! ${JSON.stringify(r.data[0]).slice(0,80)}` : 'Anon no obtiene votos')
+    await sleep(200)
+  }
+
+  // 4c: validate_beta_code — ¿rate limiting activo?
+  {
+    const intentos = await Promise.all(
+      Array(8).fill(0).map(() => neoAnonRPC('validate_beta_code', { p_code:'BRUTE_FORCE_TEST' }))
+    )
+    const tieneLimite = intentos.some(r => r.status===429)
+    neoLog(tieneLimite?'OK':'ALTO',
+      `Rate limiting en validate_beta_code: ${tieneLimite?'activo (429)':'sin límite (8 req simultáneas ok)'}`,
+      tieneLimite ? '' : 'Brute-force del código beta posible directamente en el RPC. Aplicar en Edge Function.')
+    await sleep(200)
+  }
+
+  // 4d: schema REST público — ¿expone estructura de tablas?
+  {
+    const r = await neoAnonFetch('/rest/v1/')
+    if (r.ok && r.data) {
+      const paths = Object.keys(r.data.paths||r.data||{})
+      const sensPath = paths.filter(p =>
+        ['votes','verifications','system_config','security_events','banned_emails','beta_attempts'].some(t => p.includes(t))
+      )
+      neoLog(sensPath.length>0?'MEDIO':'OK',
+        `Schema REST público expone ${paths.length} endpoints`,
+        sensPath.length>0 ? `Tablas sensibles en schema: ${sensPath.join(', ')}` :
+        'Sin tablas críticas en el schema público')
+    } else {
+      neoLog('OK', `Schema REST: HTTP ${r.status}`, '')
+    }
+    await sleep(200)
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // FASE 5 — FUZZING E INYECCIONES
+  // ════════════════════════════════════════════════════════════
+  neoSection('FASE 5 ▸ Fuzzing — SQLi · XSS · overflow · unicode · path traversal')
+  await sleep(200)
+
+  const PAYLOADS = [
+    { name:'SQLi clásico',         val:"'; DROP TABLE profiles; --" },
+    { name:'SQLi UNION',           val:"' UNION SELECT table_name,null FROM information_schema.tables--" },
+    { name:'SQLi OR bypass',       val:"' OR '1'='1" },
+    { name:'SQLi stacked queries', val:"'; SELECT pg_sleep(5)--" },
+    { name:'XSS básico',           val:'<script>alert(document.cookie)</script>' },
+    { name:'XSS img onerror',      val:'<img src=x onerror=alert(1)>' },
+    { name:'XSS template literal', val:'${alert(1)}' },
+    { name:'Path traversal',       val:'../../../etc/passwd' },
+    { name:'Null byte',            val:'admin\x00hack' },
+    { name:'Overflow 10k chars',   val:'A'.repeat(10000) },
+    { name:'Unicode bypass',       val:'ＡＤＭＩＮ ' },
+    { name:'SSTI',                 val:'{{7*7}}#{7*7}' },
+    { name:'JSON injection',       val:'","key":"INJECTED","x":"' },
+    { name:'CRLF injection',       val:'hello\r\nX-Injected: true' },
+    { name:'Regex DoS (ReDoS)',    val:'a'.repeat(50)+'b' },
+  ]
+
+  let sqliFound = false, crashFound = false
+  for (const p of PAYLOADS) {
+    const r = await neoAnonRPC('validate_beta_code', { p_code: p.val })
+    const body = JSON.stringify(r.data||'').toLowerCase()
+    const esCrash = r.status===500 || body.includes('syntax error') ||
+                    body.includes('unterminated') || body.includes('parse error')
+    if (esCrash && !sqliFound) {
+      neoLog('CRÍTICO', `Posible SQLi/crash con payload: ${p.name}`,
+        `HTTP ${r.status} — La DB respondió con error de sintaxis. Input llega sin sanitizar.`)
+      sqliFound = true
+    }
+    await sleep(60)
+  }
+  if (!sqliFound) {
+    neoLog('OK', `SQLi/XSS fuzzing: ${PAYLOADS.length} payloads probados sin crashes de DB`, '')
+  }
+
+  // Overflow en edge function
+  {
+    const r = await fetch(NEO_EDGE_REG, { method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ beta_code:'A'.repeat(100000), email:'x@x.com', password:'test' }) })
+    neoLog(r.status===400||r.status===413||r.status===403?'OK':
+           r.status===500?'ALTO':'MEDIO',
+      `Edge Function overflow (100k chars beta_code) → HTTP ${r.status}`,
+      r.status===400||r.status===413||r.status===403 ? 'Rechazado correctamente' :
+      r.status===500 ? '¡Crash del Edge Function con payload gigante!' : 'Respuesta inesperada')
+    await sleep(200)
+  }
+
+  // Header injection en requests al edge function
+  {
+    const r = await fetch(NEO_EDGE_REG, { method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-Original-URL':'/admin',
+        'X-Forwarded-For':'127.0.0.1',
+        'X-Admin':'true',
+        'CF-Connecting-IP':'10.0.0.1'
+      },
+      body: JSON.stringify({ beta_code:'HACKED', email:'x@x.com', password:'test' }) })
+    neoLog(r.status===403?'OK':'MEDIO',
+      `Header injection (X-Admin, X-Forwarded-For falso) → HTTP ${r.status}`,
+      r.status===403 ? 'Sin efecto — código beta aún inválido' :
+      'Verificar si headers especiales alteran el comportamiento')
+    await sleep(200)
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // RESUMEN FINAL
+  // ════════════════════════════════════════════════════════════
+  const T = 'neo-terminal'
+  termLine(T, '')
+  termLine(T, '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+  termLine(T, '  RESUMEN FINAL — NEO v2', 't-title')
+  termLine(T, '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+  const { critical, high, medium, ok } = NEO_SCORE
+  const total = critical + high + medium + ok
+  termLine(T, `  ✗ CRÍTICOS: ${critical}   ⚠ ALTOS: ${high}   → MEDIOS: ${medium}   ✓ OK: ${ok}`,
+    critical>0?'t-err': high>0?'t-warn':'t-ok')
+  termLine(T, '')
+  if (critical===0 && high===0) {
+    termLine(T, '  ✓ SISTEMA SEGURO — Sin vulnerabilidades activas detectadas', 't-ok')
+  } else if (critical>0) {
+    termLine(T, `  ✗ ALERTA ROJA — ${critical} CRÍTICO(S) — Acción inmediata requerida`, 't-err')
+  } else {
+    termLine(T, `  ⚠ ATENCIÓN — ${high} riesgo(s) ALTO(S) — Revisar antes del próximo deploy`, 't-warn')
+  }
+  termLine(T, '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 't-dim')
+
+  // badge de estado
+  const dot  = document.getElementById('sec-status-dot')
+  const stxt = document.getElementById('sec-status-text')
+  const sbdg = document.getElementById('sec-badge')
+  if (critical>0) {
+    dot.className='sec-status-dot alert'
+    stxt.textContent=`${critical} vulnerabilidad(es) crítica(s) detectada(s)`
+    sbdg.className='sec-badge-alerta'; sbdg.textContent='ALERTA'
+  } else if (high>0) {
+    dot.className='sec-status-dot watch'
+    stxt.textContent=`${high} riesgo(s) alto(s) detectado(s)`
+    sbdg.className='sec-badge-vigil'; sbdg.textContent='VIGILANCIA'
+  } else {
+    dot.className='sec-status-dot normal'
+    stxt.textContent='Sistema seguro — sin vulnerabilidades críticas'
+    sbdg.className='sec-badge-normal'; sbdg.textContent='NORMAL'
+  }
+  const now = new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'})
+  document.getElementById('neo-last').textContent=`Última auditoría: ${now}`
+  document.getElementById('sec-status-sub').textContent=`Última auditoría NEO v2: ${now}`
 
   btn.disabled = false
   btn.innerHTML = '◈ Ejecutar NEO'
