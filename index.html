@@ -7846,32 +7846,64 @@ async function iniciarSimulacion() {
   const mbd = document.getElementById('modal-bd')
   if (mbd) mbd.classList.remove('open')
 
-  // ── Obtener votos reales POR BUTACA desde Supabase ──────────────────────
+  // ── Obtener votos reales AGREGADOS desde Supabase (sin exponer seat_number) ──
   const qId = PREGUNTAS_IDS[qIdx]
-  const voteMap = {}   // { seat_number → 'si' | 'no' | 'abs' }  solo votantes
   SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
   if (qId) {
     try {
       const { data } = await sb.rpc('get_question_votes', { p_question_id: qId })
       if (data) {
         data.forEach(row => {
-          voteMap[row.seat_number] = row.vote_plain   // 'si' | 'no' | 'abs'
+          if (row.vote_plain === 'si')       SIM.totalSi  = Number(row.total)
+          else if (row.vote_plain === 'no')  SIM.totalNo  = Number(row.total)
+          else if (row.vote_plain === 'abs') SIM.totalAbs = Number(row.total)
         })
       }
     } catch(e) { console.warn('get_question_votes:', e) }
   }
 
-  // Asignar resultado por butaca:
-  //   'si' → verde   'no' → rojo   'abs' → amarillo   undefined → gris (no votó)
+  // Obtener el voto propio para colorearlo correctamente
+  let miVoto = null
+  if (qId && SESSION_DATA?.butaca_numero) {
+    try {
+      const { data: mv } = await sb.rpc('get_my_vote', { p_question_id: qId })
+      if (mv?.[0]) miVoto = mv[0].vote_plain
+    } catch(e) {}
+  }
+
+  // Distribuir votos aleatoriamente entre butacas (preserva privacidad de quién votó qué)
+  // Solo la butaca propia se colorea con el voto real
+  const totalVotos = SIM.totalSi + SIM.totalNo + SIM.totalAbs
+  const votePool = [
+    ...Array(SIM.totalSi).fill('si'),
+    ...Array(SIM.totalNo).fill('no'),
+    ...Array(SIM.totalAbs).fill('abs')
+  ]
+  // Fisher-Yates shuffle
+  for (let i = votePool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [votePool[i], votePool[j]] = [votePool[j], votePool[i]]
+  }
+
   SIM.results = {}
+  let poolIdx = 0
+  // Primero asignamos la butaca propia con su voto real
+  const miButaca = SESSION_DATA?.butaca_numero
+  if (miButaca && miVoto) {
+    SIM.results[miButaca] = miVoto
+    // Remover uno del pool para que el total cuadre
+    const idx = votePool.indexOf(miVoto)
+    if (idx !== -1) votePool.splice(idx, 1)
+  }
   SEATS.forEach(s => {
-    const v = voteMap[s.num]          // undefined si no votó — NO usar || null
-    SIM.results[s.num] = (v !== undefined) ? v : null   // null = no participó
-    if (v === 'si')        SIM.totalSi++
-    else if (v === 'no')   SIM.totalNo++
-    else if (v === 'abs')  SIM.totalAbs++
-    // null (no participó) no suma a ningún total
+    if (SIM.results[s.num] !== undefined) return   // ya asignado (butaca propia)
+    if (poolIdx < votePool.length) {
+      SIM.results[s.num] = votePool[poolIdx++]
+    } else {
+      SIM.results[s.num] = null   // no votó
+    }
   })
+
   SIM._realSi  = SIM.totalSi
   SIM._realNo  = SIM.totalNo
   SIM._realAbs = SIM.totalAbs
@@ -9181,14 +9213,6 @@ async function registrarse() {
     return
   }
 
-  // Validar código de acceso beta (sin exponer el código real al cliente)
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
-  if (codeErr || !codeOk) {
-    msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
-    msg.className = 'auth-msg err'
-    return
-  }
-
   // Verificar alias único antes de crear
   const { data: existing } = await sb.from('profiles').select('id').eq('alias', alias).limit(1)
   if (existing?.length) {
@@ -9201,22 +9225,37 @@ async function registrarse() {
   btn.textContent = 'Creando cuenta…'
   msg.textContent = ''
 
-  const { data, error } = await sb.auth.signUp({
-    email,
-    password: pass,
-    options: { data: { alias } }
-  })
+  // ── Llamar al Edge Function secure-register (valida beta code + crea usuario) ──
+  // Esto previene que alguien salte el validate_beta_code y llame signUp directamente
+  let regResp, regData
+  try {
+    regResp = await fetch(
+      'https://ayxscmxmnoguktfgveud.supabase.co/functions/v1/secure-register',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beta_code: code, email, password: pass })
+      }
+    )
+    regData = await regResp.json()
+  } catch(netErr) {
+    msg.textContent = 'Error de conexión. Intentá de nuevo.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false
+    btn.textContent = 'Crear usuario →'
+    return
+  }
 
-  if (error) {
-    const msg422 = error.message?.toLowerCase() || ''
-    const isExisting = msg422.includes('already registered') || msg422.includes('user already')
-    const isDisabled = msg422.includes('signup') || msg422.includes('not allowed') || msg422.includes('disabled')
-    if (isExisting) {
+  if (!regResp.ok) {
+    const errMsg = regData?.error || 'Error desconocido'
+    if (regResp.status === 403) {
+      msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
+    } else if (regResp.status === 409) {
       msg.innerHTML = 'Ese email ya tiene una cuenta. <button type="button" onclick="authSetTab(\'login\')" style="background:none;border:none;color:#f97316;font-weight:700;cursor:pointer;font-size:inherit;padding:0;text-decoration:underline">Iniciar sesión →</button>'
-    } else if (isDisabled) {
-      msg.textContent = 'Los registros están temporalmente cerrados. Contactá al equipo de Cabildo de Venezuela.'
+    } else if (regResp.status === 429) {
+      msg.textContent = errMsg
     } else {
-      msg.textContent = error.message
+      msg.textContent = errMsg
     }
     msg.className = 'auth-msg err'
     btn.disabled = false
@@ -9224,17 +9263,8 @@ async function registrarse() {
     return
   }
 
-  // Supabase v2: email existente devuelve identities:[] en vez de error
-  if (!data.user) {
+  if (!regData?.user_id) {
     msg.textContent = 'Error al crear la cuenta. Intentá de nuevo.'
-    msg.className = 'auth-msg err'
-    btn.disabled = false
-    btn.textContent = 'Crear usuario →'
-    return
-  }
-  // Si identities está vacío puede ser cuenta existente O email pendiente de confirmación
-  if (data.user.identities && data.user.identities.length === 0 && data.user.email_confirmed_at) {
-    msg.innerHTML = 'Ese email ya tiene una cuenta. <button type="button" onclick="authSetTab(\'login\')" style="background:none;border:none;color:#f97316;font-weight:700;cursor:pointer;font-size:inherit;padding:0;text-decoration:underline">Iniciar sesión →</button>'
     msg.className = 'auth-msg err'
     btn.disabled = false
     btn.textContent = 'Crear usuario →'
@@ -9244,20 +9274,15 @@ async function registrarse() {
   btn.textContent = 'Crear usuario →'
   btn.disabled = false
 
-  if (data.user?.email_confirmed_at) {
-    // Supabase tiene email confirmation desactivado — sesión inmediata
-    setTimeout(() => cerrarAuth(), 800)
-  } else {
-    // Confirmación por email requerida — mostrar instrucciones claras
-    msg.innerHTML = `
-      <span style="display:block;margin-bottom:6px">✓ Cuenta creada correctamente.</span>
-      <span style="display:block;font-size:12px;opacity:.8">
-        Te enviamos un email a <strong>${email}</strong>.<br>
-        Abrí ese email y hacé clic en el link para activar tu cuenta.<br>
-        Después volvé aquí e iniciá sesión.
-      </span>`
-    msg.className = 'auth-msg ok'
-  }
+  // Cuenta creada — siempre requiere confirmación por email (Admin API no crea sesión)
+  msg.innerHTML = `
+    <span style="display:block;margin-bottom:6px">✓ Cuenta creada correctamente.</span>
+    <span style="display:block;font-size:12px;opacity:.8">
+      Te enviamos un email a <strong>${email}</strong>.<br>
+      Abrí ese email y hacé clic en el link para activar tu cuenta.<br>
+      Después volvé aquí e iniciá sesión.
+    </span>`
+  msg.className = 'auth-msg ok'
 }
 
 // ── Login ──
@@ -13491,9 +13516,9 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
         if (data) {
           let si = 0, no = 0, abs = 0
           data.forEach(r => {
-            if (r.vote_plain === 'si')  si++
-            else if (r.vote_plain === 'no')  no++
-            else if (r.vote_plain === 'abs') abs++
+            if (r.vote_plain === 'si')       si  = Number(r.total)
+            else if (r.vote_plain === 'no')  no  = Number(r.total)
+            else if (r.vote_plain === 'abs') abs = Number(r.total)
           })
           _calVotes[q.id] = { si, no, abs }
         }
