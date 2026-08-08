@@ -1887,6 +1887,28 @@ select option { background: var(--surface); }
         <div id="sys-err-list"><p style="color:var(--muted);font-size:12px;text-align:center;padding:24px 0">Cargando errores…</p></div>
       </div>
 
+      <!-- Privacidad: Limpieza de imágenes de verificación -->
+      <div class="table-card" style="padding:22px;margin-top:16px;border:1px solid rgba(239,68,68,.25);background:rgba(239,68,68,.04)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="width:36px;height:36px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:18px">🔒</div>
+          <div>
+            <p style="font-weight:700;font-size:14px">Limpieza de imágenes de verificación</p>
+            <p style="color:var(--muted2);font-size:11px">Las fotos de identidad aprobadas deben borrarse del sistema por privacidad</p>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--muted2);margin-bottom:14px;line-height:1.6">
+          Borra permanentemente las fotos de todas las verificaciones ya aprobadas de Supabase Storage y nullea las URLs en la base de datos. Las nuevas aprobaciones se borran automáticamente.
+        </p>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn" id="cleanup-img-btn"
+            style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3);font-size:12px"
+            onclick="limpiarImagenesVerificacion()">
+            🗑 Borrar imágenes de aprobados
+          </button>
+          <span style="font-size:11px;color:var(--muted)" id="cleanup-img-status"></span>
+        </div>
+      </div>
+
       <!-- Mantenimiento & Anuncios -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
 
@@ -2731,6 +2753,28 @@ async function aprobarId(requestId, btn) {
     if (error) throw error
 
     const butaca = data
+
+    // ── PRIVACIDAD: borrar imágenes de verificación inmediatamente después de aprobar ──
+    // Las fotos cumplieron su función — no deben quedar en el sistema
+    try {
+      // Borrar archivos físicos del Storage
+      await sb.storage.from('verifications').remove([
+        `${requestId}/selfie_documento.jpg`,
+        `${requestId}/doc_face.jpg`
+      ])
+      // También bucket anterior por si existe
+      await sb.storage.from('anon-verification').remove([
+        `requests/${requestId}/selfie_anon.jpg`
+      ])
+      // Nullear las URLs en la DB
+      await sb.from('verifications')
+        .update({ selfie_doc_url: null, doc_face_url: null })
+        .eq('id', requestId)
+    } catch (imgErr) {
+      // No bloquear la aprobación si falla el borrado — registrar en consola
+      console.warn('Advertencia: no se pudieron borrar las imágenes de verificación:', imgErr)
+    }
+
     document.getElementById('id-card-' + requestId)
       .querySelector('.id-actions').innerHTML =
       `<span class="badge approved" style="width:100%;justify-content:center">✓ #Butaca ${butaca} asignada</span>`
@@ -4406,6 +4450,35 @@ async function _setSystemConfig(key, value) {
     p_key: key, p_value: value, p_by: currentUser?.email || 'admin'
   })
   if (error) { toast('Error: ' + error.message, 'error'); throw error }
+}
+
+async function limpiarImagenesVerificacion() {
+  if (!confirm('¿Borrar PERMANENTEMENTE todas las fotos de identidad de verificaciones aprobadas? Esta acción no se puede deshacer.')) return
+  const btn = document.getElementById('cleanup-img-btn')
+  const status = document.getElementById('cleanup-img-status')
+  btn.disabled = true
+  btn.textContent = '⏳ Borrando...'
+  status.textContent = ''
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/cleanup-verification-images`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+    const result = await res.json()
+    if (!res.ok) throw new Error(result.error || 'Error desconocido')
+    status.textContent = `✓ ${result.message}`
+    status.style.color = 'var(--green)'
+    btn.textContent = '✓ Limpieza completada'
+  } catch (e) {
+    status.textContent = `✗ Error: ${e.message}`
+    status.style.color = '#ef4444'
+    btn.disabled = false
+    btn.textContent = '🗑 Borrar imágenes de aprobados'
+  }
 }
 
 async function activarMantenimiento() {
