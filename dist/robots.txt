@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /
+
+# Este sitio es de acceso restringido por invitación durante la beta.
+# Registro: cabildodevenezuela.com

@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whitepaper — CabildoOS: Participación Ciudadana del Siglo XXI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080808;
+  --surface: #111111;
+  --card:    #161616;
+  --border:  #222222;
+  --text:    #f0f0f0;
+  --muted:   #888888;
+  --accent:  #F5A623;
+  --accent2: #e8943a;
+  --green:   #22c55e;
+  --blue:    #3b82f6;
+  --purple:  #a855f7;
+  --red:     #ef4444;
+  --f-display: 'Space Grotesk', sans-serif;
+  --f-body:    'Manrope', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,8,8,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 32px;
+  flex-wrap: wrap;
+}
+.topbar-logo {
+  font-family: var(--f-display);
+  font-size: 17px; font-weight: 800; letter-spacing: -.6px;
+  color: var(--text); text-decoration: none;
+}
+.topbar-logo span { color: var(--accent); }
+.topbar-links { display: flex; gap: 4px; margin-left: auto; }
+.topbar-links a {
+  color: var(--muted); font-size: 13px; font-weight: 500;
+  text-decoration: none; padding: 6px 12px; border-radius: 8px;
+  transition: color .15s, background .15s;
+}
+.topbar-links a:hover { color: var(--text); background: rgba(255,255,255,.06); }
+.topbar-links a.active { color: var(--accent); }
+
+/* Hamburguesa — solo mobile */
+.topbar-burger {
+  display: none;
+  margin-left: auto;
+  background: none; border: none;
+  cursor: pointer; padding: 6px;
+  flex-direction: column; gap: 5px;
+}
+.topbar-burger span {
+  display: block; width: 22px; height: 2px;
+  background: var(--text); border-radius: 2px;
+  transition: all .2s;
+}
+.topbar-burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.topbar-burger.open span:nth-child(2) { opacity: 0; }
+.topbar-burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media(max-width:600px) {
+  .topbar { padding: 12px 16px; }
+  .topbar-burger { display: flex; }
+  .topbar-links {
+    display: none; flex-direction: column;
+    width: 100%; margin-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 10px; padding-bottom: 4px; gap: 2px;
+  }
+  .topbar-links.open { display: flex; }
+  .topbar-links a { font-size: 14px; padding: 10px 12px; }
+}
+
+/* ── HERO ── */
+.hero-section {
+  position: relative;
+  padding: 96px 24px 80px;
+  text-align: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+}
+.hero-section::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(245,166,35,.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  color: var(--accent); text-transform: uppercase;
+  border: 1px solid rgba(245,166,35,.3);
+  border-radius: 20px; padding: 5px 16px; margin-bottom: 28px;
+}
+.hero-tag .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.hero h1 {
+  font-family: var(--f-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 800; letter-spacing: -2px;
+  line-height: 1.1; margin-bottom: 24px;
+  max-width: 800px; margin-left: auto; margin-right: auto;
+}
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero-sub {
+  font-size: clamp(15px, 2vw, 18px);
+  color: var(--muted); max-width: 600px;
+  margin: 0 auto 40px; line-height: 1.7;
+}
+.hero-meta {
+  display: flex; align-items: center; justify-content: center; gap: 24px;
+  flex-wrap: wrap;
+}
+.hero-meta-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--muted);
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 14px;
+}
+.hero-meta-item .dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot-green { background: var(--green); }
+.dot-orange { background: var(--accent); }
+.dot-blue { background: var(--blue); }
+
+/* ── LAYOUT ── */
+.wrap {
+  max-width: 860px; margin: 0 auto;
+  padding: 64px 24px 120px;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 56px;
+  align-items: start;
+}
+@media(max-width:720px){
+  .wrap { grid-template-columns: 1fr; gap: 24px; padding: 32px 16px 80px; }
+  .toc { position: static; }
+  .toc-mobile-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+  }
+  .toc-mobile-toggle::after {
+    content: '▾';
+    font-size: 13px; color: var(--muted);
+    transition: transform .2s;
+  }
+  .toc.collapsed .toc-mobile-toggle::after { transform: rotate(-90deg); }
+  .toc.collapsed .toc-inner { display: none; }
+}
+@media(min-width:721px){
+  .toc-mobile-toggle { cursor: default; }
+  .toc-mobile-toggle::after { display: none; }
+}
+
+/* ── TOC ── */
+.toc {
+  position: sticky; top: 80px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--card);
+}
+.toc-title {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.toc a {
+  display: block; font-size: 12px; font-weight: 500;
+  color: var(--muted); text-decoration: none;
+  padding: 5px 8px; border-radius: 6px;
+  transition: all .15s; margin-bottom: 2px;
+  line-height: 1.4;
+}
+.toc a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+.toc a.active { color: var(--accent); background: rgba(245,166,35,.08); }
+.toc-section {
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: rgba(136,136,136,.5);
+  padding: 10px 8px 4px; margin-top: 4px;
+}
+
+/* ── CONTENT ── */
+.doc-section { margin-bottom: 56px; scroll-margin-top: 80px; }
+.doc-section h2 {
+  font-family: var(--f-display);
+  font-size: 22px; font-weight: 800; letter-spacing: -.5px;
+  margin-bottom: 18px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text); display: flex; align-items: center; gap: 10px;
+}
+.doc-section h2 .num {
+  font-family: var(--f-display);
+  font-size: 11px; font-weight: 700;
+  color: var(--accent); letter-spacing: .5px;
+  background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.2);
+  border-radius: 6px; padding: 2px 8px;
+  flex-shrink: 0;
+}
+.doc-section p { margin-bottom: 14px; font-size: 14.5px; color: #ccc; }
+.doc-section ul, .doc-section ol {
+  padding-left: 20px; margin: 10px 0 16px;
+}
+.doc-section li { font-size: 14.5px; color: #ccc; margin-bottom: 8px; }
+.doc-section strong { color: var(--text); font-weight: 600; }
+.doc-section h3 {
+  font-family: var(--f-display);
+  font-size: 15px; font-weight: 700;
+  color: #e0e0e0; margin: 28px 0 10px;
+}
+
+/* ── CALLOUT BOXES ── */
+.callout {
+  border-radius: 12px; padding: 18px 20px;
+  margin: 20px 0; font-size: 14px; line-height: 1.7;
+}
+.callout-orange {
+  border: 1px solid rgba(245,166,35,.3);
+  background: rgba(245,166,35,.06);
+  color: #d4a03a;
+}
+.callout-orange strong { color: var(--accent); }
+.callout-green {
+  border: 1px solid rgba(34,197,94,.25);
+  background: rgba(34,197,94,.05);
+  color: #86efac;
+}
+.callout-green strong { color: var(--green); }
+.callout-blue {
+  border: 1px solid rgba(59,130,246,.25);
+  background: rgba(59,130,246,.05);
+  color: #93c5fd;
+}
+.callout-blue strong { color: var(--blue); }
+.callout-purple {
+  border: 1px solid rgba(168,85,247,.25);
+  background: rgba(168,85,247,.05);
+  color: #d8b4fe;
+}
+.callout-purple strong { color: var(--purple); }
+
+/* ── ROADMAP ── */
+.roadmap { display: flex; flex-direction: column; gap: 0; margin: 24px 0; }
+.roadmap-item {
+  display: flex; gap: 20px;
+  position: relative;
+}
+.roadmap-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 15px; top: 36px;
+  width: 2px; height: calc(100% + 0px);
+  background: linear-gradient(to bottom, var(--border), transparent);
+}
+.roadmap-icon {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  border: 2px solid var(--border);
+  background: var(--card);
+  z-index: 1;
+  margin-top: 2px;
+}
+.roadmap-icon.done { border-color: var(--green); background: rgba(34,197,94,.1); }
+.roadmap-icon.active { border-color: var(--accent); background: rgba(245,166,35,.1); box-shadow: 0 0 12px rgba(245,166,35,.2); }
+.roadmap-icon.future { border-color: var(--blue); background: rgba(59,130,246,.08); }
+.roadmap-body { padding-bottom: 36px; flex: 1; }
+.roadmap-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.roadmap-label.done { color: var(--green); }
+.roadmap-label.active { color: var(--accent); }
+.roadmap-label.future { color: var(--blue); }
+.roadmap-title {
+  font-family: var(--f-display);
+  font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text);
+}
+.roadmap-desc { font-size: 13.5px; color: var(--muted); line-height: 1.65; }
+.roadmap-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.roadmap-tag {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px;
+  border: 1px solid;
+}
+.tag-green { color: var(--green); border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.07); }
+.tag-orange { color: var(--accent); border-color: rgba(245,166,35,.3); background: rgba(245,166,35,.07); }
+.tag-blue { color: var(--blue); border-color: rgba(59,130,246,.3); background: rgba(59,130,246,.07); }
+.tag-purple { color: var(--purple); border-color: rgba(168,85,247,.3); background: rgba(168,85,247,.07); }
+.tag-gray { color: var(--muted); border-color: var(--border); background: transparent; }
+
+/* ── TECH STACK ── */
+.tech-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px; margin: 20px 0;
+}
+.tech-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+.tech-card-icon { font-size: 20px; margin-bottom: 8px; }
+.tech-card-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.tech-card-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ── QUOTE ── */
+.quote-block {
+  border-left: 3px solid var(--accent);
+  padding: 16px 20px;
+  margin: 24px 0;
+  background: rgba(245,166,35,.03);
+  border-radius: 0 8px 8px 0;
+}
+.quote-block p {
+  font-family: var(--f-display);
+  font-size: 17px; font-weight: 600;
+  color: var(--text); line-height: 1.5;
+  font-style: italic; margin: 0;
+}
+.quote-block cite {
+  display: block; margin-top: 8px;
+  font-size: 12px; color: var(--muted); font-style: normal;
+}
+
+/* ── PRINCIPLE GRID ── */
+.principle-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px; margin: 20px 0;
+}
+.principle-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px;
+}
+.principle-icon { font-size: 24px; margin-bottom: 10px; }
+.principle-name {
+  font-family: var(--f-display);
+  font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--text);
+}
+.principle-desc { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+
+/* ── FOOTER ── */
+.doc-footer {
+  margin-top: 56px; padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--muted);
+}
+.doc-footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a href="index.html" class="topbar-logo">Cabildo<span>OS</span></a>
+  <button class="topbar-burger" id="nav-burger" aria-label="Menú" onclick="this.classList.toggle('open');document.getElementById('nav-links').classList.toggle('open')">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="topbar-links" id="nav-links">
+    <a href="faq.html">FAQ</a>
+    <a href="terminos.html">Términos</a>
+    <a href="privacidad.html">Privacidad</a>
+    <a href="paper.html" class="active">Whitepaper</a>
+    <a href="index.html">← Plataforma</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero-section">
+  <div class="hero-tag"><span class="dot"></span>Documento técnico y de visión</div>
+  <h1>Participación ciudadana<br><em>anónima, verificable y segura</em></h1>
+  <p class="hero-sub">CabildoOS es una plataforma de democracia digital en tiempo real. Este documento explica qué construimos, por qué lo construimos así, y adónde vamos.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><span class="dot dot-green"></span>Versión 1.0 — Agosto 2026</div>
+    <div class="hero-meta-item"><span class="dot dot-orange"></span>Plataforma activa en beta</div>
+    <div class="hero-meta-item"><span class="dot dot-blue"></span>Open Source — próximamente</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- TOC -->
+  <aside class="toc collapsed" id="toc">
+    <div class="toc-title toc-mobile-toggle" onclick="this.closest('.toc').classList.toggle('collapsed')">Contenido</div>
+    <div class="toc-inner">
+      <div class="toc-section">Contexto</div>
+      <a href="#s1">1. El problema</a>
+      <a href="#s2">2. La visión</a>
+      <div class="toc-section">La plataforma</div>
+      <a href="#s3">3. Cómo funciona</a>
+      <a href="#s4">4. Privacidad por diseño</a>
+      <a href="#s5">5. Protocolo VaV</a>
+      <div class="toc-section">Hoja de ruta</div>
+      <a href="#s6">6. Dónde estamos</a>
+      <a href="#s7">7. Hacia la descentralización</a>
+      <a href="#s8">8. Open Source</a>
+      <div class="toc-section">Cierre</div>
+      <a href="#s9">9. Para inversores</a>
+      <a href="#s10">10. Para la política</a>
+      <a href="#s11">11. Llamado a acción</a>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content">
+
+    <!-- S1: EL PROBLEMA -->
+    <div class="doc-section" id="s1">
+      <h2><span class="num">01</span>El problema que resolvemos</h2>
+      <p>La democracia representativa fue diseñada para una era sin internet. Un ciudadano elige a un representante cada cuatro años, y esa persona toma cientos de decisiones en su nombre durante ese período. No hay mecanismo real de rendición de cuentas en tiempo real. No hay forma de que el ciudadano exprese su postura ante cada ley, cada votación, cada crisis.</p>
+      <p>Las herramientas digitales actuales — encuestas en Twitter, formularios de Google, grupos de WhatsApp — no resuelven este problema. Son susceptibles a manipulación masiva, no verifican que cada voto corresponda a una persona real, y no tienen ningún mecanismo criptográfico que garantice la integridad del resultado.</p>
+
+      <div class="quote-block">
+        <p>"Un ciudadano moderno puede pagar impuestos, acceder a su historia clínica y transferir dinero en segundos desde su teléfono. Pero no puede participar en una votación ciudadana real con garantías de que su voto es anónimo y fue contado."</p>
+      </div>
+
+      <p>El resultado es una democracia que funciona en ciclos de cuatro años en lugar de en tiempo real, con ciudadanos que se sienten espectadores en lugar de protagonistas.</p>
+
+      <h3>El caso venezolano</h3>
+      <p>Venezuela agrega una capa adicional de urgencia. En contextos donde la expresión política puede tener consecuencias personales, el anonimato no es un lujo técnico — es un requisito fundamental para que la participación sea genuinamente libre. Un sistema donde el administrador pueda saber quién votó qué no es un sistema seguro para la democracia en contextos de alta tensión política.</p>
+    </div>
+
+    <!-- S2: LA VISION -->
+    <div class="doc-section" id="s2">
+      <h2><span class="num">02</span>La visión</h2>
+
+      <p>CabildoOS no busca reemplazar al Senado, a la Asamblea Nacional ni al voto popular. Su objetivo es más preciso y más urgente: <strong>darle al ciudadano un lugar real en el debate político y legislativo</strong>, en lugar de convertirlo en espectador pasivo entre elecciones.</p>
+
+      <p>Hoy, los representantes legislan sin saber con precisión qué piensa la ciudadanía en tiempo real. Las encuestas son opacas, manipulables y de baja participación. Las redes sociales amplifican las voces más ruidosas, no las más representativas. CabildoOS ofrece algo distinto: <strong>una lectura verificada del clima real de los votantes</strong>, persona a persona, voto a voto, con garantías criptográficas de que cada voz corresponde a una persona real.</p>
+
+      <div class="callout callout-orange">
+        <strong>Lo que CabildoOS no es:</strong> no es un sistema de voto vinculante, no reemplaza ninguna institución democrática existente, y no pretende tener efectos legales directos. Es una herramienta de participación e información que acerca la opinión real de los ciudadanos al debate público y legislativo.
+      </div>
+
+      <div class="principle-grid">
+        <div class="principle-card">
+          <div class="principle-icon">🗳️</div>
+          <div class="principle-name">Participación en tiempo real</div>
+          <div class="principle-desc">Cada ciudadano verificado puede emitir su postura ante cualquier pregunta pública, en el momento en que sucede.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">🎭</div>
+          <div class="principle-name">Anonimato garantizado</div>
+          <div class="principle-desc">Nadie — ni el operador de la plataforma — puede vincular tu identidad con el sentido de tu voto.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">✅</div>
+          <div class="principle-name">Un voto, una persona</div>
+          <div class="principle-desc">Cada butaca corresponde a una persona real verificada. No hay votos duplicados ni fantasmas.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">🔍</div>
+          <div class="principle-name">Resultados verificables</div>
+          <div class="principle-desc">Cualquier persona puede auditar que el resultado final corresponde a los votos emitidos.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">📱</div>
+          <div class="principle-name">Accesible para todos</div>
+          <div class="principle-desc">No se necesita conocimiento técnico, billetera cripto ni entender blockchain para participar.</div>
+        </div>
+        <div class="principle-card">
+          <div class="principle-icon">🌐</div>
+          <div class="principle-name">Open Source</div>
+          <div class="principle-desc">El código es auditable por cualquiera. La confianza no depende de nuestra palabra — depende del código.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3: COMO FUNCIONA -->
+    <div class="doc-section" id="s3">
+      <h2><span class="num">03</span>Cómo funciona la plataforma</h2>
+      <p>CabildoOS simula un hemiciclo legislativo digital. Cada ciudadano verificado ocupa una <strong>butaca</strong> — un número asignado de forma permanente que representa su asiento en el debate democrático.</p>
+
+      <h3>El hemiciclo</h3>
+      <p>La interfaz principal es un mapa visual de todas las butacas. Podés ver quién está presente, qué postura tomó cada butaca en votaciones pasadas (si el ciudadano lo permite), y la distribución de votos en tiempo real cuando una votación está activa.</p>
+
+      <h3>El proceso de participación</h3>
+      <ol>
+        <li><strong>Registro:</strong> creás una cuenta con tu email y un código de acceso beta.</li>
+        <li><strong>Verificación de identidad:</strong> completás el proceso VaV para probar que sos una persona real y única. Se te asigna una butaca permanente.</li>
+        <li><strong>Participación:</strong> cuando hay una pregunta activa, podés emitir tu voto. El sistema garantiza que cada butaca solo puede votar una vez.</li>
+        <li><strong>Revelación:</strong> al cerrar la votación, todos los votos se revelan simultáneamente y el resultado es calculado automáticamente.</li>
+      </ol>
+
+      <h3>Stack tecnológico actual</h3>
+      <div class="tech-grid">
+        <div class="tech-card">
+          <div class="tech-card-icon">⚡</div>
+          <div class="tech-card-name">Supabase</div>
+          <div class="tech-card-desc">Base de datos PostgreSQL con Row Level Security. Auth, realtime y storage.</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-icon">🐍</div>
+          <div class="tech-card-name">FastAPI (Python)</div>
+          <div class="tech-card-desc">Backend de verificación de identidad. Integrado con Gemini Vision para análisis de documentos.</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-icon">🤖</div>
+          <div class="tech-card-name">Google Gemini Vision</div>
+          <div class="tech-card-desc">IA multimodal para análisis y verificación de documentos de identidad en tiempo real.</div>
+        </div>
+        <div class="tech-card">
+          <div class="tech-card-icon">🌍</div>
+          <div class="tech-card-name">Cloudflare Pages</div>
+          <div class="tech-card-desc">Deploy global con latencia mínima. Sin servidores propios para el frontend.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S4: PRIVACIDAD POR DISEÑO -->
+    <div class="doc-section" id="s4">
+      <h2><span class="num">04</span>Privacidad por diseño</h2>
+      <p>La arquitectura de CabildoOS está diseñada para minimizar la información que cualquier persona — incluyendo los administradores — puede extraer sobre la identidad de un votante.</p>
+
+      <h3>Separación identidad — butaca</h3>
+      <p>El sistema implementa una separación deliberada entre tu identidad (email) y tu butaca (número de asiento). Funciona así:</p>
+      <ul>
+        <li>Tu email está vinculado a un <strong>UUID aleatorio</strong> — un código sin sentido semántico.</li>
+        <li>Ese UUID es el que está vinculado a tu butaca — no tu email.</li>
+        <li>Un verificador humano ve tu cara (con el documento pixelado) y asigna la butaca. <strong>No ve tu email en ningún momento.</strong></li>
+        <li>Para unir email con butaca, un administrador necesitaría hacer una correlación manual en dos tablas separadas — una acción auditable y no trivial.</li>
+      </ul>
+
+      <div class="callout callout-orange">
+        <strong>Diseño actual:</strong> la separación es organizacional y técnica, pero el operador de la base de datos podría, en principio, hacer esa correlación. La garantía es de confianza operacional, no matemática. Esto cambia en la Fase 2.
+      </div>
+
+      <h3>Hash de documentos, no documentos</h3>
+      <p>CabildoOS nunca almacena el número de tu documento de identidad. Solo almacena su hash criptográfico — una huella digital unidireccional que permite detectar duplicados sin poder revertirse al número original. La imagen de tu documento tampoco se almacena: es procesada por Gemini Vision en memoria y descartada.</p>
+
+      <h3>Votos separados de identidad</h3>
+      <p>Los votos se almacenan asociados a números de butaca, no a emails. Tu historial de votación es público a nivel de butaca — no a nivel de identidad real — y solo si vos lo elegís.</p>
+    </div>
+
+    <!-- S5: VAV -->
+    <div class="doc-section" id="s5">
+      <h2><span class="num">05</span>Protocolo VaV — Verifiable Anonymous Votes</h2>
+      <p>El Protocolo <strong>VaV (Verifiable Anonymous Votes)</strong> es el mecanismo criptográfico que garantiza la integridad de cada votación. Es una tecnología propietaria desarrollada por <strong>Bowery Global Inc</strong>, la empresa creadora de CabildoOS. Está basado en el esquema <em>commit-reveal</em> ampliamente usado en sistemas de criptografía, adaptado para participación ciudadana masiva.</p>
+
+      <h3>El problema que resuelve</h3>
+      <p>En una votación simple, si los resultados son visibles en tiempo real, los últimos votantes pueden adaptar su voto conociendo el resultado parcial. Esto introduce sesgos y permite manipulación. El VaV elimina ese problema.</p>
+
+      <h3>Cómo funciona</h3>
+      <ol>
+        <li><strong>Fase Commit:</strong> emitís tu voto encriptado. El sistema recibe un hash de tu voto — sabe que votaste, pero no sabe qué votaste. Nadie puede ver los resultados parciales.</li>
+        <li><strong>Fase Reveal:</strong> cuando la votación cierra, todos los votos se revelan simultáneamente. Cualquiera puede verificar que el hash corresponde al voto declarado.</li>
+        <li><strong>Conteo:</strong> el resultado es calculado automáticamente. Ninguna parte puede alterar el conteo.</li>
+      </ol>
+
+      <div class="callout callout-green">
+        <strong>Garantía actual:</strong> el servidor no puede conocer el sentido de tu voto hasta que la votación cierra. Una vez emitido el commit, no puede modificarse. La verificación del resultado es pública.
+      </div>
+
+      <h3>La limitación actual</h3>
+      <p>En la implementación actual, el servidor centralizado almacena los hashes y ejecuta el reveal. Aunque técnicamente no puede conocer el voto antes del reveal, sí podría, en teoría, retener o modificar el reveal. Esta limitación se resuelve en la Fase 2 con la descentralización del protocolo.</p>
+    </div>
+
+    <!-- S6: DONDE ESTAMOS -->
+    <div class="doc-section" id="s6">
+      <h2><span class="num">06</span>Dónde estamos hoy</h2>
+
+      <div class="callout callout-orange">
+        <strong>Estado actual:</strong> beta activa en cabildodevenezuela.com con usuarios reales verificados, votaciones en tiempo real y el hemiciclo funcionando. El sistema está en producción pero en acceso controlado por código de invitación.
+      </div>
+
+      <div class="roadmap">
+        <div class="roadmap-item">
+          <div class="roadmap-icon done">✓</div>
+          <div class="roadmap-body">
+            <div class="roadmap-label done">Completado</div>
+            <div class="roadmap-title">Infraestructura base</div>
+            <div class="roadmap-desc">Hemiciclo interactivo, sistema de auth, votaciones en tiempo real, protocolo VaV commit-reveal, notificaciones y mensajería entre butacas.</div>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag tag-green">Hemiciclo</span>
+              <span class="roadmap-tag tag-green">Auth</span>
+              <span class="roadmap-tag tag-green">VaV</span>
+              <span class="roadmap-tag tag-green">Realtime</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="roadmap-item">
+          <div class="roadmap-icon done">✓</div>
+          <div class="roadmap-body">
+            <div class="roadmap-label done">Completado</div>
+            <div class="roadmap-title">Verificación de identidad con IA</div>
+            <div class="roadmap-desc">Verificación de documentos con Google Gemini Vision, liveness detection, revisión humana por verificadores autorizados, separación criptográfica de identidad y butaca.</div>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag tag-green">KYC</span>
+              <span class="roadmap-tag tag-green">Gemini Vision</span>
+              <span class="roadmap-tag tag-green">Privacy by Design</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="roadmap-item">
+          <div class="roadmap-icon active">◉</div>
+          <div class="roadmap-body">
+            <div class="roadmap-label active">En curso — Beta</div>
+            <div class="roadmap-title">Apertura controlada y comunidad</div>
+            <div class="roadmap-desc">Sistema de invitaciones, perfiles públicos opcionales, propuestas ciudadanas, módulo de seguimiento entre butacas, panel administrativo completo.</div>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag tag-orange">Beta activa</span>
+              <span class="roadmap-tag tag-orange">Invitaciones</span>
+              <span class="roadmap-tag tag-orange">Propuestas</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="roadmap-item">
+          <div class="roadmap-icon future">○</div>
+          <div class="roadmap-body">
+            <div class="roadmap-label future">Próximo</div>
+            <div class="roadmap-title">Open Source y expansión</div>
+            <div class="roadmap-desc">Publicación del código fuente en GitHub, documentación técnica completa, apertura del registro al público general, primeras alianzas institucionales.</div>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag tag-blue">Open Source</span>
+              <span class="roadmap-tag tag-blue">GitHub público</span>
+              <span class="roadmap-tag tag-blue">Registro abierto</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="roadmap-item">
+          <div class="roadmap-icon future">○</div>
+          <div class="roadmap-body">
+            <div class="roadmap-label future">Fase 2</div>
+            <div class="roadmap-title">Descentralización del protocolo VaV</div>
+            <div class="roadmap-desc">Migración del protocolo de votación a una arquitectura descentralizada con contratos inteligentes verificables. Sin cambios en la experiencia de usuario.</div>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag tag-purple">Smart Contracts</span>
+              <span class="roadmap-tag tag-purple">On-chain VaV</span>
+              <span class="roadmap-tag tag-purple">Verificabilidad pública</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="roadmap-item">
+          <div class="roadmap-icon future">○</div>
+          <div class="roadmap-body">
+            <div class="roadmap-label future">Fase 3</div>
+            <div class="roadmap-title">Identidad descentralizada con ZK-Proofs</div>
+            <div class="roadmap-desc">Verificación de identidad sin que ningún servidor vea ni almacene datos personales. Pruebas de conocimiento cero: "soy una persona real y única" sin revelar quién soy.</div>
+            <div class="roadmap-tags">
+              <span class="roadmap-tag tag-purple">ZK-Proofs</span>
+              <span class="roadmap-tag tag-purple">Identidad soberana</span>
+              <span class="roadmap-tag tag-gray">Largo plazo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S7: DESCENTRALIZACION -->
+    <div class="doc-section" id="s7">
+      <h2><span class="num">07</span>Por qué empezamos centralizado — y hacia dónde vamos</h2>
+
+      <p>La descentralización total desde el día uno habría sido el camino técnicamente más puro. No lo tomamos, y la razón es deliberada.</p>
+
+      <h3>El problema de la adopción</h3>
+      <p>Una plataforma de democracia digital que requiere que el ciudadano tenga una billetera cripto, entienda qué es una clave privada, pague gas fees y navegue la complejidad del ecosistema blockchain <strong>excluye a la enorme mayoría de la población</strong> que más necesita una herramienta así.</p>
+
+      <p>La primera experiencia democrática digital de un ciudadano no puede tener como requisito previo convertirse en usuario de Web3. Ese es el obstáculo que hace fracasar a la mayoría de los proyectos de voting blockchain: resuelven el problema técnico de la descentralización pero ignoran el problema humano de la adopción.</p>
+
+      <div class="callout callout-blue">
+        <strong>Nuestro principio:</strong> la descentralización es el destino, no el punto de partida. Primero construimos la experiencia democrática accesible para todos. Después movemos la infraestructura hacia garantías matemáticas sin que el usuario note la diferencia.
+      </div>
+
+      <h3>La Fase 2: descentralizar el VaV</h3>
+      <p>El primer componente a descentralizar es el protocolo VaV. La votación es el núcleo de la plataforma y es donde la garantía matemática importa más. El plan:</p>
+      <ul>
+        <li>Los votos commit-reveal se registran en un contrato inteligente público y auditable.</li>
+        <li>El conteo final es ejecutado por el contrato — no por nuestros servidores.</li>
+        <li>Cualquier persona en el mundo puede verificar el resultado sin depender de nuestra palabra.</li>
+        <li>El usuario sigue usando la misma interfaz web que usa hoy. La blockchain opera en el fondo, invisible.</li>
+      </ul>
+
+      <h3>La Fase 3: identidad soberana con ZK-Proofs</h3>
+      <p>El problema más difícil es la identidad. Hoy verificamos que sos una persona real y única almacenando evidencia criptográfica en nuestra base de datos. En la Fase 3, usamos <strong>pruebas de conocimiento cero (ZK-Proofs)</strong> para resolver esto sin almacenar nada:</p>
+      <ul>
+        <li>El sistema puede verificar "esta persona es un ciudadano venezolano real y único" sin saber quién es esa persona.</li>
+        <li>La prueba es matemáticamente verificable: no depende de confiar en ningún operador.</li>
+        <li>Tecnologías candidatas: Semaphore, MACI, Worldcoin's World ID adaptado para el contexto venezolano.</li>
+      </ul>
+
+      <div class="callout callout-purple">
+        <strong>Resultado final de la Fase 3:</strong> un sistema donde es matemáticamente imposible — no solo difícil — vincular la identidad de un ciudadano con su voto. Ni el operador, ni un hackers, ni un gobierno con acceso a los servidores podría romper ese anonimato.
+      </div>
+    </div>
+
+    <!-- S8: OPEN SOURCE -->
+    <div class="doc-section" id="s8">
+      <h2><span class="num">08</span>Open Source</h2>
+      <p>La transparencia del código es inseparable de la misión de CabildoOS. Una plataforma de democracia digital cuyo código es opaco requiere que los ciudadanos confíen ciegamente en el operador — exactamente el problema que queremos resolver.</p>
+
+      <p>El plan de apertura del código fuente contempla:</p>
+      <ul>
+        <li><strong>Frontend (cabildoos):</strong> apertura próxima. El hemiciclo, la interfaz de votación y el protocolo VaV del lado cliente.</li>
+        <li><strong>Backend (cabildoos-api):</strong> apertura junto al frontend. El motor de verificación de identidad y el API de votaciones.</li>
+        <li><strong>Smart Contracts (Fase 2):</strong> públicos por naturaleza — viven en una blockchain pública y son auditables por cualquiera.</li>
+        <li><strong>Documentación técnica:</strong> arquitectura, decisiones de diseño, modelo de privacidad y guías de contribución.</li>
+      </ul>
+
+      <div class="callout callout-green">
+        <strong>Invitación a contribuir:</strong> si sos desarrollador, investigador en privacidad o seguridad, o tenés experiencia en sistemas de votación, tu contribución es bienvenida. El código abierto permite que la comunidad detecte vulnerabilidades, proponga mejoras y construya extensiones.
+      </div>
+
+      <p>La licencia será definida para permitir uso, modificación y distribución libre, preservando la atribución y prohibiendo el uso para sistemas de vigilancia o supresión de voto.</p>
+    </div>
+
+    <!-- S9: INVERSORES -->
+    <div class="doc-section" id="s9">
+      <h2><span class="num">09</span>Para inversores y aliados estratégicos</h2>
+      <p>CabildoOS no es una apuesta especulativa. Es infraestructura democrática para una necesidad que ya existe y no tiene solución de calidad hoy.</p>
+
+      <h3>El mercado</h3>
+      <p>Más de 30 millones de venezolanos en Venezuela y en la diáspora global carecen de una herramienta de participación política digital confiable, anónima y resistente a manipulación. La demanda es real, urgente y no está siendo atendida.</p>
+
+      <h3>El modelo</h3>
+      <p>La plataforma base es gratuita para ciudadanos. El modelo de sostenibilidad se construye sobre: licenciamiento de la tecnología a organizaciones electorales y gobiernos municipales, servicios de verificación de identidad para terceros, y posiblemente una capa premium para instituciones que quieran desplegar instancias propias del sistema.</p>
+
+      <h3>Los diferenciadores</h3>
+      <ul>
+        <li><strong>Verificación real de identidad</strong> con IA — no encuestas abiertas sin control de identidad.</li>
+        <li><strong>Protocolo VaV</strong> — la única plataforma de votación ciudadana con commit-reveal criptográfico accesible para usuarios no técnicos.</li>
+        <li><strong>Roadmap de descentralización</strong> — las garantías técnicas mejoran con el tiempo sin romper la experiencia de usuario.</li>
+        <li><strong>Open Source</strong> — confianza auditable, no declarada.</li>
+      </ul>
+    </div>
+
+    <!-- S10: POLITICOS -->
+    <div class="doc-section" id="s10">
+      <h2><span class="num">10</span>Para representantes políticos e instituciones</h2>
+      <p>CabildoOS no compite con la democracia representativa — la complementa y la fortalece. No busca reemplazar al Senado, a la Asamblea Nacional ni a ninguna institución electoral. Su rol es distinto: <strong>convertir a los ciudadanos en participantes activos del debate, no en meros testigos</strong> que esperan cuatro años para emitir su opinión.</p>
+
+      <p>El problema actual es que los legisladores y líderes políticos toman decisiones sin una lectura confiable del clima real de sus votantes. Las encuestas privadas son costosas, opacas y de alcance limitado. CabildoOS ofrece algo que no existe hoy: <strong>la opinión verificada de ciudadanos reales, en tiempo real, sobre cualquier pregunta política o legislativa</strong>, con la garantía de que cada voz es una persona real y de que el resultado no fue manipulado.</p>
+
+      <div class="callout callout-orange">
+        <strong>Casos de uso concretos:</strong> consultas de base previas a decisiones legislativas, medición del apoyo real a una propuesta antes de llevarla a votación formal, primarias internas de partidos, ratificación de plataformas políticas, y procesos de toma de decisión colectiva en movimientos ciudadanos.
+      </div>
+
+      <p>La plataforma es políticamente neutral: no toma postura sobre el contenido de las preguntas, garantiza las mismas condiciones técnicas para todos los participantes, y los resultados son matemáticamente verificables por cualquier observador independiente.</p>
+
+      <p>El objetivo final es que ningún legislador pueda decir que no sabía lo que pensaba su electorado — y que ningún ciudadano sienta que su opinión no llegó a ningún lado.</p>
+    </div>
+
+    <!-- S11: LLAMADO A ACCION -->
+    <div class="doc-section" id="s11">
+      <h2><span class="num">11</span>Llamado a acción</h2>
+
+      <div class="quote-block">
+        <p>"La democracia no es un evento cada cuatro años. Es una conversación permanente entre ciudadanos. CabildoOS es la infraestructura para esa conversación."</p>
+        <cite>— Equipo CabildoOS, 2026</cite>
+      </div>
+
+      <p>La participación ciudadana en tiempo real, anónima, verificable y segura no es utopía — es ingeniería. Ya la tenemos parcialmente construida. El resto es un roadmap con tecnologías existentes y un equipo comprometido con ejecutarlo.</p>
+
+      <p>Si querés ser parte de esto, hay tres formas de contribuir:</p>
+      <ul>
+        <li><strong>Como ciudadano:</strong> solicitá acceso beta en <a href="https://cabildodevenezuela.com" style="color:var(--accent)">cabildodevenezuela.com</a> y ejercé tu butaca.</li>
+        <li><strong>Como desarrollador:</strong> el código estará disponible en GitHub próximamente. Seguí el repositorio y aportá.</li>
+        <li><strong>Como aliado estratégico o inversor:</strong> escribinos a <a href="mailto:recinto@cabildodevenezuela.com" style="color:var(--accent)">recinto@cabildodevenezuela.com</a>.</li>
+      </ul>
+
+      <p>Venezuela necesita sus propias instituciones digitales. CabildoOS es una de ellas.</p>
+    </div>
+
+    <div class="doc-footer">
+      <p>CabildoOS es un producto de <strong>Bowery Global Inc</strong> · Whitepaper v1.0 · Agosto 2026 · <a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a></p>
+      <p style="margin-top:4px;font-size:11px">El Protocolo VaV (Verifiable Anonymous Votes) es tecnología propietaria de Bowery Global Inc.</p>
+      <p style="margin-top:8px">Ver también: <a href="terminos.html">Términos y Condiciones</a> · <a href="privacidad.html">Política de Privacidad</a> · <a href="faq.html">Preguntas Frecuentes</a></p>
+    </div>
+  </main>
+</div>
+
+<script>
+const sections = document.querySelectorAll('.doc-section')
+const tocLinks = document.querySelectorAll('.toc a')
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      tocLinks.forEach(a => a.classList.remove('active'))
+      const link = document.querySelector(`.toc a[href="#${e.target.id}"]`)
+      if (link) link.classList.add('active')
+    }
+  })
+}, { rootMargin: '-20% 0px -70% 0px' })
+sections.forEach(s => observer.observe(s))
+
+// En desktop el TOC siempre abierto; en mobile empieza colapsado
+function syncToc() {
+  const toc = document.getElementById('toc')
+  if (window.innerWidth >= 721) toc.classList.remove('collapsed')
+}
+syncToc()
+window.addEventListener('resize', syncToc)
+
+// Al hacer clic en un link del TOC en mobile, cerrar el acordeón
+tocLinks.forEach(a => {
+  a.addEventListener('click', () => {
+    if (window.innerWidth < 721) {
+      document.getElementById('toc').classList.add('collapsed')
+    }
+  })
+})
+</script>
+</body>
+</html>
