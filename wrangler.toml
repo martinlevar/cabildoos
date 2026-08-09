@@ -1,4 +1,4 @@
-name = "cabildo"
+name = 'cabildoos-proximamente'
 main = "./dist/_worker.js"
 compatibility_date = "2026-01-11"
 compatibility_flags = ["nodejs_compat"]
