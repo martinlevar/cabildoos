@@ -8,6 +8,14 @@ account_id = "adf1b988d06e8acccfc7616d676d76ce"
 [assets]
 directory = "./dist"
 
+[[routes]]
+pattern = "cabildodevenezuela.com/*"
+zone_name = "cabildodevenezuela.com"
+
+[[routes]]
+pattern = "cabildodevenezuela.com"
+custom_domain = true
+
 [observability]
 enabled = false
 head_sampling_rate = 1
