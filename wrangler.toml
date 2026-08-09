@@ -1,11 +1,12 @@
-name = 'cabildoos-proximamente'
-
+name = "cabildoos-proximamente"
 compatibility_date = "2026-01-11"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 preview_urls = false
 account_id = "adf1b988d06e8acccfc7616d676d76ce"
 
+[assets]
+directory = "./dist"
 
 [observability]
 enabled = false
