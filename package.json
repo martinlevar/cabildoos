@@ -3,18 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
+  "packageManager": "pnpm@10.11.1",
   "scripts": {
+    "build": "echo 'Building static assets...' && mkdir -p dist && cp -r public/* dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.17.0",
-      "onFail": "download"
-    }
-  },
-  "type": "module"
+  "license": "ISC"
 }
