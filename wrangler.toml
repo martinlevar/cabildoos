@@ -11,6 +11,16 @@ routes = [
 
 [assets]
 directory = "./dist"
+run_worker_first = true
+
+[vars]
+SUPABASE_URL = "https://ayxscmxmnoguktfgveud.supabase.co"
+API_ENDPOINT = "https://api.cabildodevenezuela.com"
+
+[[secrets_store_secrets]]
+binding = "CDV_SUPABASE_TOKEN"
+store_id = "adf1b988d06e8acccfc7616d676d76ce"
+secret_name = "CDV_SUPABASE_TOKEN"
 
 [observability]
 enabled = false

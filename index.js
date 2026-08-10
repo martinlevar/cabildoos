@@ -5,8 +5,8 @@ let sfActiveTab = 'seguidos';
 // ══════════════════════════════════════════════════════════════
 const { createClient } = window.supabase
 const sb = createClient(
-  'https://ayxscmxmnoguktfgveud.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
+  window.__ENV.SUPABASE_URL,
+  window.__ENV.SUPABASE_KEY
 )
 
 function generateUUID() {
