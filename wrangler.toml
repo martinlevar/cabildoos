@@ -1,0 +1,24 @@
+name = "cabildoos-dev"
+compatibility_date = "2026-01-11"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+account_id = "adf1b988d06e8acccfc7616d676d76ce"
+
+[assets]
+directory = "./dist"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+persist = true
+head_sampling_rate = 1

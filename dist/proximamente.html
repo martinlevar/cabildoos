@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cabildo de Venezuela — Próximamente</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2M5J6ZC37Z"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-2M5J6ZC37Z');
+  </script>
+  <meta name="description" content="Democracia participativa, anónima y verificada. Próximamente.">
+  <meta property="og:title" content="Cabildo de Venezuela">
+  <meta property="og:description" content="Próximamente — Democracia participativa, anónima y verificada.">
+  <meta property="og:image" content="https://cabildodevenezuela.com/og.png">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #040C1E;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Hero ── */
+    #hero {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity .9s ease, transform .9s ease;
+      padding: 0 24px;
+    }
+    #hero.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .brand {
+      font-size: clamp(32px, 6vw, 64px);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: -.03em;
+      line-height: 1.05;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .tagline {
+      font-size: clamp(13px, 2vw, 16px);
+      color: rgba(255,255,255,.45);
+      letter-spacing: .02em;
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    /* Píldora "Próximamente" */
+    .soon-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      padding: 9px 22px;
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,255,255,.7);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .soon-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #f76a1e;
+      box-shadow: 0 0 8px rgba(247,106,30,.8);
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .5; transform: scale(.75); }
+    }
+
+    /* Links inferiores */
+    .links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 999px;
+      padding: 9px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,.5);
+      text-decoration: none;
+      letter-spacing: .02em;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: all .25s;
+      position: relative;
+      overflow: hidden;
+    }
+    .link-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+      transform: translateX(-100%);
+      pointer-events: none;
+    }
+    .link-btn:hover {
+      background: rgba(255,255,255,.11);
+      color: rgba(255,255,255,.85);
+      border-color: rgba(255,255,255,.24);
+      box-shadow: 0 0 16px rgba(255,255,255,.07);
+    }
+    .link-btn:hover::before {
+      transform: translateX(200%);
+      transition: transform .55s ease;
+    }
+
+    .sep {
+      width: 32px;
+      height: 0.5px;
+      background: rgba(255,255,255,.1);
+    }
+
+    /* ── Venezuela flag chip (top right) ── */
+    #flag-chip {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events: none;
+    }
+
+    @media (max-width: 480px) {
+      .brand { font-size: 32px; }
+      .links { gap: 8px; }
+      .sep { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="cv"></canvas>
+
+  <div id="flag-chip">🇻🇪 Venezuela</div>
+
+  <div id="hero">
+    <div class="soon-pill">
+      <span class="soon-dot"></span>
+      Próximamente
+    </div>
+    <div class="brand">Cabildo de Venezuela</div>
+    <div class="tagline">Democracia participativa, anónima y verificada</div>
+    <div class="links">
+      <div class="sep"></div>
+      <a href="https://cabildodevenezuela.com/paper" target="_blank" class="link-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.7">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Leer el Whitepaper
+      </a>
+      <a href="https://x.com/cabildoven" target="_blank" class="link-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="opacity:.7">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+        @cabildoven
+      </a>
+      <div class="sep"></div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    const cv  = document.getElementById('cv')
+    const ctx = cv.getContext('2d')
+
+    let seats = [], frame = 0, raf = null, revealTimer = null
+
+    const FILL = {
+      si:      '#22c55e',
+      no:      '#ef4444',
+      abs:     '#f59e0b',
+      neutral: 'rgba(255,255,255,0.07)',
+      me:      '#f76a1e'
+    }
+    const GLOW = {
+      si:      'rgba(34,197,94,',
+      no:      'rgba(239,68,68,',
+      abs:     'rgba(245,158,11,',
+      neutral: 'rgba(255,255,255,',
+      me:      'rgba(247,106,30,'
+    }
+
+    function resize() {
+      cv.width  = window.innerWidth
+      cv.height = window.innerHeight
+      buildSeats()
+    }
+
+    function buildSeats() {
+      seats = []
+      const W = cv.width, H = cv.height
+      const cx = W / 2
+      const cy = H + H * 0.05
+      const scale  = Math.min(W * 0.54, H * 0.84)
+      const innerR = scale * 0.40
+      const outerR = scale * 0.98
+      const nRows  = 9
+      const dotSp  = Math.max(10, W / 130)
+
+      for (let row = 0; row < nRows; row++) {
+        const t = row / (nRows - 1)
+        const r = innerR + t * (outerR - innerR)
+        const arcLen = Math.PI * r
+        const n = Math.round(arcLen / dotSp)
+        for (let i = 0; i < n; i++) {
+          const angle = Math.PI * i / (n - 1)
+          const x = cx - r * Math.cos(angle)
+          const y = cy - r * Math.sin(angle)
+          if (y > H * 0.02 && y < H * 0.97) {
+            seats.push({ x, y, row, vote: 'neutral', revealed: false, glow: 0 })
+          }
+        }
+      }
+      // Mi butaca (centro)
+      const midSeats = seats.filter(s => s.row === Math.floor(nRows / 2))
+      const myS = midSeats[Math.floor(midSeats.length / 2)]
+      if (myS) myS.vote = 'me'
+    }
+
+    function drawFrame() {
+      frame++
+      const W = cv.width, H = cv.height
+
+      ctx.fillStyle = '#040C1E'
+      ctx.fillRect(0, 0, W, H)
+
+      const g = ctx.createRadialGradient(W/2, H*1.04, 0, W/2, H*1.04, W * 0.65)
+      g.addColorStop(0,   'rgba(37,99,235,0.24)')
+      g.addColorStop(0.4, 'rgba(30,64,175,0.10)')
+      g.addColorStop(1,   'transparent')
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, W, H)
+
+      seats.forEach(s => {
+        const isMine = s.vote === 'me'
+        if (!isMine && !s.revealed) return
+        if (s.glow > 0) s.glow = Math.max(0, s.glow - 0.048)
+
+        const pulse = isMine ? (Math.sin(frame / 30) * 0.5 + 0.5) : 0
+        const baseR = isMine ? 5.5 : 4.0
+        const r     = baseR + (s.glow > 0.4 ? s.glow * 1.2 : 0) + (isMine ? pulse * 1.8 : 0)
+        const gl    = isMine ? 12 + pulse * 20 : s.glow * 18
+
+        if (gl > 0.5) {
+          const alpha = isMine ? 0.6 + pulse * 0.35 : Math.min(0.85, s.glow * 0.6)
+          ctx.shadowColor = GLOW[s.vote] + alpha + ')'
+          ctx.shadowBlur  = gl
+        }
+
+        ctx.beginPath()
+        ctx.arc(s.x, s.y, Math.max(0.5, r), 0, Math.PI * 2)
+        ctx.fillStyle = FILL[s.vote]
+        ctx.fill()
+        ctx.shadowBlur = 0
+      })
+
+      raf = requestAnimationFrame(drawFrame)
+    }
+
+    function assignAndReveal() {
+      if (!raf) return
+      seats.forEach(s => {
+        if (s.vote === 'me') return
+        const r = Math.random()
+        s.vote     = r < .56 ? 'si' : r < .82 ? 'no' : r < .94 ? 'abs' : 'neutral'
+        s.revealed = false
+        s.glow     = 0
+      })
+      const W = cv.width, H = cv.height
+      const cx = W / 2, cy = H + H * 0.05
+      const ordered = seats
+        .filter(s => s.vote !== 'me')
+        .sort((a, b) => ((a.x-cx)**2+(a.y-cy)**2) - ((b.x-cx)**2+(b.y-cy)**2))
+      let i = 0
+      const batch = Math.max(6, Math.round(ordered.length / 90))
+      function tick() {
+        if (!raf) return
+        for (let j = 0; j < batch && i < ordered.length; j++, i++) {
+          ordered[i].revealed = true
+          ordered[i].glow = 2.2
+        }
+        if (i < ordered.length) {
+          revealTimer = setTimeout(tick, 28)
+        } else {
+          revealTimer = setTimeout(() => {
+            document.getElementById('hero').classList.add('visible')
+          }, 600)
+        }
+      }
+      tick()
+    }
+
+    // Arrancar
+    resize()
+    window.addEventListener('resize', resize)
+    raf = requestAnimationFrame(drawFrame)
+    setTimeout(assignAndReveal, 800)
+  })()
+  </script>
+</body>
+</html>
