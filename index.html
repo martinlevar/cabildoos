@@ -7924,6 +7924,12 @@ async function iniciarSimulacion() {
   SIM.startTime  = Date.now()
   SIM.flashMap   = {}   // seat_num → timestamp de revelación (para efecto pop)
   SIM._done      = false
+  SIM._settleStart = 0  // timestamp cuando empieza la transición dramática → final
+  // Asignación aleatoria de verde/rojo para el efecto dramático de conteo
+  SIM.dramaticMap = {}
+  SIM.order.forEach(snum => {
+    SIM.dramaticMap[snum] = Math.random() < 0.5 ? 'si' : 'no'
+  })
   SIM.REVEAL_DUR = simTotal <= 5  ? 4000
                  : simTotal <= 20 ? 3500
                  : simTotal <= 80 ? 4000
@@ -7970,6 +7976,7 @@ function simDraw() {
     // ── Detectar fin (separado del bloque anterior para que se evalúe siempre) ──
     if (SIM.revealed >= _simTotal && !SIM._done) {
       SIM._done = true
+      SIM._settleStart = t   // arrancar efecto de asentamiento
       const fs = document.getElementById('sim-floating-status')
       if (fs) fs.classList.remove('counting')
       const lbl = document.getElementById('sim-floating-label')
@@ -7977,14 +7984,16 @@ function simDraw() {
       setTimeout(() => {
         const footer = document.getElementById('sim-footer-bar')
         if (footer) footer.classList.add('show')
-        // Mostrar botón certificado solo si el usuario tiene voto en esta simulación
         const certBtn = document.getElementById('sim-cert-btn')
         if (certBtn && MY_SEAT > 0 && SIM.results && SIM.results[MY_SEAT]) {
           certBtn.style.display = 'flex'
         }
-      }, 600)
+      }, 2200)  // esperar que termine el settle antes de mostrar footer
     }
   }
+  // Progresión del efecto de asentamiento (verde/rojo → naranja)
+  const SETTLE_DUR = 2000
+  const settleT = SIM._settleStart ? Math.min((t - SIM._settleStart) / SETTLE_DUR, 1) : 0
   // ─────────────────────────────────────────────────────────────────────────
 
   simCtx.clearRect(0, 0, W, H)
@@ -8032,7 +8041,10 @@ function simDraw() {
   })
   simCtx.globalAlpha = 1
 
-  // Pass 2b: participó (modo real) — naranja, glow suave
+  // Pass 2b: participó — tres fases:
+  //   contando   → verde o rojo aleatorio (dramaticMap)
+  //   asentando  → flicker rápido entre dramático y naranja (settleT 0→1)
+  //   final      → naranja estable
   SEATS.forEach(s => {
     if (!SIM.revealedArr || !SIM.revealedArr[s.num]) return
     if (SIM.results[s.num] !== 'voted') return
@@ -8041,12 +8053,49 @@ function simDraw() {
     const w     = _warmup(_ft(s.num))
     const phase = (s.num * 1.5) % (Math.PI * 2)
     const pulse = (Math.sin(t / 750 + phase) + 1) / 2
-    simCtx.shadowColor = `rgba(247,106,30,${(0.3 + pulse * 0.3) * w})`
-    simCtx.shadowBlur  = dotR * (3 + pulse * 5) * w
+
+    // Decidir color según fase
+    let r, g, b, glowR, glowG, glowB
+    const isDramatic = SIM.dramaticMap?.[s.num]
+
+    if (settleT >= 1 || !isDramatic) {
+      // FINAL: naranja
+      r = 220 + Math.round(pulse*27); g = 90 + Math.round(pulse*20); b = 20 + Math.round(pulse*10)
+      glowR = 247; glowG = 106; glowB = 30
+    } else if (settleT === 0) {
+      // CONTANDO: verde o rojo
+      if (isDramatic === 'si') {
+        r = 30 + Math.round(pulse*30); g = 185 + Math.round(pulse*70); b = 80 + Math.round(pulse*40)
+        glowR = 34; glowG = 230; glowB = 120
+      } else {
+        r = 185 + Math.round(pulse*70); g = 25 + Math.round(pulse*15); b = 25 + Math.round(pulse*15)
+        glowR = 240; glowG = 60; glowB = 60
+      }
+    } else {
+      // ASENTANDO: flicker — la probabilidad de mostrar naranja sube con settleT
+      // Velocidad de flicker alta al inicio, se frena al final
+      const flickerFreq = 80 + settleT * 200   // ms entre posibles cambios
+      const flickerPhase = Math.floor(t / flickerFreq + s.num * 0.37)
+      const showFinal = (flickerPhase % (Math.ceil(1 / (1 - settleT * 0.85 + 0.001)))) === 0
+      if (showFinal) {
+        r = 220 + Math.round(pulse*27); g = 90 + Math.round(pulse*20); b = 20 + Math.round(pulse*10)
+        glowR = 247; glowG = 106; glowB = 30
+      } else if (isDramatic === 'si') {
+        r = 30 + Math.round(pulse*30); g = 185 + Math.round(pulse*70); b = 80 + Math.round(pulse*40)
+        glowR = 34; glowG = 230; glowB = 120
+      } else {
+        r = 185 + Math.round(pulse*70); g = 25 + Math.round(pulse*15); b = 25 + Math.round(pulse*15)
+        glowR = 240; glowG = 60; glowB = 60
+      }
+    }
+
+    const glowAlpha = (0.3 + pulse * 0.35) * w
+    simCtx.shadowColor = `rgba(${glowR},${glowG},${glowB},${glowAlpha})`
+    simCtx.shadowBlur  = dotR * (3 + pulse * 6) * w
     simCtx.globalAlpha = 0.2 + w * 0.8
     simCtx.beginPath()
-    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.12), 0, Math.PI * 2)
-    simCtx.fillStyle = `rgb(${220 + Math.round(pulse*27)},${90 + Math.round(pulse*20)},${20 + Math.round(pulse*10)})`
+    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.15), 0, Math.PI * 2)
+    simCtx.fillStyle = `rgb(${r},${g},${b})`
     simCtx.fill()
     simCtx.shadowBlur = 0
   })
