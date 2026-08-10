@@ -13743,14 +13743,13 @@ async function cancelarVoto() {
   const btn = document.getElementById('btn-cancelar-voto')
   if (btn) btn.disabled = true
 
-  // Eliminar de Supabase
-  const { error } = await sb.from('votes')
-    .delete()
-    .eq('question_id', qId)
-    .eq('seat_number', MY_SEAT)
+  // Eliminar voto via RPC (server-side — mantiene anonimato)
+  const { data: cancelResult, error } = await sb.rpc('cancel_vote', { p_question_id: qId })
+  const cancelError = cancelResult?.error || null
+  const effectiveError = error || (cancelError && cancelError !== 'no_vote_found' ? { message: cancelError } : null)
 
-  if (error) {
-    console.error('cancelarVoto:', error)
+  if (effectiveError) {
+    console.error('cancelarVoto:', effectiveError)
     if (btn) btn.disabled = false
     showToast('Error al cancelar el voto')
     return
