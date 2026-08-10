@@ -13898,35 +13898,30 @@ async function confirmarVoto() {
   const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw))
   const hash = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')
 
-  const uidBuf       = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('cabildoos-id:'+_authUser.id))
-  const identityHash = Array.from(new Uint8Array(uidBuf)).map(b=>b.toString(16).padStart(2,'0')).join('')
-
+  // Guardar en localStorage para que el usuario pueda ver su voto localmente
   const stored = JSON.parse(localStorage.getItem('cabildoos_votos')||'{}')
   stored[qId]  = {voto, nonce, hash, ts:Date.now()}
   localStorage.setItem('cabildoos_votos', JSON.stringify(stored))
 
-  const { error } = await sb.from('votes').upsert({
-    question_id:   qId,
-    vote_hash:     hash,
-    vote_plain:    voto,
-    identity_hash: identityHash
-  }, { onConflict: 'question_id,identity_hash' })
+  // cast_vote: el servidor computa identity_hash internamente — nunca viaja por la red
+  const { data: castResult, error } = await sb.rpc('cast_vote', {
+    p_question_id: qId,
+    p_vote_hash:   hash,
+    p_vote_plain:  voto,
+    p_nonce:       nonce
+  })
 
-  // Registrar participación por butaca (sin dirección de voto)
-  if (!error && MY_SEAT > 0) {
-    try {
-      await sb.from('vote_seats').upsert({
-        question_id: qId,
-        seat_number: MY_SEAT
-      }, { onConflict: 'question_id,seat_number' })
-    } catch(e) { console.warn('vote_seats upsert:', e) }
-  }
+  const castError = castResult?.error || null
 
   if (btn) { btn.disabled=false; btn.textContent='Confirmar y sellar' }
 
-  if (error) {
-    console.error('Vote commit error:', error)
-    showToast('Error al guardar voto: '+(error.message||error.code||'desconocido'))
+  if (error || castError) {
+    if (castError === 'already_voted') {
+      showToast('Ya registraste tu voto en esta pregunta')
+    } else {
+      console.error('Vote commit error:', error || castError)
+      showToast('Error al guardar voto: '+(error?.message || castError || 'intente de nuevo'))
+    }
     return
   }
 
