@@ -5206,35 +5206,13 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
         </div>
       </div>
 
-      <!-- Votaciones — 3 tarjetas coloreadas -->
-      <div>
-        <p class="mp-field-label" style="margin-bottom:8px">Mis votaciones</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-          <div style="background:rgba(62,207,142,.1);border:1.5px solid rgba(62,207,142,.25);border-radius:10px;padding:12px 10px;text-align:center">
-            <p style="font-size:22px;font-weight:800;color:#178a5b;line-height:1" id="mp-count-si">0</p>
-            <p style="font-size:10px;font-weight:700;color:#178a5b;margin-top:3px;letter-spacing:.04em;text-transform:uppercase">Positivas</p>
-          </div>
-          <div style="background:rgba(240,69,69,.08);border:1.5px solid rgba(240,69,69,.2);border-radius:10px;padding:12px 10px;text-align:center">
-            <p style="font-size:22px;font-weight:800;color:#c0392b;line-height:1" id="mp-count-no">0</p>
-            <p style="font-size:10px;font-weight:700;color:#c0392b;margin-top:3px;letter-spacing:.04em;text-transform:uppercase">Negativas</p>
-          </div>
-          <div style="background:rgba(250,204,21,.12);border:1.5px solid rgba(250,204,21,.35);border-radius:10px;padding:12px 10px;text-align:center">
-            <p style="font-size:22px;font-weight:800;color:#a16207;line-height:1" id="mp-count-abs">0</p>
-            <p style="font-size:10px;font-weight:700;color:#a16207;margin-top:3px;letter-spacing:.04em;text-transform:uppercase">Abstenciones</p>
-          </div>
+      <!-- Anonimato de votos -->
+      <div style="background:rgba(0,0,0,.03);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px">
+        <span style="font-size:20px;flex-shrink:0">🔒</span>
+        <div>
+          <p style="font-size:12px;font-weight:700;color:var(--dark);margin-bottom:3px">Tus votos son completamente anónimos</p>
+          <p style="font-size:11px;color:var(--mid);line-height:1.5">El sistema no guarda ningún vínculo entre tu identidad y tu voto. Ni el administrador ni nadie puede saber cómo votaste.</p>
         </div>
-      </div>
-
-      <!-- Ganadoras -->
-      <div style="background:rgba(109,40,217,.06);border:1.5px solid rgba(109,40,217,.18);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:22px">🏆</span>
-          <div>
-            <p style="font-size:12px;font-weight:700;color:#5b21b6">Decisiones ganadoras</p>
-            <p style="font-size:11px;color:#7c3aed;margin-top:1px">Veces que tu voto fue el mayoritario</p>
-          </div>
-        </div>
-        <p style="font-size:26px;font-weight:800;color:#5b21b6;line-height:1" id="mp-count-ganadora">—</p>
       </div>
 
       <!-- Bloque match -->
@@ -11718,50 +11696,7 @@ async function abrirMiPerfil() {
   perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
   _syncVisibilidadUI()
 
-  // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
-  let cntSi = 0, cntNo = 0, cntAbs = 0
-  if (MY_SEAT > 0) {
-    try {
-      const { data } = await sb.rpc('get_my_vote_stats', { p_seat_number: MY_SEAT })
-      if (data) {
-        data.forEach(row => {
-          if (row.vote_plain === 'si')  cntSi  = Number(row.cnt)
-          if (row.vote_plain === 'no')  cntNo  = Number(row.cnt)
-          if (row.vote_plain === 'abs') cntAbs = Number(row.cnt)
-        })
-      }
-    } catch(e) {
-      // Fallback a localStorage si Supabase falla
-      console.warn('get_my_vote_stats fallback a localStorage:', e)
-      const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-      const vals  = Object.values(votos)
-      cntSi  = vals.filter(v => v.voto === 'si').length
-      cntNo  = vals.filter(v => v.voto === 'no').length
-      cntAbs = vals.filter(v => v.voto === 'abs').length
-    }
-  }
-
-  const elSi  = document.getElementById('mp-count-si')
-  const elNo  = document.getElementById('mp-count-no')
-  const elAbs = document.getElementById('mp-count-abs')
-  if (elSi)  elSi.textContent  = cntSi
-  if (elNo)  elNo.textContent  = cntNo
-  if (elAbs) elAbs.textContent = cntAbs
   document.getElementById('mi-perfil-overlay').classList.add('open')
-
-  // Ganadoras: directo desde Supabase
-  const elGan = document.getElementById('mp-count-ganadora')
-  if (elGan) elGan.textContent = '…'
-  if (MY_SEAT > 0) {
-    try {
-      const { data } = await sb.rpc('get_my_winning_decisions', { p_seat_number: MY_SEAT })
-      if (elGan) elGan.textContent = (data ?? 0)
-    } catch(e) {
-      if (elGan) elGan.textContent = '—'
-    }
-  } else {
-    if (elGan) elGan.textContent = '0'
-  }
 }
 
 // ══════════════════════════════════════════════════════════════
