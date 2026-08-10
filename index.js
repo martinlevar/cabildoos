@@ -5937,7 +5937,10 @@ async function cargarPerfilesPublicos() {
         }
       })
     }
-  } catch(e) { console.warn('cargarPerfilesPublicos:', e) }
+  } catch(e) { 
+    console.warn('cargarPerfilesPublicos:', e) 
+    // console.log('warning 123')
+  }
 }
 
 async function cargarPreguntasActivas() {
