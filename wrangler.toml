@@ -20,7 +20,7 @@ API_ENDPOINT = "https://api.cabildodevenezuela.com"
 
 [[secrets_store_secrets]]
 binding = "CDV_SUPABASE_TOKEN"
-store_id = "adf1b988d06e8acccfc7616d676d76ce"
+store_id = "306364b29ae849d7962941c0838b73b0"
 secret_name = "CDV_SUPABASE_TOKEN"
 
 [observability]
