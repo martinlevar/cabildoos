@@ -2929,10 +2929,15 @@ let vpBarcodeScanTimer = null
 //  CONFIGURACIÓN BACKEND
 // ══════════════════════════════════════════════════════════════════════════════
 
+// // Cambiar a la URL de Render una vez deployado
+// const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+//   ? 'http://localhost:8000'
+//   : 'https://cabildoos-api.onrender.com'  // Render deploy
+
 // Cambiar a la URL de Render una vez deployado
 const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8000'
-  : 'https://cabildoos-api.onrender.com'  // Render deploy
+  : 'https://api.cabildodevenezuela.com'  
 
 function uuidv4() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
