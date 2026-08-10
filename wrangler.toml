@@ -5,14 +5,9 @@ workers_dev = false
 preview_urls = false
 account_id = "adf1b988d06e8acccfc7616d676d76ce"
 
-[[routes]]
-pattern = "cabildodevenezuela.com/*"
-zone_name = "cabildodevenezuela.com"
-
-[[routes]]
-pattern = "dev.cabildodevenezuela.com"
-custom_domain = true
-
+routes = [
+  { pattern = "dev.cabildodevenezuela.com/*", custom_domain = true }
+]
 
 [assets]
 directory = "./dist"
