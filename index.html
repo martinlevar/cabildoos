@@ -5530,12 +5530,12 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
         <div class="ya-voto-wrap">
           <div class="ya-voto-check">✓</div>
           <p class="ya-voto-title">Ya emitiste tu voto</p>
-          <p class="ya-voto-sub">Tu butaca registró un voto en esta votación. Podés cancelarlo y volver a votar, pero <strong>solo se cuenta un voto por butaca.</strong></p>
+          <p class="ya-voto-sub">Tu voto fue registrado de forma anónima e irreversible. Como en una urna física, <strong>no es posible modificarlo una vez emitido.</strong></p>
           <p class="ya-voto-choice">Votaste: <strong id="ya-voto-lbl" style="color:var(--green)">SÍ</strong></p>
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
           <button class="btn-full" onclick="cerrarModal()">Volver al congreso</button>
-          <button class="btn-cancelar-voto" id="btn-cancelar-voto" onclick="cancelarVoto()">Cancelar mi voto y votar de nuevo</button>
+          <!-- cancelarVoto removido: el anonimato real requiere irreversibilidad -->
         </div>
       </div>
     </div>
