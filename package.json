@@ -6,7 +6,7 @@
   "type": "module",
   "packageManager": "pnpm@10.11.1",
   "scripts": {
-    "build": "mkdir -p dist && cp -r _headers _redirects favicon.svg logo-cabildo.jpg robots.txt functions *.html styles.css index.js dist/",
+    "build": "mkdir -p dist && cp -r _headers _redirects favicon.svg logo-cabildo.jpg robots.txt functions emails styles.css index.js *.html dist/",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
