@@ -67,98 +67,7 @@ html, body {
 .nav-cb-logo { width:36px; height:36px; flex-shrink:0; }
 .nav-cb-texts { display:flex; flex-direction:column; gap:0px; }
 .nav-cb-name { font-size:14px; font-weight:600; color:var(--dark); letter-spacing:-.2px; line-height:1.2; }
-.nav-cb-slogan { font-size:10px; color:var(--mid); letter-spacing:.01em; }
-/* ── Config cabildo panel ── */
-#cabildo-config-panel {
-  display:none; position:fixed; inset:0; z-index:9400;
-  background:rgba(10,10,10,.6); backdrop-filter:blur(12px);
-  align-items:flex-start; justify-content:center;
-  overflow-y:auto; overflow-x:hidden;
-  padding:16px;
-}
-#cabildo-config-panel.open { display:flex; }
-.cc-panel {
-  background:#0D1B2E; border:1px solid rgba(255,255,255,.1);
-  border-radius:20px; padding:0; width:min(500px,calc(100vw - 32px));
-  color:#fff; overflow:hidden; max-height:none; display:flex; flex-direction:column;
-  margin:auto; flex-shrink:0;
-}
-.cc-tabs { display:flex; border-bottom:1px solid rgba(255,255,255,.1); flex-shrink:0; }
-.cc-tab {
-  flex:1; padding:14px 0; border:none; background:none; cursor:pointer;
-  font-family:'Manrope',sans-serif; font-size:12px; font-weight:700;
-  color:rgba(255,255,255,.4); letter-spacing:.03em;
-  border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s;
-}
-.cc-tab.active { color:#fff; border-bottom-color:var(--orange); }
-.cc-tab-body { flex:1; overflow-y:auto; padding:24px; }
-/* Usage meters */
-.sb-usage-grid { display:flex; flex-direction:column; gap:14px; }
-.sb-usage-row { display:flex; flex-direction:column; gap:5px; }
-.sb-usage-header { display:flex; justify-content:space-between; align-items:center; }
-.sb-usage-label { font-size:11px; font-weight:700; color:rgba(255,255,255,.6); letter-spacing:.04em; text-transform:uppercase; }
-.sb-usage-val   { font-size:12px; font-weight:700; }
-.sb-usage-val.ok   { color:#4ade80; }
-.sb-usage-val.warn { color:#fbbf24; }
-.sb-usage-val.crit { color:#f87171; }
-.sb-bar-bg { height:6px; border-radius:99px; background:rgba(255,255,255,.1); overflow:hidden; }
-.sb-bar-fill { height:100%; border-radius:99px; transition:width .5s ease; }
-.sb-bar-fill.ok   { background:linear-gradient(90deg,#34d399,#4ade80); }
-.sb-bar-fill.warn { background:linear-gradient(90deg,#f59e0b,#fbbf24); }
-.sb-bar-fill.crit { background:linear-gradient(90deg,#ef4444,#f87171); }
-.sb-plan-badge {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 12px; border-radius:20px; font-size:11px; font-weight:700;
-  border:1.5px solid; margin-bottom:16px; cursor:pointer; transition:all .15s;
-}
-.sb-plan-badge.free { border-color:rgba(255,255,255,.2); color:rgba(255,255,255,.6); }
-.sb-plan-badge.pro  { border-color:#3b82f6; color:#60a5fa; }
-.sb-plan-badge.team { border-color:#8b5cf6; color:#a78bfa; }
-.sb-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
-.sb-stat-card {
-  background:rgba(255,255,255,.05); border-radius:10px; padding:12px;
-  border:1px solid rgba(255,255,255,.08);
-}
-.sb-stat-n { font-size:22px; font-weight:800; color:#fff; line-height:1; }
-.sb-stat-l { font-size:10px; color:rgba(255,255,255,.4); margin-top:4px; text-transform:uppercase; letter-spacing:.04em; }
-.sb-refresh-btn {
-  width:100%; margin-top:18px; padding:10px; border-radius:10px;
-  border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.06);
-  color:rgba(255,255,255,.7); cursor:pointer; font-family:inherit;
-  font-size:12px; font-weight:600; transition:all .15s;
-}
-.sb-refresh-btn:hover { background:rgba(255,255,255,.12); color:#fff; }
-.sb-dashboard-link {
-  display:flex; align-items:center; justify-content:center; gap:6px;
-  margin-top:10px; padding:10px; border-radius:10px;
-  border:1px solid rgba(62,207,142,.3); background:rgba(62,207,142,.07);
-  color:#4ade80; text-decoration:none; font-size:12px; font-weight:600;
-  transition:all .15s;
-}
-.sb-dashboard-link:hover { background:rgba(62,207,142,.14); }
-.sb-alert-bar {
-  padding:10px 14px; border-radius:10px; margin-bottom:14px;
-  font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px;
-}
-.sb-alert-bar.warn { background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.3); color:#fbbf24; }
-.sb-alert-bar.crit { background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.3); color:#f87171; }
-.cc-title { font-size:16px; font-weight:700; margin-bottom:4px; }
-.cc-sub { font-size:12px; color:rgba(255,255,255,.45); margin-bottom:24px; }
-.cc-field { margin-bottom:16px; }
-.cc-label { font-size:11px; font-weight:600; color:rgba(255,255,255,.5); letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
-.cc-input {
-  width:100%; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
-  border-radius:10px; padding:10px 14px; color:#fff; font-size:14px;
-  font-family:inherit; outline:none;
-}
-.cc-input:focus { border-color:rgba(247,106,30,.5); }
-.cc-preview { background:rgba(255,255,255,.05); border-radius:12px; padding:14px 16px; margin-bottom:20px; }
-.cc-preview-lbl { font-size:10px; color:rgba(255,255,255,.3); margin-bottom:10px; text-transform:uppercase; letter-spacing:.06em; }
-.cc-preview-row { display:flex; align-items:center; gap:10px; }
-.cc-btns { display:flex; gap:10px; justify-content:flex-end; }
-.cc-btn-cancel { background:none; border:1px solid rgba(255,255,255,.15); color:rgba(255,255,255,.6); padding:8px 18px; border-radius:9px; cursor:pointer; font-size:13px; }
-.cc-btn-save { background:#f76a1e; border:none; color:#fff; padding:8px 18px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:600; }
-.nav-center { display:flex; justify-content:center; align-items:center; }
+.nav-cb-slogan { font-size:10px; color:var(--mid); letter-spacing:.01em; }.nav-center { display:flex; justify-content:center; align-items:center; }
 .nav-right   { display:flex; justify-content:flex-end; align-items:center; }
 
 .dots-icon { cursor:pointer; padding:8px; border-radius:8px; transition: background .15s; }
@@ -5013,7 +4922,6 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
           <span id="nav-umenu-butaca">Sin verificar</span>
         </div>
         <button class="nav-umenu-item" onclick="abrirMiPerfil();closeUserPill()">👤 Mi perfil</button>
-        <button class="nav-umenu-item" id="nav-btn-config-cabildo" style="display:none" onclick="abrirConfigCabildo();closeUserPill()">⚙️ Personalizar cabildo</button>
         <button class="nav-umenu-item danger" onclick="cerrarSesion();closeUserPill()">↩ Salir</button>
       </div>
     </div>
@@ -5379,7 +5287,7 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 
       <div class="pp-note-bar">
         <span class="pp-note-icon">♡</span>
-        <span>Tus seguidores podrán darle ♥ a tu propuesta. El admin las ve ordenadas por apoyo — más likes, más arriba.</span>
+        <span>Tus seguidores podrán darle ♥ a tu propuesta. Las propuestas se ordenan por apoyo — más likes, más arriba.</span>
       </div>
     </div>
 
@@ -5639,107 +5547,6 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 </div>
 
 <!-- ══════════════ CONFIG CABILDO PANEL ══════════════ -->
-<div id="cabildo-config-panel" onclick="if(event.target===this)cerrarConfigCabildo()">
-  <div class="cc-panel">
-    <!-- Tabs -->
-    <div class="cc-tabs">
-      <button class="cc-tab active" id="cc-tab-brand" onclick="ccShowTab('brand')">🎨 Cabildo</button>
-      <button class="cc-tab"        id="cc-tab-acceso" onclick="ccShowTab('acceso')">🔐 Acceso</button>
-      <button class="cc-tab"        id="cc-tab-infra" onclick="ccShowTab('infra')">📊 Sistema</button>
-    </div>
-
-    <!-- Tab: Branding -->
-    <div class="cc-tab-body" id="cc-body-brand">
-      <p class="cc-title">⚙️ Personalizar cabildo</p>
-      <p class="cc-sub">Estos datos aparecen en el header cuando los ciudadanos entran al cabildo.</p>
-      <div class="cc-field">
-        <p class="cc-label">Nombre del cabildo</p>
-        <input class="cc-input" id="cc-nombre" placeholder="ej: Cabildo de Venezuela" oninput="ccActualizarPreview()">
-      </div>
-      <div class="cc-field">
-        <p class="cc-label">Slogan / subtítulo</p>
-        <input class="cc-input" id="cc-slogan" placeholder="ej: Generación Independencia 2026" oninput="ccActualizarPreview()">
-      </div>
-      <div class="cc-preview">
-        <p class="cc-preview-lbl">Preview del header</p>
-        <div class="cc-preview-row">
-          <div id="cc-logo-preview" style="width:36px;height:36px;flex-shrink:0"></div>
-          <div>
-            <p style="font-size:14px;font-weight:600;color:#fff;margin:0" id="cc-preview-name">Cabildo de Venezuela</p>
-            <p style="font-size:10px;color:rgba(255,255,255,.45);margin:2px 0 0" id="cc-preview-slogan">Generación Independencia 2026</p>
-          </div>
-        </div>
-      </div>
-      <div class="cc-btns">
-        <button class="cc-btn-cancel" onclick="cerrarConfigCabildo()">Cancelar</button>
-        <button class="cc-btn-save"   onclick="guardarConfigCabildo()">Guardar cambios</button>
-      </div>
-    </div>
-
-    <!-- Tab: Sistema / Infraestructura -->
-    <!-- Tab: Acceso Beta -->
-    <div class="cc-tab-body" id="cc-body-acceso" style="display:none">
-      <p class="cc-title">🔐 Control de acceso beta</p>
-      <p class="cc-sub">Solo quienes tengan el código pueden crear una cuenta nueva.</p>
-
-      <div class="cc-field" style="margin-top:20px">
-        <p class="cc-label">Código de acceso actual</p>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input class="cc-input" id="cc-beta-code" placeholder="ej: CABILDO2026" style="flex:1;letter-spacing:.08em;text-transform:uppercase;font-weight:700">
-          <button onclick="ccGuardarBetaCode()" style="background:var(--orange);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">Guardar</button>
-        </div>
-        <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:6px">Cambiarlo invalida el código anterior inmediatamente.</p>
-      </div>
-
-      <div class="cc-field" style="margin-top:20px">
-        <p class="cc-label">Beta activa</p>
-        <div style="display:flex;align-items:center;gap:12px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="cc-beta-active" onchange="ccToggleBetaActive()" style="width:18px;height:18px;accent-color:var(--orange)">
-            <span style="font-size:13px;color:rgba(255,255,255,.7)">Requerir código para registrarse</span>
-          </label>
-        </div>
-        <p style="font-size:11px;color:rgba(255,255,255,.4);margin-top:6px">Si está desactivado, cualquiera puede registrarse libremente.</p>
-      </div>
-
-      <p class="cc-label" id="cc-beta-msg" style="margin-top:16px;font-size:12px;color:var(--green)"></p>
-    </div>
-
-    <div class="cc-tab-body" id="cc-body-infra" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <p class="cc-title" style="margin:0">📊 Estado del sistema</p>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span style="font-size:10px;color:rgba(255,255,255,.35)" id="sb-last-update"></span>
-          <select id="sb-plan-select" onchange="sbRenderMetrics()"
-            style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
-                   border-radius:8px;color:#fff;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer">
-            <option value="free">Plan Free</option>
-            <option value="pro">Plan Pro</option>
-            <option value="team">Plan Team</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Alerta si hay métricas críticas -->
-      <div id="sb-alert" style="display:none"></div>
-
-      <!-- Barras de uso -->
-      <div class="sb-usage-grid" id="sb-usage-grid">
-        <p style="color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:20px 0">Cargando métricas…</p>
-      </div>
-
-      <!-- Stats en cards -->
-      <div class="sb-stats-grid" id="sb-stats-grid"></div>
-
-      <button class="sb-refresh-btn" onclick="sbCargarMetricas()">↻ Actualizar métricas</button>
-
-      <a class="sb-dashboard-link" href="https://supabase.com/dashboard/project/ayxscmxmnoguktfgveud/reports/database" target="_blank" rel="noopener">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        Ver dashboard completo en Supabase
-      </a>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════ VERIFY IDENTITY OVERLAY ══════════════ -->
 <div id="verify-overlay" onclick="if(event.target===this&&MY_SEAT>0&&Date.now()-_verifyOverlayOpenedAt>500)cerrarVerificacion()">
@@ -8599,10 +8406,6 @@ function _aplicarMarcaCabildo(cabildoId) {
   document.getElementById('nav-cb-name').textContent    = nombre
   document.getElementById('nav-cb-slogan').textContent  = slogan
 
-  // Mostrar botón de configuración si es admin (seat_number === 1 o rol admin/superadmin)
-  const btnConfig = document.getElementById('nav-btn-config-cabildo')
-  const _role = window._MY_ROLE || ''
-  if (btnConfig && (MY_SEAT === 1 || _role === 'admin' || _role === 'superadmin')) btnConfig.style.display = ''
 }
 
 function _resetearMarcaCabildo() {
@@ -8610,208 +8413,8 @@ function _resetearMarcaCabildo() {
   document.getElementById('nav-vdiv-cong').style.display = ''
   document.getElementById('cong-sel').style.display      = ''
   document.getElementById('nav-cabildo-brand').classList.remove('visible')
-  const btnConfig = document.getElementById('nav-btn-config-cabildo')
-  if (btnConfig) btnConfig.style.display = 'none'
 }
 
-// ── Config panel ──
-function abrirConfigCabildo() {
-  document.getElementById('cc-nombre').value = localStorage.getItem('cabildoos_cb_nombre') || 'Cabildo de Venezuela'
-  document.getElementById('cc-slogan').value = localStorage.getItem('cabildoos_cb_slogan') || 'Generación Independencia 2026'
-  document.getElementById('cc-logo-preview').innerHTML = _CABILDO_LOGOS['venezuela']
-  ccActualizarPreview()
-  ccShowTab('brand')   // siempre abre en branding
-  document.getElementById('cabildo-config-panel').classList.add('open')
-}
-
-function cerrarConfigCabildo() {
-  document.getElementById('cabildo-config-panel').classList.remove('open')
-}
-
-// ── Admin tabs ──
-function ccShowTab(tab) {
-  document.getElementById('cc-tab-brand').classList.toggle('active', tab === 'brand')
-  document.getElementById('cc-tab-acceso').classList.toggle('active', tab === 'acceso')
-  document.getElementById('cc-tab-infra').classList.toggle('active', tab === 'infra')
-  document.getElementById('cc-body-brand').style.display = tab === 'brand' ? '' : 'none'
-  document.getElementById('cc-body-acceso').style.display = tab === 'acceso' ? '' : 'none'
-  document.getElementById('cc-body-infra').style.display = tab === 'infra' ? '' : 'none'
-  if (tab === 'infra') sbCargarMetricas()
-  if (tab === 'acceso') ccCargarBetaConfig()
-}
-
-async function ccCargarBetaConfig() {
-  try {
-    const { data } = await sb.from('system_config').select('key,value').in('key', ['beta_code','beta_active'])
-    if (!data) return
-    data.forEach(row => {
-      if (row.key === 'beta_code') {
-        const v = typeof row.value === 'string' ? row.value : (row.value?.toString?.() ?? '')
-        document.getElementById('cc-beta-code').value = v.replace(/^"|"$/g,'')
-      }
-      if (row.key === 'beta_active') {
-        document.getElementById('cc-beta-active').checked = row.value === true || row.value === 'true'
-      }
-    })
-  } catch(e) { console.warn('beta config load:', e) }
-}
-
-async function ccGuardarBetaCode() {
-  const code = document.getElementById('cc-beta-code').value.trim().toUpperCase()
-  const msg  = document.getElementById('cc-beta-msg')
-  if (!code) { msg.textContent = 'El código no puede estar vacío.'; msg.style.color='var(--red)'; return }
-  try {
-    await sb.rpc('set_system_config', { p_key: 'beta_code', p_value: code, p_by: 'admin' })
-    msg.textContent = '✓ Código actualizado: ' + code
-    msg.style.color = 'var(--green)'
-  } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color='var(--red)' }
-  setTimeout(() => { msg.textContent = '' }, 3000)
-}
-
-async function ccToggleBetaActive() {
-  const active = document.getElementById('cc-beta-active').checked
-  const msg    = document.getElementById('cc-beta-msg')
-  try {
-    await sb.rpc('set_system_config', { p_key: 'beta_active', p_value: active, p_by: 'admin' })
-    msg.textContent = active ? '✓ Beta activada — se requiere código para registrarse' : '✓ Beta desactivada — registro libre'
-    msg.style.color = 'var(--green)'
-  } catch(e) { msg.textContent = 'Error al guardar.'; msg.style.color='var(--red)' }
-  setTimeout(() => { msg.textContent = '' }, 3000)
-}
-
-// ── Límites por plan ─────────────────────────────────────────────────────────
-const SB_LIMITS = {
-  free: {
-    db_bytes:    500 * 1024 * 1024,      // 500 MB
-    connections: 200,                     // realtime concurrentes
-    label: 'Free'
-  },
-  pro: {
-    db_bytes:    8 * 1024 * 1024 * 1024, // 8 GB
-    connections: 500,
-    label: 'Pro ($25/mes)'
-  },
-  team: {
-    db_bytes:    100 * 1024 * 1024 * 1024, // 100 GB
-    connections: 10000,
-    label: 'Team ($599/mes)'
-  }
-}
-
-let _sbStats = null
-
-async function sbCargarMetricas() {
-  const grid = document.getElementById('sb-usage-grid')
-  if (grid) grid.innerHTML = '<p style="color:rgba(255,255,255,.3);font-size:12px;text-align:center;padding:20px 0">Cargando…</p>'
-
-  try {
-    const { data, error } = await sb.rpc('get_system_stats')
-    if (error) throw error
-    _sbStats = data
-    const upEl = document.getElementById('sb-last-update')
-    if (upEl) upEl.textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
-    sbRenderMetrics()
-  } catch(e) {
-    if (grid) grid.innerHTML = '<p style="color:#f87171;font-size:12px;text-align:center;padding:20px 0">Error al cargar métricas</p>'
-  }
-}
-
-function sbRenderMetrics() {
-  if (!_sbStats) return
-  const plan  = document.getElementById('sb-plan-select')?.value || 'free'
-  const lims  = SB_LIMITS[plan]
-  const s     = _sbStats
-
-  // Calcular % de uso
-  const dbPct   = Math.min(100, Math.round(s.db_size_bytes / lims.db_bytes * 100))
-  // Conexiones: estimamos 4 canales por usuario verificado (questions + votes + follows + messages)
-  const estConn = Math.min(lims.connections, Number(s.verified_seats) || 0)
-  const connPct = Math.min(100, Math.round(estConn / lims.connections * 100))
-
-  function cls(pct) { return pct >= 90 ? 'crit' : pct >= 70 ? 'warn' : 'ok' }
-  function bar(pct) {
-    const c = cls(pct)
-    return `<div class="sb-bar-bg"><div class="sb-bar-fill ${c}" style="width:${pct}%"></div></div>`
-  }
-  function badge(pct, val, limit) {
-    const c = cls(pct)
-    return `<span class="sb-usage-val ${c}">${val} / ${limit}</span>`
-  }
-
-  // Alertas
-  const alerts = []
-  if (dbPct >= 90)   alerts.push({ type:'crit', msg:`⚠️ Base de datos al ${dbPct}% — vas a necesitar subir de plan pronto` })
-  else if (dbPct >= 70) alerts.push({ type:'warn', msg:`⚡ Base de datos al ${dbPct}% — monitoreá el crecimiento` })
-  if (connPct >= 80) alerts.push({ type:'warn', msg:`⚡ Cerca del límite de conexiones simultáneas del plan ${lims.label}` })
-  if (connPct >= 95) alerts.push({ type:'crit', msg:`🚨 Límite de conexiones casi alcanzado — subí al siguiente plan` })
-
-  const alertEl = document.getElementById('sb-alert')
-  if (alertEl) {
-    alertEl.style.display = alerts.length ? '' : 'none'
-    alertEl.innerHTML = alerts.map(a =>
-      `<div class="sb-alert-bar ${a.type}">${a.msg}</div>`
-    ).join('')
-  }
-
-  // Barras de uso
-  const grid = document.getElementById('sb-usage-grid')
-  if (grid) grid.innerHTML = `
-    <div class="sb-usage-row">
-      <div class="sb-usage-header">
-        <span class="sb-usage-label">Base de datos</span>
-        ${badge(dbPct, s.db_size_pretty, plan === 'free' ? '500 MB' : plan === 'pro' ? '8 GB' : '100 GB')}
-      </div>
-      ${bar(dbPct)}
-    </div>
-    <div class="sb-usage-row">
-      <div class="sb-usage-header">
-        <span class="sb-usage-label">Conexiones WebSocket (est.)</span>
-        ${badge(connPct, estConn, lims.connections)}
-      </div>
-      ${bar(connPct)}
-      <span style="font-size:10px;color:rgba(255,255,255,.25);margin-top:2px">
-        Basado en ${s.verified_seats} butacas verificadas × 1 conexión c/u
-      </span>
-    </div>
-    <div class="sb-usage-row">
-      <div class="sb-usage-header">
-        <span class="sb-usage-label">Conexiones DB activas</span>
-        <span class="sb-usage-val ${Number(s.active_connections) > 80 ? 'warn' : 'ok'}">${s.active_connections} activas / ${s.total_connections} total</span>
-      </div>
-    </div>`
-
-  // Stats cards
-  const statsEl = document.getElementById('sb-stats-grid')
-  if (statsEl) statsEl.innerHTML = [
-    { n: s.verified_seats, l: 'Butacas verificadas' },
-    { n: s.total_users,    l: 'Usuarios registrados' },
-    { n: s.total_votes,    l: 'Votos emitidos' },
-    { n: s.total_messages, l: 'Mensajes enviados' },
-    { n: s.total_follows,  l: 'Conexiones activas' },
-    { n: s.total_proposals,l: 'Propuestas' },
-  ].map(c => `<div class="sb-stat-card">
-    <div class="sb-stat-n">${Number(c.n).toLocaleString('es-VE')}</div>
-    <div class="sb-stat-l">${c.l}</div>
-  </div>`).join('')
-}
-
-function ccActualizarPreview() {
-  const n = document.getElementById('cc-nombre').value || 'Cabildo de Venezuela'
-  const s = document.getElementById('cc-slogan').value || ''
-  document.getElementById('cc-preview-name').textContent   = n
-  document.getElementById('cc-preview-slogan').textContent = s
-}
-
-function guardarConfigCabildo() {
-  const nombre = document.getElementById('cc-nombre').value.trim()
-  const slogan = document.getElementById('cc-slogan').value.trim()
-  if (nombre) localStorage.setItem('cabildoos_cb_nombre', nombre)
-  if (slogan !== undefined) localStorage.setItem('cabildoos_cb_slogan', slogan)
-  cerrarConfigCabildo()
-  const cabildo = localStorage.getItem('cabildoos_cabildo')
-  if (cabildo) _aplicarMarcaCabildo(cabildo)
-  showToast('✓ Marca del cabildo actualizada')
-}
 
 function entrarCabildo(id) {
   if (id === 'venezuela') {
@@ -12834,7 +12437,7 @@ window._CAT_THEME = {
 }
 const _CAT_DEFAULT = { bg:'#F9F9F7', pill:'#E4E4E0', txt:'#555', cd:'#F2F2F0' }
 
-// Deriva tema completo desde un color hex (mismo algoritmo que admin.html)
+// Deriva tema completo desde un color hex
 function _catThemeFromHex(hex) {
   const r=parseInt(hex.slice(1,3),16)||0, g=parseInt(hex.slice(3,5),16)||0, b=parseInt(hex.slice(5,7),16)||0
   const rf=r/255, gf=g/255, bf=b/255
