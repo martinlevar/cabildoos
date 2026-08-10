@@ -6,7 +6,7 @@ preview_urls = false
 account_id = "adf1b988d06e8acccfc7616d676d76ce"
 
 routes = [
-  { pattern = "dev.cabildodevenezuela.com/*", custom_domain = true }
+  { pattern = "dev.cabildodevenezuela.com", custom_domain = true }
 ]
 
 [assets]
