@@ -1,16 +1,17 @@
+main = "src/worker.js"
 name = "cabildoos-dev"
 compatibility_date = "2026-01-11"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 preview_urls = false
 account_id = "adf1b988d06e8acccfc7616d676d76ce"
-
 routes = [
   { pattern = "dev.cabildodevenezuela.com", custom_domain = true }
 ]
 
 [assets]
 directory = "./dist"
+binding = "ASSETS"
 run_worker_first = true
 
 [vars]
