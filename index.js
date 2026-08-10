@@ -1,6 +1,6 @@
 let sfActiveTab = 'seguidos'; 
 
-console.log(window.__ENV);
+// console.log(window.__ENV);
 
 // ══════════════════════════════════════════════════════════════
 //  SUPABASE CLIENT
