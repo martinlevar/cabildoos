@@ -8615,63 +8615,8 @@ function simularRespuestasSeguidores(propIdx) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  SISTEMA — mantenimiento, anuncios y reporte de errores
+//  SISTEMA — modales legales
 // ══════════════════════════════════════════════════════════════
-
-// ── Suscripción a system_config (realtime) ───────────────────
-function initSystemConfigRealtime() {
-  sb.channel('system-config-live')
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'system_config'
-    }, payload => {
-      const row = payload.new
-      if (!row) return
-      if (row.key === 'maintenance_mode') _applyMaintenance(row.value)
-      if (row.key === 'announcement')     _applyAnnouncement(row.value)
-    })
-    .subscribe()
-
-  // Cargar estado inicial
-  _loadSystemConfig()
-}
-
-async function _loadSystemConfig() {
-  try {
-    const { data } = await sb.from('system_config').select('key, value')
-    if (!data) return
-    data.forEach(row => {
-      if (row.key === 'maintenance_mode') _applyMaintenance(row.value)
-      if (row.key === 'announcement')     _applyAnnouncement(row.value)
-    })
-  } catch(e) { console.warn('system_config load:', e) }
-}
-
-function _applyMaintenance(val) {
-  const overlay = document.getElementById('maint-overlay')
-  if (!overlay) return
-  if (val?.active) {
-    document.getElementById('maint-msg').textContent = val.message || 'El sistema está en mantenimiento.'
-    overlay.classList.add('active')
-  } else {
-    overlay.classList.remove('active')
-  }
-}
-
-function _applyAnnouncement(val) {
-  const bar = document.getElementById('sys-announcement')
-  if (!bar) return
-  if (val?.active && val.text) {
-    document.getElementById('sys-announcement-text').textContent = val.text
-    bar.className = ''
-    bar.classList.add(val.type || 'info')
-    bar.style.display = 'flex'
-  } else {
-    bar.style.display = 'none'
-  }
-}
-
-// Llamar al iniciar la app (antes del login)
-;(async () => { initSystemConfigRealtime() })()
 
 // ── Modales legales ──────────────────────────────────────────
 function abrirModalPrivacidad() {
