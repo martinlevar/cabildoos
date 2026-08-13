@@ -758,18 +758,22 @@
     <div class="pp-header">
       <div>
         <div class="pp-eyebrow">Hemiciclo · Pleno</div>
-        <p class="pp-title">Proponer pregunta</p>
+        <p class="pp-title">Nueva propuesta</p>
       </div>
       <button class="pp-close" onclick="cerrarPropuesta()">×</button>
     </div>
 
     <div class="pp-body">
+
+      <!-- 1. Pregunta -->
+      <p class="pp-section-lbl">1. Tu pregunta <span class="pp-required">*</span></p>
       <div class="pp-area-wrap">
-        <textarea class="pp-area" id="pp-text" placeholder="¿Debería...?" maxlength="280" oninput="actualizarPropuesta()"></textarea>
+        <textarea class="pp-area" id="pp-text" placeholder="¿Debería...? Formula la pregunta de forma clara y concisa." maxlength="280" oninput="actualizarPropuesta()"></textarea>
         <span class="pp-char-badge" id="pp-char-badge">0/280</span>
       </div>
 
-      <p class="pp-section-lbl">Categoría</p>
+      <!-- 2. Categoría -->
+      <p class="pp-section-lbl">2. Categoría <span class="pp-required">*</span></p>
       <div class="pp-cats">
         <button class="pp-cat" onclick="selCat(this)">Política</button>
         <button class="pp-cat" onclick="selCat(this)">Economía</button>
@@ -779,16 +783,31 @@
         <button class="pp-cat" onclick="selCat(this)">Justicia</button>
       </div>
 
-      <div class="pp-note-bar">
+      <!-- 3. Contexto -->
+      <p class="pp-section-lbl">3. Contexto y argumentos <span class="pp-optional">(opcional)</span></p>
+      <textarea class="pp-context" id="pp-context" placeholder="Explicá por qué esta pregunta importa. Compartí datos, antecedentes o argumentos para convencer al pleno." maxlength="1200" oninput="ppContextCount()"></textarea>
+      <span class="pp-char-badge" id="pp-context-badge" style="float:right;margin-top:-4px">0/1200</span>
+
+      <!-- 4. Links -->
+      <p class="pp-section-lbl" style="margin-top:16px">4. Links de referencia <span class="pp-optional">(opcional)</span></p>
+      <div id="pp-links-list"></div>
+      <button class="pp-add-link-btn" onclick="ppAgregarLink()" id="pp-add-link-btn">+ Agregar link</button>
+
+      <!-- 5. Video -->
+      <p class="pp-section-lbl">5. Video de referencia <span class="pp-optional">(opcional)</span></p>
+      <input class="pp-input" id="pp-video" type="url" placeholder="https://youtube.com/watch?v=... o cualquier URL de video" />
+
+      <div class="pp-note-bar" style="margin-top:14px">
         <span class="pp-note-icon">♡</span>
-        <span>Tus seguidores podrán darle ♥ a tu propuesta. Las propuestas se ordenan por apoyo — más likes, más arriba.</span>
+        <span>Las propuestas se ordenan por apoyo. El moderador puede solicitar ajustes antes de aprobarla.</span>
       </div>
+
     </div>
 
     <div class="pp-footer">
       <button class="pp-btn-cancel" onclick="cerrarPropuesta()">Cancelar</button>
       <button class="pp-btn-send" id="pp-submit" onclick="enviarPropuesta()" disabled>
-        Proponer al pleno →
+        Enviar al moderador →
       </button>
     </div>
 

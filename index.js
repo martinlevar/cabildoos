@@ -5815,12 +5815,23 @@ function togglePerfilPublico() { toggleVisibilidad('alias') }
 //  PROPONER PREGUNTA
 // ══════════════════════════════════════════════════════════════
 function abrirPropuesta() {
+  // Reset form
+  document.getElementById('pp-text').value = ''
+  document.getElementById('pp-context').value = ''
+  document.getElementById('pp-video').value = ''
+  document.getElementById('pp-links-list').innerHTML = ''
+  document.getElementById('pp-add-link-btn').disabled = false
+  document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
+  actualizarPropuesta()
+  ppContextCount()
   document.getElementById('propuesta-overlay').classList.add('open')
   setTimeout(() => document.getElementById('pp-text').focus(), 200)
 }
+
 function cerrarPropuesta() {
   document.getElementById('propuesta-overlay').classList.remove('open')
 }
+
 function actualizarPropuesta() {
   const n = document.getElementById('pp-text').value.length
   const badge = document.getElementById('pp-char-badge')
@@ -5830,14 +5841,55 @@ function actualizarPropuesta() {
   }
   document.getElementById('pp-submit').disabled = n < 10
 }
+
+function ppContextCount() {
+  const n = document.getElementById('pp-context').value.length
+  const badge = document.getElementById('pp-context-badge')
+  if (badge) badge.textContent = n + '/1200'
+}
+
 function selCat(btn) {
   document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
   btn.classList.add('sel')
 }
+
+let _ppLinkCount = 0
+function ppAgregarLink() {
+  const list = document.getElementById('pp-links-list')
+  if (list.children.length >= 3) return
+  _ppLinkCount++
+  const id = 'pp-link-' + _ppLinkCount
+  const row = document.createElement('div')
+  row.className = 'pp-link-row'
+  row.id = id
+  row.innerHTML = `
+    <input type="url" placeholder="https://..." />
+    <button class="pp-link-remove" onclick="ppRemoveLink('${id}')">×</button>
+  `
+  list.appendChild(row)
+  if (list.children.length >= 3) {
+    document.getElementById('pp-add-link-btn').disabled = true
+  }
+}
+
+function ppRemoveLink(id) {
+  const row = document.getElementById(id)
+  if (row) row.remove()
+  document.getElementById('pp-add-link-btn').disabled = false
+}
+
 async function enviarPropuesta() {
   const text = document.getElementById('pp-text').value.trim()
   const catEl = document.querySelector('.pp-cat.sel')
   const cat = catEl ? catEl.textContent : 'General'
+  const context = document.getElementById('pp-context').value.trim() || null
+  const video_url = document.getElementById('pp-video').value.trim() || null
+
+  // Recolectar links no vacíos
+  const linkInputs = document.querySelectorAll('#pp-links-list .pp-link-row input')
+  const links = Array.from(linkInputs)
+    .map(i => i.value.trim())
+    .filter(v => v.length > 0)
 
   if (!text || text.length < 10) return
   if (!MY_SEAT || MY_SEAT <= 0) { showToast('Necesitás una butaca verificada para proponer'); return }
@@ -5850,6 +5902,9 @@ async function enviarPropuesta() {
     seat_number: MY_SEAT,
     text,
     cat,
+    context,
+    links: links.length > 0 ? links : [],
+    video_url,
     likes: 0,
     status: 'pending'
   })
@@ -5857,16 +5912,13 @@ async function enviarPropuesta() {
   if (error) {
     showToast('Error al enviar: ' + (error.message || 'intente de nuevo'))
     btn.disabled = false
-    btn.textContent = 'Proponer al pleno →'
+    btn.textContent = 'Enviar al moderador →'
     return
   }
 
   cerrarPropuesta()
-  document.getElementById('pp-text').value = ''
-  actualizarPropuesta()
-  document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
   mostrarFooter()
-  showToast('✓ Propuesta enviada al comité')
+  showToast('✓ Propuesta enviada. El moderador la revisará antes de publicarla.')
 }
 
 // ══════════════════════════════════════════════════════════════
