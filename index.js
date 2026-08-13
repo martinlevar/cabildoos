@@ -5285,6 +5285,17 @@ function _renderNotifPanel() {
     })
   })
 
+  // 4. Propuesta aprobada
+  ;(_notifications || []).filter(n => n.type === 'proposal_approved').forEach(n => {
+    items.push({
+      key: 'appr_' + n.id, icBg: '#E6F4EA',
+      icHtml: '✅',
+      title: `Tu propuesta fue <strong>aprobada</strong>`,
+      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      order: 1,
+    })
+  })
+
   if (!items.length) {
     el.innerHTML = `<div class="notif-empty">
       <div class="notif-empty-icon">🔔</div>
@@ -5961,7 +5972,7 @@ async function cargarPerfilesPublicos() {
 
 async function cargarPreguntasActivas() {
   try {
-    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url').eq('status', 'activa').order('created_at')
+    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url, links').eq('status', 'activa').order('created_at')
     if (data && data.length > 0) {
       PREGUNTAS      = data.map(q => q.text)
       PREGUNTAS_IDS  = data.map(q => q.id)
@@ -6804,8 +6815,19 @@ function abrirInfoModal(i) {
   if (qdata.description) { descEl.textContent = qdata.description; descWrap.style.display = '' }
   else descWrap.style.display = 'none'
 
+  // Links
+  const linksWrap = document.getElementById('im-links-wrap')
+  const linksEl   = document.getElementById('im-links')
+  const links = Array.isArray(qdata.links) ? qdata.links.filter(Boolean) : []
+  if (links.length) {
+    linksEl.innerHTML = links.map(url => `<a class="im-link-item" href="${url}" target="_blank" rel="noopener">${url}</a>`).join('')
+    linksWrap.style.display = ''
+  } else {
+    linksWrap.style.display = 'none'; linksEl.innerHTML = ''
+  }
+
   // Hide im-body if no content at all
-  document.getElementById('im-body').style.display = (qdata.video_url || qdata.description) ? '' : 'none'
+  document.getElementById('im-body').style.display = (qdata.video_url || qdata.description || links.length) ? '' : 'none'
 
   document.getElementById('info-modal-overlay').classList.add('open')
 }
