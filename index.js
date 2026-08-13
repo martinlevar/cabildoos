@@ -5292,6 +5292,7 @@ function _renderNotifPanel() {
       icHtml: '✅',
       title: `Tu propuesta fue <strong>aprobada</strong>`,
       sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal()`,
       order: 1,
     })
   })
@@ -5354,6 +5355,14 @@ async function rechazarSolicitudNotif(reqId, fromSeat, ev) {
 async function _markAllNotifsRead() {
   if (MY_SEAT) await sb.rpc('mark_all_notifications_read', { p_seat: MY_SEAT })
   _notifications = _notifications.map(n => ({ ...n, read_at: new Date().toISOString() }))
+  _renderNotifBadge()
+  _renderNotifPanel()
+}
+
+async function _markSingleNotifRead(id) {
+  const now = new Date().toISOString()
+  await sb.from('notifications').update({ read_at: now }).eq('id', id)
+  _notifications = _notifications.map(n => n.id === id ? { ...n, read_at: now } : n)
   _renderNotifBadge()
   _renderNotifPanel()
 }
