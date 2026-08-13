@@ -5162,13 +5162,16 @@ function _renderNotifBadge() {
     if (_consentChannel) sb.removeChannel(_consentChannel)
     _consentChannel = sb.channel(chName)
       .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'proposals',
+        event: '*', schema: 'public', table: 'proposals',
         filter: `seat_number=eq.${MY_SEAT}`
       }, payload => {
         const p = payload.new
+        // Admin solicita consentimiento de edición
         if (p.consent_status === 'pending' && p.status === 'pending') {
           _openConsentModal(p)
         }
+        // Cualquier cambio de estado → refrescar lista de propuestas del usuario
+        if (typeof renderPropuestas === 'function') renderPropuestas()
       })
       .subscribe()
   }
@@ -5932,6 +5935,7 @@ function _ppVideoPreview(url) {
   if (!wrap || !iframe) return
   const embedUrl = _imYoutubeEmbed(url.trim())
   if (embedUrl) {
+    iframe.referrerPolicy = 'origin'
     iframe.src = embedUrl
     wrap.style.display = ''
   } else {
@@ -6857,6 +6861,7 @@ function abrirInfoModal(i) {
       const iframe = document.createElement('iframe')
       iframe.setAttribute('allowfullscreen', '')
       iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+      iframe.referrerPolicy = 'origin'
       iframe.src = ytEmbed
       videoCont.appendChild(iframe)
     } else {
