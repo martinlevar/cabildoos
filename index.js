@@ -5607,27 +5607,15 @@ async function abrirMiPerfil() {
 async function abrirEstadisticas() {
   document.getElementById('stats-panel').classList.add('open')
   const body = document.getElementById('sp-body')
-  body.innerHTML = '<div class="sp-loading">Cargando estadísticas…</div>'
-  ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.textContent = '…'
-  })
-
-  if (!MY_SEAT || MY_SEAT <= 0) {
-    body.innerHTML = '<div class="sp-empty">Necesitás una butaca para ver tus estadísticas.</div>'
-    ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = '0'
-    })
-    return
-  }
+  body.innerHTML = '<div class="sp-loading">Cargando resultados…</div>'
 
   try {
-    // Fuente de verdad: Supabase (vote_plain se guarda en el commit)
-    const { data, error } = await sb.rpc('get_my_vote_history', { p_seat_number: MY_SEAT })
+    const { data, error } = await sb.rpc('get_all_question_results')
     if (error) throw error
     _renderStatsPanel(data || [])
   } catch(e) {
     console.error('abrirEstadisticas:', e)
-    body.innerHTML = '<div class="sp-empty">Error al cargar estadísticas.<br>Intentá de nuevo.</div>'
+    body.innerHTML = '<div class="sp-empty">Error al cargar resultados.<br>Intentá de nuevo.</div>'
   }
 }
 
@@ -5638,57 +5626,33 @@ function cerrarEstadisticas() {
 function _renderStatsPanel(rows) {
   const body = document.getElementById('sp-body')
   if (!rows || rows.length === 0) {
-    body.innerHTML = '<div class="sp-empty">Todavía no participaste en ninguna pregunta.</div>'
-    ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = '0'
-    })
+    body.innerHTML = '<div class="sp-empty">No hay preguntas registradas aún.</div>'
     return
   }
 
-  let totSi = 0, totNo = 0, totAbs = 0, totGan = 0
-  rows.forEach(r => {
-    if (r.my_vote === 'si')  totSi++
-    if (r.my_vote === 'no')  totNo++
-    if (r.my_vote === 'abs') totAbs++
-    const ended = new Date(r.ends_at) < new Date()
-    if (ended) {
-      const si = Number(r.cnt_si), no = Number(r.cnt_no)
-      if ((r.my_vote === 'si' && si > no) || (r.my_vote === 'no' && no > si)) totGan++
-    }
-  })
-
-  document.getElementById('sp-total-si').textContent   = totSi
-  document.getElementById('sp-total-no').textContent   = totNo
-  document.getElementById('sp-total-abs').textContent  = totAbs
-  document.getElementById('sp-total-gan').textContent  = totGan
-  document.getElementById('sp-total-part').textContent = rows.length
-
   const html = rows.map(r => {
-    const theme   = (window._CAT_THEME[r.category] || _CAT_DEFAULT)
+    const theme   = (window._CAT_THEME?.[r.category] || _CAT_DEFAULT)
     const si      = Number(r.cnt_si), no = Number(r.cnt_no), abs = Number(r.cnt_abs)
-    const total   = Number(r.total_votes) || (si + no + abs)
     const revealed = si + no + abs
     const pctSi   = revealed > 0 ? ((si  / revealed) * 100).toFixed(0) : 0
     const pctNo   = revealed > 0 ? ((no  / revealed) * 100).toFixed(0) : 0
     const pctAbs  = revealed > 0 ? ((abs / revealed) * 100).toFixed(0) : 0
-    const ended   = new Date(r.ends_at) < new Date()
+    const ended   = r.ends_at ? new Date(r.ends_at) < new Date() : true
     const ganaSi  = si > no
-    const empate  = si === no && total > 0
+    const empate  = si === no && revealed > 0
 
     let resultBadge = ''
     if (!ended) {
       resultBadge = '<span class="sp-result-badge open">En curso</span>'
+    } else if (revealed === 0) {
+      resultBadge = '<span class="sp-result-badge tie">Sin votos</span>'
     } else if (empate) {
       resultBadge = '<span class="sp-result-badge tie">Empate</span>'
     } else {
-      const iWon = (r.my_vote === 'si' && ganaSi) || (r.my_vote === 'no' && !ganaSi && !empate)
-      resultBadge = iWon
-        ? '<span class="sp-result-badge won">✓ Ganaste</span>'
-        : '<span class="sp-result-badge lost">✗ Perdiste</span>'
+      resultBadge = ganaSi
+        ? '<span class="sp-result-badge won">✓ Ganó SÍ</span>'
+        : '<span class="sp-result-badge lost">✓ Ganó NO</span>'
     }
-
-    const myVoteLabels = { si:'Voté SÍ', no:'Voté NO', abs:'Me abstuve' }
-    const myVoteLbl    = myVoteLabels[r.my_vote] || r.my_vote
 
     const catPill = r.category
       ? `<span class="sp-q-pill" style="background:${theme.pill};color:${theme.txt}">${r.category}</span>`
@@ -5696,7 +5660,7 @@ function _renderStatsPanel(rows) {
 
     return `<div class="sp-q-card">
       <div class="sp-q-top">
-        <p class="sp-q-text">${r.question_text}</p>
+        <p class="sp-q-text">${r.text}</p>
         ${catPill}
       </div>
       <div class="sp-bars">
@@ -5720,7 +5684,7 @@ function _renderStatsPanel(rows) {
         </div>
       </div>
       <div class="sp-q-footer">
-        <span class="sp-my-vote ${r.my_vote}">${myVoteLbl}</span>
+        <span class="sp-bar-lbl" style="color:var(--mid);font-size:10px">${revealed} votos totales</span>
         ${resultBadge}
       </div>
     </div>`
