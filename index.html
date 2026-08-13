@@ -799,7 +799,10 @@
 
       <!-- 5. Video -->
       <p class="pp-section-lbl">5. Video de referencia <span class="pp-optional">(opcional)</span></p>
-      <input class="pp-input" id="pp-video" type="url" placeholder="https://youtube.com/watch?v=... o cualquier URL de video" />
+      <input class="pp-input" id="pp-video" type="url" placeholder="https://youtube.com/watch?v=... o cualquier URL de video" oninput="_ppVideoPreview(this.value)" />
+      <div id="pp-video-preview" style="display:none;margin-top:10px;position:relative;padding-bottom:56.25%;height:0;border-radius:10px;overflow:hidden;background:#000">
+        <iframe id="pp-video-iframe" style="position:absolute;inset:0;width:100%;height:100%;border:none" allowfullscreen allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"></iframe>
+      </div>
 
       <div class="pp-note-bar" style="margin-top:14px">
         <span class="pp-note-icon">♡</span>

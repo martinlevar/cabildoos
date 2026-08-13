@@ -5297,6 +5297,30 @@ function _renderNotifPanel() {
     })
   })
 
+  // 5. Pregunta activa (votación abierta)
+  ;(_notifications || []).filter(n => n.type === 'question_active').forEach(n => {
+    items.push({
+      key: 'qact_' + n.id, icBg: '#EEF2FF',
+      icHtml: '🗳️',
+      title: `Tu pregunta está <strong>activa en el hemiciclo</strong>`,
+      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal()`,
+      order: 1,
+    })
+  })
+
+  // 6. Propuesta rechazada
+  ;(_notifications || []).filter(n => n.type === 'proposal_rejected').forEach(n => {
+    items.push({
+      key: 'rej_' + n.id, icBg: '#FEF2F2',
+      icHtml: '❌',
+      title: `Tu propuesta fue <strong>rechazada</strong>`,
+      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal()`,
+      order: 1,
+    })
+  })
+
   if (!items.length) {
     el.innerHTML = `<div class="notif-empty">
       <div class="notif-empty-icon">🔔</div>
@@ -5850,6 +5874,10 @@ function abrirPropuesta() {
 
 function cerrarPropuesta() {
   document.getElementById('propuesta-overlay').classList.remove('open')
+  const iframe = document.getElementById('pp-video-iframe')
+  if (iframe) iframe.src = ''
+  const wrap = document.getElementById('pp-video-preview')
+  if (wrap) wrap.style.display = 'none'
 }
 
 function actualizarPropuesta() {
@@ -5896,6 +5924,20 @@ function ppRemoveLink(id) {
   const row = document.getElementById(id)
   if (row) row.remove()
   document.getElementById('pp-add-link-btn').disabled = false
+}
+
+function _ppVideoPreview(url) {
+  const wrap = document.getElementById('pp-video-preview')
+  const iframe = document.getElementById('pp-video-iframe')
+  if (!wrap || !iframe) return
+  const embedUrl = _imYoutubeEmbed(url.trim())
+  if (embedUrl) {
+    iframe.src = embedUrl
+    wrap.style.display = ''
+  } else {
+    iframe.src = ''
+    wrap.style.display = 'none'
+  }
 }
 
 async function enviarPropuesta() {
@@ -6809,10 +6851,19 @@ function abrirInfoModal(i) {
   const videoWrap = document.getElementById('im-video-wrap')
   const videoCont = document.getElementById('im-video-container')
   if (qdata.video_url) {
+    videoCont.innerHTML = ''
     const ytEmbed = _imYoutubeEmbed(qdata.video_url)
-    videoCont.innerHTML = ytEmbed
-      ? `<iframe src="${ytEmbed}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
-      : `<video src="${qdata.video_url}" controls></video>`
+    if (ytEmbed) {
+      const iframe = document.createElement('iframe')
+      iframe.setAttribute('allowfullscreen', '')
+      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+      iframe.src = ytEmbed
+      videoCont.appendChild(iframe)
+    } else {
+      const vid = document.createElement('video')
+      vid.src = qdata.video_url; vid.controls = true
+      videoCont.appendChild(vid)
+    }
     videoWrap.style.display = ''
   } else {
     videoWrap.style.display = 'none'; videoCont.innerHTML = ''
