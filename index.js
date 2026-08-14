@@ -8886,15 +8886,19 @@ function _audFit() {
   const W = _audCv.width, H = _audCv.height
   _audZoom = Math.min(W * 0.88 / (bx1 - bx0), H * 0.88 / (by1 - by0))
   _audCamX = -((bx0 + bx1) / 2) * _audZoom
-  _audCamY =  ((by0 + by1) / 2) * _audZoom
+  _audCamY = -((by0 + by1) / 2) * _audZoom  // sin flip-Y
 }
 
 function _audGoToMe() {
   if (!_audCv || MY_SEAT <= 0) return
   const me = SEATS.find(s => s.num === MY_SEAT)
   if (!me) return
+  // Zoom in y centrar exactamente en mi butaca
+  const W = _audCv.width, H = _audCv.height
+  const fitZoom = Math.min(W * 0.88 / (bx1 - bx0), H * 0.88 / (by1 - by0))
+  _audZoom = Math.max(fitZoom * 4, _audZoom)
   _audCamX = -me.x * _audZoom
-  _audCamY =  me.y * _audZoom
+  _audCamY = -me.y * _audZoom  // sin flip-Y
   _audDraw()
 }
 
@@ -8950,11 +8954,11 @@ function _audDrawFrame() {
   ctx.clearRect(0, 0, W, H)
   ctx.save()
   ctx.translate(W / 2 + _audCamX, H / 2 + _audCamY)
-  ctx.scale(_audZoom, -_audZoom)  // flip Y: math → screen
+  ctx.scale(_audZoom, _audZoom)  // sin flip-Y: hemiciclo orientado con podio arriba (hacia el video)
 
   const zInv = 1 / _audZoom
-  const dotR  = Math.max(1.2, 2.5 * zInv)
-  const litR  = Math.max(3,   5.5 * zInv)
+  const dotR  = Math.max(4,   8  * zInv)
+  const litR  = Math.max(9,   16 * zInv)
 
   // Background dots
   ctx.fillStyle = 'rgba(255,255,255,0.14)'
@@ -8985,12 +8989,14 @@ function _audDrawFrame() {
     ctx.fillStyle   = color
     ctx.beginPath(); ctx.arc(s.x, s.y, litR, 0, Math.PI * 2); ctx.fill()
     ctx.shadowBlur  = 0
-    // Pulse ring for my seat
+    // Pulse ring + extra halo for my seat
     if (isMe) {
-      ctx.globalAlpha = 0.5
+      ctx.globalAlpha = 0.6
       ctx.strokeStyle = color
-      ctx.lineWidth   = 1.5 * zInv
-      ctx.beginPath(); ctx.arc(s.x, s.y, litR * 2.8, 0, Math.PI * 2); ctx.stroke()
+      ctx.lineWidth   = 2.5 * zInv
+      ctx.beginPath(); ctx.arc(s.x, s.y, litR * 2.2, 0, Math.PI * 2); ctx.stroke()
+      ctx.globalAlpha = 0.25
+      ctx.beginPath(); ctx.arc(s.x, s.y, litR * 3.5, 0, Math.PI * 2); ctx.stroke()
       ctx.globalAlpha = 1
     }
   })
