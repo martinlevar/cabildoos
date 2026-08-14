@@ -2129,8 +2129,16 @@
 
       <!-- Hemiciclo presence -->
       <div id="aud-presence-wrap">
-        <p class="aud-section-lbl">Presentes en el Auditorio</p>
-        <svg id="aud-hemi-svg" viewBox="0 0 640 230" preserveAspectRatio="xMidYMid meet"></svg>
+        <div id="aud-hemi-topbar">
+          <p class="aud-section-lbl">Presentes en el Auditorio</p>
+          <div id="aud-hemi-btns">
+            <button class="aud-hemi-btn" onclick="_audFit();_audDraw()" title="Ver todo">⊞ Ver todo</button>
+            <button class="aud-hemi-btn" id="aud-goto-me-btn" onclick="_audGoToMe()" title="Mi butaca" style="display:none">↵ Mi butaca</button>
+          </div>
+        </div>
+        <div id="aud-canvas-wrap">
+          <canvas id="aud-hemi-canvas"></canvas>
+        </div>
         <p id="aud-no-viewers" style="display:none">Sé el primero en conectarte</p>
       </div>
 

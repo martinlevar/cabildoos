@@ -3398,19 +3398,33 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
   100% { transform:translateY(-150px) scale(.8); opacity:0; }
 }
 
-/* Hemiciclo presence — inverted, audience facing screen */
+/* Hemiciclo presence — canvas interactivo */
 #aud-presence-wrap {
-  padding:6px 20px 16px; flex:1;
-  display:flex; flex-direction:column; align-items:center;
+  padding:6px 20px 16px; flex:1; min-height:0;
+  display:flex; flex-direction:column;
+}
+#aud-hemi-topbar {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-shrink:0;
 }
 .aud-section-lbl {
   font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
-  color:rgba(255,255,255,.3); margin:0 0 4px; align-self:flex-start;
+  color:rgba(255,255,255,.3); margin:0;
 }
-#aud-hemi-svg { max-width:640px; }
-#aud-hemi-svg {
-  width:100%; height:auto; display:block;
+#aud-hemi-btns { display:flex; gap:6px; }
+.aud-hemi-btn {
+  background:rgba(255,255,255,.07); border:0.5px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.6); font-size:11px; font-weight:600;
+  padding:4px 10px; border-radius:8px; cursor:pointer;
+  transition:background .15s, color .15s;
 }
+.aud-hemi-btn:hover { background:rgba(255,255,255,.14); color:#fff; }
+#aud-canvas-wrap {
+  flex:1; min-height:0; border-radius:14px; overflow:hidden;
+  background:rgba(255,255,255,.02); border:0.5px solid rgba(255,255,255,.06);
+  cursor:grab; position:relative;
+}
+#aud-canvas-wrap:active { cursor:grabbing; }
+#aud-hemi-canvas { display:block; width:100%; height:100%; }
 #aud-no-viewers {
   font-size:13px; color:rgba(255,255,255,.3); text-align:center;
   padding:8px 0; margin:0;

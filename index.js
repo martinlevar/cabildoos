@@ -8805,22 +8805,197 @@ let _audSessionChannel = null
 let _audPresenceState  = {}
 let _audCurrentSession = null
 
+// Canvas state
+let _audCv = null, _audCtx2 = null
+let _audCamX = 0, _audCamY = 0, _audZoom = 1
+let _audDragState = null
+let _audPresentSet = new Set()
+let _audRafId = null
+let _audTouchDist = 0
+
 async function abrirAuditorio() {
   document.getElementById('auditorio-overlay').classList.add('open')
   await _audLoadSession()
   _audJoinPresence()
   _audSubscribeSession()
+  // Init canvas after transition
+  setTimeout(_audCanvasInit, 320)
 }
 
 function cerrarAuditorio() {
   document.getElementById('auditorio-overlay').classList.remove('open')
-  // Limpiar video para detener reproducción
   const vc = document.getElementById('aud-video-container')
   if (vc) vc.innerHTML = ''
-  // Desconectar canales
   if (_audChannel)        { sb.removeChannel(_audChannel);        _audChannel = null }
   if (_audSessionChannel) { sb.removeChannel(_audSessionChannel); _audSessionChannel = null }
   _audPresenceState = {}
+  _audCanvasDestroy()
+}
+
+// ── Canvas interactivo ──────────────────────────────────────
+function _audCanvasInit() {
+  const wrap = document.getElementById('aud-canvas-wrap')
+  const cv   = document.getElementById('aud-hemi-canvas')
+  if (!wrap || !cv) return
+  _audCv  = cv
+  _audCtx2 = cv.getContext('2d')
+  _audCanvasResize()
+  _audFit()
+  _audDraw()
+
+  // Show "Mi butaca" btn if applicable
+  const meBtn = document.getElementById('aud-goto-me-btn')
+  if (meBtn) meBtn.style.display = MY_SEAT > 0 ? '' : 'none'
+
+  cv.addEventListener('mousedown',  _audMD)
+  cv.addEventListener('wheel',      _audWheel, { passive: false })
+  cv.addEventListener('touchstart', _audTS, { passive: true })
+  cv.addEventListener('touchmove',  _audTM, { passive: false })
+  cv.addEventListener('touchend',   _audTE, { passive: true })
+  window.addEventListener('mousemove', _audMV)
+  window.addEventListener('mouseup',   _audMU)
+}
+
+function _audCanvasDestroy() {
+  if (_audCv) {
+    _audCv.removeEventListener('mousedown',  _audMD)
+    _audCv.removeEventListener('wheel',      _audWheel)
+    _audCv.removeEventListener('touchstart', _audTS)
+    _audCv.removeEventListener('touchmove',  _audTM)
+    _audCv.removeEventListener('touchend',   _audTE)
+  }
+  window.removeEventListener('mousemove', _audMV)
+  window.removeEventListener('mouseup',   _audMU)
+  if (_audRafId) { cancelAnimationFrame(_audRafId); _audRafId = null }
+  _audCv = null; _audCtx2 = null; _audDragState = null
+}
+
+function _audCanvasResize() {
+  if (!_audCv) return
+  const wrap = document.getElementById('aud-canvas-wrap')
+  if (!wrap) return
+  const W = wrap.clientWidth, H = wrap.clientHeight
+  _audCv.width  = W * devicePixelRatio
+  _audCv.height = H * devicePixelRatio
+  _audCv.style.width  = W + 'px'
+  _audCv.style.height = H + 'px'
+}
+
+function _audFit() {
+  if (!_audCv || !SEATS || !SEATS.length || bx1 === bx0) return
+  const W = _audCv.width, H = _audCv.height
+  _audZoom = Math.min(W * 0.88 / (bx1 - bx0), H * 0.88 / (by1 - by0))
+  _audCamX = -((bx0 + bx1) / 2) * _audZoom
+  _audCamY =  ((by0 + by1) / 2) * _audZoom
+}
+
+function _audGoToMe() {
+  if (!_audCv || MY_SEAT <= 0) return
+  const me = SEATS.find(s => s.num === MY_SEAT)
+  if (!me) return
+  _audCamX = -me.x * _audZoom
+  _audCamY =  me.y * _audZoom
+  _audDraw()
+}
+
+// Mouse/touch handlers
+function _audMD(e) {
+  _audDragState = { sx: e.clientX, sy: e.clientY, cx: _audCamX, cy: _audCamY }
+}
+function _audMV(e) {
+  if (!_audDragState) return
+  _audCamX = _audDragState.cx + (e.clientX - _audDragState.sx) * devicePixelRatio
+  _audCamY = _audDragState.cy + (e.clientY - _audDragState.sy) * devicePixelRatio
+  _audDraw()
+}
+function _audMU() { _audDragState = null }
+function _audWheel(e) {
+  e.preventDefault()
+  const f = e.deltaY < 0 ? 1.12 : 0.9
+  _audZoom = Math.max(0.2, Math.min(12, _audZoom * f))
+  _audDraw()
+}
+function _audTS(e) {
+  if (e.touches.length === 1) {
+    _audDragState = { sx: e.touches[0].clientX, sy: e.touches[0].clientY, cx: _audCamX, cy: _audCamY }
+  } else if (e.touches.length === 2) {
+    _audTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+  }
+}
+function _audTM(e) {
+  e.preventDefault()
+  if (e.touches.length === 1 && _audDragState) {
+    _audCamX = _audDragState.cx + (e.touches[0].clientX - _audDragState.sx) * devicePixelRatio
+    _audCamY = _audDragState.cy + (e.touches[0].clientY - _audDragState.sy) * devicePixelRatio
+  } else if (e.touches.length === 2) {
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+    if (_audTouchDist > 0) _audZoom = Math.max(0.2, Math.min(12, _audZoom * (d / _audTouchDist)))
+    _audTouchDist = d
+  }
+  _audDraw()
+}
+function _audTE() { _audDragState = null }
+
+function _audDraw() {
+  if (_audRafId) cancelAnimationFrame(_audRafId)
+  _audRafId = requestAnimationFrame(_audDrawFrame)
+}
+
+function _audDrawFrame() {
+  _audRafId = null
+  const ctx = _audCtx2, cv = _audCv
+  if (!ctx || !cv || !SEATS || !SEATS.length) return
+
+  const W = cv.width, H = cv.height
+  ctx.clearRect(0, 0, W, H)
+  ctx.save()
+  ctx.translate(W / 2 + _audCamX, H / 2 + _audCamY)
+  ctx.scale(_audZoom, -_audZoom)  // flip Y: math → screen
+
+  const zInv = 1 / _audZoom
+  const dotR  = Math.max(1.2, 2.5 * zInv)
+  const litR  = Math.max(3,   5.5 * zInv)
+
+  // Background dots
+  ctx.fillStyle = 'rgba(255,255,255,0.14)'
+  SEATS.forEach(s => {
+    if (_audPresentSet.has(s.num) || s.num === MY_SEAT) return
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, dotR, 0, Math.PI * 2)
+    ctx.fill()
+  })
+
+  // Present seats with glow
+  SEATS.forEach(s => {
+    const isMe      = MY_SEAT > 0 && s.num === MY_SEAT
+    const isPresent = _audPresentSet.has(s.num)
+    if (!isPresent && !isMe) return
+
+    const color = '#F5A623'
+    // Outer glow
+    ctx.globalAlpha = 0.12
+    ctx.fillStyle = color
+    ctx.beginPath(); ctx.arc(s.x, s.y, litR * 3.5, 0, Math.PI * 2); ctx.fill()
+    ctx.globalAlpha = 0.22
+    ctx.beginPath(); ctx.arc(s.x, s.y, litR * 2,   0, Math.PI * 2); ctx.fill()
+    // Core dot
+    ctx.globalAlpha = 1
+    ctx.shadowColor = color
+    ctx.shadowBlur  = 18 * zInv
+    ctx.fillStyle   = color
+    ctx.beginPath(); ctx.arc(s.x, s.y, litR, 0, Math.PI * 2); ctx.fill()
+    ctx.shadowBlur  = 0
+    // Pulse ring for my seat
+    if (isMe) {
+      ctx.globalAlpha = 0.5
+      ctx.strokeStyle = color
+      ctx.lineWidth   = 1.5 * zInv
+      ctx.beginPath(); ctx.arc(s.x, s.y, litR * 2.8, 0, Math.PI * 2); ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+  })
+
+  ctx.restore()
 }
 
 async function _audLoadSession() {
@@ -8937,7 +9112,16 @@ function _audRender() {
 }
 
 function _audRenderHemi(presentSeats) {
-  const svg = document.getElementById('aud-hemi-svg')
+  _audPresentSet = new Set(presentSeats)
+  const canvas   = document.getElementById('aud-canvas-wrap')
+  const noViewers = document.getElementById('aud-no-viewers')
+  if (canvas)    canvas.style.display    = presentSeats.length ? '' : 'none'
+  if (noViewers) noViewers.style.display = presentSeats.length ? 'none' : ''
+  if (_audCv) _audDraw()
+}
+
+function _audRenderHemi_UNUSED(presentSeats) {
+  const svg = document.getElementById('aud-hemi-canvas')
   if (!svg) return
 
   const noViewers = document.getElementById('aud-no-viewers')
