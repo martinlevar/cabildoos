@@ -8811,6 +8811,7 @@ let _audCamX = 0, _audCamY = 0, _audZoom = 1
 let _audDragState = null
 let _audPresentSet = new Set()
 let _audRafId = null
+let _audMuted = false   // estado de mute del video
 let _audTouchDist = 0
 
 async function abrirAuditorio() {
@@ -9101,9 +9102,13 @@ function _audRender() {
       iframe.referrerPolicy = 'origin'
       iframe.setAttribute('allowfullscreen', '')
       iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
-      // autoplay=1, controls=0, sin botón de play visible
-      iframe.src = ytEmbed + '&autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&disablekb=1&iv_load_policy=3&playsinline=1'
+      // autoplay=1, controls=0, enablejsapi=1 para postMessage mute
+      // mute=1 es necesario para que autoplay funcione sin interacción previa
+      _audMuted = true
+      iframe.src = ytEmbed + '&autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&disablekb=1&iv_load_policy=3&playsinline=1&enablejsapi=1&mute=1'
       videoContainer.appendChild(iframe)
+      // Mostrar botón mute (ícono de silenciado al inicio)
+      _audUpdateMuteBtn()
     }
     // Info bar
     const sesLbl = document.getElementById('aud-video-session-lbl')
@@ -9147,6 +9152,22 @@ function _audRenderHemi(presentSeats) {
     const n = presentSeats.length
     countLbl.textContent = n === 1 ? '1 viendo' : `${n} viendo`
   }
+}
+
+function _audToggleMute() {
+  _audMuted = !_audMuted
+  const iframe = document.querySelector('#aud-video-container iframe')
+  if (iframe && iframe.contentWindow) {
+    const cmd = _audMuted ? 'mute' : 'unMute'
+    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: cmd, args: '' }), '*')
+  }
+  _audUpdateMuteBtn()
+}
+function _audUpdateMuteBtn() {
+  const on  = document.getElementById('aud-mute-icon-on')
+  const off = document.getElementById('aud-mute-icon-off')
+  if (on)  on.style.display  = _audMuted ? 'none' : ''
+  if (off) off.style.display = _audMuted ? '' : 'none'
 }
 
 function _audRenderHemi_UNUSED(presentSeats) {

@@ -3360,6 +3360,21 @@ body.observer-mode #observer-cta-strip    { display:flex !important; }
 #aud-video-container video {
   position:absolute; inset:0; width:100%; height:100%; border:none;
 }
+/* Overlay bloquea controles nativos de YouTube */
+#aud-video-overlay {
+  position:absolute; inset:0; z-index:2;
+  cursor:default;
+}
+/* Botón mute propio */
+#aud-mute-btn {
+  position:absolute; bottom:12px; right:12px; z-index:3;
+  background:rgba(0,0,0,.55); border:none;
+  color:#fff; border-radius:50%; width:36px; height:36px;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; transition:background .15s;
+  backdrop-filter:blur(4px);
+}
+#aud-mute-btn:hover { background:rgba(0,0,0,.8); }
 
 /* Info bar debajo del video */
 #aud-video-info-bar {
