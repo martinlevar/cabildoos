@@ -9097,7 +9097,9 @@ function _audRender() {
     showEl(joinWrap, false)
     showEl(noStream, false)
     if (videoContainer) {
-      videoContainer.innerHTML = ''
+      // Reemplazar solo el iframe, sin tocar el overlay ni el botón mute
+      const old = videoContainer.querySelector('iframe')
+      if (old) old.remove()
       const iframe = document.createElement('iframe')
       iframe.referrerPolicy = 'origin'
       iframe.setAttribute('allowfullscreen', '')
@@ -9106,7 +9108,8 @@ function _audRender() {
       // mute=1 es necesario para que autoplay funcione sin interacción previa
       _audMuted = true
       iframe.src = ytEmbed + '&autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&disablekb=1&iv_load_policy=3&playsinline=1&enablejsapi=1&mute=1'
-      videoContainer.appendChild(iframe)
+      // Insertar al principio para que el overlay y el botón queden encima
+      videoContainer.insertBefore(iframe, videoContainer.firstChild)
       // Mostrar botón mute (ícono de silenciado al inicio)
       _audUpdateMuteBtn()
     }
