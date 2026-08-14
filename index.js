@@ -4828,7 +4828,7 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime(); initProfilesRealtime(); initFollowsRealtime() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime(); initProfilesRealtime(); initFollowsRealtime(); _audCheckActiveBadge(); _audInitBadgeRealtime() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
@@ -8795,4 +8795,245 @@ async function enviarBugReport() {
 function _syncBugFab() {
   const lnk = document.getElementById('footer-bug-link')
   if (lnk) lnk.style.display = _authUser ? '' : 'none'
+}
+
+// ══════════════════════════════════════════════════════════════
+//  AUDITORIO
+// ══════════════════════════════════════════════════════════════
+let _audChannel        = null
+let _audSessionChannel = null
+let _audPresenceState  = {}
+let _audCurrentSession = null
+
+async function abrirAuditorio() {
+  document.getElementById('auditorio-overlay').classList.add('open')
+  await _audLoadSession()
+  _audJoinPresence()
+  _audSubscribeSession()
+}
+
+function cerrarAuditorio() {
+  document.getElementById('auditorio-overlay').classList.remove('open')
+  // Limpiar video para detener reproducción
+  const vc = document.getElementById('aud-video-container')
+  if (vc) vc.innerHTML = ''
+  // Desconectar canales
+  if (_audChannel)        { sb.removeChannel(_audChannel);        _audChannel = null }
+  if (_audSessionChannel) { sb.removeChannel(_audSessionChannel); _audSessionChannel = null }
+  _audPresenceState = {}
+}
+
+async function _audLoadSession() {
+  try {
+    const { data } = await sb.from('auditorio_sessions')
+      .select('*').eq('is_active', true).limit(1).maybeSingle()
+    _audCurrentSession = data || null
+  } catch(e) { _audCurrentSession = null }
+  _audRender()
+}
+
+function _audSubscribeSession() {
+  if (_audSessionChannel) sb.removeChannel(_audSessionChannel)
+  _audSessionChannel = sb.channel('auditorio-session-watch')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'auditorio_sessions' }, () => {
+      _audLoadSession()
+    })
+    .subscribe()
+}
+
+function _audJoinPresence() {
+  if (_audChannel) sb.removeChannel(_audChannel)
+  _audChannel = sb.channel('auditorio-live', { config: { presence: { key: String(MY_SEAT || 0) } } })
+
+  if (MY_SEAT > 0) {
+    _audChannel.track({ seat: MY_SEAT, at: Date.now() })
+  }
+
+  _audChannel
+    .on('presence', { event: 'sync' }, () => {
+      _audPresenceState = _audChannel.presenceState()
+      _audUpdatePresence()
+    })
+    .on('broadcast', { event: 'reaction' }, ({ payload }) => {
+      _audShowFloatReaction(payload.emoji)
+    })
+    .subscribe()
+}
+
+function _audUpdatePresence() {
+  const presentSeats = new Set()
+  Object.values(_audPresenceState).forEach(list =>
+    list.forEach(p => { if (p.seat > 0) presentSeats.add(p.seat) })
+  )
+  const countEl = document.getElementById('aud-count')
+  const viewerWrap = document.getElementById('aud-viewer-count')
+  if (countEl) countEl.textContent = presentSeats.size
+  if (viewerWrap) viewerWrap.style.display = presentSeats.size > 0 ? 'flex' : 'none'
+  _audRenderHemi([...presentSeats])
+}
+
+function _audRender() {
+  const hasSession = !!_audCurrentSession
+  const empty   = document.getElementById('aud-empty')
+  const content = document.getElementById('aud-session-content')
+  const liveBadge = document.getElementById('aud-live-badge')
+  const titleEl   = document.getElementById('aud-title')
+  const descEl    = document.getElementById('aud-session-desc')
+
+  if (!hasSession) {
+    if (empty)   empty.style.display   = ''
+    if (content) content.style.display = 'none'
+    if (liveBadge) liveBadge.style.display = 'none'
+    if (titleEl) titleEl.textContent = 'Auditorio'
+    if (descEl)  descEl.style.display = 'none'
+    return
+  }
+
+  const s = _audCurrentSession
+  if (empty)   empty.style.display   = 'none'
+  if (content) content.style.display = ''
+  if (liveBadge) liveBadge.style.display = ''
+  if (titleEl) titleEl.textContent = s.title || 'Auditorio'
+  if (descEl) {
+    descEl.textContent = s.description || ''
+    descEl.style.display = s.description ? '' : 'none'
+  }
+
+  // Detectar tipo de video
+  const url = s.url || ''
+  const ytEmbed = _imYoutubeEmbed(url)
+  const videoContainer = document.getElementById('aud-video-container')
+  const joinWrap = document.getElementById('aud-join-wrap')
+
+  if (ytEmbed && videoContainer) {
+    videoContainer.style.display = ''
+    if (joinWrap) joinWrap.style.display = 'none'
+    videoContainer.innerHTML = ''
+    const iframe = document.createElement('iframe')
+    iframe.referrerPolicy = 'origin'
+    iframe.setAttribute('allowfullscreen', '')
+    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+    iframe.src = ytEmbed
+    videoContainer.appendChild(iframe)
+  } else if (videoContainer) {
+    videoContainer.style.display = 'none'
+    if (joinWrap) joinWrap.style.display = ''
+    const btn = document.getElementById('aud-join-btn')
+    if (btn) {
+      btn.href = url
+      const title = document.getElementById('aud-join-title')
+      if (url.includes('meet.google')) {
+        if (title) title.textContent = 'Sesión en Google Meet'
+        btn.textContent = 'Abrir Google Meet →'
+      } else if (url.includes('zoom.us')) {
+        if (title) title.textContent = 'Sesión en Zoom'
+        btn.textContent = 'Abrir Zoom →'
+      } else {
+        if (title) title.textContent = 'Sesión en vivo'
+        btn.textContent = 'Abrir sesión →'
+      }
+    }
+  }
+}
+
+function _audRenderHemi(presentSeats) {
+  const svg = document.getElementById('aud-hemi-svg')
+  if (!svg) return
+
+  const noViewers = document.getElementById('aud-no-viewers')
+
+  if (!presentSeats.length) {
+    svg.style.display = 'none'
+    if (noViewers) noViewers.style.display = ''
+    return
+  }
+
+  svg.style.display = ''
+  if (noViewers) noViewers.style.display = 'none'
+
+  if (!SEATS || SEATS.length === 0 || bx1 === bx0) {
+    // Fallback: mostrar puntos en círculo simple
+    const cx = 200, cy = 170, r = 140
+    const dots = presentSeats.map((seat, i) => {
+      const a = Math.PI + (i / Math.max(presentSeats.length - 1, 1)) * Math.PI
+      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a)
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#F5A623" opacity=".9"><title>Butaca #${seat}</title></circle>`
+    }).join('')
+    svg.innerHTML = `<defs><filter id="ag"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${dots}`
+    return
+  }
+
+  // Usar posiciones reales del hemiciclo
+  const W = 400, H = 200, padX = 18, padY = 12
+  const rangeX = bx1 - bx0 || 1
+  const rangeY = by1 - by0 || 1
+  const sc = Math.min((W - padX*2) / rangeX, (H - padY*2) / rangeY)
+  const toSvg = (x, y) => ({
+    sx: padX + (x - bx0) * sc,
+    sy: H - padY - (y - by0) * sc
+  })
+
+  const presentSet = new Set(presentSeats)
+  const step = Math.max(1, Math.floor(SEATS.length / 200))
+  const bgDots = [], presenceDots = []
+
+  SEATS.forEach((s, idx) => {
+    const { sx, sy } = toSvg(s.x, s.y)
+    if (presentSet.has(s.num)) {
+      presenceDots.push({ sx, sy, num: s.num })
+    } else if (idx % step === 0) {
+      bgDots.push({ sx, sy })
+    }
+  })
+
+  svg.innerHTML =
+    `<defs><filter id="ag" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter></defs>` +
+    bgDots.map(d => `<circle cx="${d.sx.toFixed(1)}" cy="${d.sy.toFixed(1)}" r="1.4" fill="rgba(255,255,255,0.12)"/>`).join('') +
+    presenceDots.map(d =>
+      `<circle cx="${d.sx.toFixed(1)}" cy="${d.sy.toFixed(1)}" r="4.5" fill="#F5A623" filter="url(#ag)" opacity=".95">
+        <title>Butaca #${d.num}</title>
+       </circle>`
+    ).join('')
+}
+
+function audReaccionar(emoji) {
+  if (!_audChannel) return
+  _audChannel.send({ type: 'broadcast', event: 'reaction', payload: { emoji } })
+  _audShowFloatReaction(emoji)
+}
+
+function _audShowFloatReaction(emoji) {
+  const area = document.getElementById('aud-float-area')
+  if (!area) return
+  const el = document.createElement('div')
+  el.className = 'aud-float-reaction'
+  el.textContent = emoji
+  el.style.left = (15 + Math.random() * 70) + '%'
+  area.appendChild(el)
+  setTimeout(() => el.remove(), 2500)
+}
+
+// Badge en nav cuando hay sesión activa (check al iniciar sesión)
+async function _audCheckActiveBadge() {
+  try {
+    const { data } = await sb.from('auditorio_sessions')
+      .select('id').eq('is_active', true).limit(1).maybeSingle()
+    const badge = document.getElementById('nav-auditorio-badge')
+    if (badge) badge.style.display = data ? '' : 'none'
+  } catch(e) {}
+}
+
+function _audInitBadgeRealtime() {
+  sb.channel('auditorio-badge-watch')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'auditorio_sessions' }, () => {
+      _audCheckActiveBadge()
+      // Si el auditorio está abierto, recargar sesión
+      if (document.getElementById('auditorio-overlay')?.classList.contains('open')) {
+        _audLoadSession()
+      }
+    })
+    .subscribe()
 }
