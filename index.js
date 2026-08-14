@@ -2276,8 +2276,11 @@ let _authUser = null     // usuario logueado actual
 let _betaActive = false  // si el código beta es requerido para registrarse
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
-// Detectar flujo de recovery desde el hash de la URL (sincrónico, antes del await)
-let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
+// Detectar flujo de recovery — soporta implicit flow (hash) y PKCE (query string)
+let _isPasswordRecovery = (
+  new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery' ||
+  new URLSearchParams(window.location.search).get('type') === 'recovery'
+)
 
 // Cargar estado beta antes de auth para que el form de registro ya lo refleje
 _loadBetaActive()
