@@ -1,12 +1,14 @@
 let sfActiveTab = 'seguidos'; 
 
+// console.log(window.__ENV);
+
 // ══════════════════════════════════════════════════════════════
 //  SUPABASE CLIENT
 // ══════════════════════════════════════════════════════════════
 const { createClient } = window.supabase
 const sb = createClient(
-  'https://ayxscmxmnoguktfgveud.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5eHNjbXhtbm9ndWt0Zmd2ZXVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NjIyMzAsImV4cCI6MjEwMDMzODIzMH0.rcM0DZ9JsPbjjb3bD29j7S12g9BxUVfKEeEGo2-hBS8'
+  window.__ENV.SUPABASE_URL,
+  window.__ENV.SUPABASE_KEY
 )
 
 function generateUUID() {
@@ -2271,10 +2273,17 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 // ══════════════════════════════════════════════════════════════
 
 let _authUser = null     // usuario logueado actual
+let _betaActive = false  // si el código beta es requerido para registrarse
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
-// Detectar flujo de recovery desde el hash de la URL (sincrónico, antes del await)
-let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
+// Detectar flujo de recovery — soporta implicit flow (hash) y PKCE (query string)
+let _isPasswordRecovery = (
+  new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery' ||
+  new URLSearchParams(window.location.search).get('type') === 'recovery'
+)
+
+// Cargar estado beta antes de auth para que el form de registro ya lo refleje
+_loadBetaActive()
 
 // Inicializar auth al cargar
 ;(async () => {
@@ -2538,9 +2547,32 @@ function irAlCongreso() {
 }
 
 // ── Abrir / cerrar modal ──
+// ── Beta code: cargar estado y aplicar al form ────────────────
+async function _loadBetaActive() {
+  try {
+    const { data } = await sb.from('system_config')
+      .select('value').eq('key', 'beta_active').single()
+    _betaActive = data?.value === true || data?.value === 'true'
+  } catch(e) { _betaActive = false }
+  _applyBetaCodeField()
+}
+
+function _applyBetaCodeField() {
+  const wrap = document.getElementById('reg-code-wrap')
+  if (!wrap) return
+  wrap.style.display = _betaActive ? '' : 'none'
+  // Si no se requiere código, limpiar el campo para que no interfiera
+  if (!_betaActive) {
+    const inp = document.getElementById('reg-code')
+    if (inp) inp.value = ''
+  }
+  authCheckRegistro()
+}
+
 function abrirAuth(tab = 'registro') {
   authSetTab(tab)
   document.getElementById('auth-overlay').classList.add('open')
+  if (tab === 'registro') _applyBetaCodeField()
 }
 function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
@@ -2633,7 +2665,8 @@ function authCheckRegistro() {
   }
 
   const code = document.getElementById('reg-code')?.value.trim()
-  const ok = aliasOk && email.includes('@') && pass.length >= 8 && code?.length >= 4
+  const codeOk = !_betaActive || (code?.length >= 4)
+  const ok = aliasOk && email.includes('@') && pass.length >= 8 && codeOk
   document.getElementById('reg-btn').disabled = !ok
 }
 
@@ -2645,7 +2678,7 @@ function authCheckLogin() {
 
 // ── Registro ──
 async function registrarse() {
-  const alias = document.getElementById('reg-alias').value.trim().toLowerCase()
+  const alias = sanitizeInput(document.getElementById('reg-alias').value).toLowerCase()
   const email = document.getElementById('reg-email').value.trim()
   const pass  = document.getElementById('reg-pass').value
   const btn   = document.getElementById('reg-btn')
@@ -2681,10 +2714,18 @@ async function registrarse() {
   btn.textContent = 'Creando cuenta…'
   msg.textContent = ''
 
+  const _regOrigin = window.location.origin
+  const _regRedirect = (_regOrigin && _regOrigin.startsWith('http'))
+    ? _regOrigin + window.location.pathname
+    : undefined
+
   const { data, error } = await sb.auth.signUp({
     email,
     password: pass,
-    options: { data: { alias } }
+    options: {
+      data: { alias },
+      ...(  _regRedirect ? { emailRedirectTo: _regRedirect } : {})
+    }
   })
 
   if (error) {
@@ -2929,15 +2970,15 @@ let vpBarcodeScanTimer = null
 //  CONFIGURACIÓN BACKEND
 // ══════════════════════════════════════════════════════════════════════════════
 
-// // Cambiar a la URL de Render una vez deployado
+// Cambiar a la URL de Render una vez deployado
 // const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
 //   ? 'http://localhost:8000'
 //   : 'https://cabildoos-api.onrender.com'  // Render deploy
 
-// Cambiar a la URL de Render una vez deployado
 const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
   ? 'http://localhost:8000'
-  : 'https://api.cabildodevenezuela.com'  
+  : 'https://api.cabildodevenezuela.com'  // via cloudflare
+
 
 function uuidv4() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
@@ -4826,7 +4867,7 @@ async function cargarConteoReal() {
 
 // Ejecutar cuando el DOM esté listo (o inmediatamente si ya lo está)
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime(); initProfilesRealtime(); initFollowsRealtime() })
+  document.addEventListener('DOMContentLoaded', () => { vpRestaurarEstado(); cargarConteoReal(); _cargarCatTheme(); cargarPreguntasActivas(); initQuestionsRealtime(); initVotesRealtime(); initProfilesRealtime(); initFollowsRealtime(); _audCheckActiveBadge(); _audInitBadgeRealtime() })
 } else {
   vpRestaurarEstado()
   cargarConteoReal()
@@ -4994,7 +5035,7 @@ async function _loadAndRenderConversaciones() {
     html += _pendingRequestsToMe.map(req => {
       const alias = _profilesCache[req.from_seat]?.alias || `Butaca #${req.from_seat}`
       return `<div class="sf-req-card">
-        <p>👤 <strong>${alias}</strong> quiere seguirte</p>
+        <p>👤 <strong>${escapeHtml(alias)}</strong> quiere seguirte</p>
         <div class="sf-req-btns">
           <button class="sf-req-accept" onclick="aceptarSolicitud('${req.id}',${req.from_seat})">✓ Aceptar</button>
           <button class="sf-req-reject" onclick="rechazarSolicitud('${req.id}',${req.from_seat})">✕ Rechazar</button>
@@ -5014,8 +5055,8 @@ async function _loadAndRenderConversaciones() {
       return `<div class="sf-convo-row" onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')">
         <div class="sf-convo-av" style="background:${AVATAR_COLORS_CONVO[ci]}">📣</div>
         <div class="sf-convo-info">
-          <p class="sf-convo-name">${alias}</p>
-          <p class="sf-convo-preview">${n.message}</p>
+          <p class="sf-convo-name">${escapeHtml(alias)}</p>
+          <p class="sf-convo-preview">${escapeHtml(n.message)}</p>
         </div>
         <div class="sf-convo-meta"><span class="sf-convo-time">${t}</span><span class="sf-convo-badge">!</span></div>
       </div>`
@@ -5055,8 +5096,8 @@ async function _loadAndRenderConversaciones() {
             ${c.unread > 0 ? '<span class="unread-dot"></span>' : ''}
           </div>
           <div class="sf-convo-info">
-            <p class="sf-convo-name">${alias}</p>
-            <p class="sf-convo-preview">${preview}</p>
+            <p class="sf-convo-name">${escapeHtml(alias)}</p>
+            <p class="sf-convo-preview">${escapeHtml(preview)}</p>
           </div>
           <div class="sf-convo-meta">
             <span class="sf-convo-time">${t}</span>
@@ -5160,13 +5201,16 @@ function _renderNotifBadge() {
     if (_consentChannel) sb.removeChannel(_consentChannel)
     _consentChannel = sb.channel(chName)
       .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'proposals',
+        event: '*', schema: 'public', table: 'proposals',
         filter: `seat_number=eq.${MY_SEAT}`
       }, payload => {
         const p = payload.new
+        // Admin solicita consentimiento de edición
         if (p.consent_status === 'pending' && p.status === 'pending') {
           _openConsentModal(p)
         }
+        // Cualquier cambio de estado → refrescar lista de propuestas del usuario
+        if (typeof renderPropuestas === 'function') renderPropuestas()
       })
       .subscribe()
   }
@@ -5244,7 +5288,7 @@ function _renderNotifPanel() {
     items.push({
       key: 'req_' + req.id, icBg: AVATAR_COLORS_CONVO[ci],
       icHtml: `<span style="font-size:14px;font-weight:800;color:#fff">${alias.slice(0,2).toUpperCase()}</span>`,
-      title: `<strong>${alias}</strong> quiere seguirte`,
+      title: `<strong>${escapeHtml(alias)}</strong> quiere seguirte`,
       sub: '', time: null, unread: true, noAction: true,
       extra: `<div class="notif-item-btns">
         <button class="notif-accept-btn" onclick="aceptarSolicitudNotif('${req.id}',${req.from_seat},event)">Aceptar</button>
@@ -5263,8 +5307,8 @@ function _renderNotifPanel() {
     items.push({
       key: 'msg_' + seat, icBg: '#E8F0FE',
       icHtml: '💬',
-      title: `<strong>${alias}</strong> te envió ${data.count > 1 ? data.count + ' mensajes' : 'un mensaje'}`,
-      sub: pre, time: data.lastTime, unread: true,
+      title: `<strong>${escapeHtml(alias)}</strong> te envió ${data.count > 1 ? data.count + ' mensajes' : 'un mensaje'}`,
+      sub: escapeHtml(pre), time: data.lastTime, unread: true,
       onclick: `abrirUserProfile(${n},'mensajes-inbox');cerrarNotifModal()`,
       order: 1,
     })
@@ -5276,10 +5320,46 @@ function _renderNotifPanel() {
     items.push({
       key: 'prop_' + n.id, icBg: '#FFF0E6',
       icHtml: '📣',
-      title: `<strong>${alias}</strong> publicó una nueva propuesta`,
-      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      title: `<strong>${escapeHtml(alias)}</strong> publicó una nueva propuesta`,
+      sub: escapeHtml(n.message || ''), time: n.created_at, unread: !n.read_at,
       onclick: `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}');cerrarNotifModal()`,
       order: 2,
+    })
+  })
+
+  // 4. Propuesta aprobada
+  ;(_notifications || []).filter(n => n.type === 'proposal_approved').forEach(n => {
+    items.push({
+      key: 'appr_' + n.id, icBg: '#E6F4EA',
+      icHtml: '✅',
+      title: `Tu propuesta fue <strong>aprobada</strong>`,
+      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal()`,
+      order: 1,
+    })
+  })
+
+  // 5. Pregunta activa (votación abierta)
+  ;(_notifications || []).filter(n => n.type === 'question_active').forEach(n => {
+    items.push({
+      key: 'qact_' + n.id, icBg: '#EEF2FF',
+      icHtml: '🗳️',
+      title: `Tu pregunta está <strong>activa en el hemiciclo</strong>`,
+      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal()`,
+      order: 1,
+    })
+  })
+
+  // 6. Propuesta rechazada
+  ;(_notifications || []).filter(n => n.type === 'proposal_rejected').forEach(n => {
+    items.push({
+      key: 'rej_' + n.id, icBg: '#FEF2F2',
+      icHtml: '❌',
+      title: `Tu propuesta fue <strong>rechazada</strong>`,
+      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal()`,
+      order: 1,
     })
   })
 
@@ -5345,6 +5425,14 @@ async function _markAllNotifsRead() {
   _renderNotifPanel()
 }
 
+async function _markSingleNotifRead(id) {
+  const now = new Date().toISOString()
+  await sb.from('notifications').update({ read_at: now }).eq('id', id)
+  _notifications = _notifications.map(n => n.id === id ? { ...n, read_at: now } : n)
+  _renderNotifBadge()
+  _renderNotifPanel()
+}
+
 function _showNotifToast(n, alias) {
   // Toast con acción "Ver"
   const existing = document.getElementById('notif-toast')
@@ -5360,7 +5448,7 @@ function _showNotifToast(n, alias) {
     max-width:340px; animation:toastIn .3s ease;
   `
   toast.innerHTML = `
-    <span>📣 <strong>${alias}</strong> publicó una propuesta</span>
+    <span>📣 <strong>${escapeHtml(alias)}</strong> publicó una propuesta</span>
     <button onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')"
       style="background:#fff;color:#1d1d1d;border:none;border-radius:8px;
              padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
@@ -5605,27 +5693,15 @@ async function abrirMiPerfil() {
 async function abrirEstadisticas() {
   document.getElementById('stats-panel').classList.add('open')
   const body = document.getElementById('sp-body')
-  body.innerHTML = '<div class="sp-loading">Cargando estadísticas…</div>'
-  ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.textContent = '…'
-  })
-
-  if (!MY_SEAT || MY_SEAT <= 0) {
-    body.innerHTML = '<div class="sp-empty">Necesitás una butaca para ver tus estadísticas.</div>'
-    ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = '0'
-    })
-    return
-  }
+  body.innerHTML = '<div class="sp-loading">Cargando resultados…</div>'
 
   try {
-    // Fuente de verdad: Supabase (vote_plain se guarda en el commit)
-    const { data, error } = await sb.rpc('get_my_vote_history', { p_seat_number: MY_SEAT })
+    const { data, error } = await sb.rpc('get_all_question_results')
     if (error) throw error
     _renderStatsPanel(data || [])
   } catch(e) {
     console.error('abrirEstadisticas:', e)
-    body.innerHTML = '<div class="sp-empty">Error al cargar estadísticas.<br>Intentá de nuevo.</div>'
+    body.innerHTML = '<div class="sp-empty">Error al cargar resultados.<br>Intentá de nuevo.</div>'
   }
 }
 
@@ -5636,57 +5712,33 @@ function cerrarEstadisticas() {
 function _renderStatsPanel(rows) {
   const body = document.getElementById('sp-body')
   if (!rows || rows.length === 0) {
-    body.innerHTML = '<div class="sp-empty">Todavía no participaste en ninguna pregunta.</div>'
-    ;['sp-total-si','sp-total-no','sp-total-abs','sp-total-gan','sp-total-part'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.textContent = '0'
-    })
+    body.innerHTML = '<div class="sp-empty">No hay preguntas registradas aún.</div>'
     return
   }
 
-  let totSi = 0, totNo = 0, totAbs = 0, totGan = 0
-  rows.forEach(r => {
-    if (r.my_vote === 'si')  totSi++
-    if (r.my_vote === 'no')  totNo++
-    if (r.my_vote === 'abs') totAbs++
-    const ended = new Date(r.ends_at) < new Date()
-    if (ended) {
-      const si = Number(r.cnt_si), no = Number(r.cnt_no)
-      if ((r.my_vote === 'si' && si > no) || (r.my_vote === 'no' && no > si)) totGan++
-    }
-  })
-
-  document.getElementById('sp-total-si').textContent   = totSi
-  document.getElementById('sp-total-no').textContent   = totNo
-  document.getElementById('sp-total-abs').textContent  = totAbs
-  document.getElementById('sp-total-gan').textContent  = totGan
-  document.getElementById('sp-total-part').textContent = rows.length
-
   const html = rows.map(r => {
-    const theme   = (window._CAT_THEME[r.category] || _CAT_DEFAULT)
+    const theme   = (window._CAT_THEME?.[r.category] || _CAT_DEFAULT)
     const si      = Number(r.cnt_si), no = Number(r.cnt_no), abs = Number(r.cnt_abs)
-    const total   = Number(r.total_votes) || (si + no + abs)
     const revealed = si + no + abs
     const pctSi   = revealed > 0 ? ((si  / revealed) * 100).toFixed(0) : 0
     const pctNo   = revealed > 0 ? ((no  / revealed) * 100).toFixed(0) : 0
     const pctAbs  = revealed > 0 ? ((abs / revealed) * 100).toFixed(0) : 0
-    const ended   = new Date(r.ends_at) < new Date()
+    const ended   = r.ends_at ? new Date(r.ends_at) < new Date() : true
     const ganaSi  = si > no
-    const empate  = si === no && total > 0
+    const empate  = si === no && revealed > 0
 
     let resultBadge = ''
     if (!ended) {
       resultBadge = '<span class="sp-result-badge open">En curso</span>'
+    } else if (revealed === 0) {
+      resultBadge = '<span class="sp-result-badge tie">Sin votos</span>'
     } else if (empate) {
       resultBadge = '<span class="sp-result-badge tie">Empate</span>'
     } else {
-      const iWon = (r.my_vote === 'si' && ganaSi) || (r.my_vote === 'no' && !ganaSi && !empate)
-      resultBadge = iWon
-        ? '<span class="sp-result-badge won">✓ Ganaste</span>'
-        : '<span class="sp-result-badge lost">✗ Perdiste</span>'
+      resultBadge = ganaSi
+        ? '<span class="sp-result-badge won">✓ Ganó SÍ</span>'
+        : '<span class="sp-result-badge lost">✓ Ganó NO</span>'
     }
-
-    const myVoteLabels = { si:'Voté SÍ', no:'Voté NO', abs:'Me abstuve' }
-    const myVoteLbl    = myVoteLabels[r.my_vote] || r.my_vote
 
     const catPill = r.category
       ? `<span class="sp-q-pill" style="background:${theme.pill};color:${theme.txt}">${r.category}</span>`
@@ -5694,7 +5746,7 @@ function _renderStatsPanel(rows) {
 
     return `<div class="sp-q-card">
       <div class="sp-q-top">
-        <p class="sp-q-text">${r.question_text}</p>
+        <p class="sp-q-text">${r.text}</p>
         ${catPill}
       </div>
       <div class="sp-bars">
@@ -5718,7 +5770,7 @@ function _renderStatsPanel(rows) {
         </div>
       </div>
       <div class="sp-q-footer">
-        <span class="sp-my-vote ${r.my_vote}">${myVoteLbl}</span>
+        <span class="sp-bar-lbl" style="color:var(--mid);font-size:10px">${revealed} votos totales</span>
         ${resultBadge}
       </div>
     </div>`
@@ -5734,7 +5786,7 @@ function mpMarkDirty(field) {
 async function mpSaveField(field) {
   if (!_authUser) return
   const input = document.getElementById('mp-' + field + '-input')
-  const val = input.value.trim()
+  const val = sanitizeInput(input.value)
   const update = {}
   update[field] = val
   const { error } = await sb.from('profiles').update(update).eq('id', _authUser.id)
@@ -5849,12 +5901,27 @@ function togglePerfilPublico() { toggleVisibilidad('alias') }
 //  PROPONER PREGUNTA
 // ══════════════════════════════════════════════════════════════
 function abrirPropuesta() {
+  // Reset form
+  document.getElementById('pp-text').value = ''
+  document.getElementById('pp-context').value = ''
+  document.getElementById('pp-video').value = ''
+  document.getElementById('pp-links-list').innerHTML = ''
+  document.getElementById('pp-add-link-btn').disabled = false
+  document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
+  actualizarPropuesta()
+  ppContextCount()
   document.getElementById('propuesta-overlay').classList.add('open')
   setTimeout(() => document.getElementById('pp-text').focus(), 200)
 }
+
 function cerrarPropuesta() {
   document.getElementById('propuesta-overlay').classList.remove('open')
+  const iframe = document.getElementById('pp-video-iframe')
+  if (iframe) iframe.src = ''
+  const wrap = document.getElementById('pp-video-preview')
+  if (wrap) wrap.style.display = 'none'
 }
+
 function actualizarPropuesta() {
   const n = document.getElementById('pp-text').value.length
   const badge = document.getElementById('pp-char-badge')
@@ -5864,14 +5931,70 @@ function actualizarPropuesta() {
   }
   document.getElementById('pp-submit').disabled = n < 10
 }
+
+function ppContextCount() {
+  const n = document.getElementById('pp-context').value.length
+  const badge = document.getElementById('pp-context-badge')
+  if (badge) badge.textContent = n + '/1200'
+}
+
 function selCat(btn) {
   document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
   btn.classList.add('sel')
 }
+
+let _ppLinkCount = 0
+function ppAgregarLink() {
+  const list = document.getElementById('pp-links-list')
+  if (list.children.length >= 3) return
+  _ppLinkCount++
+  const id = 'pp-link-' + _ppLinkCount
+  const row = document.createElement('div')
+  row.className = 'pp-link-row'
+  row.id = id
+  row.innerHTML = `
+    <input type="url" placeholder="https://..." />
+    <button class="pp-link-remove" onclick="ppRemoveLink('${id}')">×</button>
+  `
+  list.appendChild(row)
+  if (list.children.length >= 3) {
+    document.getElementById('pp-add-link-btn').disabled = true
+  }
+}
+
+function ppRemoveLink(id) {
+  const row = document.getElementById(id)
+  if (row) row.remove()
+  document.getElementById('pp-add-link-btn').disabled = false
+}
+
+function _ppVideoPreview(url) {
+  const wrap = document.getElementById('pp-video-preview')
+  const iframe = document.getElementById('pp-video-iframe')
+  if (!wrap || !iframe) return
+  const embedUrl = _imYoutubeEmbed(url.trim())
+  if (embedUrl) {
+    iframe.referrerPolicy = 'origin'
+    iframe.src = embedUrl
+    wrap.style.display = ''
+  } else {
+    iframe.src = ''
+    wrap.style.display = 'none'
+  }
+}
+
 async function enviarPropuesta() {
-  const text = document.getElementById('pp-text').value.trim()
+  const text = sanitizeInput(document.getElementById('pp-text').value)
   const catEl = document.querySelector('.pp-cat.sel')
-  const cat = catEl ? catEl.textContent : 'General'
+  const cat = sanitizeInput(catEl ? catEl.textContent : 'General')
+  const context = sanitizeInput(document.getElementById('pp-context').value) || null
+  const video_url = sanitizeInput(document.getElementById('pp-video').value) || null
+
+  // Recolectar links no vacíos
+  const linkInputs = document.querySelectorAll('#pp-links-list .pp-link-row input')
+  const links = Array.from(linkInputs)
+    .map(i => sanitizeInput(i.value))
+    .filter(v => v.length > 0)
 
   if (!text || text.length < 10) return
   if (!MY_SEAT || MY_SEAT <= 0) { showToast('Necesitás una butaca verificada para proponer'); return }
@@ -5884,6 +6007,9 @@ async function enviarPropuesta() {
     seat_number: MY_SEAT,
     text,
     cat,
+    context,
+    links: links.length > 0 ? links : [],
+    video_url,
     likes: 0,
     status: 'pending'
   })
@@ -5891,16 +6017,13 @@ async function enviarPropuesta() {
   if (error) {
     showToast('Error al enviar: ' + (error.message || 'intente de nuevo'))
     btn.disabled = false
-    btn.textContent = 'Proponer al pleno →'
+    btn.textContent = 'Enviar al moderador →'
     return
   }
 
   cerrarPropuesta()
-  document.getElementById('pp-text').value = ''
-  actualizarPropuesta()
-  document.querySelectorAll('.pp-cat').forEach(b => b.classList.remove('sel'))
   mostrarFooter()
-  showToast('✓ Propuesta enviada al comité')
+  showToast('✓ Propuesta enviada. El moderador la revisará antes de publicarla.')
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -5935,12 +6058,15 @@ async function cargarPerfilesPublicos() {
         }
       })
     }
-  } catch(e) { console.warn('cargarPerfilesPublicos:', e) }
+  } catch(e) { 
+    console.warn('cargarPerfilesPublicos:', e) 
+    // console.log('warning 123')
+  }
 }
 
 async function cargarPreguntasActivas() {
   try {
-    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url').eq('status', 'activa').order('created_at')
+    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url, links').eq('status', 'activa').order('created_at')
     if (data && data.length > 0) {
       PREGUNTAS      = data.map(q => q.text)
       PREGUNTAS_IDS  = data.map(q => q.id)
@@ -6052,7 +6178,7 @@ function renderQCards() {
     card.style.borderColor = theme.pill
     card.innerHTML = `
       <div class="q-card-inner" onclick="abrirInfoModal(${i})">
-        ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${qdata.category}</span>` : ''}
+        ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${escapeHtml(qdata.category)}</span>` : ''}
         <div class="q-card-btn-group">
           <button onclick="event.stopPropagation();archivarPregunta('${qdata.id}')" title="Archivar">
             <svg width="11" height="3" viewBox="0 0 14 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1.5" x2="13" y2="1.5"/></svg>
@@ -6061,7 +6187,7 @@ function renderQCards() {
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
           </button>
         </div>
-        <p class="q-card-text">${qdata.text}</p>
+        <p class="q-card-text">${escapeHtml(qdata.text)}</p>
       </div>
       <div class="q-card-countdown" style="background:${theme.cd};border-top-color:${theme.pill}">
         <div class="q-card-countdown-left">
@@ -6250,8 +6376,8 @@ function renderQuestionsTab() {
     row.innerHTML = `
       <div class="pq-item-dot" style="background:${theme.pill}"></div>
       <div class="pq-item-body">
-        ${qdata.category ? `<p class="pq-item-cat">${qdata.category}</p>` : ''}
-        <p class="pq-item-text">${qdata.text}</p>
+        ${qdata.category ? `<p class="pq-item-cat">${escapeHtml(qdata.category)}</p>` : ''}
+        <p class="pq-item-text">${escapeHtml(qdata.text)}</p>
         <p class="pq-item-sub">${ended ? 'Finalizada' : 'En curso'}</p>
       </div>
       <button class="pq-insert-btn" onclick="insertarPregunta('${qdata.id}')">Insertar</button>`
@@ -6504,7 +6630,24 @@ function _dpAppendMsg(msg, isMine) {
 }
 
 function escapeHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  if (s == null) return ''
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;')
+}
+
+// Sanitiza texto de usuario antes de guardar en DB:
+// elimina tags HTML/script y caracteres de control
+function sanitizeInput(s) {
+  if (s == null) return ''
+  return String(s)
+    .replace(/<[^>]*>/g, '')           // strip HTML tags
+    .replace(/javascript\s*:/gi, '')   // strip javascript: URIs
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // strip control chars
+    .trim()
 }
 
 async function _loadDebateMessages(questionId) {
@@ -6615,7 +6758,7 @@ async function dpEnviar() {
   if (_debateEnded) return
   if (_dpHandState !== 'ready') return   // solo puede hablar si la mano está verde
   const inp = document.getElementById('dp-input')
-  const txt = inp.value.trim()
+  const txt = sanitizeInput(inp.value)
   if (!txt || !_debateQId || !MY_SEAT) return
   inp.value = ''
   inp.disabled = true
@@ -6768,10 +6911,20 @@ function abrirInfoModal(i) {
   const videoWrap = document.getElementById('im-video-wrap')
   const videoCont = document.getElementById('im-video-container')
   if (qdata.video_url) {
+    videoCont.innerHTML = ''
     const ytEmbed = _imYoutubeEmbed(qdata.video_url)
-    videoCont.innerHTML = ytEmbed
-      ? `<iframe src="${ytEmbed}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
-      : `<video src="${qdata.video_url}" controls></video>`
+    if (ytEmbed) {
+      const iframe = document.createElement('iframe')
+      iframe.setAttribute('allowfullscreen', '')
+      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+      iframe.referrerPolicy = 'origin'
+      iframe.src = ytEmbed
+      videoCont.appendChild(iframe)
+    } else {
+      const vid = document.createElement('video')
+      vid.src = qdata.video_url; vid.controls = true
+      videoCont.appendChild(vid)
+    }
     videoWrap.style.display = ''
   } else {
     videoWrap.style.display = 'none'; videoCont.innerHTML = ''
@@ -6783,8 +6936,19 @@ function abrirInfoModal(i) {
   if (qdata.description) { descEl.textContent = qdata.description; descWrap.style.display = '' }
   else descWrap.style.display = 'none'
 
+  // Links
+  const linksWrap = document.getElementById('im-links-wrap')
+  const linksEl   = document.getElementById('im-links')
+  const links = Array.isArray(qdata.links) ? qdata.links.filter(Boolean) : []
+  if (links.length) {
+    linksEl.innerHTML = links.map(url => `<a class="im-link-item" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`).join('')
+    linksWrap.style.display = ''
+  } else {
+    linksWrap.style.display = 'none'; linksEl.innerHTML = ''
+  }
+
   // Hide im-body if no content at all
-  document.getElementById('im-body').style.display = (qdata.video_url || qdata.description) ? '' : 'none'
+  document.getElementById('im-body').style.display = (qdata.video_url || qdata.description || links.length) ? '' : 'none'
 
   document.getElementById('info-modal-overlay').classList.add('open')
 }
@@ -8014,15 +8178,15 @@ async function renderOtrasPropuestas() {
     const alias = _profilesCache[p.seat_number]?.alias || `Butaca #${p.seat_number}`
     const init  = alias.slice(0, 2).toUpperCase()
     const date  = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
-    const txt   = p.text.length > 110 ? p.text.slice(0, 110) + '…' : p.text
+    const txt   = escapeHtml(p.text.length > 110 ? p.text.slice(0, 110) + '…' : p.text)
     return `<div class="otras-prop-card" onclick="abrirUserProfile(${p.seat_number},'propuestas');cerrarSocialPanel()">
       <div class="otras-prop-author">
         <div class="otras-prop-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${init}</div>
-        <span class="otras-prop-alias">${alias}</span>
+        <span class="otras-prop-alias">${escapeHtml(alias)}</span>
       </div>
       <p class="otras-prop-text">${txt}</p>
       <div class="otras-prop-meta">
-        <span class="otras-prop-cat">${p.cat}</span>
+        <span class="otras-prop-cat">${escapeHtml(p.cat)}</span>
         <span class="otras-prop-likes">
           <svg width="11" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           ${p.likes}
@@ -8062,11 +8226,11 @@ async function renderPropuestas() {
     const date = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
     return `<div class="prop-card-v2">
       <div class="prop-card-v2-top">
-        <p class="prop-card-v2-text">${p.text.length > 90 ? p.text.slice(0,90) + '…' : p.text}</p>
+        <p class="prop-card-v2-text">${escapeHtml(p.text.length > 90 ? p.text.slice(0,90) + '…' : p.text)}</p>
         <span class="prop-status-pill ${statusClass[p.status] || 'pending'}">${statusLabel[p.status] || 'En revisión'}</span>
       </div>
       <div class="prop-card-v2-meta">
-        <span class="prop-cat-tag">${p.cat}</span>
+        <span class="prop-cat-tag">${escapeHtml(p.cat)}</span>
         <span class="prop-likes">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           ${p.likes}
@@ -8124,8 +8288,8 @@ function slmShowTab(tab) {
     return `<div class="slm-user-card">
       <div class="slm-uav" style="background:${color}">${initials}</div>
       <div class="slm-uinfo">
-        <div class="slm-uname">${alias}</div>
-        ${phrase ? `<div class="slm-uphrase">"${phrase}"</div>` : ''}
+        <div class="slm-uname">${escapeHtml(alias)}</div>
+        ${phrase ? `<div class="slm-uphrase">"${escapeHtml(phrase)}"</div>` : ''}
         <div class="slm-umeta">${votes} votaciones · Butaca #${seatNum}</div>
       </div>
       <button class="slm-ver-btn" onclick="abrirUserProfile(${seatNum},'${tab}')">Ver perfil</button>
@@ -8284,9 +8448,9 @@ async function upmLoadProposals() {
     const likeN   = p.likes || 0
     const date    = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
     return `<div class="upm-prop-card" id="upm-prop-${p.id}">
-      <p class="upm-prop-text">${p.text}</p>
+      <p class="upm-prop-text">${escapeHtml(p.text)}</p>
       <div class="upm-prop-footer">
-        <span class="upm-prop-cat">${p.cat}</span>
+        <span class="upm-prop-cat">${escapeHtml(p.cat)}</span>
         <span style="font-size:10px;color:var(--mid);margin-left:6px">${statusLabel[p.status]||'En revisión'}</span>
         <span style="font-size:10px;color:var(--mid);margin-left:auto;margin-right:8px">${date}</span>
         <button class="upm-comment-btn" onclick="upmToggleComments('${p.id}')">
@@ -8349,8 +8513,8 @@ async function upmToggleComments(propId) {
     return `<div class="upm-comment-row">
       <div class="upm-cmt-av" style="background:${AVATAR_COLORS[cIdx]}">${init}</div>
       <div class="upm-cmt-bubble">
-        <div class="upm-cmt-name">${alias}</div>
-        <div class="upm-cmt-text">${c.text}</div>
+        <div class="upm-cmt-name">${escapeHtml(alias)}</div>
+        <div class="upm-cmt-text">${escapeHtml(c.text)}</div>
       </div>
     </div>`
   }).join('')
@@ -8441,7 +8605,7 @@ function upmRenderMessages(msgs) {
 
 async function upmSendMsg() {
   const inp  = document.getElementById('upm-msg-input')
-  const text = inp?.value?.trim()
+  const text = sanitizeInput(inp?.value)
   if (!text || !MY_SEAT || !_upmSeat) return
   inp.value = ''
   inp.disabled = true
@@ -8482,7 +8646,7 @@ function _renderMensajes() {
         <div class="sf-req-top">
           <div class="sf-req-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
           <div class="sf-req-info">
-            <div class="sf-req-name">${alias}</div>
+            <div class="sf-req-name">${escapeHtml(alias)}</div>
             <div class="sf-req-sub">quiere seguirte</div>
           </div>
         </div>
@@ -8508,10 +8672,10 @@ function _renderMensajes() {
         <div class="sf-msg-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <span style="font-size:12px;font-weight:700;color:var(--dark)">${alias}</span>
+            <span style="font-size:12px;font-weight:700;color:var(--dark)">${escapeHtml(alias)}</span>
             <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;background:#ef4444;color:#fff;margin-left:auto">${conv.count}</span>
           </div>
-          <p class="sf-msg-preview">${preview}</p>
+          <p class="sf-msg-preview">${escapeHtml(preview)}</p>
         </div>
         <span class="sf-msg-time">${t}</span>
       </div>`
@@ -8527,8 +8691,8 @@ function _renderMensajes() {
       return `<div class="sf-msg-row" style="cursor:pointer" onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')">
         <div class="sf-msg-av" style="background:#f76a1e;color:#fff;font-size:14px">📣</div>
         <div class="sf-msg-info">
-          <p class="sf-msg-alias" style="font-weight:700">${alias}</p>
-          <p class="sf-msg-preview">${n.message}</p>
+          <p class="sf-msg-alias" style="font-weight:700">${escapeHtml(alias)}</p>
+          <p class="sf-msg-preview">${escapeHtml(n.message)}</p>
         </div>
         <span class="sf-msg-time">${t}</span>
       </div>`
@@ -8582,11 +8746,11 @@ function renderSocial(type) {
     source.map(s => {
     const initials = s.alias.slice(0, 2).toUpperCase()
     const ci = s.seat % AVATAR_COLORS_CONVO.length
-    const phrase = s.phrase ? (s.phrase.slice(0, 55) + (s.phrase.length > 55 ? '…' : '')) : `Butaca #${s.seat}`
+    const phrase = escapeHtml(s.phrase ? s.phrase.slice(0, 55) + (s.phrase.length > 55 ? '…' : '') : `Butaca #${s.seat}`)
     return `<div class="sf-social-row">
       <div class="sf-soc-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${initials}</div>
       <div class="sf-soc-info">
-        <p class="sf-soc-name">${s.alias}</p>
+        <p class="sf-soc-name">${escapeHtml(s.alias)}</p>
         <p class="sf-soc-sub">${phrase}</p>
       </div>
       <button class="sf-soc-btn" onclick="abrirUserProfile(${s.seat});cerrarSocialPanel()">Ver</button>
@@ -8610,63 +8774,8 @@ function simularRespuestasSeguidores(propIdx) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  SISTEMA — mantenimiento, anuncios y reporte de errores
+//  SISTEMA — modales legales
 // ══════════════════════════════════════════════════════════════
-
-// ── Suscripción a system_config (realtime) ───────────────────
-function initSystemConfigRealtime() {
-  sb.channel('system-config-live')
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'system_config'
-    }, payload => {
-      const row = payload.new
-      if (!row) return
-      if (row.key === 'maintenance_mode') _applyMaintenance(row.value)
-      if (row.key === 'announcement')     _applyAnnouncement(row.value)
-    })
-    .subscribe()
-
-  // Cargar estado inicial
-  _loadSystemConfig()
-}
-
-async function _loadSystemConfig() {
-  try {
-    const { data } = await sb.from('system_config').select('key, value')
-    if (!data) return
-    data.forEach(row => {
-      if (row.key === 'maintenance_mode') _applyMaintenance(row.value)
-      if (row.key === 'announcement')     _applyAnnouncement(row.value)
-    })
-  } catch(e) { console.warn('system_config load:', e) }
-}
-
-function _applyMaintenance(val) {
-  const overlay = document.getElementById('maint-overlay')
-  if (!overlay) return
-  if (val?.active) {
-    document.getElementById('maint-msg').textContent = val.message || 'El sistema está en mantenimiento.'
-    overlay.classList.add('active')
-  } else {
-    overlay.classList.remove('active')
-  }
-}
-
-function _applyAnnouncement(val) {
-  const bar = document.getElementById('sys-announcement')
-  if (!bar) return
-  if (val?.active && val.text) {
-    document.getElementById('sys-announcement-text').textContent = val.text
-    bar.className = ''
-    bar.classList.add(val.type || 'info')
-    bar.style.display = 'flex'
-  } else {
-    bar.style.display = 'none'
-  }
-}
-
-// Llamar al iniciar la app (antes del login)
-;(async () => { initSystemConfigRealtime() })()
 
 // ── Modales legales ──────────────────────────────────────────
 function abrirModalPrivacidad() {
@@ -8680,7 +8789,7 @@ function abrirModalAyuda() {
 }
 
 async function enviarPreguntaAyuda() {
-  const msg = document.getElementById('ayuda-pregunta').value.trim()
+  const msg = sanitizeInput(document.getElementById('ayuda-pregunta').value)
   if (!msg) return
   try {
     await sb.from('bug_reports').insert({
@@ -8718,7 +8827,7 @@ function cerrarBugReport() {
 }
 
 async function enviarBugReport() {
-  const msg = document.getElementById('bug-message').value.trim()
+  const msg = sanitizeInput(document.getElementById('bug-message').value)
   if (!msg) return
   const btn = document.getElementById('bug-send-btn')
   btn.disabled = true; btn.textContent = 'Enviando…'
@@ -8742,4 +8851,526 @@ async function enviarBugReport() {
 function _syncBugFab() {
   const lnk = document.getElementById('footer-bug-link')
   if (lnk) lnk.style.display = _authUser ? '' : 'none'
+}
+
+// ══════════════════════════════════════════════════════════════
+//  AUDITORIO
+// ══════════════════════════════════════════════════════════════
+let _audChannel        = null
+let _audSessionChannel = null
+let _audPresenceState  = {}
+let _audCurrentSession = null
+
+// Canvas state
+let _audCv = null, _audCtx2 = null
+let _audCamX = 0, _audCamY = 0, _audZoom = 1
+let _audDragState = null
+let _audPresentSet = new Set()
+let _audRafId = null
+let _audMuted = false   // estado de mute del video
+let _audTouchDist = 0
+
+async function abrirAuditorio() {
+  document.getElementById('auditorio-overlay').classList.add('open')
+  await _audLoadSession()
+  _audJoinPresence()
+  _audSubscribeSession()
+  // Init canvas after transition
+  setTimeout(_audCanvasInit, 320)
+}
+
+function cerrarAuditorio() {
+  document.getElementById('auditorio-overlay').classList.remove('open')
+  const vc = document.getElementById('aud-video-container')
+  if (vc) { const fr = vc.querySelector('iframe'); if (fr) fr.remove() }
+  if (_audChannel)        { sb.removeChannel(_audChannel);        _audChannel = null }
+  if (_audSessionChannel) { sb.removeChannel(_audSessionChannel); _audSessionChannel = null }
+  _audPresenceState = {}
+  _audCanvasDestroy()
+}
+
+// ── Canvas interactivo ──────────────────────────────────────
+function _audCanvasInit() {
+  const wrap = document.getElementById('aud-canvas-wrap')
+  const cv   = document.getElementById('aud-hemi-canvas')
+  if (!wrap || !cv) return
+  _audCv  = cv
+  _audCtx2 = cv.getContext('2d')
+  _audCanvasResize()
+  _audFit()
+  _audDraw()
+
+  // Show "Mi butaca" btn if applicable
+  const meBtn = document.getElementById('aud-goto-me-btn')
+  if (meBtn) meBtn.style.display = MY_SEAT > 0 ? '' : 'none'
+
+  cv.addEventListener('mousedown',  _audMD)
+  cv.addEventListener('wheel',      _audWheel, { passive: false })
+  cv.addEventListener('touchstart', _audTS, { passive: true })
+  cv.addEventListener('touchmove',  _audTM, { passive: false })
+  cv.addEventListener('touchend',   _audTE, { passive: true })
+  window.addEventListener('mousemove', _audMV)
+  window.addEventListener('mouseup',   _audMU)
+}
+
+function _audCanvasDestroy() {
+  if (_audCv) {
+    _audCv.removeEventListener('mousedown',  _audMD)
+    _audCv.removeEventListener('wheel',      _audWheel)
+    _audCv.removeEventListener('touchstart', _audTS)
+    _audCv.removeEventListener('touchmove',  _audTM)
+    _audCv.removeEventListener('touchend',   _audTE)
+  }
+  window.removeEventListener('mousemove', _audMV)
+  window.removeEventListener('mouseup',   _audMU)
+  if (_audRafId) { cancelAnimationFrame(_audRafId); _audRafId = null }
+  _audCv = null; _audCtx2 = null; _audDragState = null
+}
+
+function _audCanvasResize() {
+  if (!_audCv) return
+  const wrap = document.getElementById('aud-canvas-wrap')
+  if (!wrap) return
+  const W = wrap.clientWidth, H = wrap.clientHeight
+  _audCv.width  = W * devicePixelRatio
+  _audCv.height = H * devicePixelRatio
+  _audCv.style.width  = W + 'px'
+  _audCv.style.height = H + 'px'
+}
+
+function _audFit() {
+  if (!_audCv || !SEATS || !SEATS.length || bx1 === bx0) return
+  const W = _audCv.width, H = _audCv.height
+  _audZoom = Math.min(W * 0.88 / (bx1 - bx0), H * 0.88 / (by1 - by0))
+  _audCamX = -((bx0 + bx1) / 2) * _audZoom
+  _audCamY = -((by0 + by1) / 2) * _audZoom  // sin flip-Y
+}
+
+function _audGoToMe() {
+  if (!_audCv || MY_SEAT <= 0) return
+  const me = SEATS.find(s => s.num === MY_SEAT)
+  if (!me) return
+  // Zoom in y centrar exactamente en mi butaca
+  const W = _audCv.width, H = _audCv.height
+  const fitZoom = Math.min(W * 0.88 / (bx1 - bx0), H * 0.88 / (by1 - by0))
+  _audZoom = Math.max(fitZoom * 4, _audZoom)
+  _audCamX = -me.x * _audZoom
+  _audCamY = -me.y * _audZoom  // sin flip-Y
+  _audDraw()
+}
+
+// Mouse/touch handlers
+function _audMD(e) {
+  _audDragState = { sx: e.clientX, sy: e.clientY, cx: _audCamX, cy: _audCamY }
+}
+function _audMV(e) {
+  if (!_audDragState) return
+  _audCamX = _audDragState.cx + (e.clientX - _audDragState.sx) * devicePixelRatio
+  _audCamY = _audDragState.cy + (e.clientY - _audDragState.sy) * devicePixelRatio
+  _audDraw()
+}
+function _audMU() { _audDragState = null }
+function _audWheel(e) {
+  e.preventDefault()
+  const f = e.deltaY < 0 ? 1.12 : 0.9
+  _audZoom = Math.max(0.2, Math.min(12, _audZoom * f))
+  _audDraw()
+}
+function _audTS(e) {
+  if (e.touches.length === 1) {
+    _audDragState = { sx: e.touches[0].clientX, sy: e.touches[0].clientY, cx: _audCamX, cy: _audCamY }
+  } else if (e.touches.length === 2) {
+    _audTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+  }
+}
+function _audTM(e) {
+  e.preventDefault()
+  if (e.touches.length === 1 && _audDragState) {
+    _audCamX = _audDragState.cx + (e.touches[0].clientX - _audDragState.sx) * devicePixelRatio
+    _audCamY = _audDragState.cy + (e.touches[0].clientY - _audDragState.sy) * devicePixelRatio
+  } else if (e.touches.length === 2) {
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY)
+    if (_audTouchDist > 0) _audZoom = Math.max(0.2, Math.min(12, _audZoom * (d / _audTouchDist)))
+    _audTouchDist = d
+  }
+  _audDraw()
+}
+function _audTE() { _audDragState = null }
+
+function _audDraw() {
+  if (_audRafId) cancelAnimationFrame(_audRafId)
+  _audRafId = requestAnimationFrame(_audDrawFrame)
+}
+
+function _audDrawFrame() {
+  _audRafId = null
+  const ctx = _audCtx2, cv = _audCv
+  if (!ctx || !cv || !SEATS || !SEATS.length) return
+
+  const W = cv.width, H = cv.height
+  ctx.clearRect(0, 0, W, H)
+  ctx.save()
+  ctx.translate(W / 2 + _audCamX, H / 2 + _audCamY)
+  ctx.scale(_audZoom, _audZoom)  // sin flip-Y: hemiciclo orientado con podio arriba (hacia el video)
+
+  const zInv = 1 / _audZoom
+  const dotR  = Math.max(4,   8  * zInv)
+  const litR  = Math.max(9,   16 * zInv)
+
+  // Background dots
+  ctx.fillStyle = 'rgba(255,255,255,0.14)'
+  SEATS.forEach(s => {
+    if (_audPresentSet.has(s.num) || s.num === MY_SEAT) return
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, dotR, 0, Math.PI * 2)
+    ctx.fill()
+  })
+
+  // Present seats with glow
+  SEATS.forEach(s => {
+    const isMe      = MY_SEAT > 0 && s.num === MY_SEAT
+    const isPresent = _audPresentSet.has(s.num)
+    if (!isPresent && !isMe) return
+
+    const color = '#F5A623'
+    // Outer glow
+    ctx.globalAlpha = 0.12
+    ctx.fillStyle = color
+    ctx.beginPath(); ctx.arc(s.x, s.y, litR * 3.5, 0, Math.PI * 2); ctx.fill()
+    ctx.globalAlpha = 0.22
+    ctx.beginPath(); ctx.arc(s.x, s.y, litR * 2,   0, Math.PI * 2); ctx.fill()
+    // Core dot
+    ctx.globalAlpha = 1
+    ctx.shadowColor = color
+    ctx.shadowBlur  = 18 * zInv
+    ctx.fillStyle   = color
+    ctx.beginPath(); ctx.arc(s.x, s.y, litR, 0, Math.PI * 2); ctx.fill()
+    ctx.shadowBlur  = 0
+    // Pulse ring + extra halo for my seat
+    if (isMe) {
+      ctx.globalAlpha = 0.6
+      ctx.strokeStyle = color
+      ctx.lineWidth   = 2.5 * zInv
+      ctx.beginPath(); ctx.arc(s.x, s.y, litR * 2.2, 0, Math.PI * 2); ctx.stroke()
+      ctx.globalAlpha = 0.25
+      ctx.beginPath(); ctx.arc(s.x, s.y, litR * 3.5, 0, Math.PI * 2); ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+  })
+
+  ctx.restore()
+}
+
+async function _audLoadSession() {
+  try {
+    const { data } = await sb.from('auditorio_sessions')
+      .select('*').eq('is_active', true).limit(1).maybeSingle()
+    _audCurrentSession = data || null
+  } catch(e) { _audCurrentSession = null }
+  _audRender()
+}
+
+function _audSubscribeSession() {
+  if (_audSessionChannel) sb.removeChannel(_audSessionChannel)
+  _audSessionChannel = sb.channel('auditorio-session-watch')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'auditorio_sessions' }, () => {
+      _audLoadSession()
+    })
+    .subscribe()
+}
+
+function _audJoinPresence() {
+  if (_audChannel) sb.removeChannel(_audChannel)
+  _audChannel = sb.channel('auditorio-live', { config: { presence: { key: String(MY_SEAT || 0) } } })
+
+  _audChannel
+    .on('presence', { event: 'sync' }, () => {
+      _audPresenceState = _audChannel.presenceState()
+      _audUpdatePresence()
+    })
+    .on('broadcast', { event: 'reaction' }, ({ payload }) => {
+      _audShowFloatReaction(payload.emoji)
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED' && MY_SEAT > 0) {
+        await _audChannel.track({ seat: MY_SEAT, at: Date.now() })
+      }
+    })
+}
+
+function _audUpdatePresence() {
+  const presentSeats = new Set()
+  Object.values(_audPresenceState).forEach(list =>
+    list.forEach(p => { if (p.seat > 0) presentSeats.add(p.seat) })
+  )
+  const countEl = document.getElementById('aud-count')
+  const viewerWrap = document.getElementById('aud-viewer-count')
+  if (countEl) countEl.textContent = presentSeats.size
+  if (viewerWrap) viewerWrap.style.display = presentSeats.size > 0 ? 'flex' : 'none'
+  _audRenderHemi([...presentSeats])
+}
+
+function _audRender() {
+  const hasSession = !!_audCurrentSession
+  const empty   = document.getElementById('aud-empty')
+  const content = document.getElementById('aud-session-content')
+  const liveBadge = document.getElementById('aud-live-badge')
+  const titleEl   = document.getElementById('aud-title')
+  const descEl    = document.getElementById('aud-session-desc')
+
+  if (!hasSession) {
+    if (empty)   empty.style.display   = ''
+    if (content) content.style.display = 'none'
+    if (liveBadge) liveBadge.style.display = 'none'
+    if (titleEl) titleEl.textContent = 'Auditorio'
+    if (descEl)  descEl.style.display = 'none'
+    return
+  }
+
+  const s = _audCurrentSession
+  if (empty)   empty.style.display   = 'none'
+  if (content) content.style.display = ''
+  if (liveBadge) liveBadge.style.display = ''
+  if (titleEl) titleEl.textContent = s.title || 'Auditorio'
+  if (descEl) {
+    descEl.textContent = s.description || ''
+    descEl.style.display = s.description ? '' : 'none'
+  }
+
+  // Detectar tipo de video
+  const url      = s.url || ''
+  const ytEmbed  = url ? _imYoutubeEmbed(url) : null
+  const stage    = document.getElementById('aud-video-stage')
+  const videoContainer = document.getElementById('aud-video-container')
+  const joinWrap = document.getElementById('aud-join-wrap')
+  const noStream = document.getElementById('aud-no-stream')
+
+  const showEl = (el, on) => { if (el) el.style.display = on ? '' : 'none' }
+
+  if (ytEmbed) {
+    // YouTube live — autoplay, sin controles
+    showEl(stage,    true)
+    showEl(joinWrap, false)
+    showEl(noStream, false)
+    if (videoContainer) {
+      // Reemplazar solo el iframe, sin tocar el overlay ni el botón mute
+      const old = videoContainer.querySelector('iframe')
+      if (old) old.remove()
+      const iframe = document.createElement('iframe')
+      iframe.referrerPolicy = 'origin'
+      iframe.setAttribute('allowfullscreen', '')
+      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+      // autoplay=1, controls=0, enablejsapi=1 para postMessage mute
+      // mute=1 es necesario para que autoplay funcione sin interacción previa
+      _audMuted = false
+      iframe.src = ytEmbed + '&autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&disablekb=1&iv_load_policy=3&playsinline=1&enablejsapi=1'
+      // Insertar al principio para que el overlay y el botón queden encima
+      videoContainer.insertBefore(iframe, videoContainer.firstChild)
+      // Mostrar botón mute (ícono de silenciado al inicio)
+      _audUpdateMuteBtn()
+    }
+    // Info bar
+    const sesLbl = document.getElementById('aud-video-session-lbl')
+    if (sesLbl) sesLbl.textContent = s.title || ''
+  } else if (url) {
+    // Link externo (Zoom, Meet, etc.)
+    showEl(stage,    false)
+    showEl(joinWrap, true)
+    showEl(noStream, false)
+    const btn   = document.getElementById('aud-join-btn')
+    const title = document.getElementById('aud-join-title')
+    if (btn) btn.href = url
+    if (url.includes('meet.google')) {
+      if (title) title.textContent = 'Sesión en Google Meet'
+      if (btn)   btn.textContent   = 'Abrir Google Meet →'
+    } else if (url.includes('zoom.us')) {
+      if (title) title.textContent = 'Sesión en Zoom'
+      if (btn)   btn.textContent   = 'Abrir Zoom →'
+    } else {
+      if (title) title.textContent = 'Sesión en vivo'
+      if (btn)   btn.textContent   = 'Abrir sesión →'
+    }
+  } else {
+    // Sin URL — transmisión no iniciada
+    showEl(stage,    false)
+    showEl(joinWrap, false)
+    showEl(noStream, true)
+  }
+}
+
+function _audRenderHemi(presentSeats) {
+  _audPresentSet = new Set(presentSeats)
+  const canvas   = document.getElementById('aud-canvas-wrap')
+  const noViewers = document.getElementById('aud-no-viewers')
+  if (canvas)    canvas.style.display    = presentSeats.length ? '' : 'none'
+  if (noViewers) noViewers.style.display = presentSeats.length ? 'none' : ''
+  if (_audCv) _audDraw()
+  // Actualizar contador de espectadores en la info bar
+  const countLbl = document.getElementById('aud-video-count-lbl')
+  if (countLbl) {
+    const n = presentSeats.length
+    countLbl.textContent = n === 1 ? '1 viendo' : `${n} viendo`
+  }
+}
+
+function _audToggleMute() {
+  _audMuted = !_audMuted
+  const iframe = document.querySelector('#aud-video-container iframe')
+  if (iframe && iframe.contentWindow) {
+    const cmd = _audMuted ? 'mute' : 'unMute'
+    iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: cmd, args: '' }), '*')
+  }
+  _audUpdateMuteBtn()
+}
+function _audUpdateMuteBtn() {
+  const on  = document.getElementById('aud-mute-icon-on')
+  const off = document.getElementById('aud-mute-icon-off')
+  if (on)  on.style.display  = _audMuted ? 'none' : ''
+  if (off) off.style.display = _audMuted ? '' : 'none'
+}
+
+function _audRenderHemi_UNUSED(presentSeats) {
+  const svg = document.getElementById('aud-hemi-canvas')
+  if (!svg) return
+
+  const noViewers = document.getElementById('aud-no-viewers')
+
+  if (!presentSeats.length) {
+    svg.style.display = 'none'
+    if (noViewers) noViewers.style.display = ''
+    return
+  }
+
+  svg.style.display = ''
+  if (noViewers) noViewers.style.display = 'none'
+
+  // Arcos generados centrados — forma ∪ (público mirando al escenario/video arriba)
+  const W = 640, H = 230
+  const cx = W / 2, cy = -16  // centro del arco encima del SVG
+  const A0 = 22 * Math.PI / 180
+  const A1 = 158 * Math.PI / 180
+  const arcRows = [
+    { r: 65,  n: 14 },
+    { r: 100, n: 22 },
+    { r: 136, n: 30 },
+    { r: 172, n: 38 },
+    { r: 207, n: 45 },
+  ]
+  const R_MIN = arcRows[0].r, R_MAX = arcRows[arcRows.length - 1].r
+
+  const stageLabel =
+    `<line x1="${W*0.18}" y1="5" x2="${W*0.82}" y2="5" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>` +
+    `<text x="${W/2}" y="16" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="Manrope,sans-serif" letter-spacing="0.08em">ESCENARIO</text>`
+
+  // ── Fondo: arcos limpios grises ──
+  let bgDots = ''
+  arcRows.forEach(({ r, n }) => {
+    for (let i = 0; i < n; i++) {
+      const t = n > 1 ? i / (n - 1) : 0.5
+      const a = A0 + t * (A1 - A0)
+      bgDots += `<circle cx="${(cx + r * Math.cos(a)).toFixed(1)}" cy="${(cy + r * Math.sin(a)).toFixed(1)}" r="2.2" fill="rgba(255,255,255,0.13)"/>`
+    }
+  })
+
+  // ── Butacas presentes: mapeo angular usando posiciones reales del SEATS array ──
+  let glowDots = ''
+  const hasRealSeats = SEATS && SEATS.length > 0 && bx1 > bx0
+
+  if (hasRealSeats) {
+    // Centro del hemiciclo: medio en X, mínimo en Y (base del arco / podio)
+    const hcx = (bx0 + bx1) / 2
+    const hcy = by0
+    const maxR = Math.max(by1 - by0, (bx1 - bx0) / 2) || 1
+
+    const presentSet = new Set(presentSeats)
+    SEATS.forEach(s => {
+      if (!presentSet.has(s.num)) return
+
+      const dx = s.x - hcx
+      const dy = Math.max(0, s.y - hcy)  // forzar dy >= 0 (hemiciclo superior)
+      const r   = Math.sqrt(dx * dx + dy * dy)
+      // Ángulo: 0 = ala derecha, π/2 = centro, π = ala izquierda
+      const angle = Math.atan2(dy, dx)
+      const t     = Math.max(0, Math.min(1, angle / Math.PI))
+      const rowT  = Math.max(0, Math.min(1, r / maxR))
+
+      // Convertir a posición en el arco generado
+      const arcAngle = A0 + t * (A1 - A0)
+      const arcR     = R_MIN + rowT * (R_MAX - R_MIN)
+      const gx = (cx + arcR * Math.cos(arcAngle)).toFixed(1)
+      const gy = (cy + arcR * Math.sin(arcAngle)).toFixed(1)
+
+      glowDots +=
+        `<circle cx="${gx}" cy="${gy}" r="20" fill="#F5A623" opacity=".06"/>` +
+        `<circle cx="${gx}" cy="${gy}" r="12" fill="#F5A623" opacity=".16"/>` +
+        `<circle cx="${gx}" cy="${gy}" r="6"  fill="#F5A623" opacity=".95" filter="url(#aud-glow)"><title>Butaca #${s.num}</title></circle>`
+    })
+  } else {
+    // Fallback: proporcional por número de butaca (cuando SEATS aún no cargó)
+    const maxSeat = (typeof SEAT_CAPACITY !== 'undefined' && SEAT_CAPACITY > 0) ? SEAT_CAPACITY : 300
+    const totalDots = arcRows.reduce((s, r) => s + r.n, 0)
+    const dotPos = []
+    arcRows.forEach(({ r, n }) => {
+      for (let i = 0; i < n; i++) {
+        const t = n > 1 ? i / (n - 1) : 0.5
+        const a = A0 + t * (A1 - A0)
+        dotPos.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) })
+      }
+    })
+    presentSeats.forEach(seatNum => {
+      const idx = Math.max(0, Math.min(totalDots - 1, Math.round(((seatNum - 1) / maxSeat) * (totalDots - 1))))
+      const { x: gx, y: gy } = dotPos[idx]
+      glowDots +=
+        `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="20" fill="#F5A623" opacity=".06"/>` +
+        `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="12" fill="#F5A623" opacity=".16"/>` +
+        `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="6"  fill="#F5A623" opacity=".95" filter="url(#aud-glow)"/>`
+    })
+  }
+
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+  svg.innerHTML =
+    `<defs><filter id="aud-glow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter></defs>` +
+    stageLabel + bgDots + glowDots
+}
+
+function audReaccionar(emoji) {
+  if (!_audChannel) return
+  _audChannel.send({ type: 'broadcast', event: 'reaction', payload: { emoji } })
+  _audShowFloatReaction(emoji)
+}
+
+function _audShowFloatReaction(emoji) {
+  const area = document.getElementById('aud-float-area')
+  if (!area) return
+  const el = document.createElement('div')
+  el.className = 'aud-float-reaction'
+  el.textContent = emoji
+  el.style.left = (15 + Math.random() * 70) + '%'
+  area.appendChild(el)
+  setTimeout(() => el.remove(), 2500)
+}
+
+// Badge en nav cuando hay sesión activa (check al iniciar sesión)
+async function _audCheckActiveBadge() {
+  try {
+    const { data } = await sb.from('auditorio_sessions')
+      .select('id').eq('is_active', true).limit(1).maybeSingle()
+    const badge = document.getElementById('nav-auditorio-badge')
+    if (badge) badge.style.display = data ? '' : 'none'
+  } catch(e) {}
+}
+
+function _audInitBadgeRealtime() {
+  sb.channel('auditorio-badge-watch')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'auditorio_sessions' }, () => {
+      _audCheckActiveBadge()
+      // Si el auditorio está abierto, recargar sesión
+      if (document.getElementById('auditorio-overlay')?.classList.contains('open')) {
+        _audLoadSession()
+      }
+    })
+    .subscribe()
 }
