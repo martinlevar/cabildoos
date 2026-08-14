@@ -9106,8 +9106,8 @@ function _audRender() {
       iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
       // autoplay=1, controls=0, enablejsapi=1 para postMessage mute
       // mute=1 es necesario para que autoplay funcione sin interacción previa
-      _audMuted = true
-      iframe.src = ytEmbed + '&autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&disablekb=1&iv_load_policy=3&playsinline=1&enablejsapi=1&mute=1'
+      _audMuted = false
+      iframe.src = ytEmbed + '&autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&disablekb=1&iv_load_policy=3&playsinline=1&enablejsapi=1'
       // Insertar al principio para que el overlay y el botón queden encima
       videoContainer.insertBefore(iframe, videoContainer.firstChild)
       // Mostrar botón mute (ícono de silenciado al inicio)
