@@ -18,10 +18,7 @@ run_worker_first = true
 SUPABASE_URL = "https://ayxscmxmnoguktfgveud.supabase.co"
 API_ENDPOINT = "https://api.cabildodevenezuela.com"
 
-[[secrets_store_secrets]]
-binding = "CDV_SUPABASE_TOKEN"
-store_id = "306364b29ae849d7962941c0838b73b0"
-secret_name = "CDV_SUPABASE_TOKEN"
+# SUPABASE_KEY se inyecta como wrangler secret via GitHub Actions
 
 [observability]
 enabled = false

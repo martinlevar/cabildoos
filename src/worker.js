@@ -56,8 +56,8 @@ export default {
       return response;
     }
 
-    // Resolve secret + read vars
-    const supabaseKey = await env.CDV_SUPABASE_TOKEN.get();
+    // Resolve secret
+    const supabaseKey = env.SUPABASE_KEY;
     const config = {
       SUPABASE_URL: `${url.origin}/sb`,
       SUPABASE_KEY: supabaseKey,
