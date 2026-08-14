@@ -2103,7 +2103,23 @@
 
       <!-- Video embed -->
       <div id="aud-video-wrap">
-        <div id="aud-video-container"></div>
+
+        <!-- YouTube live — autoplay, sin controles -->
+        <div id="aud-video-stage" style="display:none">
+          <div id="aud-video-container"></div>
+          <div id="aud-video-info-bar">
+            <div id="aud-video-info-left">
+              <span id="aud-video-live-pill">● EN VIVO</span>
+              <span id="aud-video-session-lbl"></span>
+            </div>
+            <div id="aud-video-info-right">
+              <svg width="13" height="12" viewBox="0 0 13 12" fill="none"><circle cx="4.5" cy="3.5" r="2.5" fill="currentColor"/><path d="M0 11c0-2.76 2.01-5 4.5-5s4.5 2.24 4.5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="10.5" cy="3" r="2" fill="currentColor" opacity=".5"/></svg>
+              <span id="aud-video-count-lbl">0 viendo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Link externo (no YouTube) -->
         <div id="aud-join-wrap" style="display:none">
           <div id="aud-join-inner">
             <div id="aud-join-icon">📹</div>
@@ -2112,6 +2128,19 @@
             <a id="aud-join-btn" href="#" target="_blank" rel="noopener" class="aud-join-link">Unirse a la sesión →</a>
           </div>
         </div>
+
+        <!-- Sin URL / transmisión no iniciada -->
+        <div id="aud-no-stream" style="display:none">
+          <div id="aud-no-stream-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M15 10l4.553-2.069A1 1 0 0 1 21 8.87v6.26a1 1 0 0 1-1.447.894L15 14"/><rect x="2" y="7" width="13" height="10" rx="2.5"/><line x1="2" y1="2" x2="22" y2="22" stroke-width="1.8"/></svg>
+          </div>
+          <p id="aud-no-stream-title">La transmisión aún no comenzó</p>
+          <p id="aud-no-stream-sub">Cuando el administrador inicie la sesión en vivo aparecerá aquí automáticamente</p>
+          <div id="aud-no-stream-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+
       </div>
 
       <!-- Reactions -->

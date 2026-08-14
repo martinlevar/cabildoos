@@ -9081,39 +9081,56 @@ function _audRender() {
   }
 
   // Detectar tipo de video
-  const url = s.url || ''
-  const ytEmbed = _imYoutubeEmbed(url)
+  const url      = s.url || ''
+  const ytEmbed  = url ? _imYoutubeEmbed(url) : null
+  const stage    = document.getElementById('aud-video-stage')
   const videoContainer = document.getElementById('aud-video-container')
   const joinWrap = document.getElementById('aud-join-wrap')
+  const noStream = document.getElementById('aud-no-stream')
 
-  if (ytEmbed && videoContainer) {
-    videoContainer.style.display = ''
-    if (joinWrap) joinWrap.style.display = 'none'
-    videoContainer.innerHTML = ''
-    const iframe = document.createElement('iframe')
-    iframe.referrerPolicy = 'origin'
-    iframe.setAttribute('allowfullscreen', '')
-    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
-    iframe.src = ytEmbed
-    videoContainer.appendChild(iframe)
-  } else if (videoContainer) {
-    videoContainer.style.display = 'none'
-    if (joinWrap) joinWrap.style.display = ''
-    const btn = document.getElementById('aud-join-btn')
-    if (btn) {
-      btn.href = url
-      const title = document.getElementById('aud-join-title')
-      if (url.includes('meet.google')) {
-        if (title) title.textContent = 'Sesión en Google Meet'
-        btn.textContent = 'Abrir Google Meet →'
-      } else if (url.includes('zoom.us')) {
-        if (title) title.textContent = 'Sesión en Zoom'
-        btn.textContent = 'Abrir Zoom →'
-      } else {
-        if (title) title.textContent = 'Sesión en vivo'
-        btn.textContent = 'Abrir sesión →'
-      }
+  const showEl = (el, on) => { if (el) el.style.display = on ? '' : 'none' }
+
+  if (ytEmbed) {
+    // YouTube live — autoplay, sin controles
+    showEl(stage,    true)
+    showEl(joinWrap, false)
+    showEl(noStream, false)
+    if (videoContainer) {
+      videoContainer.innerHTML = ''
+      const iframe = document.createElement('iframe')
+      iframe.referrerPolicy = 'origin'
+      iframe.setAttribute('allowfullscreen', '')
+      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture')
+      // autoplay=1, controls=0, sin botón de play visible
+      iframe.src = ytEmbed + '&autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&fs=0&disablekb=1&iv_load_policy=3&playsinline=1'
+      videoContainer.appendChild(iframe)
     }
+    // Info bar
+    const sesLbl = document.getElementById('aud-video-session-lbl')
+    if (sesLbl) sesLbl.textContent = s.title || ''
+  } else if (url) {
+    // Link externo (Zoom, Meet, etc.)
+    showEl(stage,    false)
+    showEl(joinWrap, true)
+    showEl(noStream, false)
+    const btn   = document.getElementById('aud-join-btn')
+    const title = document.getElementById('aud-join-title')
+    if (btn) btn.href = url
+    if (url.includes('meet.google')) {
+      if (title) title.textContent = 'Sesión en Google Meet'
+      if (btn)   btn.textContent   = 'Abrir Google Meet →'
+    } else if (url.includes('zoom.us')) {
+      if (title) title.textContent = 'Sesión en Zoom'
+      if (btn)   btn.textContent   = 'Abrir Zoom →'
+    } else {
+      if (title) title.textContent = 'Sesión en vivo'
+      if (btn)   btn.textContent   = 'Abrir sesión →'
+    }
+  } else {
+    // Sin URL — transmisión no iniciada
+    showEl(stage,    false)
+    showEl(joinWrap, false)
+    showEl(noStream, true)
   }
 }
 
@@ -9124,6 +9141,12 @@ function _audRenderHemi(presentSeats) {
   if (canvas)    canvas.style.display    = presentSeats.length ? '' : 'none'
   if (noViewers) noViewers.style.display = presentSeats.length ? 'none' : ''
   if (_audCv) _audDraw()
+  // Actualizar contador de espectadores en la info bar
+  const countLbl = document.getElementById('aud-video-count-lbl')
+  if (countLbl) {
+    const n = presentSeats.length
+    countLbl.textContent = n === 1 ? '1 viendo' : `${n} viendo`
+  }
 }
 
 function _audRenderHemi_UNUSED(presentSeats) {
