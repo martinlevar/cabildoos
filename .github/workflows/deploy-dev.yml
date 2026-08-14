@@ -18,7 +18,7 @@ jobs:
 
       - name: Inject env vars into HTML
         run: |
-          ENV_SCRIPT='<script>window.__ENV={"SUPABASE_URL":"https://ayxscmxmnoguktfgveud.supabase.co/sb","SUPABASE_KEY":"${{ secrets.SUPABASE_ANON_KEY }}","API_ENDPOINT":"https://api.cabildodevenezuela.com"};<\/script>'
+          ENV_SCRIPT='<script>window.__ENV={"SUPABASE_URL":"https://dev.cabildodevenezuela.com/sb","SUPABASE_KEY":"${{ secrets.SUPABASE_ANON_KEY }}","API_ENDPOINT":"https://api.cabildodevenezuela.com"};<\/script>'
           sed -i "s|</head>|${ENV_SCRIPT}</head>|" dist/index.html
 
       - name: Deploy Worker
