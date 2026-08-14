@@ -8941,6 +8941,7 @@ function _audRenderHemi(presentSeats) {
   if (!svg) return
 
   const noViewers = document.getElementById('aud-no-viewers')
+  const W = 640, H = 260, padX = 20, padY = 22
 
   if (!presentSeats.length) {
     svg.style.display = 'none'
@@ -8951,30 +8952,54 @@ function _audRenderHemi(presentSeats) {
   svg.style.display = ''
   if (noViewers) noViewers.style.display = 'none'
 
+  // "ESCENARIO" hint at top — shared by both fallback and real render
+  const stageLabel =
+    `<line x1="${W*0.2}" y1="4" x2="${W*0.8}" y2="4" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linecap="round"/>` +
+    `<text x="${W/2}" y="15" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.2)" font-family="Manrope,sans-serif" letter-spacing="0.08em">ESCENARIO</text>`
+
   if (!SEATS || SEATS.length === 0 || bx1 === bx0) {
-    // Fallback: mostrar puntos en círculo simple
-    const cx = 200, cy = 170, r = 140
-    const dots = presentSeats.map((seat, i) => {
-      const a = Math.PI + (i / Math.max(presentSeats.length - 1, 1)) * Math.PI
-      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a)
-      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#F5A623" opacity=".9"><title>Butaca #${seat}</title></circle>`
-    }).join('')
-    svg.innerHTML = `<defs><filter id="ag"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>${dots}`
+    // Fallback: arcos invertidos (público mirando hacia arriba / al video)
+    const cx = W / 2, cy = -20
+    const rows = [{ r: 80, n: 10 }, { r: 120, n: 16 }, { r: 160, n: 22 }, { r: 200, n: 28 }, { r: 238, n: 34 }]
+    const A0 = 20 * Math.PI / 180, A1 = 160 * Math.PI / 180
+    let allIdx = 0
+    const sortedSeats = [...presentSeats]
+    const litSet = new Set(sortedSeats.slice(0, rows.reduce((s, r) => s + r.n, 0)))
+    let dots = '', litCount = 0
+    rows.forEach(({ r, n }) => {
+      for (let i = 0; i < n; i++) {
+        const t = n > 1 ? i / (n - 1) : 0.5
+        const a = A0 + t * (A1 - A0)
+        const x = (cx + r * Math.cos(a)).toFixed(1)
+        const y = (cy + r * Math.sin(a)).toFixed(1)
+        const on = litCount < presentSeats.length && allIdx % Math.max(1, Math.floor((rows.reduce((s, rr) => s + rr.n, 0)) / Math.max(presentSeats.length, 1))) === 0
+        if (on) {
+          litCount++
+          dots += `<circle cx="${x}" cy="${y}" r="6" fill="#F5A623" opacity=".95"/><circle cx="${x}" cy="${y}" r="10" fill="#F5A623" opacity=".15"/>`
+        } else {
+          dots += `<circle cx="${x}" cy="${y}" r="2.2" fill="rgba(255,255,255,0.13)"/>`
+        }
+        allIdx++
+      }
+    })
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
+    svg.innerHTML = stageLabel + dots
     return
   }
 
-  // Usar posiciones reales del hemiciclo
-  const W = 400, H = 200, padX = 18, padY = 12
+  // Usar posiciones reales del hemiciclo — INVERTIDO: arcos abren hacia arriba (público mirando al escenario/video)
   const rangeX = bx1 - bx0 || 1
   const rangeY = by1 - by0 || 1
   const sc = Math.min((W - padX*2) / rangeX, (H - padY*2) / rangeY)
+  // Flip Y: by1 (back rows) → top, by0 (front rows) → bottom
+  // This inverts the hemiciclo so arcs open upward toward the video
   const toSvg = (x, y) => ({
     sx: padX + (x - bx0) * sc,
-    sy: H - padY - (y - by0) * sc
+    sy: padY + (by1 - y) * sc
   })
 
   const presentSet = new Set(presentSeats)
-  const step = Math.max(1, Math.floor(SEATS.length / 200))
+  const step = Math.max(1, Math.floor(SEATS.length / 300))
   const bgDots = [], presenceDots = []
 
   SEATS.forEach((s, idx) => {
@@ -8986,16 +9011,18 @@ function _audRenderHemi(presentSeats) {
     }
   })
 
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
   svg.innerHTML =
     `<defs><filter id="ag" x="-80%" y="-80%" width="260%" height="260%">
       <feGaussianBlur stdDeviation="2.5" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter></defs>` +
-    bgDots.map(d => `<circle cx="${d.sx.toFixed(1)}" cy="${d.sy.toFixed(1)}" r="1.4" fill="rgba(255,255,255,0.12)"/>`).join('') +
+    stageLabel +
+    bgDots.map(d => `<circle cx="${d.sx.toFixed(1)}" cy="${d.sy.toFixed(1)}" r="1.5" fill="rgba(255,255,255,0.12)"/>`).join('') +
     presenceDots.map(d =>
-      `<circle cx="${d.sx.toFixed(1)}" cy="${d.sy.toFixed(1)}" r="4.5" fill="#F5A623" filter="url(#ag)" opacity=".95">
-        <title>Butaca #${d.num}</title>
-       </circle>`
+      `<circle cx="${d.sx.toFixed(1)}" cy="${d.sy.toFixed(1)}" r="5" fill="#F5A623" filter="url(#ag)" opacity=".95">
+        <title>Butaca #${d.num}</title></circle>` +
+      `<circle cx="${d.sx.toFixed(1)}" cy="${d.sy.toFixed(1)}" r="9" fill="#F5A623" opacity=".15"/>`
     ).join('')
 }
 
