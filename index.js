@@ -2273,10 +2273,14 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 // ══════════════════════════════════════════════════════════════
 
 let _authUser = null     // usuario logueado actual
+let _betaActive = false  // si el código beta es requerido para registrarse
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
 // Detectar flujo de recovery desde el hash de la URL (sincrónico, antes del await)
 let _isPasswordRecovery = new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery'
+
+// Cargar estado beta antes de auth para que el form de registro ya lo refleje
+_loadBetaActive()
 
 // Inicializar auth al cargar
 ;(async () => {
@@ -2540,9 +2544,32 @@ function irAlCongreso() {
 }
 
 // ── Abrir / cerrar modal ──
+// ── Beta code: cargar estado y aplicar al form ────────────────
+async function _loadBetaActive() {
+  try {
+    const { data } = await sb.from('system_config')
+      .select('value').eq('key', 'beta_active').single()
+    _betaActive = data?.value === true || data?.value === 'true'
+  } catch(e) { _betaActive = false }
+  _applyBetaCodeField()
+}
+
+function _applyBetaCodeField() {
+  const wrap = document.getElementById('reg-code-wrap')
+  if (!wrap) return
+  wrap.style.display = _betaActive ? '' : 'none'
+  // Si no se requiere código, limpiar el campo para que no interfiera
+  if (!_betaActive) {
+    const inp = document.getElementById('reg-code')
+    if (inp) inp.value = ''
+  }
+  authCheckRegistro()
+}
+
 function abrirAuth(tab = 'registro') {
   authSetTab(tab)
   document.getElementById('auth-overlay').classList.add('open')
+  if (tab === 'registro') _applyBetaCodeField()
 }
 function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
@@ -2635,7 +2662,8 @@ function authCheckRegistro() {
   }
 
   const code = document.getElementById('reg-code')?.value.trim()
-  const ok = aliasOk && email.includes('@') && pass.length >= 8 && code?.length >= 4
+  const codeOk = !_betaActive || (code?.length >= 4)
+  const ok = aliasOk && email.includes('@') && pass.length >= 8 && codeOk
   document.getElementById('reg-btn').disabled = !ok
 }
 
