@@ -8826,7 +8826,7 @@ async function abrirAuditorio() {
 function cerrarAuditorio() {
   document.getElementById('auditorio-overlay').classList.remove('open')
   const vc = document.getElementById('aud-video-container')
-  if (vc) vc.innerHTML = ''
+  if (vc) { const fr = vc.querySelector('iframe'); if (fr) fr.remove() }
   if (_audChannel)        { sb.removeChannel(_audChannel);        _audChannel = null }
   if (_audSessionChannel) { sb.removeChannel(_audSessionChannel); _audSessionChannel = null }
   _audPresenceState = {}
