@@ -8845,10 +8845,6 @@ function _audJoinPresence() {
   if (_audChannel) sb.removeChannel(_audChannel)
   _audChannel = sb.channel('auditorio-live', { config: { presence: { key: String(MY_SEAT || 0) } } })
 
-  if (MY_SEAT > 0) {
-    _audChannel.track({ seat: MY_SEAT, at: Date.now() })
-  }
-
   _audChannel
     .on('presence', { event: 'sync' }, () => {
       _audPresenceState = _audChannel.presenceState()
@@ -8857,7 +8853,11 @@ function _audJoinPresence() {
     .on('broadcast', { event: 'reaction' }, ({ payload }) => {
       _audShowFloatReaction(payload.emoji)
     })
-    .subscribe()
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED' && MY_SEAT > 0) {
+        await _audChannel.track({ seat: MY_SEAT, at: Date.now() })
+      }
+    })
 }
 
 function _audUpdatePresence() {
