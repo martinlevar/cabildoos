@@ -8951,56 +8951,96 @@ function _audRenderHemi(presentSeats) {
   svg.style.display = ''
   if (noViewers) noViewers.style.display = 'none'
 
-  // Arcos limpios centrados — público mirando hacia arriba al escenario/video (forma ∪)
-  // Centro del arco ENCIMA del SVG; arcos se abren hacia abajo mostrando el auditorio
-  const W = 640, H = 260
-  const cx = W / 2, cy = -18
-  const A0 = 22 * Math.PI / 180  // 22° desde la horizontal
-  const A1 = 158 * Math.PI / 180 // 158°
-  const rows = [
-    { r: 72,  n: 15 },
-    { r: 112, n: 24 },
-    { r: 152, n: 33 },
-    { r: 192, n: 41 },
-    { r: 230, n: 49 },
+  // Arcos generados centrados — forma ∪ (público mirando al escenario/video arriba)
+  const W = 640, H = 230
+  const cx = W / 2, cy = -16  // centro del arco encima del SVG
+  const A0 = 22 * Math.PI / 180
+  const A1 = 158 * Math.PI / 180
+  const arcRows = [
+    { r: 65,  n: 14 },
+    { r: 100, n: 22 },
+    { r: 136, n: 30 },
+    { r: 172, n: 38 },
+    { r: 207, n: 45 },
   ]
-  const totalDots = rows.reduce((s, r) => s + r.n, 0) // 162 puntos
-
-  // Mapear butacas presentes → índice de punto visual
-  const maxSeat = (typeof SEAT_CAPACITY !== 'undefined' && SEAT_CAPACITY > 0 ? SEAT_CAPACITY : null)
-    || (SEATS && SEATS.length > 0 ? SEATS.length : 300)
-  const litDots = new Set()
-  presentSeats.forEach(seatNum => {
-    const idx = Math.round(((seatNum - 1) / maxSeat) * (totalDots - 1))
-    litDots.add(Math.max(0, Math.min(totalDots - 1, idx)))
-  })
+  const R_MIN = arcRows[0].r, R_MAX = arcRows[arcRows.length - 1].r
 
   const stageLabel =
     `<line x1="${W*0.18}" y1="5" x2="${W*0.82}" y2="5" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round"/>` +
     `<text x="${W/2}" y="16" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="Manrope,sans-serif" letter-spacing="0.08em">ESCENARIO</text>`
 
-  let html = stageLabel
-  let dotIdx = 0
-
-  rows.forEach(({ r, n }) => {
+  // ── Fondo: arcos limpios grises ──
+  let bgDots = ''
+  arcRows.forEach(({ r, n }) => {
     for (let i = 0; i < n; i++) {
       const t = n > 1 ? i / (n - 1) : 0.5
       const a = A0 + t * (A1 - A0)
-      const x = (cx + r * Math.cos(a)).toFixed(1)
-      const y = (cy + r * Math.sin(a)).toFixed(1)
-      const on = litDots.has(dotIdx)
-      if (on) {
-        html += `<circle cx="${x}" cy="${y}" r="6" fill="#F5A623" opacity=".95"><title>Presente</title></circle>`
-        html += `<circle cx="${x}" cy="${y}" r="11" fill="#F5A623" opacity=".14"/>`
-      } else {
-        html += `<circle cx="${x}" cy="${y}" r="2.3" fill="rgba(255,255,255,0.14)"/>`
-      }
-      dotIdx++
+      bgDots += `<circle cx="${(cx + r * Math.cos(a)).toFixed(1)}" cy="${(cy + r * Math.sin(a)).toFixed(1)}" r="2.2" fill="rgba(255,255,255,0.13)"/>`
     }
   })
 
+  // ── Butacas presentes: mapeo angular usando posiciones reales del SEATS array ──
+  let glowDots = ''
+  const hasRealSeats = SEATS && SEATS.length > 0 && bx1 > bx0
+
+  if (hasRealSeats) {
+    // Centro del hemiciclo: medio en X, mínimo en Y (base del arco / podio)
+    const hcx = (bx0 + bx1) / 2
+    const hcy = by0
+    const maxR = Math.max(by1 - by0, (bx1 - bx0) / 2) || 1
+
+    const presentSet = new Set(presentSeats)
+    SEATS.forEach(s => {
+      if (!presentSet.has(s.num)) return
+
+      const dx = s.x - hcx
+      const dy = Math.max(0, s.y - hcy)  // forzar dy >= 0 (hemiciclo superior)
+      const r   = Math.sqrt(dx * dx + dy * dy)
+      // Ángulo: 0 = ala derecha, π/2 = centro, π = ala izquierda
+      const angle = Math.atan2(dy, dx)
+      const t     = Math.max(0, Math.min(1, angle / Math.PI))
+      const rowT  = Math.max(0, Math.min(1, r / maxR))
+
+      // Convertir a posición en el arco generado
+      const arcAngle = A0 + t * (A1 - A0)
+      const arcR     = R_MIN + rowT * (R_MAX - R_MIN)
+      const gx = (cx + arcR * Math.cos(arcAngle)).toFixed(1)
+      const gy = (cy + arcR * Math.sin(arcAngle)).toFixed(1)
+
+      glowDots +=
+        `<circle cx="${gx}" cy="${gy}" r="20" fill="#F5A623" opacity=".06"/>` +
+        `<circle cx="${gx}" cy="${gy}" r="12" fill="#F5A623" opacity=".16"/>` +
+        `<circle cx="${gx}" cy="${gy}" r="6"  fill="#F5A623" opacity=".95" filter="url(#aud-glow)"><title>Butaca #${s.num}</title></circle>`
+    })
+  } else {
+    // Fallback: proporcional por número de butaca (cuando SEATS aún no cargó)
+    const maxSeat = (typeof SEAT_CAPACITY !== 'undefined' && SEAT_CAPACITY > 0) ? SEAT_CAPACITY : 300
+    const totalDots = arcRows.reduce((s, r) => s + r.n, 0)
+    const dotPos = []
+    arcRows.forEach(({ r, n }) => {
+      for (let i = 0; i < n; i++) {
+        const t = n > 1 ? i / (n - 1) : 0.5
+        const a = A0 + t * (A1 - A0)
+        dotPos.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) })
+      }
+    })
+    presentSeats.forEach(seatNum => {
+      const idx = Math.max(0, Math.min(totalDots - 1, Math.round(((seatNum - 1) / maxSeat) * (totalDots - 1))))
+      const { x: gx, y: gy } = dotPos[idx]
+      glowDots +=
+        `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="20" fill="#F5A623" opacity=".06"/>` +
+        `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="12" fill="#F5A623" opacity=".16"/>` +
+        `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="6"  fill="#F5A623" opacity=".95" filter="url(#aud-glow)"/>`
+    })
+  }
+
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`)
-  svg.innerHTML = html
+  svg.innerHTML =
+    `<defs><filter id="aud-glow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter></defs>` +
+    stageLabel + bgDots + glowDots
 }
 
 function audReaccionar(emoji) {
