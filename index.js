@@ -2675,7 +2675,7 @@ function authCheckLogin() {
 
 // ── Registro ──
 async function registrarse() {
-  const alias = document.getElementById('reg-alias').value.trim().toLowerCase()
+  const alias = sanitizeInput(document.getElementById('reg-alias').value).toLowerCase()
   const email = document.getElementById('reg-email').value.trim()
   const pass  = document.getElementById('reg-pass').value
   const btn   = document.getElementById('reg-btn')
@@ -5775,7 +5775,7 @@ function mpMarkDirty(field) {
 async function mpSaveField(field) {
   if (!_authUser) return
   const input = document.getElementById('mp-' + field + '-input')
-  const val = input.value.trim()
+  const val = sanitizeInput(input.value)
   const update = {}
   update[field] = val
   const { error } = await sb.from('profiles').update(update).eq('id', _authUser.id)
@@ -5973,16 +5973,16 @@ function _ppVideoPreview(url) {
 }
 
 async function enviarPropuesta() {
-  const text = document.getElementById('pp-text').value.trim()
+  const text = sanitizeInput(document.getElementById('pp-text').value)
   const catEl = document.querySelector('.pp-cat.sel')
-  const cat = catEl ? catEl.textContent : 'General'
-  const context = document.getElementById('pp-context').value.trim() || null
-  const video_url = document.getElementById('pp-video').value.trim() || null
+  const cat = sanitizeInput(catEl ? catEl.textContent : 'General')
+  const context = sanitizeInput(document.getElementById('pp-context').value) || null
+  const video_url = sanitizeInput(document.getElementById('pp-video').value) || null
 
   // Recolectar links no vacíos
   const linkInputs = document.querySelectorAll('#pp-links-list .pp-link-row input')
   const links = Array.from(linkInputs)
-    .map(i => i.value.trim())
+    .map(i => sanitizeInput(i.value))
     .filter(v => v.length > 0)
 
   if (!text || text.length < 10) return
@@ -6628,6 +6628,17 @@ function escapeHtml(s) {
     .replace(/'/g,'&#39;')
 }
 
+// Sanitiza texto de usuario antes de guardar en DB:
+// elimina tags HTML/script y caracteres de control
+function sanitizeInput(s) {
+  if (s == null) return ''
+  return String(s)
+    .replace(/<[^>]*>/g, '')           // strip HTML tags
+    .replace(/javascript\s*:/gi, '')   // strip javascript: URIs
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // strip control chars
+    .trim()
+}
+
 async function _loadDebateMessages(questionId) {
   const msgs = document.getElementById('dp-messages')
   msgs.innerHTML = '<div class="dp-loading">Cargando mensajes…</div>'
@@ -6736,7 +6747,7 @@ async function dpEnviar() {
   if (_debateEnded) return
   if (_dpHandState !== 'ready') return   // solo puede hablar si la mano está verde
   const inp = document.getElementById('dp-input')
-  const txt = inp.value.trim()
+  const txt = sanitizeInput(inp.value)
   if (!txt || !_debateQId || !MY_SEAT) return
   inp.value = ''
   inp.disabled = true
@@ -8583,7 +8594,7 @@ function upmRenderMessages(msgs) {
 
 async function upmSendMsg() {
   const inp  = document.getElementById('upm-msg-input')
-  const text = inp?.value?.trim()
+  const text = sanitizeInput(inp?.value)
   if (!text || !MY_SEAT || !_upmSeat) return
   inp.value = ''
   inp.disabled = true
@@ -8767,7 +8778,7 @@ function abrirModalAyuda() {
 }
 
 async function enviarPreguntaAyuda() {
-  const msg = document.getElementById('ayuda-pregunta').value.trim()
+  const msg = sanitizeInput(document.getElementById('ayuda-pregunta').value)
   if (!msg) return
   try {
     await sb.from('bug_reports').insert({
@@ -8805,7 +8816,7 @@ function cerrarBugReport() {
 }
 
 async function enviarBugReport() {
-  const msg = document.getElementById('bug-message').value.trim()
+  const msg = sanitizeInput(document.getElementById('bug-message').value)
   if (!msg) return
   const btn = document.getElementById('bug-send-btn')
   btn.disabled = true; btn.textContent = 'Enviando…'
