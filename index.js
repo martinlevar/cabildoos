@@ -4996,7 +4996,7 @@ async function _loadAndRenderConversaciones() {
     html += _pendingRequestsToMe.map(req => {
       const alias = _profilesCache[req.from_seat]?.alias || `Butaca #${req.from_seat}`
       return `<div class="sf-req-card">
-        <p>👤 <strong>${alias}</strong> quiere seguirte</p>
+        <p>👤 <strong>${escapeHtml(alias)}</strong> quiere seguirte</p>
         <div class="sf-req-btns">
           <button class="sf-req-accept" onclick="aceptarSolicitud('${req.id}',${req.from_seat})">✓ Aceptar</button>
           <button class="sf-req-reject" onclick="rechazarSolicitud('${req.id}',${req.from_seat})">✕ Rechazar</button>
@@ -5016,8 +5016,8 @@ async function _loadAndRenderConversaciones() {
       return `<div class="sf-convo-row" onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')">
         <div class="sf-convo-av" style="background:${AVATAR_COLORS_CONVO[ci]}">📣</div>
         <div class="sf-convo-info">
-          <p class="sf-convo-name">${alias}</p>
-          <p class="sf-convo-preview">${n.message}</p>
+          <p class="sf-convo-name">${escapeHtml(alias)}</p>
+          <p class="sf-convo-preview">${escapeHtml(n.message)}</p>
         </div>
         <div class="sf-convo-meta"><span class="sf-convo-time">${t}</span><span class="sf-convo-badge">!</span></div>
       </div>`
@@ -5057,8 +5057,8 @@ async function _loadAndRenderConversaciones() {
             ${c.unread > 0 ? '<span class="unread-dot"></span>' : ''}
           </div>
           <div class="sf-convo-info">
-            <p class="sf-convo-name">${alias}</p>
-            <p class="sf-convo-preview">${preview}</p>
+            <p class="sf-convo-name">${escapeHtml(alias)}</p>
+            <p class="sf-convo-preview">${escapeHtml(preview)}</p>
           </div>
           <div class="sf-convo-meta">
             <span class="sf-convo-time">${t}</span>
@@ -5249,7 +5249,7 @@ function _renderNotifPanel() {
     items.push({
       key: 'req_' + req.id, icBg: AVATAR_COLORS_CONVO[ci],
       icHtml: `<span style="font-size:14px;font-weight:800;color:#fff">${alias.slice(0,2).toUpperCase()}</span>`,
-      title: `<strong>${alias}</strong> quiere seguirte`,
+      title: `<strong>${escapeHtml(alias)}</strong> quiere seguirte`,
       sub: '', time: null, unread: true, noAction: true,
       extra: `<div class="notif-item-btns">
         <button class="notif-accept-btn" onclick="aceptarSolicitudNotif('${req.id}',${req.from_seat},event)">Aceptar</button>
@@ -5268,8 +5268,8 @@ function _renderNotifPanel() {
     items.push({
       key: 'msg_' + seat, icBg: '#E8F0FE',
       icHtml: '💬',
-      title: `<strong>${alias}</strong> te envió ${data.count > 1 ? data.count + ' mensajes' : 'un mensaje'}`,
-      sub: pre, time: data.lastTime, unread: true,
+      title: `<strong>${escapeHtml(alias)}</strong> te envió ${data.count > 1 ? data.count + ' mensajes' : 'un mensaje'}`,
+      sub: escapeHtml(pre), time: data.lastTime, unread: true,
       onclick: `abrirUserProfile(${n},'mensajes-inbox');cerrarNotifModal()`,
       order: 1,
     })
@@ -5281,8 +5281,8 @@ function _renderNotifPanel() {
     items.push({
       key: 'prop_' + n.id, icBg: '#FFF0E6',
       icHtml: '📣',
-      title: `<strong>${alias}</strong> publicó una nueva propuesta`,
-      sub: n.message || '', time: n.created_at, unread: !n.read_at,
+      title: `<strong>${escapeHtml(alias)}</strong> publicó una nueva propuesta`,
+      sub: escapeHtml(n.message || ''), time: n.created_at, unread: !n.read_at,
       onclick: `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}');cerrarNotifModal()`,
       order: 2,
     })
@@ -5409,7 +5409,7 @@ function _showNotifToast(n, alias) {
     max-width:340px; animation:toastIn .3s ease;
   `
   toast.innerHTML = `
-    <span>📣 <strong>${alias}</strong> publicó una propuesta</span>
+    <span>📣 <strong>${escapeHtml(alias)}</strong> publicó una propuesta</span>
     <button onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')"
       style="background:#fff;color:#1d1d1d;border:none;border-radius:8px;
              padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
@@ -6139,7 +6139,7 @@ function renderQCards() {
     card.style.borderColor = theme.pill
     card.innerHTML = `
       <div class="q-card-inner" onclick="abrirInfoModal(${i})">
-        ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${qdata.category}</span>` : ''}
+        ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${escapeHtml(qdata.category)}</span>` : ''}
         <div class="q-card-btn-group">
           <button onclick="event.stopPropagation();archivarPregunta('${qdata.id}')" title="Archivar">
             <svg width="11" height="3" viewBox="0 0 14 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1.5" x2="13" y2="1.5"/></svg>
@@ -6148,7 +6148,7 @@ function renderQCards() {
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
           </button>
         </div>
-        <p class="q-card-text">${qdata.text}</p>
+        <p class="q-card-text">${escapeHtml(qdata.text)}</p>
       </div>
       <div class="q-card-countdown" style="background:${theme.cd};border-top-color:${theme.pill}">
         <div class="q-card-countdown-left">
@@ -6337,8 +6337,8 @@ function renderQuestionsTab() {
     row.innerHTML = `
       <div class="pq-item-dot" style="background:${theme.pill}"></div>
       <div class="pq-item-body">
-        ${qdata.category ? `<p class="pq-item-cat">${qdata.category}</p>` : ''}
-        <p class="pq-item-text">${qdata.text}</p>
+        ${qdata.category ? `<p class="pq-item-cat">${escapeHtml(qdata.category)}</p>` : ''}
+        <p class="pq-item-text">${escapeHtml(qdata.text)}</p>
         <p class="pq-item-sub">${ended ? 'Finalizada' : 'En curso'}</p>
       </div>
       <button class="pq-insert-btn" onclick="insertarPregunta('${qdata.id}')">Insertar</button>`
@@ -6591,7 +6591,13 @@ function _dpAppendMsg(msg, isMine) {
 }
 
 function escapeHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  if (s == null) return ''
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;')
 }
 
 async function _loadDebateMessages(questionId) {
@@ -6885,7 +6891,7 @@ function abrirInfoModal(i) {
   const linksEl   = document.getElementById('im-links')
   const links = Array.isArray(qdata.links) ? qdata.links.filter(Boolean) : []
   if (links.length) {
-    linksEl.innerHTML = links.map(url => `<a class="im-link-item" href="${url}" target="_blank" rel="noopener">${url}</a>`).join('')
+    linksEl.innerHTML = links.map(url => `<a class="im-link-item" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>`).join('')
     linksWrap.style.display = ''
   } else {
     linksWrap.style.display = 'none'; linksEl.innerHTML = ''
@@ -8122,15 +8128,15 @@ async function renderOtrasPropuestas() {
     const alias = _profilesCache[p.seat_number]?.alias || `Butaca #${p.seat_number}`
     const init  = alias.slice(0, 2).toUpperCase()
     const date  = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
-    const txt   = p.text.length > 110 ? p.text.slice(0, 110) + '…' : p.text
+    const txt   = escapeHtml(p.text.length > 110 ? p.text.slice(0, 110) + '…' : p.text)
     return `<div class="otras-prop-card" onclick="abrirUserProfile(${p.seat_number},'propuestas');cerrarSocialPanel()">
       <div class="otras-prop-author">
         <div class="otras-prop-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${init}</div>
-        <span class="otras-prop-alias">${alias}</span>
+        <span class="otras-prop-alias">${escapeHtml(alias)}</span>
       </div>
       <p class="otras-prop-text">${txt}</p>
       <div class="otras-prop-meta">
-        <span class="otras-prop-cat">${p.cat}</span>
+        <span class="otras-prop-cat">${escapeHtml(p.cat)}</span>
         <span class="otras-prop-likes">
           <svg width="11" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           ${p.likes}
@@ -8170,11 +8176,11 @@ async function renderPropuestas() {
     const date = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
     return `<div class="prop-card-v2">
       <div class="prop-card-v2-top">
-        <p class="prop-card-v2-text">${p.text.length > 90 ? p.text.slice(0,90) + '…' : p.text}</p>
+        <p class="prop-card-v2-text">${escapeHtml(p.text.length > 90 ? p.text.slice(0,90) + '…' : p.text)}</p>
         <span class="prop-status-pill ${statusClass[p.status] || 'pending'}">${statusLabel[p.status] || 'En revisión'}</span>
       </div>
       <div class="prop-card-v2-meta">
-        <span class="prop-cat-tag">${p.cat}</span>
+        <span class="prop-cat-tag">${escapeHtml(p.cat)}</span>
         <span class="prop-likes">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           ${p.likes}
@@ -8232,8 +8238,8 @@ function slmShowTab(tab) {
     return `<div class="slm-user-card">
       <div class="slm-uav" style="background:${color}">${initials}</div>
       <div class="slm-uinfo">
-        <div class="slm-uname">${alias}</div>
-        ${phrase ? `<div class="slm-uphrase">"${phrase}"</div>` : ''}
+        <div class="slm-uname">${escapeHtml(alias)}</div>
+        ${phrase ? `<div class="slm-uphrase">"${escapeHtml(phrase)}"</div>` : ''}
         <div class="slm-umeta">${votes} votaciones · Butaca #${seatNum}</div>
       </div>
       <button class="slm-ver-btn" onclick="abrirUserProfile(${seatNum},'${tab}')">Ver perfil</button>
@@ -8392,9 +8398,9 @@ async function upmLoadProposals() {
     const likeN   = p.likes || 0
     const date    = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
     return `<div class="upm-prop-card" id="upm-prop-${p.id}">
-      <p class="upm-prop-text">${p.text}</p>
+      <p class="upm-prop-text">${escapeHtml(p.text)}</p>
       <div class="upm-prop-footer">
-        <span class="upm-prop-cat">${p.cat}</span>
+        <span class="upm-prop-cat">${escapeHtml(p.cat)}</span>
         <span style="font-size:10px;color:var(--mid);margin-left:6px">${statusLabel[p.status]||'En revisión'}</span>
         <span style="font-size:10px;color:var(--mid);margin-left:auto;margin-right:8px">${date}</span>
         <button class="upm-comment-btn" onclick="upmToggleComments('${p.id}')">
@@ -8457,8 +8463,8 @@ async function upmToggleComments(propId) {
     return `<div class="upm-comment-row">
       <div class="upm-cmt-av" style="background:${AVATAR_COLORS[cIdx]}">${init}</div>
       <div class="upm-cmt-bubble">
-        <div class="upm-cmt-name">${alias}</div>
-        <div class="upm-cmt-text">${c.text}</div>
+        <div class="upm-cmt-name">${escapeHtml(alias)}</div>
+        <div class="upm-cmt-text">${escapeHtml(c.text)}</div>
       </div>
     </div>`
   }).join('')
@@ -8590,7 +8596,7 @@ function _renderMensajes() {
         <div class="sf-req-top">
           <div class="sf-req-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
           <div class="sf-req-info">
-            <div class="sf-req-name">${alias}</div>
+            <div class="sf-req-name">${escapeHtml(alias)}</div>
             <div class="sf-req-sub">quiere seguirte</div>
           </div>
         </div>
@@ -8616,10 +8622,10 @@ function _renderMensajes() {
         <div class="sf-msg-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-            <span style="font-size:12px;font-weight:700;color:var(--dark)">${alias}</span>
+            <span style="font-size:12px;font-weight:700;color:var(--dark)">${escapeHtml(alias)}</span>
             <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px;background:#ef4444;color:#fff;margin-left:auto">${conv.count}</span>
           </div>
-          <p class="sf-msg-preview">${preview}</p>
+          <p class="sf-msg-preview">${escapeHtml(preview)}</p>
         </div>
         <span class="sf-msg-time">${t}</span>
       </div>`
@@ -8635,8 +8641,8 @@ function _renderMensajes() {
       return `<div class="sf-msg-row" style="cursor:pointer" onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')">
         <div class="sf-msg-av" style="background:#f76a1e;color:#fff;font-size:14px">📣</div>
         <div class="sf-msg-info">
-          <p class="sf-msg-alias" style="font-weight:700">${alias}</p>
-          <p class="sf-msg-preview">${n.message}</p>
+          <p class="sf-msg-alias" style="font-weight:700">${escapeHtml(alias)}</p>
+          <p class="sf-msg-preview">${escapeHtml(n.message)}</p>
         </div>
         <span class="sf-msg-time">${t}</span>
       </div>`
@@ -8690,11 +8696,11 @@ function renderSocial(type) {
     source.map(s => {
     const initials = s.alias.slice(0, 2).toUpperCase()
     const ci = s.seat % AVATAR_COLORS_CONVO.length
-    const phrase = s.phrase ? (s.phrase.slice(0, 55) + (s.phrase.length > 55 ? '…' : '')) : `Butaca #${s.seat}`
+    const phrase = escapeHtml(s.phrase ? s.phrase.slice(0, 55) + (s.phrase.length > 55 ? '…' : '') : `Butaca #${s.seat}`)
     return `<div class="sf-social-row">
       <div class="sf-soc-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${initials}</div>
       <div class="sf-soc-info">
-        <p class="sf-soc-name">${s.alias}</p>
+        <p class="sf-soc-name">${escapeHtml(s.alias)}</p>
         <p class="sf-soc-sub">${phrase}</p>
       </div>
       <button class="sf-soc-btn" onclick="abrirUserProfile(${s.seat});cerrarSocialPanel()">Ver</button>
