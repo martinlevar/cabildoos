@@ -2711,10 +2711,18 @@ async function registrarse() {
   btn.textContent = 'Creando cuenta…'
   msg.textContent = ''
 
+  const _regOrigin = window.location.origin
+  const _regRedirect = (_regOrigin && _regOrigin.startsWith('http'))
+    ? _regOrigin + window.location.pathname
+    : undefined
+
   const { data, error } = await sb.auth.signUp({
     email,
     password: pass,
-    options: { data: { alias } }
+    options: {
+      data: { alias },
+      ...(  _regRedirect ? { emailRedirectTo: _regRedirect } : {})
+    }
   })
 
   if (error) {
