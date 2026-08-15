@@ -2976,8 +2976,8 @@ let vpBarcodeScanTimer = null
 //   : 'https://cabildoos-api.onrender.com'  // Render deploy
 
 const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-  ? 'http://localhost:8000'
-  : 'https://api.cabildodevenezuela.com'  // via cloudflare
+  ? 'http://localhost:8787'
+  : 'https://verify.cabildodevenezuela.com'  // Cloudflare verification-worker
 
 
 function uuidv4() {
@@ -3123,7 +3123,7 @@ async function vpDocCapturarFrame(_unused) {
     const docCtrl = new AbortController()
     const docTimeout = setTimeout(() => docCtrl.abort(), 45000)
 
-    const resp = await fetch(`${VP_API_URL}/api/verify/documento`, {
+    const resp = await fetch(`${VP_API_URL}/verify/documento`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: docCtrl.signal,
@@ -4134,7 +4134,7 @@ async function vpVerificarLiveness(instruccion) {
       reader.onerror = rej
       reader.readAsDataURL(vpCapturedSelfie)
     })
-    const resp = await fetch(`${VP_API_URL}/api/verify/liveness`, {
+    const resp = await fetch(`${VP_API_URL}/verify/liveness`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_b64: b64, instruccion }),
@@ -4195,7 +4195,7 @@ async function vpPixelarDocumento(blob) {
       reader.onerror = rej
       reader.readAsDataURL(blob)
     })
-    const resp = await fetch(`${VP_API_URL}/api/verify/censurar-campos`, {
+    const resp = await fetch(`${VP_API_URL}/verify/censurar-campos`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ image_b64: b64 }),
@@ -4706,7 +4706,7 @@ async function vpEnviarVerificacion() {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30000)
 
-    const resp = await fetch(`${VP_API_URL}/api/verify/submit`, {
+    const resp = await fetch(`${VP_API_URL}/verify/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
@@ -4747,7 +4747,7 @@ function vpIniciarPolling(verification_id) {
   clearInterval(_vpPollingTimer)
   _vpPollingTimer = setInterval(async () => {
     try {
-      const resp = await fetch(`${VP_API_URL}/api/verify/status/${verification_id}`)
+      const resp = await fetch(`${VP_API_URL}/verify/status/${verification_id}`)
       if (!resp.ok) return
       const data = await resp.json()
 
