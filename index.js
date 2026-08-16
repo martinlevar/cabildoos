@@ -889,8 +889,8 @@ function _actualizarBtnButaca() {
 function mapButacaBtn() {
   if (MY_SEAT > 0) {
     resetCamera()
-  } else if (_isMaster()) {
-    // Master entra como observador — no tiene butaca ni necesita verificación
+  } else if (_isObserverMode()) {
+    // Observador — no tiene butaca ni necesita verificación
     showToast('Modo observador — sin butaca asignada')
   } else if (_authUser) {
     // Logueado pero sin verificar → ir a verificación
@@ -2279,12 +2279,19 @@ let _authUser = null     // usuario logueado actual
 let _betaActive = false  // si el código beta es requerido para registrarse
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
-// ── Master admin helper ────────────────────────────────────────────────────────
-// El usuario MASTER entra como observador: sin butaca, sin votar, sin preguntas.
-// Verificado con doble check para evitar suplantación.
+// ── Observer mode helpers ──────────────────────────────────────────────────────
+// El MASTER y los OBSERVADORES entran al cabildo sin butaca ni verificación.
+// Solo pueden ver; no pueden votar, debatir ni hacer preguntas.
 function _isMaster() {
   return _authUser?.app_metadata?.is_master === true
       && _authUser?.email === 'notagencydev@gmail.com'
+}
+function _isObserver() {
+  return _authUser?.app_metadata?.role === 'observer'
+}
+// Modo observador: master O usuario invitado como observador
+function _isObserverMode() {
+  return _isMaster() || _isObserver()
 }
 
 // Detectar flujo de recovery — soporta implicit flow (hash) y PKCE (query string)
@@ -2447,11 +2454,9 @@ async function _onLogin(user) {
       mostrarSelectorCabildos()
     }
   } else {
-    // ── Master admin: acceso de observador sin butaca ni verificación ──────
-    const _isMaster = user?.app_metadata?.is_master === true
-                   && user?.email === 'notagencydev@gmail.com'
-    if (_isMaster) {
-      voActualizarAlias('Master')
+    // ── Modo observador: master o usuario invitado como observer ──────────
+    if (_isObserverMode()) {
+      voActualizarAlias(_isMaster() ? 'Master' : (displayName || 'Observador'))
       mostrarSelectorCabildos()
       return
     }
@@ -4466,7 +4471,7 @@ function cerrarVerificacion() {
   if (mc) mc.style.pointerEvents = ''
   // Si el usuario no tiene butaca asignada (no verificado), volver a verify-onboard
   // para que no quede atrapado en congress sin identidad
-  if (_authUser && !MY_SEAT && !_isMaster()) {
+  if (_authUser && !MY_SEAT && !_isObserverMode()) {
     setTimeout(() => showScreen('verify-onboard'), 250)
   }
 }
@@ -5599,7 +5604,7 @@ function voIniciarVerificacion() {
 // ── Guard: redirige a verificación si el usuario no tiene butaca ─────────────
 function _requireButaca() {
   if (MY_SEAT > 0) return true   // verificado → permitir
-  if (_isMaster()) {
+  if (_isObserverMode()) {
     showToast('Modo observador — sin permiso para participar')
     return false
   }
@@ -6236,7 +6241,7 @@ function abrirVotoForQ(i) {
 }
 async function abrirDebateForQ(i) {
   if (!_authUser || !MY_SEAT) {
-    if (_isMaster()) {
+    if (_isObserverMode()) {
       showToast('Modo observador — sin permiso para participar en el debate')
     } else {
       showToast('Verificá tu identidad para participar en el debate')
@@ -7333,7 +7338,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
 // ══════════════════════════════════════════════════════════════
 function abrirModal() {
   if (!_authUser || !MY_SEAT) {
-    showToast(_isMaster() ? 'Modo observador — sin permiso para votar' : 'Verificá tu identidad para poder votar')
+    showToast(_isObserverMode() ? 'Modo observador — sin permiso para votar' : 'Verificá tu identidad para poder votar')
     return
   }
 
