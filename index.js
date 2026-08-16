@@ -2436,6 +2436,15 @@ async function _onLogin(user) {
       mostrarSelectorCabildos()
     }
   } else {
+    // ── Master admin: acceso de observador sin butaca ni verificación ──────
+    const _isMaster = user?.app_metadata?.is_master === true
+                   && user?.email === 'notagencydev@gmail.com'
+    if (_isMaster) {
+      voActualizarAlias('Master')
+      mostrarSelectorCabildos()
+      return
+    }
+    // ── Usuario normal sin butaca → flujo de verificación ─────────────────
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
     const lbl = document.getElementById('st-noident-label')
