@@ -889,6 +889,9 @@ function _actualizarBtnButaca() {
 function mapButacaBtn() {
   if (MY_SEAT > 0) {
     resetCamera()
+  } else if (_isMaster()) {
+    // Master entra como observador — no tiene butaca ni necesita verificación
+    showToast('Modo observador — sin butaca asignada')
   } else if (_authUser) {
     // Logueado pero sin verificar → ir a verificación
     showScreen('verify-onboard')
@@ -2275,6 +2278,14 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 let _authUser = null     // usuario logueado actual
 let _betaActive = false  // si el código beta es requerido para registrarse
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
+
+// ── Master admin helper ────────────────────────────────────────────────────────
+// El usuario MASTER entra como observador: sin butaca, sin votar, sin preguntas.
+// Verificado con doble check para evitar suplantación.
+function _isMaster() {
+  return _authUser?.app_metadata?.is_master === true
+      && _authUser?.email === 'notagencydev@gmail.com'
+}
 
 // Detectar flujo de recovery — soporta implicit flow (hash) y PKCE (query string)
 let _isPasswordRecovery = (
@@ -4455,7 +4466,7 @@ function cerrarVerificacion() {
   if (mc) mc.style.pointerEvents = ''
   // Si el usuario no tiene butaca asignada (no verificado), volver a verify-onboard
   // para que no quede atrapado en congress sin identidad
-  if (_authUser && !MY_SEAT) {
+  if (_authUser && !MY_SEAT && !_isMaster()) {
     setTimeout(() => showScreen('verify-onboard'), 250)
   }
 }
@@ -5588,6 +5599,10 @@ function voIniciarVerificacion() {
 // ── Guard: redirige a verificación si el usuario no tiene butaca ─────────────
 function _requireButaca() {
   if (MY_SEAT > 0) return true   // verificado → permitir
+  if (_isMaster()) {
+    showToast('Modo observador — sin permiso para participar')
+    return false
+  }
   if (_authUser) {
     // Logueado pero sin butaca → pantalla de verificación
     showScreen('verify-onboard')
@@ -6221,8 +6236,12 @@ function abrirVotoForQ(i) {
 }
 async function abrirDebateForQ(i) {
   if (!_authUser || !MY_SEAT) {
-    showToast('Verificá tu identidad para participar en el debate')
-    if (_authUser) showScreen('verify-onboard'); else abrirAuth('registro')
+    if (_isMaster()) {
+      showToast('Modo observador — sin permiso para participar en el debate')
+    } else {
+      showToast('Verificá tu identidad para participar en el debate')
+      if (_authUser) showScreen('verify-onboard'); else abrirAuth('registro')
+    }
     return
   }
   const qdata = PREGUNTAS_DATA[i]
@@ -7314,7 +7333,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
 // ══════════════════════════════════════════════════════════════
 function abrirModal() {
   if (!_authUser || !MY_SEAT) {
-    showToast('Verificá tu identidad para poder votar')
+    showToast(_isMaster() ? 'Modo observador — sin permiso para votar' : 'Verificá tu identidad para poder votar')
     return
   }
 
