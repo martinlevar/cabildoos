@@ -1836,6 +1836,19 @@
   </div>
 </div>
 
+<!-- ══ MODAL EMAIL ENVIADO ══ -->
+<div id="email-sent-overlay">
+  <div id="email-sent-modal">
+    <div class="esm-icon">✉️</div>
+    <h2 class="esm-title">Revisá tu email</h2>
+    <p class="esm-sub">Te enviamos un link de confirmación a</p>
+    <p class="esm-email" id="esm-email-addr">—</p>
+    <p class="esm-hint">Abrí ese email y hacé clic en el link para activar tu cuenta. Después volvé aquí e iniciá sesión.</p>
+    <a id="esm-open-btn" href="#" target="_blank" class="esm-btn">Abrir mi email →</a>
+    <button class="esm-back" onclick="cerrarEmailSent()">Ya confirmé, volver al inicio</button>
+  </div>
+</div>
+
 <!-- ══ MODAL PRIVACIDAD ══ -->
 <div id="modal-privacidad" onclick="if(event.target===this)this.classList.remove('open')" class="lgl-overlay">
   <div class="lgl-modal">

@@ -2602,6 +2602,28 @@ function abrirAuth(tab = 'registro') {
 function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
 }
+
+// ── Modal "Revisá tu email" post-registro ─────────────────────────────────────
+function mostrarEmailSent(email) {
+  document.getElementById('esm-email-addr').textContent = email
+
+  // Detectar proveedor para botón directo
+  const domain = email.split('@')[1]?.toLowerCase() || ''
+  let url = 'https://mail.google.com'
+  if (domain.includes('gmail'))       url = 'https://mail.google.com'
+  else if (domain.includes('outlook') || domain.includes('hotmail') || domain.includes('live') || domain.includes('msn'))
+    url = 'https://outlook.live.com/mail/inbox'
+  else if (domain.includes('yahoo'))  url = 'https://mail.yahoo.com'
+  else if (domain.includes('icloud') || domain.includes('me.com') || domain.includes('mac.com'))
+    url = 'https://www.icloud.com/mail'
+  else url = `https://${domain}`
+
+  document.getElementById('esm-open-btn').href = url
+  document.getElementById('email-sent-overlay').classList.add('open')
+}
+function cerrarEmailSent() {
+  document.getElementById('email-sent-overlay').classList.remove('open')
+}
 function authSetTab(tab) {
   const hideTabs = tab === 'reset' || tab === 'forgot' || tab === 'confirm'
   document.getElementById('auth-form-registro').style.display = tab === 'registro' ? '' : 'none'
@@ -2794,15 +2816,9 @@ async function registrarse() {
     // Supabase tiene email confirmation desactivado — sesión inmediata
     setTimeout(() => cerrarAuth(), 800)
   } else {
-    // Confirmación por email requerida — mostrar instrucciones claras
-    msg.innerHTML = `
-      <span style="display:block;margin-bottom:6px">✓ Cuenta creada correctamente.</span>
-      <span style="display:block;font-size:12px;opacity:.8">
-        Te enviamos un email a <strong>${email}</strong>.<br>
-        Abrí ese email y hacé clic en el link para activar tu cuenta.<br>
-        Después volvé aquí e iniciá sesión.
-      </span>`
-    msg.className = 'auth-msg ok'
+    // Confirmación por email requerida — mostrar modal
+    cerrarAuth()
+    mostrarEmailSent(email)
   }
 }
 

@@ -2251,6 +2251,67 @@ html, body {
 .auth-msg { font-size:13px; margin-top:10px; text-align:center; min-height:18px; color:rgba(255,255,255,.4); }
 .auth-msg.ok  { color:#4ade80; }
 .auth-msg.err { color:#f87171; }
+
+/* ── MODAL EMAIL ENVIADO ── */
+#email-sent-overlay {
+  position:fixed; inset:0; z-index:1100;
+  background:rgba(4,12,30,.85); backdrop-filter:blur(16px);
+  display:flex; align-items:center; justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity .25s;
+}
+#email-sent-overlay.open { opacity:1; pointer-events:all; }
+#email-sent-modal {
+  background:#0e1826;
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:20px;
+  padding:40px 36px 32px;
+  max-width:420px; width:90%;
+  text-align:center;
+  box-shadow:0 24px 80px rgba(0,0,0,.6);
+  transform:translateY(16px) scale(.97);
+  transition:transform .28s cubic-bezier(.34,1.3,.64,1);
+}
+#email-sent-overlay.open #email-sent-modal { transform:translateY(0) scale(1); }
+.esm-icon {
+  font-size:52px; line-height:1;
+  margin-bottom:20px;
+  filter:drop-shadow(0 0 20px rgba(99,179,237,.4));
+}
+.esm-title {
+  font-size:22px; font-weight:800; color:#f1f5f9;
+  margin:0 0 8px; letter-spacing:-0.3px;
+}
+.esm-sub {
+  font-size:14px; color:rgba(255,255,255,.45);
+  margin:0 0 6px;
+}
+.esm-email {
+  font-size:15px; font-weight:700; color:#93c5fd;
+  margin:0 0 20px;
+  word-break:break-all;
+}
+.esm-hint {
+  font-size:13px; color:rgba(255,255,255,.38);
+  line-height:1.6; margin:0 0 28px;
+}
+.esm-btn {
+  display:block; width:100%;
+  padding:15px;
+  background:linear-gradient(135deg,#f76a1e,#e2560c);
+  color:#fff; font-weight:800; font-size:15px;
+  border-radius:12px; text-decoration:none;
+  box-shadow:0 4px 24px rgba(247,106,30,.35);
+  transition:opacity .15s, transform .15s;
+  margin-bottom:14px;
+}
+.esm-btn:hover { opacity:.88; transform:translateY(-1px); }
+.esm-back {
+  background:none; border:none; cursor:pointer;
+  color:rgba(255,255,255,.3); font-size:13px;
+  padding:6px; transition:color .15s;
+}
+.esm-back:hover { color:rgba(255,255,255,.6); }
 /* Forgot / back links */
 .auth-link-btn {
   background:none; border:none;
