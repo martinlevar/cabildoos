@@ -2358,6 +2358,14 @@ async function _onLogin(user) {
   // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
   const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
 
+  // ── Usuario Google sin alias → pedir alias antes de continuar ──────────────
+  const isGoogleUser = user.app_metadata?.provider === 'google' ||
+    user.identities?.some(i => i.provider === 'google')
+  if (isGoogleUser && !profile?.alias) {
+    _mostrarModalAliasGoogle(user)
+    return
+  }
+
   // ── Verificar estado de cuenta ──────────────────────────────────────────────
   if (profile?.status === 'suspended') {
     await sb.auth.signOut()
@@ -2601,6 +2609,86 @@ function abrirAuth(tab = 'registro') {
 }
 function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
+}
+
+// ── Google OAuth ──────────────────────────────────────────────────────────────
+async function loginConGoogle() {
+  const redirectTo = window.location.origin + window.location.pathname
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  })
+}
+
+// ── Modal alias para usuarios nuevos de Google ────────────────────────────────
+let _googleAliasUser = null
+
+function _mostrarModalAliasGoogle(user) {
+  _googleAliasUser = user
+  // Precargar avatar de Google si está disponible
+  const avatarUrl = user.user_metadata?.avatar_url
+  const avatarEl  = document.getElementById('gam-avatar')
+  if (avatarUrl && avatarEl) {
+    avatarEl.innerHTML = `<img src="${avatarUrl}" alt="avatar">`
+  } else if (avatarEl) {
+    const name = user.user_metadata?.full_name || user.email || 'G'
+    avatarEl.textContent = name.charAt(0).toUpperCase()
+  }
+  // Pre-llenar con nombre de Google sanitizado
+  const googleName = (user.user_metadata?.full_name || user.user_metadata?.name || '')
+    .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 30)
+  const input = document.getElementById('gam-alias-input')
+  if (input) { input.value = googleName; gamCheckAlias() }
+  document.getElementById('google-alias-overlay').classList.add('open')
+}
+
+function gamCheckAlias() {
+  const val   = document.getElementById('gam-alias-input').value.trim()
+  const btn   = document.getElementById('gam-btn')
+  const hint  = document.getElementById('gam-alias-hint')
+  const valid = /^[a-z0-9_]{3,30}$/.test(val)
+  btn.disabled = !valid
+  if (!val) { hint.textContent = ''; hint.className = 'auth-field-hint'; return }
+  if (valid) { hint.textContent = '✓ Alias válido'; hint.className = 'auth-field-hint ok' }
+  else       { hint.textContent = 'Solo letras minúsculas, números y _. Mínimo 3 caracteres.'; hint.className = 'auth-field-hint err' }
+}
+
+async function guardarAliasGoogle() {
+  const alias = document.getElementById('gam-alias-input').value.trim().toLowerCase()
+  const btn   = document.getElementById('gam-btn')
+  const msg   = document.getElementById('gam-msg')
+  if (!_googleAliasUser) return
+
+  btn.disabled = true; btn.textContent = 'Guardando…'; msg.textContent = ''
+
+  // Verificar alias único
+  const { data: existing } = await sb.from('profiles').select('id').eq('alias', alias).limit(1)
+  if (existing?.length) {
+    msg.textContent = 'Ese alias ya está en uso, elegí otro.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    return
+  }
+
+  // Upsert perfil con alias
+  const { error } = await sb.from('profiles').upsert({
+    id: _googleAliasUser.id,
+    alias,
+    email: _googleAliasUser.email,
+    show_alias: true, show_phrase: false, show_votes: true,
+    status: 'sin_verificar'
+  }, { onConflict: 'id' })
+
+  if (error) {
+    msg.textContent = 'Error al guardar: ' + error.message
+    msg.className = 'auth-msg err'
+    btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    return
+  }
+
+  document.getElementById('google-alias-overlay').classList.remove('open')
+  // Continuar flujo normal
+  await _onLogin(_googleAliasUser)
 }
 
 // ── Modal "Revisá tu email" post-registro ─────────────────────────────────────
