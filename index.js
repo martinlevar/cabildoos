@@ -2353,18 +2353,32 @@ _loadBetaActive()
     if (event === 'SIGNED_OUT') { _isPasswordRecovery = false; _onLogout(); return }
     if (_isPasswordRecovery) return
     if (event === 'SIGNED_IN' && session?.user) await _onLogin(session.user)
-    if (event === 'TOKEN_REFRESHED' && session?.user && !_authUser) await _onLogin(session.user)
+    if (event === 'TOKEN_REFRESHED') {
+      if (!session?.user) {
+        // Refresh falló — usuario eliminado o sesión revocada
+        await sb.auth.signOut().catch(() => {})
+        showScreen('intro')
+        return
+      }
+      if (!_authUser) await _onLogin(session.user)
+    }
   })
 
-  // getSession() espera a que el token se refresque si está vencido
+  // getUser() valida server-side — detecta usuarios eliminados por el admin
+  // (getSession() usa solo el JWT local y no detecta si el user fue borrado)
   try {
-    const { data: { session } } = await sb.auth.getSession()
     if (_isPasswordRecovery) { showScreen('congress'); return }
-    if (session?.user) await _onLogin(session.user)
-    else _onLogout()
+    const { data: { user }, error } = await sb.auth.getUser()
+    if (error || !user) {
+      // Token inválido o user eliminado → limpiar sesión local
+      await sb.auth.signOut().catch(() => {})
+      _onLogout()
+    } else {
+      await _onLogin(user)
+    }
   } catch(e) {
     console.error('[auth] init error:', e)
-    try { _onLogout() } catch(_) {}
+    try { await sb.auth.signOut().catch(() => {}); _onLogout() } catch(_) {}
   }
 })()
 
@@ -2393,7 +2407,25 @@ async function _onLogin(user) {
   if (navInfo) navInfo.style.display = 'flex'
 
   // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
+  const { data: profile, error: profileErr } = await sb.from('profiles').select('*').eq('id', user.id).single()
+
+  // ── Si no hay perfil, verificar que el usuario aún existe en el servidor ───
+  // Caso: admin borró el usuario pero el JWT local todavía era válido en esta pestaña
+  if (!profile && !profileErr?.message?.includes('No rows')) {
+    // Error inesperado — dejar pasar
+  } else if (!profile) {
+    const isGoogleNew = (user.app_metadata?.provider === 'google' || user.identities?.some(i => i.provider === 'google'))
+    if (!isGoogleNew) {
+      // No es usuario nuevo de Google — validar que la cuenta existe en el servidor
+      const { error: userErr } = await sb.auth.getUser()
+      if (userErr) {
+        // El usuario fue eliminado — cerrar sesión y mandar al intro
+        await sb.auth.signOut().catch(() => {})
+        showScreen('intro')
+        return
+      }
+    }
+  }
 
   // ── Usuario Google sin alias → pedir alias antes de continuar ──────────────
   const isGoogleUser = user.app_metadata?.provider === 'google' ||
