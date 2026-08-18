@@ -1106,7 +1106,25 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="vp-field">
           <label class="vp-label">Fecha de nacimiento <span style="color:var(--orange)">*</span></label>
-          <input class="vp-input" id="vp-fecha-nac" type="date" oninput="vpCheckStep1()" onchange="vpCheckStep1()" min="1900-01-01">
+          <div class="vp-dob-wrap" id="vp-dob-wrap">
+            <select class="vp-dob-sel" id="vp-dob-dia" onchange="vpUpdateFechaNac()">
+              <option value="">Día</option>
+            </select>
+            <select class="vp-dob-sel" id="vp-dob-mes" onchange="vpUpdateFechaNac()">
+              <option value="">Mes</option>
+              <option value="01">Enero</option><option value="02">Febrero</option>
+              <option value="03">Marzo</option><option value="04">Abril</option>
+              <option value="05">Mayo</option><option value="06">Junio</option>
+              <option value="07">Julio</option><option value="08">Agosto</option>
+              <option value="09">Septiembre</option><option value="10">Octubre</option>
+              <option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+            <select class="vp-dob-sel" id="vp-dob-ano" onchange="vpUpdateFechaNac()">
+              <option value="">Año</option>
+            </select>
+          </div>
+          <input type="hidden" id="vp-fecha-nac">
+          <div class="vp-dob-hint" id="vp-dob-hint">Debés tener al menos 16 años para registrarte</div>
         </div>
         <div class="vp-field">
           <label class="vp-label">País emisor del documento <span style="color:var(--orange)">*</span></label>

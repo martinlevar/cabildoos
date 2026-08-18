@@ -4761,12 +4761,41 @@ function vpOnTipoDocChange() {
   vpCheckStep1()
 }
 
+function vpInitDobSelects() {
+  const diaEl = document.getElementById('vp-dob-dia')
+  if (diaEl && diaEl.options.length <= 1) {
+    for (let d = 1; d <= 31; d++) {
+      const o = document.createElement('option')
+      o.value = String(d).padStart(2, '0')
+      o.textContent = String(d).padStart(2, '0')
+      diaEl.appendChild(o)
+    }
+  }
+  const anoEl = document.getElementById('vp-dob-ano')
+  if (anoEl && anoEl.options.length <= 1) {
+    const maxYear = new Date().getFullYear() - 16
+    for (let y = maxYear; y >= 1924; y--) {
+      const o = document.createElement('option')
+      o.value = String(y)
+      o.textContent = String(y)
+      anoEl.appendChild(o)
+    }
+  }
+}
+
+function vpUpdateFechaNac() {
+  const dia = document.getElementById('vp-dob-dia')?.value
+  const mes = document.getElementById('vp-dob-mes')?.value
+  const ano = document.getElementById('vp-dob-ano')?.value
+  const hidden = document.getElementById('vp-fecha-nac')
+  if (hidden) {
+    hidden.value = (dia && mes && ano) ? `${ano}-${mes}-${dia}` : ''
+  }
+  vpCheckStep1()
+}
+
 function vpSetFechaNacMax() {
-  const el = document.getElementById('vp-fecha-nac')
-  if (!el) return
-  const max = new Date()
-  max.setFullYear(max.getFullYear() - 16)
-  el.max = max.toISOString().split('T')[0]
+  vpInitDobSelects()
 }
 
 function vpCheckStep1() {
@@ -4788,14 +4817,8 @@ function vpCheckStep1() {
   document.getElementById('vp-btn-s1').disabled = !ok
 
   // Mostrar hint de edad si la fecha está puesta pero no cumple
-  const fechaEl = document.getElementById('vp-fecha-nac')
-  if (fechaNac && !edadOk) {
-    fechaEl.style.borderColor = 'rgba(239,68,68,.6)'
-    fechaEl.title = 'Debés tener al menos 16 años para registrarte'
-  } else {
-    fechaEl.style.borderColor = ''
-    fechaEl.title = ''
-  }
+  const dobWrap = document.getElementById('vp-dob-wrap')
+  if (dobWrap) dobWrap.classList.toggle('error', !!(fechaNac && !edadOk))
 }
 
 function vpPreview(input, type) {
