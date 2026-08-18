@@ -5008,7 +5008,10 @@ async function vpMostrarFallo(fallas) {
 // ── Helper: avanzar a paso 7 cuando el servidor ya procesó la verificación ─────
 function _vpAvanzarAPaso7() {
   if (_authUser) {
-    sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+    ;(async () => {
+      try { await sb.rpc('claim_seat', { p_verification_id: vpVerificationId }) }
+      catch (e) { console.warn('claim_seat link:', e) }
+    })()
   }
   const emailEl = document.getElementById('vp-s7-email')
   const hintEl  = document.getElementById('vp-s7-email-hint')
