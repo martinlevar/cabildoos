@@ -5423,9 +5423,9 @@ function _renderNotifBadge() {
 
       _consentClose()
       if (accepted) {
-        showToast('✓ Aceptaste los cambios — tu propuesta se publicará con tu atribución')
+        showToast('✓ Aceptaste los cambios — el moderador podrá activar tu propuesta con tu nombre')
       } else {
-        showToast('Cambios rechazados — la moderación decidirá si la publica sin atribución')
+        showToast('Rechazaste los cambios — la propuesta fue archivada')
       }
     } catch(e) {
       showToast('Error al responder: ' + (e.message || 'intentá de nuevo'))
@@ -5625,9 +5625,30 @@ async function _markSingleNotifRead(id) {
 }
 
 function _showNotifToast(n, alias) {
-  // Toast con acción "Ver"
   const existing = document.getElementById('notif-toast')
   if (existing) existing.remove()
+
+  let msg, btnTxt, btnAction
+
+  if (n.type === 'proposal_consent') {
+    // Notificación urgente: el moderador editó tu propuesta y espera tu respuesta
+    msg      = '✏️ El moderador editó tu propuesta — necesita tu aprobación'
+    btnTxt   = 'Revisar'
+    btnAction = `_markSingleNotifRead('${n.id}');_checkProposalConsent()`
+  } else if (n.type === 'proposal_approved') {
+    msg      = '✅ Tu propuesta fue aprobada'
+    btnTxt   = 'Ver'
+    btnAction = `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')`
+  } else if (n.type === 'proposal_rejected') {
+    msg      = '❌ Tu propuesta fue rechazada'
+    btnTxt   = 'Ver'
+    btnAction = `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')`
+  } else {
+    // new_proposal u otros
+    msg      = `📣 <strong>${escapeHtml(alias)}</strong> publicó una propuesta`
+    btnTxt   = 'Ver'
+    btnAction = `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')`
+  }
 
   const toast = document.createElement('div')
   toast.id = 'notif-toast'
@@ -5636,18 +5657,19 @@ function _showNotifToast(n, alias) {
     background:#1d1d1d; color:#fff; border-radius:14px; padding:12px 18px;
     font-size:13px; font-weight:500; z-index:2000; display:flex;
     align-items:center; gap:12px; box-shadow:0 8px 32px rgba(0,0,0,.3);
-    max-width:340px; animation:toastIn .3s ease;
+    max-width:360px; animation:toastIn .3s ease;
   `
   toast.innerHTML = `
-    <span>📣 <strong>${escapeHtml(alias)}</strong> publicó una propuesta</span>
-    <button onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')"
+    <span>${msg}</span>
+    <button onclick="${btnAction};document.getElementById('notif-toast')?.remove()"
       style="background:#fff;color:#1d1d1d;border:none;border-radius:8px;
-             padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
-      Ver
+             padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
+      ${btnTxt}
     </button>
   `
   document.body.appendChild(toast)
-  setTimeout(() => { if (toast.parentNode) toast.remove() }, 6000)
+  // Consentimiento se queda 12 segundos, el resto 6s
+  setTimeout(() => { if (toast.parentNode) toast.remove() }, n.type === 'proposal_consent' ? 12000 : 6000)
 }
 
 async function _abrirPropuestaNotif(proposalId, fromSeat, notifId) {
