@@ -4819,21 +4819,13 @@ async function vpEnviarVerificacion() {
   }
 
   try {
-    const [selfieB64, selfieDocB64] = await Promise.all([
-      vpCapturedSelfie    ? blobToB64(vpCapturedSelfie)    : Promise.resolve(''),
+    const [selfieDocB64, docB64] = await Promise.all([
       vpCapturedSelfieDoc ? blobToB64(vpCapturedSelfieDoc) : Promise.resolve(''),
+      vpCapturedDoc       ? blobToB64(vpCapturedDoc)       : Promise.resolve(''),
     ])
 
-    // Usar la imagen ya censurada generada en vpIniciarProceso (vpAnonBlob)
-    // Si por alguna razón no está, regenerar
-    let selfieDocCensuradaB64 = selfieDocB64
-    const blobCensurado = vpAnonBlob || (vpCapturedSelfieDoc ? await vpPixelarDocumento(vpCapturedSelfieDoc) : null)
-    if (blobCensurado) {
-      selfieDocCensuradaB64 = await blobToB64(blobCensurado)
-    }
-
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30000)
+    const timeout = setTimeout(() => controller.abort(), 60000)
 
     const resp = await fetch(`${VP_API_URL}/verify/submit`, {
       method: 'POST',
@@ -4841,8 +4833,8 @@ async function vpEnviarVerificacion() {
       signal: controller.signal,
       body: JSON.stringify({
         verification_id: vpVerificationId,
-        selfie_doc_b64: selfieDocCensuradaB64,
-        // contact_email eliminado: privacidad por diseño — no vincular email con verificación
+        selfie_doc_b64:  selfieDocB64,   // selfie real con documento (para admin)
+        doc_b64:         docB64,          // foto real del documento (para admin)
         gemini_match: (() => {
           if (!vpGeminiResult) return false
           const _paisDec = (document.getElementById('vp-pais')?.value || '').trim()
