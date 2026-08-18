@@ -5714,7 +5714,7 @@ function initProfilesRealtime() {
   } catch(e) { console.warn('profiles-live realtime:', e) }
 }
 
-// ── Realtime: auto-actualiza preguntas cuando el admin crea/activa una ──
+// ── Realtime: auto-actualiza preguntas cuando el admin crea/activa/cierra una ──
 function initQuestionsRealtime() {
   try {
     sb.channel('questions-live')
@@ -5722,8 +5722,32 @@ function initQuestionsRealtime() {
         event: '*',
         schema: 'public',
         table: 'questions'
-      }, () => {
-        // Recargar preguntas activas sin importar en qué pantalla esté el usuario
+      }, payload => {
+        const q = payload.new || payload.old || {}
+
+        // Si el admin cerró una pregunta manualmente (status → 'cerrada')
+        if (q.status === 'cerrada') {
+          // 1. Si el usuario está en el debate de esa pregunta → terminar ahora
+          if (_debateQId && _debateQId === q.id && !_debateEnded) {
+            if (_debateCdIv) { clearInterval(_debateCdIv); _debateCdIv = null }
+            _debateEndsAt = new Date() // hacer que el countdown muestre 0 inmediatamente
+            const valEl = document.getElementById('dp-cd-val')
+            const lblEl = document.getElementById('dp-cd-lbl')
+            if (valEl) { valEl.textContent = 'Finalizada'; valEl.className = 'dp-cd-val ended' }
+            if (lblEl) lblEl.textContent = 'Estado'
+            _dpSetEndedUI(true)
+          }
+
+          // 2. Actualizar timer en la q-card si está visible
+          PREGUNTAS_DATA.forEach((qdata, i) => {
+            if (qdata.id === q.id) {
+              const timerEl = document.getElementById(`q-timer-${i}`)
+              if (timerEl) { timerEl.textContent = 'Finalizada'; timerEl.classList.add('ended') }
+            }
+          })
+        }
+
+        // Recargar lista de preguntas activas en todos los casos
         cargarPreguntasActivas()
       })
       .subscribe()
