@@ -1094,7 +1094,7 @@ window.addEventListener('mousemove', e => {
 
   let closest = null, minD = hitR + 6
   SEATS.forEach(s => {
-    if (s.num > TOTAL_SEATS && s.num !== MY_SEAT) return  // butaca vacía: ignorar hover
+    if (!(s.num in _profilesCache) && s.num !== MY_SEAT) return  // butaca vacía: ignorar hover
     const { x: ssx, y: ssy } = toScreen(s.x, s.y, W, H)
     const d = Math.hypot(sx - ssx, sy - ssy)
     if (d < minD) { minD = d; closest = s }
