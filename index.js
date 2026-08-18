@@ -1233,16 +1233,12 @@ function showCard(seat, cx, cy) {
     if (pcVotesRow) pcVotesRow.style.display = 'none'
   }
 
-  const fbtn    = document.getElementById('pc-follow-btn')
-  const voteBtn = document.getElementById('profile-card').querySelector('.pc-vote-btn')
+  const fbtn = document.getElementById('pc-follow-btn')
 
   if (p.isMe) {
-    // Propio dot: solo mostrar Votar, sin Seguir
-    fbtn.style.display  = 'none'
-    voteBtn.style.display = ''
+    // Propio dot: sin botones de acción
+    fbtn.style.display = 'none'
   } else {
-    // Dot ajeno: nunca mostrar Votar
-    voteBtn.style.display = 'none'
     if (MY_SEAT > 0) {
       fbtn.style.display = ''
       if (followingConfirmed.has(seat.num)) {
