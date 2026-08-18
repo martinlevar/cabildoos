@@ -3339,6 +3339,10 @@ async function vpDocCapturarFrame(_unused) {
         numero_declarado:     numDoc,
         pais_declarado:       pais,
         fecha_nac_declarada:  fechaNac,
+        // Incluir user_id y email para que assign_butaca pueda linkear el profile
+        // aunque claim_seat falle por error de red
+        user_id:       _authUser?.id || null,
+        contact_email: _authUser?.email || null,
       }),
     })
     clearTimeout(docTimeout)
@@ -5002,6 +5006,9 @@ async function vpEnviarVerificacion() {
           const _paisOk  = _paisDec ? vpGeminiResult.pais_coincide : true
           return vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide && _paisOk
         })(),
+        // Reforzar user_id y email en submit también (por si documento fue en otra sesión)
+        user_id:       _authUser?.id || null,
+        contact_email: _authUser?.email || null,
       }),
     })
     clearTimeout(timeout)
@@ -5020,7 +5027,19 @@ async function vpEnviarVerificacion() {
       sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
     }
 
+    // Mostrar email en el hint del paso 7
+    const emailEl = document.getElementById('vp-s7-email')
+    const hintEl  = document.getElementById('vp-s7-email-hint')
+    if (emailEl && _authUser?.email) {
+      emailEl.textContent = _authUser.email
+      if (hintEl) hintEl.style.display = 'block'
+    } else if (hintEl) {
+      hintEl.style.display = 'none'
+    }
+
     vpShowStep(7)
+    // Polling silencioso en background — si el admin aprueba mientras la app está abierta,
+    // se actualiza automáticamente sin que el usuario tenga que esperar
     vpIniciarPolling(vpVerificationId)
   } catch (e) {
     console.error('Error enviando verificacion:', e)

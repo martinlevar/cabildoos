@@ -1331,23 +1331,26 @@
       <button class="vp-btn-link" onclick="vpGoStep(1)">Corregir datos ingresados</button>
     </div>
 
-    <!-- ── PASO 7: Validación humana ── -->
+    <!-- ── PASO 7: Verificación enviada — esperá el email ── -->
     <div class="vp-step" id="vp-s7">
-      <div class="vp-pending-anim"><div class="vp-pending-ring"></div></div>
-      <p class="vp-title">En revisión</p>
-      <p class="vp-sub">Un validador humano verificará tu solicitud en las próximas horas. En ningún momento verá tus datos reales.</p>
-      <div class="vp-val-box">
-        <p class="vp-val-lbl">El validador confirma</p>
+      <div class="vp-step-icon" style="background:rgba(34,197,94,.12);font-size:28px">📬</div>
+      <p class="vp-title">¡Solicitud enviada!</p>
+      <p class="vp-sub">Un validador humano revisará tu identidad en las próximas horas. Cuando esté aprobada, <b>te llegará un email</b> con tu número de butaca asignada.</p>
+
+      <div class="vp-val-box" style="margin-top:16px">
+        <p class="vp-val-lbl">¿Qué pasa ahora?</p>
         <div class="vp-val-rows">
-          <div class="vp-val-row ok">✓ Que es una persona real</div>
-          <div class="vp-val-row ok">✓ Que sostiene un documento físico</div>
-          <div class="vp-val-row ok">✓ Que la imagen no es IA generada</div>
-          <div class="vp-val-row red">✗ No ve el número real del pasaporte</div>
-          <div class="vp-val-row red">✗ No ve nombre ni datos personales</div>
+          <div class="vp-val-row ok">✓ Tu solicitud está en cola de revisión</div>
+          <div class="vp-val-row ok">✓ El validador solo verá tu cara — sin datos personales</div>
+          <div class="vp-val-row ok">✓ Recibirás un email cuando se apruebe</div>
+          <div class="vp-val-row ok">✓ No necesitás dejar la app abierta</div>
         </div>
       </div>
-      <p class="vp-eta">Tiempo estimado: <b>menos de 24 hs</b></p>
-      <button class="vp-btn-link" onclick="cerrarVerificacion()">Cerrar — te avisamos cuando esté listo</button>
+
+      <p class="vp-eta" id="vp-s7-email-hint" style="margin-top:12px">Email de confirmación enviado a <b id="vp-s7-email"></b></p>
+      <p class="vp-eta" style="margin-top:6px">Tiempo estimado: <b>menos de 24 hs</b></p>
+
+      <button class="vp-btn-main" onclick="cerrarVerificacion()" style="margin-top:20px">Entendido — cerrar</button>
     </div>
 
     <!-- ── PASO 8: Aprobado ── -->
