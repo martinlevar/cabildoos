@@ -3123,6 +3123,8 @@ let vpVerificationId = generateUUID();
 
 // Datos extraídos del documento por Gemini (para el submit final)
 let vpGeminiResult = null
+// Bounding box de la foto del DNI detectada por Gemini — {x1,y1,x2,y2} en fracciones
+let vpFaceBox = null
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PASO 2: FOTO DEL DOCUMENTO — getUserMedia + Gemini Vision
@@ -3285,6 +3287,7 @@ async function vpDocCapturarFrame(_unused) {
 
     const data = await resp.json()
     vpGeminiResult = data.extracted
+    vpFaceBox = data.face_box || null   // coordenadas exactas de la foto del DNI
     vpMostrarResultadoGemini(data)
 
   } catch (err) {
@@ -3383,6 +3386,7 @@ function vpDocReintentar() {
   if (btnContinuar) btnContinuar.style.display = ''
   vpBarcodeData = null
   vpGeminiResult = null
+  vpFaceBox = null
   vpDocIniciar()
 }
 
@@ -3415,6 +3419,7 @@ function vpReiniciarTodo() {
   vpReintentoSelfieDoc = 0
   vpBarcodeData = null
   vpGeminiResult = null
+  vpFaceBox = null
   vpCapturedSelfie = null
   vpCapturedSelfieDoc = null
   vpAnonBlob = null
@@ -4314,28 +4319,48 @@ function vpSelfieDocReintentar() {
 //  BLUR DE DOCUMENTO — pixela la zona donde está el documento en la selfie
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Extrae SOLO la zona de la cara del DNI — sin número, sin nombre, sin fechas
-// Para DNI argentino/latinoamericano la foto ocupa aprox:
-//   horizontal: 0% → 38% del ancho del documento
-//   vertical:   14% → 80% del alto del documento
+// Extrae SOLO la foto de la cara del DNI usando las coordenadas exactas de Gemini.
+// vpFaceBox = {x1, y1, x2, y2} en fracciones (0-1) detectadas por Gemini Vision.
+// Si no hay coordenadas, usa porcentajes típicos de DNI latinoamericano como fallback.
 async function vpExtraerCaraDoc(blob) {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
-      const fx = Math.floor(img.width  * 0.01)
-      const fy = Math.floor(img.height * 0.14)
-      const fw = Math.floor(img.width  * 0.37)
-      const fh = Math.floor(img.height * 0.66)
+      let fx, fy, fw, fh
+
+      if (vpFaceBox && vpFaceBox.x1 != null) {
+        // Coordenadas exactas detectadas por Gemini — agregar pequeño margen (5%)
+        const margin = 0.02
+        const x1 = Math.max(0, vpFaceBox.x1 - margin)
+        const y1 = Math.max(0, vpFaceBox.y1 - margin)
+        const x2 = Math.min(1, vpFaceBox.x2 + margin)
+        const y2 = Math.min(1, vpFaceBox.y2 + margin)
+        fx = Math.floor(img.width  * x1)
+        fy = Math.floor(img.height * y1)
+        fw = Math.floor(img.width  * (x2 - x1))
+        fh = Math.floor(img.height * (y2 - y1))
+        console.log('[vpExtraerCaraDoc] usando coordenadas Gemini:', vpFaceBox)
+      } else {
+        // Fallback: zona típica de la foto en DNI latinoamericano
+        //   horizontal: izquierda ~0-38%  |  vertical: ~14-80%
+        fx = Math.floor(img.width  * 0.01)
+        fy = Math.floor(img.height * 0.14)
+        fw = Math.floor(img.width  * 0.37)
+        fh = Math.floor(img.height * 0.66)
+        console.log('[vpExtraerCaraDoc] usando fallback de porcentajes fijos')
+      }
 
       const canvas = document.createElement('canvas')
-      // Output cuadrado-ish, máx 400px
-      const maxSide = 400
+      // Salida máx 500px por lado para que llegue nítida al admin
+      const maxSide = 500
       const scale   = Math.min(maxSide / fw, maxSide / fh, 1)
       canvas.width  = Math.round(fw * scale)
       canvas.height = Math.round(fh * scale)
       const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
       ctx.drawImage(img, fx, fy, fw, fh, 0, 0, canvas.width, canvas.height)
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.88)
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.90)
     }
     img.onerror = reject
     img.src = URL.createObjectURL(blob)
@@ -4538,6 +4563,7 @@ function abrirVerificacion() {
   _verifyOverlayOpenedAt = Date.now()   // time-gate: bloquea ghost clicks del primer segundo
   vpCurrentStep = 1
   vpAnonBlob = null
+  vpFaceBox = null
   vpBarcodeData = null
   vpGeminiResult = null
   // UUID con fallback para Safari antiguo
