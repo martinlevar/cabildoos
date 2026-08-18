@@ -5541,6 +5541,19 @@ function _renderNotifPanel() {
     })
   })
 
+  // 7. Consentimiento de edición — admin modificó tu propuesta, necesita tu aprobación
+  ;(_notifications || []).filter(n => n.type === 'proposal_consent').forEach(n => {
+    items.push({
+      key: 'consent_' + n.id, icBg: '#FFF7ED',
+      icHtml: '✏️',
+      title: `El moderador <strong>editó tu propuesta</strong> — necesita tu aprobación`,
+      sub: n.message || 'Tocá para revisar los cambios',
+      time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal();_checkProposalConsent()`,
+      order: 0,
+    })
+  })
+
   if (!items.length) {
     el.innerHTML = `<div class="notif-empty">
       <div class="notif-empty-icon">🔔</div>
