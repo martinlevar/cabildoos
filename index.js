@@ -5441,13 +5441,16 @@ function _renderNotifBadge() {
         filter: `seat_number=eq.${MY_SEAT}`
       }, payload => {
         const p = payload.new
-        // Admin solicita consentimiento de edición
         if (p.consent_status === 'pending' && p.status === 'pending') {
           _openConsentModal(p)
         }
-        // Cualquier cambio de estado → refrescar lista de propuestas del usuario
         if (typeof renderPropuestas === 'function') renderPropuestas()
       })
+      // Likes en tiempo real: INSERT o DELETE en proposal_likes → delta en todos los spans
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'proposal_likes' },
+        payload => _propLikeDelta(payload.new.proposal_id, +1))
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'proposal_likes' },
+        payload => _propLikeDelta(payload.old.proposal_id, -1))
       .subscribe()
   }
 
@@ -8490,9 +8493,9 @@ async function renderOtrasPropuestas() {
       <p class="otras-prop-text">${txt}</p>
       <div class="otras-prop-meta">
         <span class="otras-prop-cat">${escapeHtml(p.cat)}</span>
-        <span class="otras-prop-likes">
+        <span class="otras-prop-likes" id="sf-like-n-${p.id}">
           <svg width="11" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          ${p.likes}
+          <span class="sf-like-count">${p.likes}</span>
         </span>
         <span class="otras-prop-date">${date}</span>
       </div>
@@ -8534,9 +8537,9 @@ async function renderPropuestas() {
       </div>
       <div class="prop-card-v2-meta">
         <span class="prop-cat-tag">${escapeHtml(p.cat)}</span>
-        <span class="prop-likes">
+        <span class="prop-likes" id="sf-like-n-${p.id}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          ${p.likes}
+          <span class="sf-like-count">${p.likes}</span>
         </span>
         <span style="font-size:11px;color:var(--mid);margin-left:auto">${date}</span>
       </div>
@@ -8770,6 +8773,19 @@ async function upmLoadProposals() {
   }).join('')
 }
 
+// Actualiza en el DOM todos los contadores de likes de una propuesta (delta = +1 o -1)
+// Cubre: perfil modal (upm-like-n-*), social footer mis propuestas y otras propuestas (sf-like-n-*)
+function _propLikeDelta(propId, delta) {
+  if (!propId) return
+  // Perfil modal (user profile popup)
+  const upmEl = document.getElementById(`upm-like-n-${propId}`)
+  if (upmEl) upmEl.textContent = Math.max(0, (parseInt(upmEl.textContent) || 0) + delta)
+
+  // Social footer (mis propuestas + otras propuestas — mismo ID pattern)
+  const sfEl = document.querySelector(`#sf-like-n-${propId} .sf-like-count`)
+  if (sfEl) sfEl.textContent = Math.max(0, (parseInt(sfEl.textContent) || 0) + delta)
+}
+
 async function upmToggleLike(propId) {
   if (!MY_SEAT) { showToast('Necesitás una butaca para dar likes'); return }
   const btn = document.getElementById(`upm-like-${propId}`)
@@ -8780,21 +8796,17 @@ async function upmToggleLike(propId) {
     await sb.from('proposal_likes').delete()
       .eq('proposal_id', propId).eq('from_seat', MY_SEAT)
     _upmLikes.delete(propId)
-    const n = parseInt(nEl.textContent) - 1
-    nEl.textContent = n
+    // El trigger en DB actualiza proposals.likes — solo actualizamos UI local
+    _propLikeDelta(propId, -1)
     btn.classList.remove('liked')
     btn.querySelector('svg path').setAttribute('fill','none')
-    // Sync DB
-    await sb.from('proposals').update({ likes: n }).eq('id', propId)
   } else {
     const { error } = await sb.from('proposal_likes').insert({ proposal_id: propId, from_seat: MY_SEAT })
     if (!error) {
       _upmLikes.add(propId)
-      const n = parseInt(nEl.textContent) + 1
-      nEl.textContent = n
+      _propLikeDelta(propId, +1)
       btn.classList.add('liked')
       btn.querySelector('svg path').setAttribute('fill','currentColor')
-      await sb.from('proposals').update({ likes: n }).eq('id', propId)
     }
   }
 }
