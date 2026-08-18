@@ -5005,9 +5005,45 @@ async function vpMostrarFallo(fallas) {
 }
 
 // ── Envío final al backend Python ──────────────────────────────────────────
+// ── Helper: avanzar a paso 7 cuando el servidor ya procesó la verificación ─────
+function _vpAvanzarAPaso7() {
+  if (_authUser) {
+    sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+  }
+  const emailEl = document.getElementById('vp-s7-email')
+  const hintEl  = document.getElementById('vp-s7-email-hint')
+  if (emailEl && _authUser?.email) {
+    emailEl.textContent = _authUser.email
+    if (hintEl) hintEl.style.display = 'block'
+  } else if (hintEl) {
+    hintEl.style.display = 'none'
+  }
+  vpShowStep(7)
+  vpIniciarPolling(vpVerificationId)
+}
+
 async function vpEnviarVerificacion() {
   const btn = document.querySelector('#vp-s6a .vp-btn-main')
   if (btn) { btn.textContent = 'Enviando…'; btn.disabled = true }
+
+  // ── Chequeo previo: si la verificación YA llegó al servidor, ir directo a paso 7.
+  // Esto cubre el caso de "Reintentar envío" donde el submit anterior sí llegó pero
+  // el cliente no recibió la respuesta (timeout, CORS previo, red cortada, etc.)
+  if (vpVerificationId) {
+    try {
+      const preCheck = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+      if (preCheck.ok) {
+        const preData = await preCheck.json()
+        if (preData.status === 'pendiente_revision' || preData.status === 'aprobado') {
+          console.log('[verify] Pre-check: ya procesado (' + preData.status + ') — saltando upload')
+          _vpAvanzarAPaso7()
+          return
+        }
+      }
+    } catch (preErr) {
+      console.warn('[verify] Pre-check falló (normal en primer intento):', preErr.message)
+    }
+  }
 
   // Convertir blobs a base64
   function blobToB64(blob) {
@@ -5086,32 +5122,13 @@ async function vpEnviarVerificacion() {
     window._vpSession.verification_id = vpVerificationId
     window._vpSession.status = data.status
 
-    // Linkear el verification_id al perfil del usuario YA (sin esperar aprobación).
-    // Así, cuando el admin apruebe con assign_butaca(), podrá actualizar butaca_numero
-    // directamente desde profiles.verification_id sin necesidad de que el usuario esté online.
-    if (_authUser) {
-      sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
-    }
-
-    // Mostrar email en el hint del paso 7
-    const emailEl = document.getElementById('vp-s7-email')
-    const hintEl  = document.getElementById('vp-s7-email-hint')
-    if (emailEl && _authUser?.email) {
-      emailEl.textContent = _authUser.email
-      if (hintEl) hintEl.style.display = 'block'
-    } else if (hintEl) {
-      hintEl.style.display = 'none'
-    }
-
-    vpShowStep(7)
-    // Polling silencioso en background — si el admin aprueba mientras la app está abierta,
-    // se actualiza automáticamente sin que el usuario tenga que esperar
-    vpIniciarPolling(vpVerificationId)
+    _vpAvanzarAPaso7()
   } catch (e) {
     console.error('Error enviando verificacion:', e)
 
     // Antes de mostrar "Reintentar" — verificar si la verificación YA llegó al servidor.
     // Reintentamos hasta 4 veces con backoff progresivo por si el servidor tarda en escribir a DB.
+    console.warn('[verify] Submit falló con:', e.name, e.message, '— verificando si llegó al server...')
     try {
       const delays = [1500, 3000, 5000, 7000]
       for (const delay of delays) {
@@ -5120,28 +5137,17 @@ async function vpEnviarVerificacion() {
           const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
           if (statusResp.ok) {
             const statusData = await statusResp.json()
+            console.log('[verify] Status check intento:', statusData.status)
             if (statusData.status === 'pendiente_revision' || statusData.status === 'aprobado') {
-              // El worker lo procesó correctamente — ir al paso 7 como si todo hubiera salido bien
-              console.log('[verify] Submit llegó al servidor (status:', statusData.status, ') — continuando al paso 7')
-              if (_authUser) {
-                sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
-              }
-              const emailEl = document.getElementById('vp-s7-email')
-              const hintEl  = document.getElementById('vp-s7-email-hint')
-              if (emailEl && _authUser?.email) {
-                emailEl.textContent = _authUser.email
-                if (hintEl) hintEl.style.display = 'block'
-              } else if (hintEl) {
-                hintEl.style.display = 'none'
-              }
-              vpShowStep(7)
-              vpIniciarPolling(vpVerificationId)
+              _vpAvanzarAPaso7()
               return
             }
           }
-        } catch (_) { /* continuar con siguiente intento */ }
+        } catch (checkErr) {
+          console.warn('[verify] Status check falló:', checkErr.message)
+        }
       }
-    } catch (_) { /* si falla todo el bloque, mostrar el error normal */ }
+    } catch (_) { /* mostrar error normal */ }
 
     if (btn) { btn.textContent = 'Reintentar envío'; btn.disabled = false }
     showToast('Error al enviar — verificá tu conexión')
