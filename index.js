@@ -2829,12 +2829,14 @@ async function registrarse() {
     return
   }
 
-  // Validar código de acceso beta (sin exponer el código real al cliente)
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
-  if (codeErr || !codeOk) {
-    msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
-    msg.className = 'auth-msg err'
-    return
+  // Validar código de acceso beta solo si está activo
+  if (_betaActive) {
+    const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
+    if (codeErr || !codeOk) {
+      msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
+      msg.className = 'auth-msg err'
+      return
+    }
   }
 
   // Verificar alias único antes de crear
