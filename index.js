@@ -960,8 +960,8 @@ function draw() {
     const isMine     = s.num === MY_SEAT
     const isHovered  = hoveredSeat === s.num
     const isFollow   = following.has(s.num)
-    // Asiento ocupado: es el mío, o tiene perfil cargado (usuario verificado)
-    const isOccupied = isMine || (s.num <= TOTAL_SEATS)
+    // Asiento ocupado: es el mío, o existe en el caché de perfiles reales
+    const isOccupied = isMine || (s.num in _profilesCache)
 
     // Dot radius on screen
     let r = Math.max(1.2, DOT_R * cam.scale)
