@@ -1480,7 +1480,12 @@
       </div>
       <div class="auth-field">
         <label>Contraseña</label>
-        <input type="password" id="reg-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckRegistro()" autocomplete="new-password">
+        <div class="auth-pass-wrap">
+          <input type="password" id="reg-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckRegistro()" autocomplete="new-password">
+          <button type="button" class="auth-pass-eye" onclick="togglePassVis('reg-pass',this)" tabindex="-1" aria-label="Mostrar contraseña">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </div>
       <div class="auth-field" id="reg-code-wrap" style="display:none">
         <label>Código de acceso beta</label>
@@ -1505,7 +1510,12 @@
       </div>
       <div class="auth-field">
         <label>Contraseña</label>
-        <input type="password" id="login-pass" placeholder="Tu contraseña" oninput="authCheckLogin()" autocomplete="current-password" onkeydown="if(event.key==='Enter'&&!document.getElementById('login-btn').disabled)iniciarSesion()">
+        <div class="auth-pass-wrap">
+          <input type="password" id="login-pass" placeholder="Tu contraseña" oninput="authCheckLogin()" autocomplete="current-password" onkeydown="if(event.key==='Enter'&&!document.getElementById('login-btn').disabled)iniciarSesion()">
+          <button type="button" class="auth-pass-eye" onclick="togglePassVis('login-pass',this)" tabindex="-1" aria-label="Mostrar contraseña">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </div>
       <button class="auth-btn" id="login-btn" onclick="iniciarSesion()" disabled>Entrar →</button>
       <p class="auth-msg" id="login-msg"></p>
@@ -1538,12 +1548,22 @@
       <p class="auth-sub">Elegí una contraseña nueva para tu cuenta.</p>
       <div class="auth-field">
         <label>Nueva contraseña</label>
-        <input type="password" id="reset-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckReset()" autocomplete="new-password">
+        <div class="auth-pass-wrap">
+          <input type="password" id="reset-pass" placeholder="Mínimo 8 caracteres" oninput="authCheckReset()" autocomplete="new-password">
+          <button type="button" class="auth-pass-eye" onclick="togglePassVis('reset-pass',this)" tabindex="-1" aria-label="Mostrar contraseña">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
         <span class="auth-field-hint" id="reset-pass-hint"></span>
       </div>
       <div class="auth-field">
         <label>Repetir contraseña</label>
-        <input type="password" id="reset-pass2" placeholder="Repetí la contraseña" oninput="authCheckReset()" autocomplete="new-password">
+        <div class="auth-pass-wrap">
+          <input type="password" id="reset-pass2" placeholder="Repetí la contraseña" oninput="authCheckReset()" autocomplete="new-password">
+          <button type="button" class="auth-pass-eye" onclick="togglePassVis('reset-pass2',this)" tabindex="-1" aria-label="Mostrar contraseña">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
         <span class="auth-field-hint" id="reset-pass2-hint"></span>
       </div>
       <button class="auth-btn" id="reset-btn" onclick="cambiarContrasena()" disabled>Guardar contraseña →</button>
