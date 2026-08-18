@@ -2428,8 +2428,7 @@ async function _onLogin(user) {
   _authProfile = profile
   _visibilidad.alias  = !!profile?.show_alias
   _visibilidad.phrase = !!profile?.show_phrase
-  _visibilidad.votes  = !!profile?.show_votes
-  perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
+  perfilPublico = _visibilidad.alias || _visibilidad.phrase
 
   // Actualizar nav con nombre real (alias) si está disponible
   const displayName = profile?.alias || _emailName
@@ -2724,7 +2723,7 @@ async function guardarAliasGoogle() {
     id: _googleAliasUser.id,
     alias,
     email: _googleAliasUser.email,
-    show_alias: true, show_phrase: false, show_votes: true,
+    show_alias: true, show_phrase: false,
     status: 'sin_verificar'
   }, { onConflict: 'id' })
 
@@ -5924,7 +5923,7 @@ function voActualizarAlias(alias) {
 //  MI PERFIL
 // ══════════════════════════════════════════════════════════════
 let perfilPublico = false  // derivado: true si ANY campo está visible
-let _visibilidad  = { alias: false, phrase: false, votes: false }  // estado granular
+let _visibilidad  = { alias: false, phrase: false }  // estado granular
 
 async function abrirMiPerfil() {
   if (!_requireButaca()) return
@@ -5939,8 +5938,7 @@ async function abrirMiPerfil() {
   // Sincronizar toggles granulares con valores de DB
   _visibilidad.alias  = !!_authProfile?.show_alias
   _visibilidad.phrase = !!_authProfile?.show_phrase
-  _visibilidad.votes  = !!_authProfile?.show_votes
-  perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
+  perfilPublico = _visibilidad.alias || _visibilidad.phrase
   _syncVisibilidadUI()
 
   // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
@@ -6116,7 +6114,6 @@ function cerrarMiPerfil() {
 function _syncVisibilidadUI() {
   document.getElementById('mp-toggle-alias')?.classList.toggle('on',  _visibilidad.alias)
   document.getElementById('mp-toggle-phrase')?.classList.toggle('on', _visibilidad.phrase)
-  document.getElementById('mp-toggle-votes')?.classList.toggle('on',  _visibilidad.votes)
 }
 
 let _pendingVisibilidadField = null
@@ -8648,13 +8645,6 @@ async function abrirUserProfile(seatNum, fromTab) {
   document.getElementById('upm-phrase-hero').textContent = isPrivate
     ? 'Este ciudadano eligió mantener su identidad privada.'
     : (phrase ? `"${phrase}"` : '')
-  const upmVotesStat = document.getElementById('upm-stat-votes')?.closest('.upm-stat')
-  if (showVotes) {
-    if (upmVotesStat) upmVotesStat.style.display = ''
-    document.getElementById('upm-stat-votes').textContent = votes
-  } else {
-    if (upmVotesStat) upmVotesStat.style.display = 'none'
-  }
 
   // Seguir button
   const fbtn = document.getElementById('upm-follow-btn')
