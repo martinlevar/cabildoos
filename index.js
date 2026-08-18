@@ -4707,7 +4707,7 @@ function abrirVerificacion() {
     const icon = r.querySelector('.vp-proc-icon'); if (icon) icon.textContent = '◌'
     const sub  = r.querySelector('.vp-proc-sub');  if (sub)  sub.textContent  = ''
   })
-  const campos = ['vp-nombre','vp-num-doc','vp-fecha-nac']
+  const campos = ['vp-nombre','vp-apellido','vp-num-doc','vp-fecha-nac']
   campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
   const selects = ['vp-tipo-doc','vp-pais','vp-dob-dia','vp-dob-mes','vp-dob-ano']
   selects.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
