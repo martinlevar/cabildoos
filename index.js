@@ -4638,8 +4638,10 @@ function abrirVerificacion() {
   })
   const campos = ['vp-nombre','vp-num-doc','vp-fecha-nac']
   campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
-  const selects = ['vp-tipo-doc','vp-pais']
+  const selects = ['vp-tipo-doc','vp-pais','vp-dob-dia','vp-dob-mes','vp-dob-ano']
   selects.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
+  document.getElementById('vp-dob-wrap')?.classList.remove('error')
+  vpInitDobSelects()
   document.getElementById('vp-btn-s1').disabled = true
   // Mostrar botón × solo para usuarios ya verificados (pueden cerrar el overlay)
   // Usuarios no verificados no pueden escapar del overlay hasta completar el flujo
