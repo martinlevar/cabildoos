@@ -3320,6 +3320,18 @@ body.observer-mode .cf-links              { display:none !important; }
 /* Banner de "Participá" sobre las preguntas para invitar a crear cuenta */
 body.observer-mode #observer-cta-strip    { display:flex !important; }
 
+/* ══ OBSERVADOR AUTENTICADO (invitado como observer) ══
+   Sobre observer-mode: recupera el nav pero bloquea todo lo de ciudadanos */
+body.observer-mode.invited-observer #nav-upill-wrap   { display:flex  !important; }
+body.observer-mode.invited-observer #nav-user-divider { display:block !important; }
+body.observer-mode.invited-observer #nav-creat-btn    { display:none  !important; }
+body.observer-mode.invited-observer #observer-cta-strip { display:none !important; }
+body.observer-mode.invited-observer #st-noident       { display:none  !important; }
+body.observer-mode.invited-observer #verify-overlay   { display:none  !important; }
+body.observer-mode.invited-observer .vp-btn-main      { display:none  !important; }
+/* Badge "👁 Observador" en el nav pill */
+body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !important; }
+
 /* ── SOCIAL FOOTER — ocultar pill, solo paneles ── */
 #social-footer .sf-tabs-row { display:none !important; }
 /* El contenedor sigue siendo el anchor para los paneles */

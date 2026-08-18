@@ -2403,6 +2403,25 @@ async function _onLogin(user) {
     return
   }
 
+  // ── Acceso revocado: cerrar sesión inmediatamente ──────────────────────────
+  if (user.app_metadata?.role === 'revoked') {
+    await sb.auth.signOut()
+    showScreen('intro')
+    return
+  }
+
+  // ── Observer: experiencia de solo lectura, sin flujo de verificación ────────
+  if (_isObserver()) {
+    document.body.classList.add('observer-mode', 'invited-observer')
+    // Nav: mostrar pill con "Observador" (no "Crear cuenta")
+    document.getElementById('nav-creat-btn')?.style.setProperty('display', 'none')
+    document.getElementById('nav-upill-wrap')?.style.setProperty('display', 'flex', 'important')
+    document.getElementById('nav-user-divider')?.style.setProperty('display', 'block', 'important')
+    voActualizarAlias('Observador')
+    await cargarConteoReal()
+    return
+  }
+
   // ── Verificar estado de cuenta ──────────────────────────────────────────────
   if (profile?.status === 'suspended') {
     await sb.auth.signOut()
