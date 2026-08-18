@@ -2450,6 +2450,21 @@ async function _onLogin(user) {
     localStorage.setItem('cabildoos_vid', profile.verification_id)
     if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
   } else {
+    // Recovery: si hay un verification_id guardado localmente, intentar linkearlo
+    // (puede que el submit ocurrió antes de que claim_seat se llamara en el submit)
+    const localVid = localStorage.getItem('cabildoos_vid')
+    if (localVid) {
+      try {
+        await sb.rpc('claim_seat', { p_verification_id: localVid })
+        // Recargar profile para ver si ya tiene butaca
+        const { data: freshProfile } = await sb.from('profiles').select('*').eq('id', user.id).single()
+        if (freshProfile?.butaca_numero) {
+          // claim_seat actualizó el profile — recargar la página para aplicar cambios
+          window.location.reload()
+          return
+        }
+      } catch(e) { console.warn('claim_seat recovery:', e) }
+    }
     const { data: req } = await sb.from('verification_requests')
       .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
     if (ddBadge) {
@@ -4948,6 +4963,13 @@ async function vpEnviarVerificacion() {
     window._vpSession = window._vpSession || {}
     window._vpSession.verification_id = vpVerificationId
     window._vpSession.status = data.status
+
+    // Linkear el verification_id al perfil del usuario YA (sin esperar aprobación).
+    // Así, cuando el admin apruebe con assign_butaca(), podrá actualizar butaca_numero
+    // directamente desde profiles.verification_id sin necesidad de que el usuario esté online.
+    if (_authUser) {
+      sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+    }
 
     vpShowStep(7)
     vpIniciarPolling(vpVerificationId)
