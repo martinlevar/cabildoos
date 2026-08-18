@@ -5029,7 +5029,7 @@ async function vpEnviarVerificacion() {
     ])
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 60000)
+    const timeout = setTimeout(() => controller.abort(), 90000)
 
     const resp = await fetch(`${VP_API_URL}/verify/submit`, {
       method: 'POST',
@@ -5083,32 +5083,32 @@ async function vpEnviarVerificacion() {
   } catch (e) {
     console.error('Error enviando verificacion:', e)
 
-    // Antes de mostrar "Reintentar" — verificar si la verificación YA llegó al servidor
-    // (timeout de red: el worker procesó pero la respuesta se perdió)
+    // Antes de mostrar "Reintentar" — verificar si la verificación YA llegó al servidor.
+    // Usamos el endpoint del worker (service key, bypasea RLS) en lugar del cliente Supabase.
+    // Esperamos 1.5s para dar tiempo al servidor de escribir a DB si el timeout fue muy justo.
     try {
-      const { data: checkData } = await sb
-        .from('verifications')
-        .select('status')
-        .eq('id', vpVerificationId)
-        .maybeSingle()
-
-      if (checkData?.status === 'pendiente_revision' || checkData?.status === 'aprobado') {
-        // El worker lo procesó correctamente — ir al paso 7 como si todo hubiera salido bien
-        console.log('[verify] Submit llegó al servidor (status:', checkData.status, ') — continuando al paso 7')
-        if (_authUser) {
-          sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+      await new Promise(r => setTimeout(r, 1500))
+      const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+      if (statusResp.ok) {
+        const statusData = await statusResp.json()
+        if (statusData.status === 'pendiente_revision' || statusData.status === 'aprobado') {
+          // El worker lo procesó correctamente — ir al paso 7 como si todo hubiera salido bien
+          console.log('[verify] Submit llegó al servidor (status:', statusData.status, ') — continuando al paso 7')
+          if (_authUser) {
+            sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+          }
+          const emailEl = document.getElementById('vp-s7-email')
+          const hintEl  = document.getElementById('vp-s7-email-hint')
+          if (emailEl && _authUser?.email) {
+            emailEl.textContent = _authUser.email
+            if (hintEl) hintEl.style.display = 'block'
+          } else if (hintEl) {
+            hintEl.style.display = 'none'
+          }
+          vpShowStep(7)
+          vpIniciarPolling(vpVerificationId)
+          return
         }
-        const emailEl = document.getElementById('vp-s7-email')
-        const hintEl  = document.getElementById('vp-s7-email-hint')
-        if (emailEl && _authUser?.email) {
-          emailEl.textContent = _authUser.email
-          if (hintEl) hintEl.style.display = 'block'
-        } else if (hintEl) {
-          hintEl.style.display = 'none'
-        }
-        vpShowStep(7)
-        vpIniciarPolling(vpVerificationId)
-        return
       }
     } catch (_) { /* si falla el check, mostrar el error normal */ }
 
