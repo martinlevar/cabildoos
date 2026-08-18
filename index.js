@@ -4098,6 +4098,13 @@ async function vpAbrirCamara(videoId, facing = 'environment') {
     if (!video) return
     video.srcObject = stream
     await video.play().catch(() => {})
+
+    // Espejo: detectar cámara real usada (en desktop, 'environment' cae en frontal)
+    // El canvas captura el stream raw (sin transformación CSS) → imagen siempre correcta
+    const track = stream.getVideoTracks()[0]
+    const actualFacing = track?.getSettings()?.facingMode
+    const isFront = actualFacing ? actualFacing === 'user' : facing === 'user'
+    video.style.transform = isFront ? 'scaleX(-1)' : 'none'
   } catch (e) {
     console.error('Cámara no disponible:', e)
     showToast('No se pudo acceder a la cámara — verificá los permisos del navegador')
