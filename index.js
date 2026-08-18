@@ -4314,6 +4314,34 @@ function vpSelfieDocReintentar() {
 //  BLUR DE DOCUMENTO — pixela la zona donde está el documento en la selfie
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Extrae SOLO la zona de la cara del DNI — sin número, sin nombre, sin fechas
+// Para DNI argentino/latinoamericano la foto ocupa aprox:
+//   horizontal: 0% → 38% del ancho del documento
+//   vertical:   14% → 80% del alto del documento
+async function vpExtraerCaraDoc(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const fx = Math.floor(img.width  * 0.01)
+      const fy = Math.floor(img.height * 0.14)
+      const fw = Math.floor(img.width  * 0.37)
+      const fh = Math.floor(img.height * 0.66)
+
+      const canvas = document.createElement('canvas')
+      // Output cuadrado-ish, máx 400px
+      const maxSide = 400
+      const scale   = Math.min(maxSide / fw, maxSide / fh, 1)
+      canvas.width  = Math.round(fw * scale)
+      canvas.height = Math.round(fh * scale)
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, fx, fy, fw, fh, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.88)
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(blob)
+  })
+}
+
 async function vpPixelarDocumento(blob) {
   // 1. Pedir a Gemini la caja del documento en la foto
   let docBox = null
@@ -4819,9 +4847,12 @@ async function vpEnviarVerificacion() {
   }
 
   try {
+    // selfie_doc_b64 → selfie CON documento pixelado (vpAnonBlob ya lo tiene)
+    // doc_face_b64   → SOLO la cara recortada del DNI (sin ningún dato visible)
+    const docFaceBlob = vpCapturedDoc ? await vpExtraerCaraDoc(vpCapturedDoc).catch(() => null) : null
     const [selfieDocB64, docB64] = await Promise.all([
-      vpCapturedSelfieDoc ? blobToB64(vpCapturedSelfieDoc) : Promise.resolve(''),
-      vpCapturedDoc       ? blobToB64(vpCapturedDoc)       : Promise.resolve(''),
+      vpAnonBlob   ? blobToB64(vpAnonBlob)   : Promise.resolve(''),
+      docFaceBlob  ? blobToB64(docFaceBlob)  : Promise.resolve(''),
     ])
 
     const controller = new AbortController()
