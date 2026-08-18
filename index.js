@@ -5019,13 +5019,40 @@ async function vpEnviarVerificacion() {
     })
   }
 
+  // Comprimir imagen: resize a maxWidth y codificar como JPEG con calidad dada
+  // Reduce imágenes de cámara de 4-6 MB a ~100-250 KB, evitando timeouts en conexiones lentas
+  function comprimirImagen(blob, maxWidth = 1024, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(blob)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const scale  = Math.min(1, maxWidth / img.width)
+        const canvas = document.createElement('canvas')
+        canvas.width  = Math.round(img.width  * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob falló')), 'image/jpeg', quality)
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
   try {
     // selfie_doc_b64 → selfie CON documento pixelado (vpAnonBlob ya lo tiene)
     // doc_face_b64   → SOLO la cara recortada del DNI (sin ningún dato visible)
     const docFaceBlob = vpCapturedDoc ? await vpExtraerCaraDoc(vpCapturedDoc).catch(() => null) : null
+
+    // Comprimir ambas imágenes antes de codificar — reduce payload de ~16MB a ~400KB
+    const [selfieComprimida, docComprimida] = await Promise.all([
+      vpAnonBlob  ? comprimirImagen(vpAnonBlob,  1280, 0.72).catch(() => vpAnonBlob)  : Promise.resolve(null),
+      docFaceBlob ? comprimirImagen(docFaceBlob,  800, 0.80).catch(() => docFaceBlob) : Promise.resolve(null),
+    ])
+
     const [selfieDocB64, docB64] = await Promise.all([
-      vpAnonBlob   ? blobToB64(vpAnonBlob)   : Promise.resolve(''),
-      docFaceBlob  ? blobToB64(docFaceBlob)  : Promise.resolve(''),
+      selfieComprimida ? blobToB64(selfieComprimida) : Promise.resolve(''),
+      docComprimida    ? blobToB64(docComprimida)    : Promise.resolve(''),
     ])
 
     const controller = new AbortController()
@@ -5084,33 +5111,37 @@ async function vpEnviarVerificacion() {
     console.error('Error enviando verificacion:', e)
 
     // Antes de mostrar "Reintentar" — verificar si la verificación YA llegó al servidor.
-    // Usamos el endpoint del worker (service key, bypasea RLS) en lugar del cliente Supabase.
-    // Esperamos 1.5s para dar tiempo al servidor de escribir a DB si el timeout fue muy justo.
+    // Reintentamos hasta 4 veces con backoff progresivo por si el servidor tarda en escribir a DB.
     try {
-      await new Promise(r => setTimeout(r, 1500))
-      const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
-      if (statusResp.ok) {
-        const statusData = await statusResp.json()
-        if (statusData.status === 'pendiente_revision' || statusData.status === 'aprobado') {
-          // El worker lo procesó correctamente — ir al paso 7 como si todo hubiera salido bien
-          console.log('[verify] Submit llegó al servidor (status:', statusData.status, ') — continuando al paso 7')
-          if (_authUser) {
-            sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+      const delays = [1500, 3000, 5000, 7000]
+      for (const delay of delays) {
+        await new Promise(r => setTimeout(r, delay))
+        try {
+          const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+          if (statusResp.ok) {
+            const statusData = await statusResp.json()
+            if (statusData.status === 'pendiente_revision' || statusData.status === 'aprobado') {
+              // El worker lo procesó correctamente — ir al paso 7 como si todo hubiera salido bien
+              console.log('[verify] Submit llegó al servidor (status:', statusData.status, ') — continuando al paso 7')
+              if (_authUser) {
+                sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+              }
+              const emailEl = document.getElementById('vp-s7-email')
+              const hintEl  = document.getElementById('vp-s7-email-hint')
+              if (emailEl && _authUser?.email) {
+                emailEl.textContent = _authUser.email
+                if (hintEl) hintEl.style.display = 'block'
+              } else if (hintEl) {
+                hintEl.style.display = 'none'
+              }
+              vpShowStep(7)
+              vpIniciarPolling(vpVerificationId)
+              return
+            }
           }
-          const emailEl = document.getElementById('vp-s7-email')
-          const hintEl  = document.getElementById('vp-s7-email-hint')
-          if (emailEl && _authUser?.email) {
-            emailEl.textContent = _authUser.email
-            if (hintEl) hintEl.style.display = 'block'
-          } else if (hintEl) {
-            hintEl.style.display = 'none'
-          }
-          vpShowStep(7)
-          vpIniciarPolling(vpVerificationId)
-          return
-        }
+        } catch (_) { /* continuar con siguiente intento */ }
       }
-    } catch (_) { /* si falla el check, mostrar el error normal */ }
+    } catch (_) { /* si falla todo el bloque, mostrar el error normal */ }
 
     if (btn) { btn.textContent = 'Reintentar envío'; btn.disabled = false }
     showToast('Error al enviar — verificá tu conexión')
