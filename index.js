@@ -1101,10 +1101,13 @@ window.addEventListener('mousemove', e => {
   })
 
   if (closest) {
-    hoveredSeat = closest.num
-    // Only update card if not pinned (mouse on card) and seat actually changed
-    if (!cardPinned && closest.num !== cardSeat) {
+    const closestOccupied = closest.num === MY_SEAT || (closest.num in _profilesCache)
+    hoveredSeat = closestOccupied ? closest.num : null
+    // Only update card if not pinned (mouse on card), seat changed, and seat is occupied
+    if (!cardPinned && closestOccupied && closest.num !== cardSeat) {
       showCard(closest, e.clientX, e.clientY)
+    } else if (!cardPinned && !closestOccupied) {
+      hideCard()
     }
   } else {
     hoveredSeat = null
