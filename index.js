@@ -3505,10 +3505,7 @@ function vpDocReintentar() {
 const VP_LIVENESS = [
   { emoji: '😉', texto: 'Guiñá un ojo' },
   { emoji: '😁', texto: 'Sonreí bien amplio' },
-  { emoji: '👈', texto: 'Girá la cabeza a la izquierda' },
-  { emoji: '👉', texto: 'Girá la cabeza a la derecha' },
   { emoji: '😮', texto: 'Abrí la boca' },
-  { emoji: '🫡', texto: 'Tocáte la nariz' },
   { emoji: '✌️', texto: 'Mostrá dos dedos' },
 ]
 let vpLivenessInstruccion = null
@@ -4329,7 +4326,11 @@ async function vpAutoCapturar(tipo, wrapperId, segundos = 3) {
 }
 
 // ── Paso 3: liveness con auto-capture ────────────────────────────────────────
+// Token incremental — si cambia mientras la cadena está corriendo, las .then() se cancelan
+let _vpLivenessToken = 0
+
 function vpLivenessIniciar() {
+  const token = ++_vpLivenessToken  // capturar token de esta sesión de liveness
   vpLivenessInstruccion = VP_LIVENESS[Math.floor(Math.random() * VP_LIVENESS.length)]
   const emoji = document.getElementById('vp-liveness-emoji')
   const texto = document.getElementById('vp-liveness-texto')
@@ -4338,6 +4339,7 @@ function vpLivenessIniciar() {
   vpResetCamUI('selfie')
   vpAbrirCamara('cam-selfie-video', 'user')
     .then(() => {
+      if (token !== _vpLivenessToken) return  // usuario navegó a otro paso — cancelar
       // Esperar que el video tenga frames reales
       const vid = document.getElementById('cam-selfie-video')
       return new Promise(res => {
@@ -4346,8 +4348,12 @@ function vpLivenessIniciar() {
         setTimeout(res, 2000)
       })
     })
-    .then(() => vpAutoCapturar('selfie', 'cam-selfie-wrap', 4))
     .then(() => {
+      if (token !== _vpLivenessToken) return  // cancelado
+      return vpAutoCapturar('selfie', 'cam-selfie-wrap', 4)
+    })
+    .then(() => {
+      if (token !== _vpLivenessToken) return  // cancelado — no parar la cámara del otro paso
       // Mostrar preview y botones de confirmación — NO avanzar automático
       vpPararCamara()
       document.getElementById('cam-selfie-pre').style.display  = 'none'
@@ -4407,7 +4413,7 @@ async function vpSelfieDocIniciar() {
       vid.addEventListener('loadeddata', res, { once: true })
       setTimeout(res, 2000)
     })
-    await vpAutoCapturar('selfiedoc', 'cam-selfiedoc-wrap', 4)
+    await vpAutoCapturar('selfiedoc', 'cam-selfiedoc-wrap', 8)
     // Mostrar preview y botones de confirmación — usuario decide
     vpPararCamara()
     document.getElementById('cam-selfiedoc-pre').style.display  = 'none'
@@ -4763,7 +4769,8 @@ function vpResetCamUI(tipo) {
 }
 
 function vpShowStep(n) {
-  // Parar todo al salir
+  // Parar todo al salir — y cancelar cualquier cadena de liveness en vuelo
+  ++_vpLivenessToken  // invalida cualquier .then() pendiente de liveness
   vpPararBarcodeScanner()
   vpPararScanner()
   vpPararCamara()
@@ -5075,6 +5082,36 @@ async function vpEnviarVerificacion() {
     vpIniciarPolling(vpVerificationId)
   } catch (e) {
     console.error('Error enviando verificacion:', e)
+
+    // Antes de mostrar "Reintentar" — verificar si la verificación YA llegó al servidor
+    // (timeout de red: el worker procesó pero la respuesta se perdió)
+    try {
+      const { data: checkData } = await sb
+        .from('verifications')
+        .select('status')
+        .eq('id', vpVerificationId)
+        .maybeSingle()
+
+      if (checkData?.status === 'pendiente_revision' || checkData?.status === 'aprobado') {
+        // El worker lo procesó correctamente — ir al paso 7 como si todo hubiera salido bien
+        console.log('[verify] Submit llegó al servidor (status:', checkData.status, ') — continuando al paso 7')
+        if (_authUser) {
+          sb.rpc('claim_seat', { p_verification_id: vpVerificationId }).catch(e => console.warn('claim_seat link:', e))
+        }
+        const emailEl = document.getElementById('vp-s7-email')
+        const hintEl  = document.getElementById('vp-s7-email-hint')
+        if (emailEl && _authUser?.email) {
+          emailEl.textContent = _authUser.email
+          if (hintEl) hintEl.style.display = 'block'
+        } else if (hintEl) {
+          hintEl.style.display = 'none'
+        }
+        vpShowStep(7)
+        vpIniciarPolling(vpVerificationId)
+        return
+      }
+    } catch (_) { /* si falla el check, mostrar el error normal */ }
+
     if (btn) { btn.textContent = 'Reintentar envío'; btn.disabled = false }
     showToast('Error al enviar — verificá tu conexión')
   }
