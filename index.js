@@ -1516,7 +1516,7 @@ async function iniciarSimulacion() {
   const _fs = document.getElementById('sim-floating-status')
   if (_fs) _fs.classList.add('counting')
   const _lbl = document.getElementById('sim-floating-label')
-  if (_lbl) _lbl.textContent = 'Contando sobres…'
+  if (_lbl) _lbl.textContent = '✨ Preparando revelación…'
   const _footer = document.getElementById('sim-footer-bar')
   if (_footer) _footer.classList.remove('show')
 
@@ -1529,19 +1529,40 @@ async function iniciarSimulacion() {
   const sc = Math.min(
     simCSSW  / (rangeX + padX * 2),
     simCSSH  / (rangeY + padY * 2),
-    12        // zoom máximo — evita que 1 dot ocupe toda la pantalla
+    12
   ) * 0.92
   SIM.camS = sc
   SIM.camX = (bx0 + bx1) / 2
   SIM.camY = (by0 + by1) / 2
 
-  // Duración total dinámica: dramático con pocas butacas, épico con muchas
-  SIM.startTime  = Date.now()
-  SIM.flashMap   = {}   // seat_num → timestamp de revelación (para efecto pop)
-  SIM._done      = false
-  SIM._settleStart = 0  // timestamp cuando empieza la transición dramática → final
-  // Asignación aleatoria de verde/rojo para el efecto dramático de conteo
-  SIM.dramaticMap = {}
+  // ── FASE FUEGOS ARTIFICIALES ──────────────────────────────────────────────
+  // Todas las butacas (asignadas o no) se encienden con arcoíris desde el centro
+  const FW_DUR       = 4200   // duración total del show de luces
+  const FW_FADE_IN   = 1800   // tiempo para que lleguen todas las luces
+  const FW_HOLD      = 1600   // tiempo prendidas
+  const FW_FADE_OUT  = 800    // apagado
+
+  // Ordenar todas las butacas desde el centro del hemiciclo hacia afuera
+  const cx = (bx0 + bx1) / 2, cy = (by0 + by1) / 2
+  const allSeatsOrdered = [...SEATS].sort((a, b) =>
+    ((a.x-cx)**2+(a.y-cy)**2) - ((b.x-cx)**2+(b.y-cy)**2)
+  )
+  // Asignar hue fija por butaca para el arcoíris (basado en posición angular)
+  SIM.fwHue = {}
+  SEATS.forEach(s => {
+    const angle = Math.atan2(s.y - cy, s.x - cx)
+    SIM.fwHue[s.num] = ((angle / (Math.PI * 2) + 1) * 360 + s.num * 23) % 360
+  })
+  SIM.fwRevealIdx  = 0   // cuántas butacas están "encendidas" en FW
+  SIM.fwOrder      = allSeatsOrdered
+  SIM.phase        = 'fireworks'
+  SIM.fwStart      = Date.now()
+
+  // Duración del conteo posterior
+  SIM.flashMap     = {}
+  SIM._done        = false
+  SIM._settleStart = 0
+  SIM.dramaticMap  = {}
   SIM.order.forEach(snum => {
     SIM.dramaticMap[snum] = Math.random() < 0.5 ? 'si' : 'no'
   })
@@ -1565,6 +1586,115 @@ function simDraw() {
   const W = simCSSW, H = simCSSH
   const t = Date.now()
   const dotR = Math.max(3.5, DOT_R * SIM.camS)
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FASE FUEGOS ARTIFICIALES — todas las butacas con arcoíris antes del conteo
+  // ══════════════════════════════════════════════════════════════════════════
+  if (SIM.phase === 'fireworks') {
+    const elapsed  = t - SIM.fwStart
+    const FW_DUR   = 4200
+    const FW_IN    = 1800
+    const FW_HOLD  = 1600
+    const FW_OUT   = 800
+
+    // Cuántas butacas deben estar encendidas ahora (ola desde centro)
+    const revealProgress = Math.min(elapsed / FW_IN, 1)
+    const targetLit = Math.floor(revealProgress * SIM.fwOrder.length)
+    while (SIM.fwRevealIdx < targetLit) SIM.fwRevealIdx++
+
+    // Alfa global (fade in/out)
+    let globalAlpha = 1
+    if (elapsed < FW_IN) {
+      globalAlpha = elapsed / FW_IN
+    } else if (elapsed > FW_IN + FW_HOLD) {
+      globalAlpha = 1 - Math.min((elapsed - FW_IN - FW_HOLD) / FW_OUT, 1)
+    }
+
+    // Fondo oscuro
+    simCtx.clearRect(0, 0, W, H)
+    simCtx.fillStyle = '#040C1E'
+    simCtx.fillRect(0, 0, W + 1, H + 1)
+
+    // Resplandor radial azul (igual que intro)
+    const grd = simCtx.createRadialGradient(W/2, H*0.9, 0, W/2, H*0.9, W * 0.7)
+    grd.addColorStop(0,   'rgba(37,99,235,0.18)')
+    grd.addColorStop(0.5, 'rgba(30,64,175,0.07)')
+    grd.addColorStop(1,   'transparent')
+    simCtx.fillStyle = grd
+    simCtx.fillRect(0, 0, W, H)
+
+    // Dibujar cada butaca encendida
+    for (let i = 0; i < SIM.fwRevealIdx; i++) {
+      const s = SIM.fwOrder[i]
+      const { x: sx, y: sy } = simToScreen(s.x, s.y)
+      if (sx < -dotR*6 || sx > W+dotR*6 || sy < -dotR*6 || sy > H+dotR*6) continue
+
+      // Color: hue fija por butaca + ciclo lento de saturación (ola de colores)
+      const hue = (SIM.fwHue[s.num] + t * 0.04) % 360
+      const pulse = (Math.sin(t / 600 + s.num * 0.7) + 1) / 2
+
+      // Fade-in individual: las recién encendidas arrancan brillantes
+      const litMs = elapsed - (i / SIM.fwOrder.length) * FW_IN
+      const indivAlpha = litMs > 0 ? Math.min(litMs / 280, 1) : 0
+      const finalAlpha = globalAlpha * indivAlpha
+
+      const r = dotR + pulse * dotR * 0.7
+
+      simCtx.save()
+      simCtx.globalAlpha = finalAlpha
+
+      // Glow
+      simCtx.shadowColor = `hsl(${hue},100%,60%)`
+      simCtx.shadowBlur  = 12 + pulse * 16
+
+      simCtx.beginPath()
+      simCtx.arc(sx, sy, Math.max(0.5, r), 0, Math.PI * 2)
+      simCtx.fillStyle = `hsl(${hue},100%,65%)`
+      simCtx.fill()
+      simCtx.restore()
+    }
+
+    // Butacas aún oscuras
+    simCtx.shadowBlur = 0
+    for (let i = SIM.fwRevealIdx; i < SIM.fwOrder.length; i++) {
+      const s = SIM.fwOrder[i]
+      const { x: sx, y: sy } = simToScreen(s.x, s.y)
+      if (sx < -dotR || sx > W+dotR || sy < -dotR || sy > H+dotR) continue
+      simCtx.globalAlpha = 0.18
+      simCtx.beginPath()
+      simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
+      simCtx.fillStyle = '#3a4060'
+      simCtx.fill()
+    }
+    simCtx.globalAlpha = 1
+
+    // Texto central
+    if (elapsed > FW_IN * 0.4) {
+      const txtAlpha = Math.min((elapsed - FW_IN * 0.4) / 600, 1) * globalAlpha
+      simCtx.save()
+      simCtx.globalAlpha = txtAlpha
+      simCtx.fillStyle = '#ffffff'
+      simCtx.font = `bold ${Math.round(W * 0.048)}px sans-serif`
+      simCtx.textAlign = 'center'
+      simCtx.textBaseline = 'middle'
+      simCtx.shadowColor = 'rgba(255,255,255,0.4)'
+      simCtx.shadowBlur = 20
+      simCtx.fillText('El Cabildo está votando…', W / 2, H * 0.12)
+      simCtx.restore()
+    }
+
+    // Transición → fase de conteo
+    if (elapsed >= FW_DUR) {
+      SIM.phase     = 'counting'
+      SIM.startTime = Date.now()
+      const _lbl = document.getElementById('sim-floating-label')
+      if (_lbl) _lbl.textContent = 'Contando sobres…'
+    }
+
+    requestAnimationFrame(simDraw)
+    return
+  }
+  // ══════════════════════════════════════════════════════════════════════════
 
   // ── Reveal frame-driven (curva cúbica + jitter aleatorio) ────────────────
   const _simTotal = SIM.order.length
