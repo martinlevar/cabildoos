@@ -1215,6 +1215,24 @@ function showCard(seat, cx, cy) {
   const p = getProfile(seat.num)
   const card = document.getElementById('profile-card')
 
+  // Color de tarjeta del usuario
+  const CARD_THEMES = {
+    white:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888',    border:'rgba(0,0,0,.1)' },
+    yellow: { bg:'#fef9c3', text:'#3d3000', muted:'#7a6a00', border:'rgba(0,0,0,.1)' },
+    green:  { bg:'#d1fae5', text:'#064e3b', muted:'#2a7a5e', border:'rgba(0,0,0,.1)' },
+    cyan:   { bg:'#cffafe', text:'#0e4f5c', muted:'#2a7a8a', border:'rgba(0,0,0,.1)' },
+    black:  { bg:'#1c1c1e', text:'#f5f5f5', muted:'#999',    border:'rgba(255,255,255,.12)' },
+  }
+  const cached = _profilesCache[seat.num]
+  const theme = CARD_THEMES[cached?.cardColor || 'white'] || CARD_THEMES.white
+  card.style.background = theme.bg
+  card.style.borderColor = theme.border
+  document.getElementById('pc-name').style.color   = theme.text
+  document.getElementById('pc-butaca').style.color  = theme.muted
+  const phraseEl = document.getElementById('pc-phrase')
+  phraseEl.style.color       = theme.text
+  phraseEl.style.borderColor = '#f76a1e'
+
   // Avatar
   const av = document.getElementById('pc-avatar')
   av.style.background = p.color
@@ -1226,7 +1244,7 @@ function showCard(seat, cx, cy) {
   if (p.isAnon) { badge.textContent = 'Anónimo'; badge.className = 'pc-anon-badge anon'; }
   else          { badge.textContent = 'Público';  badge.className = 'pc-anon-badge pub'; }
 
-  document.getElementById('pc-phrase').textContent  = `"${p.phrase}"`
+  document.getElementById('pc-phrase').textContent  = p.phrase ? `"${p.phrase}"` : ''
   const pcVotesEl = document.getElementById('pc-votes-n')
   const pcVotesRow = pcVotesEl?.closest('.pc-votes')
   if (p.votes > 0) {
@@ -6147,6 +6165,12 @@ async function abrirMiPerfil() {
   perfilPublico = _visibilidad.alias || _visibilidad.phrase
   _syncVisibilidadUI()
 
+  // Sincronizar swatch de color activo
+  const currentColor = _authProfile?.card_color || 'white'
+  document.querySelectorAll('.mp-color-swatch').forEach(s => s.classList.remove('active'))
+  const activeEl = document.getElementById('mpc-' + currentColor)
+  if (activeEl) activeEl.classList.add('active')
+
   // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
   let cntSi = 0, cntNo = 0, cntAbs = 0
   if (MY_SEAT > 0) {
@@ -6287,6 +6311,20 @@ function _renderStatsPanel(rows) {
 
 function mpMarkDirty(field) {
   // noop — save button becomes visible via CSS :focus-within
+}
+
+async function mpSetColor(color) {
+  // Actualizar UI inmediatamente
+  document.querySelectorAll('.mp-color-swatch').forEach(s => s.classList.remove('active'))
+  const el = document.getElementById('mpc-' + color)
+  if (el) el.classList.add('active')
+  // Guardar en DB
+  const { error } = await sb.rpc('save_my_seat_field', { p_field: 'card_color', p_value: color })
+  if (error) { showToast('Error al guardar color'); return }
+  if (_authProfile) _authProfile.card_color = color
+  // Actualizar caché propio
+  if (MY_SEAT > 0 && _profilesCache[MY_SEAT]) _profilesCache[MY_SEAT].cardColor = color
+  showToast('✓ Color guardado')
 }
 
 async function mpSaveField(field) {
@@ -6560,6 +6598,7 @@ async function cargarPerfilesPublicos() {
           showPhrase: !!r.show_phrase,
           showVotes:  !!r.show_votes,
           isPublic:   !!(r.show_alias || r.show_phrase || r.show_votes),
+          cardColor:  r.card_color || 'white',
         }
       })
     }
