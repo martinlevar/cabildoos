@@ -2407,7 +2407,20 @@ async function _onLogin(user) {
   if (navInfo) navInfo.style.display = 'flex'
 
   // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
-  const { data: profile, error: profileErr } = await sb.from('profiles').select('*').eq('id', user.id).single()
+  const [{ data: profile, error: profileErr }, { data: seatRows }] = await Promise.all([
+    sb.from('profiles').select('*').eq('id', user.id).single(),
+    sb.rpc('get_my_seat_identity'),
+  ])
+  // Mezclar datos de seat_identities (alias, phrase, visibilidad) en el perfil
+  if (profile && seatRows && seatRows[0]) {
+    const si = seatRows[0]
+    profile.alias      = si.alias
+    profile.phrase     = si.phrase
+    profile.show_alias = si.show_alias
+    profile.show_phrase= si.show_phrase
+    profile.show_votes = si.show_votes
+    profile.is_public  = si.is_public
+  }
 
   // ── Si no hay perfil, verificar que el usuario aún existe en el servidor ───
   // Caso: admin borró el usuario pero el JWT local todavía era válido en esta pestaña
@@ -6281,7 +6294,7 @@ async function mpSaveField(field) {
   const val = sanitizeInput(input.value)
   const update = {}
   update[field] = val
-  const { error } = await sb.from('profiles').update(update).eq('id', _authUser.id)
+  const { error } = await sb.rpc('save_my_seat_field', { p_field: field, p_value: val })
   if (error) { showToast('Error al guardar'); return }
   // Actualizar cache local
   if (!_authProfile) _authProfile = {}
