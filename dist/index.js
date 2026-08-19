@@ -889,6 +889,9 @@ function _actualizarBtnButaca() {
 function mapButacaBtn() {
   if (MY_SEAT > 0) {
     resetCamera()
+  } else if (_isObserverMode()) {
+    // Observador — no tiene butaca ni necesita verificación
+    showToast('Modo observador — sin butaca asignada')
   } else if (_authUser) {
     // Logueado pero sin verificar → ir a verificación
     showScreen('verify-onboard')
@@ -957,8 +960,8 @@ function draw() {
     const isMine     = s.num === MY_SEAT
     const isHovered  = hoveredSeat === s.num
     const isFollow   = following.has(s.num)
-    // Asiento ocupado: es el mío, o tiene perfil cargado (usuario verificado)
-    const isOccupied = isMine || (s.num <= TOTAL_SEATS)
+    // Asiento ocupado: es el mío, o existe en el caché de perfiles reales
+    const isOccupied = isMine || (s.num in _profilesCache)
 
     // Dot radius on screen
     let r = Math.max(1.2, DOT_R * cam.scale)
@@ -1091,17 +1094,20 @@ window.addEventListener('mousemove', e => {
 
   let closest = null, minD = hitR + 6
   SEATS.forEach(s => {
-    if (s.num > TOTAL_SEATS && s.num !== MY_SEAT) return  // butaca vacía: ignorar hover
+    if (!(s.num in _profilesCache) && s.num !== MY_SEAT) return  // butaca vacía: ignorar hover
     const { x: ssx, y: ssy } = toScreen(s.x, s.y, W, H)
     const d = Math.hypot(sx - ssx, sy - ssy)
     if (d < minD) { minD = d; closest = s }
   })
 
   if (closest) {
-    hoveredSeat = closest.num
-    // Only update card if not pinned (mouse on card) and seat actually changed
-    if (!cardPinned && closest.num !== cardSeat) {
+    const closestOccupied = closest.num === MY_SEAT || (closest.num in _profilesCache)
+    hoveredSeat = closestOccupied ? closest.num : null
+    // Only update card if not pinned (mouse on card), seat changed, and seat is occupied
+    if (!cardPinned && closestOccupied && closest.num !== cardSeat) {
       showCard(closest, e.clientX, e.clientY)
+    } else if (!cardPinned && !closestOccupied) {
+      hideCard()
     }
   } else {
     hoveredSeat = null
@@ -1209,6 +1215,24 @@ function showCard(seat, cx, cy) {
   const p = getProfile(seat.num)
   const card = document.getElementById('profile-card')
 
+  // Color de tarjeta del usuario
+  const CARD_THEMES = {
+    white:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888',    border:'rgba(0,0,0,.1)' },
+    yellow: { bg:'#fef9c3', text:'#3d3000', muted:'#7a6a00', border:'rgba(0,0,0,.1)' },
+    green:  { bg:'#d1fae5', text:'#064e3b', muted:'#2a7a5e', border:'rgba(0,0,0,.1)' },
+    cyan:   { bg:'#cffafe', text:'#0e4f5c', muted:'#2a7a8a', border:'rgba(0,0,0,.1)' },
+    black:  { bg:'#1c1c1e', text:'#f5f5f5', muted:'#999',    border:'rgba(255,255,255,.12)' },
+  }
+  const cached = _profilesCache[seat.num]
+  const theme = CARD_THEMES[cached?.cardColor || 'white'] || CARD_THEMES.white
+  card.style.background = theme.bg
+  card.style.borderColor = theme.border
+  document.getElementById('pc-name').style.color   = theme.text
+  document.getElementById('pc-butaca').style.color  = theme.muted
+  const phraseEl = document.getElementById('pc-phrase')
+  phraseEl.style.color       = theme.text
+  phraseEl.style.borderColor = '#f76a1e'
+
   // Avatar
   const av = document.getElementById('pc-avatar')
   av.style.background = p.color
@@ -1220,7 +1244,7 @@ function showCard(seat, cx, cy) {
   if (p.isAnon) { badge.textContent = 'Anónimo'; badge.className = 'pc-anon-badge anon'; }
   else          { badge.textContent = 'Público';  badge.className = 'pc-anon-badge pub'; }
 
-  document.getElementById('pc-phrase').textContent  = `"${p.phrase}"`
+  document.getElementById('pc-phrase').textContent  = p.phrase ? `"${p.phrase}"` : ''
   const pcVotesEl = document.getElementById('pc-votes-n')
   const pcVotesRow = pcVotesEl?.closest('.pc-votes')
   if (p.votes > 0) {
@@ -1230,16 +1254,12 @@ function showCard(seat, cx, cy) {
     if (pcVotesRow) pcVotesRow.style.display = 'none'
   }
 
-  const fbtn    = document.getElementById('pc-follow-btn')
-  const voteBtn = document.getElementById('profile-card').querySelector('.pc-vote-btn')
+  const fbtn = document.getElementById('pc-follow-btn')
 
   if (p.isMe) {
-    // Propio dot: solo mostrar Votar, sin Seguir
-    fbtn.style.display  = 'none'
-    voteBtn.style.display = ''
+    // Propio dot: sin botones de acción
+    fbtn.style.display = 'none'
   } else {
-    // Dot ajeno: nunca mostrar Votar
-    voteBtn.style.display = 'none'
     if (MY_SEAT > 0) {
       fbtn.style.display = ''
       if (followingConfirmed.has(seat.num)) {
@@ -1448,7 +1468,6 @@ window.simDemo = function(n = 300) {
 
 async function iniciarSimulacion() {
   if (!_requireButaca()) return
-  // Asegurar que las butacas reales están cargadas
   if (SEATS.length === 0) {
     await cargarConteoReal()
     if (SEATS.length === 0) return
@@ -1458,62 +1477,24 @@ async function iniciarSimulacion() {
   const mbd = document.getElementById('modal-bd')
   if (mbd) mbd.classList.remove('open')
 
-  // ── Obtener votos reales desde Supabase (privacidad: solo participación + agregados) ──
-  const qId = PREGUNTAS_IDS[qIdx]
-  const participatedSeats = new Set()  // seats que votaron (sin saber cómo)
-  SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
-  if (qId) {
-    try {
-      // Participación por butaca (sin dirección de voto)
-      const { data: seats } = await sb.from('vote_seats')
-        .select('seat_number')
-        .eq('question_id', qId)
-      if (seats) seats.forEach(r => participatedSeats.add(r.seat_number))
-    } catch(e) { console.warn('vote_seats:', e) }
-    try {
-      // Totales agregados (si/no/abs) — sin vincular a butaca
-      const { data: counts } = await sb.rpc('get_question_votes', { p_question_id: qId })
-      if (counts) counts.forEach(row => {
-        if (row.vote_plain === 'si')  SIM.totalSi  = Number(row.total)
-        if (row.vote_plain === 'no')  SIM.totalNo  = Number(row.total)
-        if (row.vote_plain === 'abs') SIM.totalAbs = Number(row.total)
-      })
-    } catch(e) { console.warn('get_question_votes:', e) }
-  }
-
-  // Asignar estado por butaca: 'voted' (participó) | null (no participó)
-  // Los totales si/no/abs se muestran como agregado, nunca vinculados a una butaca
+  // ── UI inicial ────────────────────────────────────────────────────────────
+  SIM.active  = true
+  SIM.phase   = 'fireworks'   // arranca en fireworks mientras carga la data
   SIM.results = {}
-  SEATS.forEach(s => {
-    SIM.results[s.num] = participatedSeats.has(s.num) ? 'voted' : null
-  })
-  SIM._realSi  = SIM.totalSi
-  SIM._realNo  = SIM.totalNo
-  SIM._realAbs = SIM.totalAbs
-  // ────────────────────────────────────────────────────────────────────────
-
+  SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
   SIM.revealed = 0
-
-  // Orden aleatorio de revelación — solo butacas ocupadas (1..TOTAL_SEATS)
-  SIM.order = SEATS.filter(s => s.num <= TOTAL_SEATS).map(s => s.num).sort(() => Math.random() - 0.5)
-  const simTotal = SIM.order.length
   SIM.revealedArr = new Uint8Array(TOTAL_SEATS + 1)
+  SIM.flashMap    = {}
+  SIM._done       = false
+  SIM._settleStart= 0
+  SIM.dramaticMap = {}
 
-  // Inyectar pregunta en el banner y total real en el header
-  const qEl = document.getElementById('sw-question-txt')
-  if (qEl) qEl.textContent = PREGUNTAS[qIdx] || qEl.textContent
-  const simTotalEl = document.getElementById('sim-total')
-  if (simTotalEl) simTotalEl.textContent = simTotal.toLocaleString('es-AR')
-  document.getElementById('sim-progress').textContent = '0'
-
-  SIM.active = true
   document.getElementById('sim-overlay').classList.add('open')
   document.getElementById('sim-winner-banner').classList.remove('show')
-  // Reset floating UI
   const _fs = document.getElementById('sim-floating-status')
   if (_fs) _fs.classList.add('counting')
   const _lbl = document.getElementById('sim-floating-label')
-  if (_lbl) _lbl.textContent = 'Contando sobres…'
+  if (_lbl) _lbl.textContent = 'Cargando votos…'
   const _footer = document.getElementById('sim-footer-bar')
   if (_footer) _footer.classList.remove('show')
 
@@ -1523,31 +1504,55 @@ async function iniciarSimulacion() {
   const rangeX = bx1 - bx0, rangeY = by1 - by0
   const padX = Math.max(rangeX * 0.05, DOT_R * 4)
   const padY = Math.max(rangeY * 0.05, DOT_R * 4)
-  const sc = Math.min(
-    simCSSW  / (rangeX + padX * 2),
-    simCSSH  / (rangeY + padY * 2),
-    12        // zoom máximo — evita que 1 dot ocupe toda la pantalla
-  ) * 0.92
-  SIM.camS = sc
+  SIM.camS = Math.min(simCSSW / (rangeX + padX*2), simCSSH / (rangeY + padY*2), 12) * 0.92
   SIM.camX = (bx0 + bx1) / 2
   SIM.camY = (by0 + by1) / 2
 
-  // Duración total dinámica: dramático con pocas butacas, épico con muchas
-  SIM.startTime  = Date.now()
-  SIM.flashMap   = {}   // seat_num → timestamp de revelación (para efecto pop)
-  SIM._done      = false
-  SIM._settleStart = 0  // timestamp cuando empieza la transición dramática → final
-  // Asignación aleatoria de verde/rojo para el efecto dramático de conteo
-  SIM.dramaticMap = {}
+  // Arrancar animación de luces AHORA, antes de que cargue la data
+  simDraw()
+
+  // ── Cargar datos en paralelo ──────────────────────────────────────────────
+  const qId = PREGUNTAS_IDS[qIdx]
+  const participatedSeats = new Set()
+  if (qId) {
+    await Promise.allSettled([
+      sb.from('vote_seats').select('seat_number').eq('question_id', qId)
+        .then(({ data }) => { if (data) data.forEach(r => participatedSeats.add(r.seat_number)) }),
+      sb.rpc('get_question_votes', { p_question_id: qId })
+        .then(({ data }) => { if (data) data.forEach(row => {
+          if (row.vote_plain === 'si')  SIM.totalSi  = Number(row.total)
+          if (row.vote_plain === 'no')  SIM.totalNo  = Number(row.total)
+          if (row.vote_plain === 'abs') SIM.totalAbs = Number(row.total)
+        })})
+    ])
+  }
+
+  // ── Data lista → corte instantáneo a revelación ───────────────────────────
+  SEATS.forEach(s => {
+    SIM.results[s.num] = participatedSeats.has(s.num) ? 'voted' : null
+  })
+  SIM._realSi  = SIM.totalSi
+  SIM._realNo  = SIM.totalNo
+  SIM._realAbs = SIM.totalAbs
+
+  SIM.order = SEATS.filter(s => s.num <= TOTAL_SEATS).map(s => s.num).sort(() => Math.random() - 0.5)
+  const simTotal = SIM.order.length
   SIM.order.forEach(snum => {
     SIM.dramaticMap[snum] = Math.random() < 0.5 ? 'si' : 'no'
   })
-  SIM.REVEAL_DUR = simTotal <= 5  ? 4000
-                 : simTotal <= 20 ? 3500
-                 : simTotal <= 80 ? 4000
-                 : 5000
+  SIM.REVEAL_DUR = simTotal <= 5 ? 4000 : simTotal <= 20 ? 3500 : simTotal <= 80 ? 4000 : 5000
 
-  simDraw()
+  // Actualizar header
+  const qEl = document.getElementById('sw-question-txt')
+  if (qEl) qEl.textContent = PREGUNTAS[qIdx] || qEl.textContent
+  const simTotalEl = document.getElementById('sim-total')
+  if (simTotalEl) simTotalEl.textContent = simTotal.toLocaleString('es-AR')
+  document.getElementById('sim-progress').textContent = '0'
+  if (_lbl) _lbl.textContent = 'Contando sobres…'
+
+  // Corte instantáneo: las luces se apagan y arranca el conteo real
+  SIM.phase     = 'counting'
+  SIM.startTime = Date.now()
 }
 
 function simToScreen(wx, wy) {
@@ -1562,6 +1567,59 @@ function simDraw() {
   const W = simCSSW, H = simCSSH
   const t = Date.now()
   const dotR = Math.max(3.5, DOT_R * SIM.camS)
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FASE FUEGOS ARTIFICIALES — todas las butacas parpadeando 4 colores
+  // Corre mientras los datos cargan; corte instantáneo cuando llegan.
+  // ══════════════════════════════════════════════════════════════════════════
+  if (SIM.phase === 'fireworks') {
+    // 4 colores del cabildo
+    const FW_COLORS = ['#ef4444', '#22c55e', '#f59e0b', '#3b82f6']
+    const FW_GLOWS  = ['rgba(239,68,68,', 'rgba(34,197,94,', 'rgba(245,158,11,', 'rgba(59,130,246,']
+
+    // Fondo oscuro
+    simCtx.clearRect(0, 0, W, H)
+    simCtx.fillStyle = '#040C1E'
+    simCtx.fillRect(0, 0, W, H)
+
+    // Resplandor radial
+    const grd = simCtx.createRadialGradient(W/2, H*0.9, 0, W/2, H*0.9, W * 0.7)
+    grd.addColorStop(0,   'rgba(37,99,235,0.15)')
+    grd.addColorStop(1,   'transparent')
+    simCtx.fillStyle = grd
+    simCtx.fillRect(0, 0, W, H)
+
+    // Cada butaca (todas las 300) con su color que cicla independientemente
+    for (let i = 0; i < SEATS.length; i++) {
+      const s = SEATS[i]
+      const { x: sx, y: sy } = simToScreen(s.x, s.y)
+      if (sx < -dotR*4 || sx > W+dotR*4 || sy < -dotR*4 || sy > H+dotR*4) continue
+
+      // Índice de color: cada butaca tiene velocidad y offset distintos
+      const speed  = 200 + (s.num % 7) * 40          // 200–440 ms por color
+      const offset = s.num * 137.5                    // golden angle offset → distribución uniforme
+      const cIdx   = Math.floor((t + offset) / speed) % 4
+
+      // Pulso de brillo (senoidal, desfasado por butaca)
+      const pulse = (Math.sin(t / 500 + s.num * 0.9) + 1) / 2   // 0..1
+      const r     = dotR * (0.9 + pulse * 0.5)
+
+      simCtx.save()
+      simCtx.shadowColor = FW_GLOWS[cIdx] + '0.9)'
+      simCtx.shadowBlur  = 10 + pulse * 14
+      simCtx.beginPath()
+      simCtx.arc(sx, sy, Math.max(1, r), 0, Math.PI * 2)
+      simCtx.fillStyle = FW_COLORS[cIdx]
+      simCtx.fill()
+      simCtx.restore()
+    }
+    simCtx.shadowBlur  = 0
+    simCtx.globalAlpha = 1
+
+    requestAnimationFrame(simDraw)
+    return
+  }
+  // ══════════════════════════════════════════════════════════════════════════
 
   // ── Reveal frame-driven (curva cúbica + jitter aleatorio) ────────────────
   const _simTotal = SIM.order.length
@@ -2276,6 +2334,21 @@ let _authUser = null     // usuario logueado actual
 let _betaActive = false  // si el código beta es requerido para registrarse
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
+// ── Observer mode helpers ──────────────────────────────────────────────────────
+// El MASTER y los OBSERVADORES entran al cabildo sin butaca ni verificación.
+// Solo pueden ver; no pueden votar, debatir ni hacer preguntas.
+function _isMaster() {
+  return _authUser?.app_metadata?.is_master === true
+      && _authUser?.email === 'notagencydev@gmail.com'
+}
+function _isObserver() {
+  return _authUser?.app_metadata?.role === 'observer'
+}
+// Modo observador: master O usuario invitado como observador
+function _isObserverMode() {
+  return _isMaster() || _isObserver()
+}
+
 // Detectar flujo de recovery — soporta implicit flow (hash) y PKCE (query string)
 let _isPasswordRecovery = (
   new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery' ||
@@ -2298,18 +2371,32 @@ _loadBetaActive()
     if (event === 'SIGNED_OUT') { _isPasswordRecovery = false; _onLogout(); return }
     if (_isPasswordRecovery) return
     if (event === 'SIGNED_IN' && session?.user) await _onLogin(session.user)
-    if (event === 'TOKEN_REFRESHED' && session?.user && !_authUser) await _onLogin(session.user)
+    if (event === 'TOKEN_REFRESHED') {
+      if (!session?.user) {
+        // Refresh falló — usuario eliminado o sesión revocada
+        await sb.auth.signOut().catch(() => {})
+        showScreen('intro')
+        return
+      }
+      if (!_authUser) await _onLogin(session.user)
+    }
   })
 
-  // getSession() espera a que el token se refresque si está vencido
+  // getUser() valida server-side — detecta usuarios eliminados por el admin
+  // (getSession() usa solo el JWT local y no detecta si el user fue borrado)
   try {
-    const { data: { session } } = await sb.auth.getSession()
     if (_isPasswordRecovery) { showScreen('congress'); return }
-    if (session?.user) await _onLogin(session.user)
-    else _onLogout()
+    const { data: { user }, error } = await sb.auth.getUser()
+    if (error || !user) {
+      // Token inválido o user eliminado → limpiar sesión local
+      await sb.auth.signOut().catch(() => {})
+      _onLogout()
+    } else {
+      await _onLogin(user)
+    }
   } catch(e) {
     console.error('[auth] init error:', e)
-    try { _onLogout() } catch(_) {}
+    try { await sb.auth.signOut().catch(() => {}); _onLogout() } catch(_) {}
   }
 })()
 
@@ -2338,7 +2425,66 @@ async function _onLogin(user) {
   if (navInfo) navInfo.style.display = 'flex'
 
   // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single()
+  const [{ data: profile, error: profileErr }, { data: seatRows }] = await Promise.all([
+    sb.from('profiles').select('*').eq('id', user.id).single(),
+    sb.rpc('get_my_seat_identity'),
+  ])
+  // Mezclar datos de seat_identities (alias, phrase, visibilidad) en el perfil
+  if (profile && seatRows && seatRows[0]) {
+    const si = seatRows[0]
+    profile.alias      = si.alias
+    profile.phrase     = si.phrase
+    profile.show_alias = si.show_alias
+    profile.show_phrase= si.show_phrase
+    profile.show_votes = si.show_votes
+    profile.is_public  = si.is_public
+  }
+
+  // ── Si no hay perfil, verificar que el usuario aún existe en el servidor ───
+  // Caso: admin borró el usuario pero el JWT local todavía era válido en esta pestaña
+  if (!profile && !profileErr?.message?.includes('No rows')) {
+    // Error inesperado — dejar pasar
+  } else if (!profile) {
+    const isGoogleNew = (user.app_metadata?.provider === 'google' || user.identities?.some(i => i.provider === 'google'))
+    if (!isGoogleNew) {
+      // No es usuario nuevo de Google — validar que la cuenta existe en el servidor
+      const { error: userErr } = await sb.auth.getUser()
+      if (userErr) {
+        // El usuario fue eliminado — cerrar sesión y mandar al intro
+        await sb.auth.signOut().catch(() => {})
+        showScreen('intro')
+        return
+      }
+    }
+  }
+
+  // ── Usuario Google sin alias → pedir alias antes de continuar ──────────────
+  const isGoogleUser = user.app_metadata?.provider === 'google' ||
+    user.identities?.some(i => i.provider === 'google')
+  if (isGoogleUser && !profile?.alias) {
+    _mostrarModalAliasGoogle(user)
+    return
+  }
+
+  // ── Acceso revocado: cerrar sesión inmediatamente ──────────────────────────
+  if (user.app_metadata?.role === 'revoked') {
+    await sb.auth.signOut()
+    showScreen('intro')
+    return
+  }
+
+  // ── Observer: experiencia de solo lectura, sin flujo de verificación ────────
+  if (_isObserver()) {
+    document.body.classList.add('observer-mode', 'invited-observer')
+    // Nav: mostrar pill con "Observador" (no "Crear cuenta")
+    document.getElementById('nav-creat-btn')?.style.setProperty('display', 'none')
+    document.getElementById('nav-upill-wrap')?.style.setProperty('display', 'flex', 'important')
+    document.getElementById('nav-user-divider')?.style.setProperty('display', 'block', 'important')
+    voActualizarAlias('Observador')
+    await cargarConteoReal()
+    initProfilesRealtime()  // detectar si el admin borra este observador
+    return
+  }
 
   // ── Verificar estado de cuenta ──────────────────────────────────────────────
   if (profile?.status === 'suspended') {
@@ -2368,8 +2514,7 @@ async function _onLogin(user) {
   _authProfile = profile
   _visibilidad.alias  = !!profile?.show_alias
   _visibilidad.phrase = !!profile?.show_phrase
-  _visibilidad.votes  = !!profile?.show_votes
-  perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
+  perfilPublico = _visibilidad.alias || _visibilidad.phrase
 
   // Actualizar nav con nombre real (alias) si está disponible
   const displayName = profile?.alias || _emailName
@@ -2386,6 +2531,20 @@ async function _onLogin(user) {
     localStorage.setItem('cabildoos_vid', profile.verification_id)
     if (ddBadge) { ddBadge.textContent = 'Verificado'; ddBadge.className = 'nav-dd-verified' }
   } else {
+    // Recovery: si hay un verification_id guardado localmente, intentar linkearlo
+    // (puede que el submit ocurrió antes de que claim_seat se llamara en el submit)
+    const localVid = localStorage.getItem('cabildoos_vid')
+    if (localVid) {
+      try {
+        await sb.rpc('claim_seat', { p_verification_id: localVid })
+        // Verificar si claim_seat asignó butaca (sin leer profiles.butaca_numero)
+        const { data: seatNum } = await sb.rpc('get_my_seat')
+        if (seatNum) {
+          window.location.reload()
+          return
+        }
+      } catch(e) { console.warn('claim_seat recovery:', e) }
+    }
     const { data: req } = await sb.from('verification_requests')
       .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
     if (ddBadge) {
@@ -2395,9 +2554,14 @@ async function _onLogin(user) {
     if (ddButaca) ddButaca.textContent = ''
   }
 
-  // Obtener número de butaca — cacheado directamente en profiles.butaca_numero
-  // (profiles.butaca_numero se actualiza via claim_seat() y assign_butaca())
-  let _seatNum = profile?.butaca_numero || 0
+  // Obtener butaca via get_my_seat() — sin leer profiles.butaca_numero
+  // El número de butaca vive en seat_identities, keyed por HMAC del user_id.
+  // profiles NO contiene la butaca: rompe el link email → butaca en la BD.
+  let _seatNum = 0
+  try {
+    const { data: myS } = await sb.rpc('get_my_seat')
+    _seatNum = myS || 0
+  } catch(_) {}
 
   if (_seatNum > 0) {
     MY_SEAT = _seatNum
@@ -2427,6 +2591,7 @@ async function _onLogin(user) {
     initMessagesRealtime()
     _loadNotifications()
     initNotificationsRealtime()
+    initProfilesRealtime()  // reiniciar con token autenticado para capturar DELETE en profiles
     _checkProposalConsent()
     _syncBugFab()
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
@@ -2436,6 +2601,13 @@ async function _onLogin(user) {
       mostrarSelectorCabildos()
     }
   } else {
+    // ── Modo observador: master o usuario invitado como observer ──────────
+    if (_isObserverMode()) {
+      voActualizarAlias(_isMaster() ? 'Master' : (displayName || 'Observador'))
+      mostrarSelectorCabildos()
+      return
+    }
+    // ── Usuario normal sin butaca → flujo de verificación ─────────────────
     document.getElementById('st-noident').style.display = 'flex'
     document.getElementById('st-ident').style.display   = 'none'
     const lbl = document.getElementById('st-noident-label')
@@ -2577,6 +2749,106 @@ function abrirAuth(tab = 'registro') {
 function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
 }
+
+// ── Google OAuth ──────────────────────────────────────────────────────────────
+async function loginConGoogle() {
+  const redirectTo = window.location.origin + window.location.pathname
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  })
+}
+
+// ── Modal alias para usuarios nuevos de Google ────────────────────────────────
+let _googleAliasUser = null
+
+function _mostrarModalAliasGoogle(user) {
+  _googleAliasUser = user
+  // Precargar avatar de Google si está disponible
+  const avatarUrl = user.user_metadata?.avatar_url
+  const avatarEl  = document.getElementById('gam-avatar')
+  if (avatarUrl && avatarEl) {
+    avatarEl.innerHTML = `<img src="${avatarUrl}" alt="avatar">`
+  } else if (avatarEl) {
+    const name = user.user_metadata?.full_name || user.email || 'G'
+    avatarEl.textContent = name.charAt(0).toUpperCase()
+  }
+  // Pre-llenar con nombre de Google sanitizado
+  const googleName = (user.user_metadata?.full_name || user.user_metadata?.name || '')
+    .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 30)
+  const input = document.getElementById('gam-alias-input')
+  if (input) { input.value = googleName; gamCheckAlias() }
+  document.getElementById('google-alias-overlay').classList.add('open')
+}
+
+function gamCheckAlias() {
+  const val   = document.getElementById('gam-alias-input').value.trim()
+  const btn   = document.getElementById('gam-btn')
+  const hint  = document.getElementById('gam-alias-hint')
+  const valid = /^[a-z0-9_]{3,30}$/.test(val)
+  btn.disabled = !valid
+  if (!val) { hint.textContent = ''; hint.className = 'auth-field-hint'; return }
+  if (valid) { hint.textContent = '✓ Alias válido'; hint.className = 'auth-field-hint ok' }
+  else       { hint.textContent = 'Solo letras minúsculas, números y _. Mínimo 3 caracteres.'; hint.className = 'auth-field-hint err' }
+}
+
+async function guardarAliasGoogle() {
+  const alias = document.getElementById('gam-alias-input').value.trim().toLowerCase()
+  const btn   = document.getElementById('gam-btn')
+  const msg   = document.getElementById('gam-msg')
+  if (!_googleAliasUser) return
+
+  btn.disabled = true; btn.textContent = 'Guardando…'; msg.textContent = ''
+
+  // Verificar alias único via RPC (alias vive en seat_identities, no en profiles)
+  const { data: available } = await sb.rpc('check_alias_available', { p_alias: alias })
+  if (available === false) {
+    msg.textContent = 'Ese alias ya está en uso, elegí otro.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    return
+  }
+
+  // Upsert perfil básico (sin alias ni butaca — esos viven en seat_identities)
+  const { error } = await sb.from('profiles').upsert({
+    id: _googleAliasUser.id,
+    email: _googleAliasUser.email,
+    status: 'sin_verificar'
+  }, { onConflict: 'id' })
+
+  if (error) {
+    msg.textContent = 'Error al guardar: ' + error.message
+    msg.className = 'auth-msg err'
+    btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    return
+  }
+
+  document.getElementById('google-alias-overlay').classList.remove('open')
+  // Continuar flujo normal
+  await _onLogin(_googleAliasUser)
+}
+
+// ── Modal "Revisá tu email" post-registro ─────────────────────────────────────
+function mostrarEmailSent(email) {
+  document.getElementById('esm-email-addr').textContent = email
+
+  // Detectar proveedor para botón directo
+  const domain = email.split('@')[1]?.toLowerCase() || ''
+  let url = 'https://mail.google.com'
+  if (domain.includes('gmail'))       url = 'https://mail.google.com'
+  else if (domain.includes('outlook') || domain.includes('hotmail') || domain.includes('live') || domain.includes('msn'))
+    url = 'https://outlook.live.com/mail/inbox'
+  else if (domain.includes('yahoo'))  url = 'https://mail.yahoo.com'
+  else if (domain.includes('icloud') || domain.includes('me.com') || domain.includes('mac.com'))
+    url = 'https://www.icloud.com/mail'
+  else url = `https://${domain}`
+
+  document.getElementById('esm-open-btn').href = url
+  document.getElementById('email-sent-overlay').classList.add('open')
+}
+function cerrarEmailSent() {
+  document.getElementById('email-sent-overlay').classList.remove('open')
+}
 function authSetTab(tab) {
   const hideTabs = tab === 'reset' || tab === 'forgot' || tab === 'confirm'
   document.getElementById('auth-form-registro').style.display = tab === 'registro' ? '' : 'none'
@@ -2645,6 +2917,19 @@ async function cambiarContrasena() {
   }, 1400)
 }
 
+// ── Toggle visibilidad de contraseña ────────────────────────────────────────
+const _eyeOpen  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
+const _eyeClosed = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+
+function togglePassVis(inputId, btn) {
+  const input = document.getElementById(inputId)
+  if (!input) return
+  const showing = input.type === 'text'
+  input.type = showing ? 'password' : 'text'
+  btn.innerHTML = showing ? _eyeOpen : _eyeClosed
+  btn.style.color = showing ? '' : 'rgba(247,106,30,.8)'
+}
+
 // ── Validaciones en tiempo real ──
 function authCheckRegistro() {
   const alias = document.getElementById('reg-alias').value.trim()
@@ -2694,17 +2979,19 @@ async function registrarse() {
     return
   }
 
-  // Validar código de acceso beta (sin exponer el código real al cliente)
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
-  if (codeErr || !codeOk) {
-    msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
-    msg.className = 'auth-msg err'
-    return
+  // Validar código de acceso beta solo si está activo
+  if (_betaActive) {
+    const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
+    if (codeErr || !codeOk) {
+      msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
+      msg.className = 'auth-msg err'
+      return
+    }
   }
 
-  // Verificar alias único antes de crear
-  const { data: existing } = await sb.from('profiles').select('id').eq('alias', alias).limit(1)
-  if (existing?.length) {
+  // Verificar alias único via RPC (alias vive en seat_identities, no en profiles)
+  const { data: aliasOk } = await sb.rpc('check_alias_available', { p_alias: alias })
+  if (aliasOk === false) {
     msg.textContent = 'Ese alias ya está en uso, elegí otro.'
     msg.className = 'auth-msg err'
     return
@@ -2769,15 +3056,9 @@ async function registrarse() {
     // Supabase tiene email confirmation desactivado — sesión inmediata
     setTimeout(() => cerrarAuth(), 800)
   } else {
-    // Confirmación por email requerida — mostrar instrucciones claras
-    msg.innerHTML = `
-      <span style="display:block;margin-bottom:6px">✓ Cuenta creada correctamente.</span>
-      <span style="display:block;font-size:12px;opacity:.8">
-        Te enviamos un email a <strong>${email}</strong>.<br>
-        Abrí ese email y hacé clic en el link para activar tu cuenta.<br>
-        Después volvé aquí e iniciá sesión.
-      </span>`
-    msg.className = 'auth-msg ok'
+    // Confirmación por email requerida — mostrar modal
+    cerrarAuth()
+    mostrarEmailSent(email)
   }
 }
 
@@ -2976,8 +3257,8 @@ let vpBarcodeScanTimer = null
 //   : 'https://cabildoos-api.onrender.com'  // Render deploy
 
 const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-  ? 'http://localhost:8000'
-  : 'https://api.cabildodevenezuela.com'  // via cloudflare
+  ? 'http://localhost:8787'
+  : 'https://verify.cabildodevenezuela.com'  // Cloudflare verification-worker
 
 
 function uuidv4() {
@@ -2994,6 +3275,8 @@ let vpVerificationId = generateUUID();
 
 // Datos extraídos del documento por Gemini (para el submit final)
 let vpGeminiResult = null
+// Bounding box de la foto del DNI detectada por Gemini — {x1,y1,x2,y2} en fracciones
+let vpFaceBox = null
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PASO 2: FOTO DEL DOCUMENTO — getUserMedia + Gemini Vision
@@ -3123,7 +3406,7 @@ async function vpDocCapturarFrame(_unused) {
     const docCtrl = new AbortController()
     const docTimeout = setTimeout(() => docCtrl.abort(), 45000)
 
-    const resp = await fetch(`${VP_API_URL}/api/verify/documento`, {
+    const resp = await fetch(`${VP_API_URL}/verify/documento`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: docCtrl.signal,
@@ -3136,6 +3419,10 @@ async function vpDocCapturarFrame(_unused) {
         numero_declarado:     numDoc,
         pais_declarado:       pais,
         fecha_nac_declarada:  fechaNac,
+        // Incluir user_id y email para que assign_butaca pueda linkear el profile
+        // aunque claim_seat falle por error de red
+        user_id:       _authUser?.id || null,
+        contact_email: _authUser?.email || null,
       }),
     })
     clearTimeout(docTimeout)
@@ -3156,6 +3443,7 @@ async function vpDocCapturarFrame(_unused) {
 
     const data = await resp.json()
     vpGeminiResult = data.extracted
+    vpFaceBox = data.face_box || null   // coordenadas exactas de la foto del DNI
     vpMostrarResultadoGemini(data)
 
   } catch (err) {
@@ -3254,6 +3542,7 @@ function vpDocReintentar() {
   if (btnContinuar) btnContinuar.style.display = ''
   vpBarcodeData = null
   vpGeminiResult = null
+  vpFaceBox = null
   vpDocIniciar()
 }
 
@@ -3264,10 +3553,7 @@ function vpDocReintentar() {
 const VP_LIVENESS = [
   { emoji: '😉', texto: 'Guiñá un ojo' },
   { emoji: '😁', texto: 'Sonreí bien amplio' },
-  { emoji: '👈', texto: 'Girá la cabeza a la izquierda' },
-  { emoji: '👉', texto: 'Girá la cabeza a la derecha' },
   { emoji: '😮', texto: 'Abrí la boca' },
-  { emoji: '🫡', texto: 'Tocáte la nariz' },
   { emoji: '✌️', texto: 'Mostrá dos dedos' },
 ]
 let vpLivenessInstruccion = null
@@ -3286,6 +3572,7 @@ function vpReiniciarTodo() {
   vpReintentoSelfieDoc = 0
   vpBarcodeData = null
   vpGeminiResult = null
+  vpFaceBox = null
   vpCapturedSelfie = null
   vpCapturedSelfieDoc = null
   vpAnonBlob = null
@@ -3892,6 +4179,13 @@ async function vpAbrirCamara(videoId, facing = 'environment') {
     if (!video) return
     video.srcObject = stream
     await video.play().catch(() => {})
+
+    // Espejo: detectar cámara real usada (en desktop, 'environment' cae en frontal)
+    // El canvas captura el stream raw (sin transformación CSS) → imagen siempre correcta
+    const track = stream.getVideoTracks()[0]
+    const actualFacing = track?.getSettings()?.facingMode
+    const isFront = actualFacing ? actualFacing === 'user' : facing === 'user'
+    video.style.transform = isFront ? 'scaleX(-1)' : 'none'
   } catch (e) {
     console.error('Cámara no disponible:', e)
     showToast('No se pudo acceder a la cámara — verificá los permisos del navegador')
@@ -4080,7 +4374,11 @@ async function vpAutoCapturar(tipo, wrapperId, segundos = 3) {
 }
 
 // ── Paso 3: liveness con auto-capture ────────────────────────────────────────
+// Token incremental — si cambia mientras la cadena está corriendo, las .then() se cancelan
+let _vpLivenessToken = 0
+
 function vpLivenessIniciar() {
+  const token = ++_vpLivenessToken  // capturar token de esta sesión de liveness
   vpLivenessInstruccion = VP_LIVENESS[Math.floor(Math.random() * VP_LIVENESS.length)]
   const emoji = document.getElementById('vp-liveness-emoji')
   const texto = document.getElementById('vp-liveness-texto')
@@ -4089,6 +4387,7 @@ function vpLivenessIniciar() {
   vpResetCamUI('selfie')
   vpAbrirCamara('cam-selfie-video', 'user')
     .then(() => {
+      if (token !== _vpLivenessToken) return  // usuario navegó a otro paso — cancelar
       // Esperar que el video tenga frames reales
       const vid = document.getElementById('cam-selfie-video')
       return new Promise(res => {
@@ -4097,8 +4396,12 @@ function vpLivenessIniciar() {
         setTimeout(res, 2000)
       })
     })
-    .then(() => vpAutoCapturar('selfie', 'cam-selfie-wrap', 4))
     .then(() => {
+      if (token !== _vpLivenessToken) return  // cancelado
+      return vpAutoCapturar('selfie', 'cam-selfie-wrap', 4)
+    })
+    .then(() => {
+      if (token !== _vpLivenessToken) return  // cancelado — no parar la cámara del otro paso
       // Mostrar preview y botones de confirmación — NO avanzar automático
       vpPararCamara()
       document.getElementById('cam-selfie-pre').style.display  = 'none'
@@ -4134,7 +4437,7 @@ async function vpVerificarLiveness(instruccion) {
       reader.onerror = rej
       reader.readAsDataURL(vpCapturedSelfie)
     })
-    const resp = await fetch(`${VP_API_URL}/api/verify/liveness`, {
+    const resp = await fetch(`${VP_API_URL}/verify/liveness`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_b64: b64, instruccion }),
@@ -4158,7 +4461,7 @@ async function vpSelfieDocIniciar() {
       vid.addEventListener('loadeddata', res, { once: true })
       setTimeout(res, 2000)
     })
-    await vpAutoCapturar('selfiedoc', 'cam-selfiedoc-wrap', 4)
+    await vpAutoCapturar('selfiedoc', 'cam-selfiedoc-wrap', 8)
     // Mostrar preview y botones de confirmación — usuario decide
     vpPararCamara()
     document.getElementById('cam-selfiedoc-pre').style.display  = 'none'
@@ -4185,6 +4488,54 @@ function vpSelfieDocReintentar() {
 //  BLUR DE DOCUMENTO — pixela la zona donde está el documento en la selfie
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Extrae SOLO la foto de la cara del DNI usando las coordenadas exactas de Gemini.
+// vpFaceBox = {x1, y1, x2, y2} en fracciones (0-1) detectadas por Gemini Vision.
+// Si no hay coordenadas, usa porcentajes típicos de DNI latinoamericano como fallback.
+async function vpExtraerCaraDoc(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      let fx, fy, fw, fh
+
+      if (vpFaceBox && vpFaceBox.x1 != null) {
+        // Coordenadas exactas detectadas por Gemini — agregar pequeño margen (5%)
+        const margin = 0.02
+        const x1 = Math.max(0, vpFaceBox.x1 - margin)
+        const y1 = Math.max(0, vpFaceBox.y1 - margin)
+        const x2 = Math.min(1, vpFaceBox.x2 + margin)
+        const y2 = Math.min(1, vpFaceBox.y2 + margin)
+        fx = Math.floor(img.width  * x1)
+        fy = Math.floor(img.height * y1)
+        fw = Math.floor(img.width  * (x2 - x1))
+        fh = Math.floor(img.height * (y2 - y1))
+        console.log('[vpExtraerCaraDoc] usando coordenadas Gemini:', vpFaceBox)
+      } else {
+        // Fallback: zona típica de la foto en DNI latinoamericano
+        //   horizontal: izquierda ~0-38%  |  vertical: ~14-80%
+        fx = Math.floor(img.width  * 0.01)
+        fy = Math.floor(img.height * 0.14)
+        fw = Math.floor(img.width  * 0.37)
+        fh = Math.floor(img.height * 0.66)
+        console.log('[vpExtraerCaraDoc] usando fallback de porcentajes fijos')
+      }
+
+      const canvas = document.createElement('canvas')
+      // Salida máx 500px por lado para que llegue nítida al admin
+      const maxSide = 500
+      const scale   = Math.min(maxSide / fw, maxSide / fh, 1)
+      canvas.width  = Math.round(fw * scale)
+      canvas.height = Math.round(fh * scale)
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(img, fx, fy, fw, fh, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/jpeg', 0.90)
+    }
+    img.onerror = reject
+    img.src = URL.createObjectURL(blob)
+  })
+}
+
 async function vpPixelarDocumento(blob) {
   // 1. Pedir a Gemini la caja del documento en la foto
   let docBox = null
@@ -4195,7 +4546,7 @@ async function vpPixelarDocumento(blob) {
       reader.onerror = rej
       reader.readAsDataURL(blob)
     })
-    const resp = await fetch(`${VP_API_URL}/api/verify/censurar-campos`, {
+    const resp = await fetch(`${VP_API_URL}/verify/censurar-campos`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ image_b64: b64 }),
@@ -4367,7 +4718,7 @@ function crearIdentidad() {
     abrirAuth('registro')
     return
   }
-  if (_authProfile?.butaca_numero) {
+  if (MY_SEAT > 0) {
     // Ya verificado
     abrirMiPerfil()
     return
@@ -4381,6 +4732,7 @@ function abrirVerificacion() {
   _verifyOverlayOpenedAt = Date.now()   // time-gate: bloquea ghost clicks del primer segundo
   vpCurrentStep = 1
   vpAnonBlob = null
+  vpFaceBox = null
   vpBarcodeData = null
   vpGeminiResult = null
   // UUID con fallback para Safari antiguo
@@ -4403,10 +4755,12 @@ function abrirVerificacion() {
     const icon = r.querySelector('.vp-proc-icon'); if (icon) icon.textContent = '◌'
     const sub  = r.querySelector('.vp-proc-sub');  if (sub)  sub.textContent  = ''
   })
-  const campos = ['vp-nombre','vp-num-doc','vp-fecha-nac']
+  const campos = ['vp-nombre','vp-apellido','vp-num-doc','vp-fecha-nac']
   campos.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
-  const selects = ['vp-tipo-doc','vp-pais']
+  const selects = ['vp-tipo-doc','vp-pais','vp-dob-dia','vp-dob-mes','vp-dob-ano']
   selects.forEach(id => { const el = document.getElementById(id); if (el) el.value = '' })
+  document.getElementById('vp-dob-wrap')?.classList.remove('error')
+  vpInitDobSelects()
   document.getElementById('vp-btn-s1').disabled = true
   // Mostrar botón × solo para usuarios ya verificados (pueden cerrar el overlay)
   // Usuarios no verificados no pueden escapar del overlay hasta completar el flujo
@@ -4446,7 +4800,7 @@ function cerrarVerificacion() {
   if (mc) mc.style.pointerEvents = ''
   // Si el usuario no tiene butaca asignada (no verificado), volver a verify-onboard
   // para que no quede atrapado en congress sin identidad
-  if (_authUser && !MY_SEAT) {
+  if (_authUser && !MY_SEAT && !_isObserverMode()) {
     setTimeout(() => showScreen('verify-onboard'), 250)
   }
 }
@@ -4463,7 +4817,8 @@ function vpResetCamUI(tipo) {
 }
 
 function vpShowStep(n) {
-  // Parar todo al salir
+  // Parar todo al salir — y cancelar cualquier cadena de liveness en vuelo
+  ++_vpLivenessToken  // invalida cualquier .then() pendiente de liveness
   vpPararBarcodeScanner()
   vpPararScanner()
   vpPararCamara()
@@ -4528,12 +4883,41 @@ function vpOnTipoDocChange() {
   vpCheckStep1()
 }
 
+function vpInitDobSelects() {
+  const diaEl = document.getElementById('vp-dob-dia')
+  if (diaEl && diaEl.options.length <= 1) {
+    for (let d = 1; d <= 31; d++) {
+      const o = document.createElement('option')
+      o.value = String(d).padStart(2, '0')
+      o.textContent = String(d).padStart(2, '0')
+      diaEl.appendChild(o)
+    }
+  }
+  const anoEl = document.getElementById('vp-dob-ano')
+  if (anoEl && anoEl.options.length <= 1) {
+    const maxYear = new Date().getFullYear() - 16
+    for (let y = maxYear; y >= 1924; y--) {
+      const o = document.createElement('option')
+      o.value = String(y)
+      o.textContent = String(y)
+      anoEl.appendChild(o)
+    }
+  }
+}
+
+function vpUpdateFechaNac() {
+  const dia = document.getElementById('vp-dob-dia')?.value
+  const mes = document.getElementById('vp-dob-mes')?.value
+  const ano = document.getElementById('vp-dob-ano')?.value
+  const hidden = document.getElementById('vp-fecha-nac')
+  if (hidden) {
+    hidden.value = (dia && mes && ano) ? `${ano}-${mes}-${dia}` : ''
+  }
+  vpCheckStep1()
+}
+
 function vpSetFechaNacMax() {
-  const el = document.getElementById('vp-fecha-nac')
-  if (!el) return
-  const max = new Date()
-  max.setFullYear(max.getFullYear() - 16)
-  el.max = max.toISOString().split('T')[0]
+  vpInitDobSelects()
 }
 
 function vpCheckStep1() {
@@ -4555,14 +4939,8 @@ function vpCheckStep1() {
   document.getElementById('vp-btn-s1').disabled = !ok
 
   // Mostrar hint de edad si la fecha está puesta pero no cumple
-  const fechaEl = document.getElementById('vp-fecha-nac')
-  if (fechaNac && !edadOk) {
-    fechaEl.style.borderColor = 'rgba(239,68,68,.6)'
-    fechaEl.title = 'Debés tener al menos 16 años para registrarte'
-  } else {
-    fechaEl.style.borderColor = ''
-    fechaEl.title = ''
-  }
+  const dobWrap = document.getElementById('vp-dob-wrap')
+  if (dobWrap) dobWrap.classList.toggle('error', !!(fechaNac && !edadOk))
 }
 
 function vpPreview(input, type) {
@@ -4675,9 +5053,48 @@ async function vpMostrarFallo(fallas) {
 }
 
 // ── Envío final al backend Python ──────────────────────────────────────────
+// ── Helper: avanzar a paso 7 cuando el servidor ya procesó la verificación ─────
+function _vpAvanzarAPaso7() {
+  if (_authUser) {
+    ;(async () => {
+      try { await sb.rpc('claim_seat', { p_verification_id: vpVerificationId }) }
+      catch (e) { console.warn('claim_seat link:', e) }
+    })()
+  }
+  const emailEl = document.getElementById('vp-s7-email')
+  const hintEl  = document.getElementById('vp-s7-email-hint')
+  if (emailEl && _authUser?.email) {
+    emailEl.textContent = _authUser.email
+    if (hintEl) hintEl.style.display = 'block'
+  } else if (hintEl) {
+    hintEl.style.display = 'none'
+  }
+  vpShowStep(7)
+  vpIniciarPolling(vpVerificationId)
+}
+
 async function vpEnviarVerificacion() {
   const btn = document.querySelector('#vp-s6a .vp-btn-main')
   if (btn) { btn.textContent = 'Enviando…'; btn.disabled = true }
+
+  // ── Chequeo previo: si la verificación YA llegó al servidor, ir directo a paso 7.
+  // Esto cubre el caso de "Reintentar envío" donde el submit anterior sí llegó pero
+  // el cliente no recibió la respuesta (timeout, CORS previo, red cortada, etc.)
+  if (vpVerificationId) {
+    try {
+      const preCheck = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+      if (preCheck.ok) {
+        const preData = await preCheck.json()
+        if (preData.status === 'pendiente_revision' || preData.status === 'aprobado') {
+          console.log('[verify] Pre-check: ya procesado (' + preData.status + ') — saltando upload')
+          _vpAvanzarAPaso7()
+          return
+        }
+      }
+    } catch (preErr) {
+      console.warn('[verify] Pre-check falló (normal en primer intento):', preErr.message)
+    }
+  }
 
   // Convertir blobs a base64
   function blobToB64(blob) {
@@ -4689,37 +5106,62 @@ async function vpEnviarVerificacion() {
     })
   }
 
+  // Comprimir imagen: resize a maxWidth y codificar como JPEG con calidad dada
+  // Reduce imágenes de cámara de 4-6 MB a ~100-250 KB, evitando timeouts en conexiones lentas
+  function comprimirImagen(blob, maxWidth = 1024, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(blob)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const scale  = Math.min(1, maxWidth / img.width)
+        const canvas = document.createElement('canvas')
+        canvas.width  = Math.round(img.width  * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob falló')), 'image/jpeg', quality)
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
   try {
-    const [selfieB64, selfieDocB64] = await Promise.all([
-      vpCapturedSelfie    ? blobToB64(vpCapturedSelfie)    : Promise.resolve(''),
-      vpCapturedSelfieDoc ? blobToB64(vpCapturedSelfieDoc) : Promise.resolve(''),
+    // selfie_doc_b64 → selfie CON documento pixelado (vpAnonBlob ya lo tiene)
+    // doc_face_b64   → SOLO la cara recortada del DNI (sin ningún dato visible)
+    const docFaceBlob = vpCapturedDoc ? await vpExtraerCaraDoc(vpCapturedDoc).catch(() => null) : null
+
+    // Comprimir ambas imágenes antes de codificar — reduce payload de ~16MB a ~400KB
+    const [selfieComprimida, docComprimida] = await Promise.all([
+      vpAnonBlob  ? comprimirImagen(vpAnonBlob,  1280, 0.72).catch(() => vpAnonBlob)  : Promise.resolve(null),
+      docFaceBlob ? comprimirImagen(docFaceBlob,  800, 0.80).catch(() => docFaceBlob) : Promise.resolve(null),
     ])
 
-    // Usar la imagen ya censurada generada en vpIniciarProceso (vpAnonBlob)
-    // Si por alguna razón no está, regenerar
-    let selfieDocCensuradaB64 = selfieDocB64
-    const blobCensurado = vpAnonBlob || (vpCapturedSelfieDoc ? await vpPixelarDocumento(vpCapturedSelfieDoc) : null)
-    if (blobCensurado) {
-      selfieDocCensuradaB64 = await blobToB64(blobCensurado)
-    }
+    const [selfieDocB64, docB64] = await Promise.all([
+      selfieComprimida ? blobToB64(selfieComprimida) : Promise.resolve(''),
+      docComprimida    ? blobToB64(docComprimida)    : Promise.resolve(''),
+    ])
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30000)
+    const timeout = setTimeout(() => controller.abort(), 90000)
 
-    const resp = await fetch(`${VP_API_URL}/api/verify/submit`, {
+    const resp = await fetch(`${VP_API_URL}/verify/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
         verification_id: vpVerificationId,
-        selfie_doc_b64: selfieDocCensuradaB64,
-        // contact_email eliminado: privacidad por diseño — no vincular email con verificación
+        selfie_doc_b64:  selfieDocB64,   // selfie real con documento (para admin)
+        doc_b64:         docB64,          // foto real del documento (para admin)
         gemini_match: (() => {
           if (!vpGeminiResult) return false
           const _paisDec = (document.getElementById('vp-pais')?.value || '').trim()
           const _paisOk  = _paisDec ? vpGeminiResult.pais_coincide : true
           return vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide && _paisOk
         })(),
+        // Reforzar user_id y email en submit también (por si documento fue en otra sesión)
+        user_id:       _authUser?.id || null,
+        contact_email: _authUser?.email || null,
       }),
     })
     clearTimeout(timeout)
@@ -4731,10 +5173,33 @@ async function vpEnviarVerificacion() {
     window._vpSession.verification_id = vpVerificationId
     window._vpSession.status = data.status
 
-    vpShowStep(7)
-    vpIniciarPolling(vpVerificationId)
+    _vpAvanzarAPaso7()
   } catch (e) {
     console.error('Error enviando verificacion:', e)
+
+    // Antes de mostrar "Reintentar" — verificar si la verificación YA llegó al servidor.
+    // Reintentamos hasta 4 veces con backoff progresivo por si el servidor tarda en escribir a DB.
+    console.warn('[verify] Submit falló con:', e.name, e.message, '— verificando si llegó al server...')
+    try {
+      const delays = [1500, 3000, 5000, 7000]
+      for (const delay of delays) {
+        await new Promise(r => setTimeout(r, delay))
+        try {
+          const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+          if (statusResp.ok) {
+            const statusData = await statusResp.json()
+            console.log('[verify] Status check intento:', statusData.status)
+            if (statusData.status === 'pendiente_revision' || statusData.status === 'aprobado') {
+              _vpAvanzarAPaso7()
+              return
+            }
+          }
+        } catch (checkErr) {
+          console.warn('[verify] Status check falló:', checkErr.message)
+        }
+      }
+    } catch (_) { /* mostrar error normal */ }
+
     if (btn) { btn.textContent = 'Reintentar envío'; btn.disabled = false }
     showToast('Error al enviar — verificá tu conexión')
   }
@@ -4747,7 +5212,7 @@ function vpIniciarPolling(verification_id) {
   clearInterval(_vpPollingTimer)
   _vpPollingTimer = setInterval(async () => {
     try {
-      const resp = await fetch(`${VP_API_URL}/api/verify/status/${verification_id}`)
+      const resp = await fetch(`${VP_API_URL}/verify/status/${verification_id}`)
       if (!resp.ok) return
       const data = await resp.json()
 
@@ -5205,12 +5670,16 @@ function _renderNotifBadge() {
         filter: `seat_number=eq.${MY_SEAT}`
       }, payload => {
         const p = payload.new
-        // Admin solicita consentimiento de edición
         if (p.consent_status === 'pending' && p.status === 'pending') {
           _openConsentModal(p)
         }
-        // Cualquier cambio de estado → refrescar lista de propuestas del usuario
         if (typeof renderPropuestas === 'function') renderPropuestas()
+      })
+      // Likes en tiempo real: escucha proposals UPDATE (el trigger sync actualiza proposals.likes)
+      // Usar el count autoritative del DB en vez de delta sobre valor cacheado
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'proposals' }, payload => {
+        const p = payload.new
+        if (p?.id && typeof p.likes === 'number') _propSetCount(p.id, p.likes)
       })
       .subscribe()
   }
@@ -5245,9 +5714,9 @@ function _renderNotifBadge() {
 
       _consentClose()
       if (accepted) {
-        showToast('✓ Aceptaste los cambios — tu propuesta se publicará con tu atribución')
+        showToast('✓ Aceptaste los cambios — el moderador podrá activar tu propuesta con tu nombre')
       } else {
-        showToast('Cambios rechazados — la moderación decidirá si la publica sin atribución')
+        showToast('Rechazaste los cambios — la propuesta fue archivada')
       }
     } catch(e) {
       showToast('Error al responder: ' + (e.message || 'intentá de nuevo'))
@@ -5363,6 +5832,19 @@ function _renderNotifPanel() {
     })
   })
 
+  // 7. Consentimiento de edición — admin modificó tu propuesta, necesita tu aprobación
+  ;(_notifications || []).filter(n => n.type === 'proposal_consent').forEach(n => {
+    items.push({
+      key: 'consent_' + n.id, icBg: '#FFF7ED',
+      icHtml: '✏️',
+      title: `El moderador <strong>editó tu propuesta</strong> — necesita tu aprobación`,
+      sub: n.message || 'Tocá para revisar los cambios',
+      time: n.created_at, unread: !n.read_at,
+      onclick: `_markSingleNotifRead('${n.id}');cerrarNotifModal();_checkProposalConsent()`,
+      order: 0,
+    })
+  })
+
   if (!items.length) {
     el.innerHTML = `<div class="notif-empty">
       <div class="notif-empty-icon">🔔</div>
@@ -5434,9 +5916,30 @@ async function _markSingleNotifRead(id) {
 }
 
 function _showNotifToast(n, alias) {
-  // Toast con acción "Ver"
   const existing = document.getElementById('notif-toast')
   if (existing) existing.remove()
+
+  let msg, btnTxt, btnAction
+
+  if (n.type === 'proposal_consent') {
+    // Notificación urgente: el moderador editó tu propuesta y espera tu respuesta
+    msg      = '✏️ El moderador editó tu propuesta — necesita tu aprobación'
+    btnTxt   = 'Revisar'
+    btnAction = `_markSingleNotifRead('${n.id}');_checkProposalConsent()`
+  } else if (n.type === 'proposal_approved') {
+    msg      = '✅ Tu propuesta fue aprobada'
+    btnTxt   = 'Ver'
+    btnAction = `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')`
+  } else if (n.type === 'proposal_rejected') {
+    msg      = '❌ Tu propuesta fue rechazada'
+    btnTxt   = 'Ver'
+    btnAction = `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')`
+  } else {
+    // new_proposal u otros
+    msg      = `📣 <strong>${escapeHtml(alias)}</strong> publicó una propuesta`
+    btnTxt   = 'Ver'
+    btnAction = `_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')`
+  }
 
   const toast = document.createElement('div')
   toast.id = 'notif-toast'
@@ -5445,18 +5948,19 @@ function _showNotifToast(n, alias) {
     background:#1d1d1d; color:#fff; border-radius:14px; padding:12px 18px;
     font-size:13px; font-weight:500; z-index:2000; display:flex;
     align-items:center; gap:12px; box-shadow:0 8px 32px rgba(0,0,0,.3);
-    max-width:340px; animation:toastIn .3s ease;
+    max-width:360px; animation:toastIn .3s ease;
   `
   toast.innerHTML = `
-    <span>📣 <strong>${escapeHtml(alias)}</strong> publicó una propuesta</span>
-    <button onclick="_abrirPropuestaNotif('${n.proposal_id}','${n.from_seat}','${n.id}')"
+    <span>${msg}</span>
+    <button onclick="${btnAction};document.getElementById('notif-toast')?.remove()"
       style="background:#fff;color:#1d1d1d;border:none;border-radius:8px;
-             padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
-      Ver
+             padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
+      ${btnTxt}
     </button>
   `
   document.body.appendChild(toast)
-  setTimeout(() => { if (toast.parentNode) toast.remove() }, 6000)
+  // Consentimiento se queda 12 segundos, el resto 6s
+  setTimeout(() => { if (toast.parentNode) toast.remove() }, n.type === 'proposal_consent' ? 12000 : 6000)
 }
 
 async function _abrirPropuestaNotif(proposalId, fromSeat, notifId) {
@@ -5487,27 +5991,21 @@ let _profilesChannel = null
 function initVotesRealtime() {
   if (_votesPollingInterval) clearInterval(_votesPollingInterval)
 
-  // Supabase Realtime: INSERT/DELETE en votes → actualizar butaca afectada al instante
-  // votes tiene SELECT policy para anon+authenticated → funciona para observadores también
+  // Realtime: escuchar vote_seats (participación pública) en lugar de votes.
+  // La tabla votes tiene RLS bloqueado — nadie puede leer votos directamente.
+  // vote_seats solo registra "butaca X participó" — sin el contenido del voto.
   if (_votesChannel) { try { sb.removeChannel(_votesChannel) } catch(_) {} }
   try {
     _votesChannel = sb.channel('votes-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes' }, payload => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vote_seats' }, payload => {
         const seat = payload.new?.seat_number
         if (!seat) return
         if (_profilesCache[seat]) {
           _profilesCache[seat].votes = (_profilesCache[seat].votes || 0) + 1
           buildSeats()
         } else {
-          // Butaca que aún no estaba en cache → recargar todo (p.ej. perfil recién hecho público)
           cargarPerfilesPublicos().then(() => buildSeats())
         }
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'votes' }, payload => {
-        const seat = payload.old?.seat_number
-        if (!seat || !_profilesCache[seat]) return
-        _profilesCache[seat].votes = Math.max(0, (_profilesCache[seat].votes || 1) - 1)
-        buildSeats()
       })
       .subscribe()
   } catch(e) { console.warn('votes-live realtime:', e) }
@@ -5523,30 +6021,88 @@ function initProfilesRealtime() {
   if (_profilesChannel) { try { sb.removeChannel(_profilesChannel) } catch(_) {} }
   try {
     _profilesChannel = sb.channel('profiles-live')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, async () => {
-        // Un perfil cambió (alias, is_public, phrase) → recargamos cache y redibujamos
+      // Cambios en seat_identities → refrescar hemiciclo para todos
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'seat_identities' }, async () => {
         await cargarPerfilesPublicos()
         buildSeats()
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, async () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'seat_identities' }, async () => {
         await cargarPerfilesPublicos()
         buildSeats()
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'seat_identities' }, async () => {
+        await cargarPerfilesPublicos()
+        buildSeats()
+      })
+      // DELETE en profiles → si es el usuario actual, cerrar sesión inmediatamente
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'profiles' }, async (payload) => {
+        if (_authUser && payload.old?.id === _authUser.id) {
+          await sb.auth.signOut().catch(() => {})
+          _onLogout()
+        }
       })
       .subscribe()
   } catch(e) { console.warn('profiles-live realtime:', e) }
 }
 
-// ── Realtime: auto-actualiza preguntas cuando el admin crea/activa una ──
+// ── Realtime: auto-actualiza preguntas cuando el admin crea/activa/cierra/borra una ──
 function initQuestionsRealtime() {
   try {
     sb.channel('questions-live')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'questions'
-      }, () => {
-        // Recargar preguntas activas sin importar en qué pantalla esté el usuario
-        cargarPreguntasActivas()
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, async payload => {
+        const ev   = payload.eventType          // 'INSERT' | 'UPDATE' | 'DELETE'
+        const newQ = payload.new || {}
+        const oldQ = payload.old || {}
+
+        // ── DELETE: pregunta eliminada ──────────────────────────────────────
+        if (ev === 'DELETE') {
+          const deletedId = oldQ.id
+          if (_debateQId === deletedId) {
+            if (_debateCdIv) { clearInterval(_debateCdIv); _debateCdIv = null }
+            cerrarDebate()
+            _debateQId   = null
+            _debateEnded = false
+            showToast('La votación fue eliminada por el administrador')
+          }
+          await cargarPreguntasActivas()
+          return
+        }
+
+        const q = newQ
+
+        // ── CLOSED: admin cerró la pregunta ─────────────────────────────────
+        if (q.status === 'cerrada') {
+          if (_debateQId === q.id && !_debateEnded) {
+            if (_debateCdIv) { clearInterval(_debateCdIv); _debateCdIv = null }
+            _debateEndsAt = new Date()
+            const valEl = document.getElementById('dp-cd-val')
+            const lblEl = document.getElementById('dp-cd-lbl')
+            if (valEl) { valEl.textContent = 'Finalizada'; valEl.className = 'dp-cd-val ended' }
+            if (lblEl) lblEl.textContent = 'Estado'
+            _dpSetEndedUI(true)
+          }
+          PREGUNTAS_DATA.forEach((qdata, i) => {
+            if (qdata.id === q.id) {
+              const timerEl = document.getElementById(`q-timer-${i}`)
+              if (timerEl) { timerEl.textContent = 'Finalizada'; timerEl.classList.add('ended') }
+            }
+          })
+        }
+
+        // ── UPDATE con nuevo ends_at: reiniciar countdown ────────────────────
+        if (ev === 'UPDATE' && q.status === 'activa' && q.ends_at) {
+          const idx = PREGUNTAS_DATA.findIndex(p => p.id === q.id)
+          if (idx !== -1) {
+            PREGUNTAS_DATA[idx].ends_at         = q.ends_at
+            PREGUNTAS_DATA[idx].duration_minutes = q.duration_minutes
+          }
+          if (_debateQId === q.id && !_debateEnded) {
+            _dpStartCountdown(q.ends_at)
+            showToast('⏱ Duración actualizada')
+          }
+        }
+
+        await cargarPreguntasActivas()
       })
       .subscribe()
   } catch(e) { console.warn('Realtime no disponible:', e) }
@@ -5579,6 +6135,10 @@ function voIniciarVerificacion() {
 // ── Guard: redirige a verificación si el usuario no tiene butaca ─────────────
 function _requireButaca() {
   if (MY_SEAT > 0) return true   // verificado → permitir
+  if (_isObserverMode()) {
+    showToast('Modo observador — sin permiso para participar')
+    return false
+  }
   if (_authUser) {
     // Logueado pero sin butaca → pantalla de verificación
     showScreen('verify-onboard')
@@ -5638,8 +6198,14 @@ async function abrirMiPerfil() {
   _visibilidad.alias  = !!_authProfile?.show_alias
   _visibilidad.phrase = !!_authProfile?.show_phrase
   _visibilidad.votes  = !!_authProfile?.show_votes
-  perfilPublico = _visibilidad.alias || _visibilidad.phrase || _visibilidad.votes
+  perfilPublico = _visibilidad.alias || _visibilidad.phrase
   _syncVisibilidadUI()
+
+  // Sincronizar swatch de color activo
+  const currentColor = _authProfile?.card_color || 'white'
+  document.querySelectorAll('.mp-color-swatch').forEach(s => s.classList.remove('active'))
+  const activeEl = document.getElementById('mpc-' + currentColor)
+  if (activeEl) activeEl.classList.add('active')
 
   // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
   let cntSi = 0, cntNo = 0, cntAbs = 0
@@ -5783,13 +6349,27 @@ function mpMarkDirty(field) {
   // noop — save button becomes visible via CSS :focus-within
 }
 
+async function mpSetColor(color) {
+  // Actualizar UI inmediatamente
+  document.querySelectorAll('.mp-color-swatch').forEach(s => s.classList.remove('active'))
+  const el = document.getElementById('mpc-' + color)
+  if (el) el.classList.add('active')
+  // Guardar en DB
+  const { error } = await sb.rpc('save_my_seat_field', { p_field: 'card_color', p_value: color })
+  if (error) { showToast('Error al guardar color'); return }
+  if (_authProfile) _authProfile.card_color = color
+  // Actualizar caché propio
+  if (MY_SEAT > 0 && _profilesCache[MY_SEAT]) _profilesCache[MY_SEAT].cardColor = color
+  showToast('✓ Color guardado')
+}
+
 async function mpSaveField(field) {
   if (!_authUser) return
   const input = document.getElementById('mp-' + field + '-input')
   const val = sanitizeInput(input.value)
   const update = {}
   update[field] = val
-  const { error } = await sb.from('profiles').update(update).eq('id', _authUser.id)
+  const { error } = await sb.rpc('save_my_seat_field', { p_field: field, p_value: val })
   if (error) { showToast('Error al guardar'); return }
   // Actualizar cache local
   if (!_authProfile) _authProfile = {}
@@ -5814,7 +6394,6 @@ function cerrarMiPerfil() {
 function _syncVisibilidadUI() {
   document.getElementById('mp-toggle-alias')?.classList.toggle('on',  _visibilidad.alias)
   document.getElementById('mp-toggle-phrase')?.classList.toggle('on', _visibilidad.phrase)
-  document.getElementById('mp-toggle-votes')?.classList.toggle('on',  _visibilidad.votes)
 }
 
 let _pendingVisibilidadField = null
@@ -6055,6 +6634,7 @@ async function cargarPerfilesPublicos() {
           showPhrase: !!r.show_phrase,
           showVotes:  !!r.show_votes,
           isPublic:   !!(r.show_alias || r.show_phrase || r.show_votes),
+          cardColor:  r.card_color || 'white',
         }
       })
     }
@@ -6066,8 +6646,8 @@ async function cargarPerfilesPublicos() {
 
 async function cargarPreguntasActivas() {
   try {
-    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url, links').eq('status', 'activa').order('created_at')
-    if (data && data.length > 0) {
+    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url, links, status').in('status', ['activa', 'cerrada']).order('created_at')
+    if (data) {
       PREGUNTAS      = data.map(q => q.text)
       PREGUNTAS_IDS  = data.map(q => q.id)
       PREGUNTAS_DATA = data
@@ -6212,8 +6792,12 @@ function abrirVotoForQ(i) {
 }
 async function abrirDebateForQ(i) {
   if (!_authUser || !MY_SEAT) {
-    showToast('Verificá tu identidad para participar en el debate')
-    if (_authUser) showScreen('verify-onboard'); else abrirAuth('registro')
+    if (_isObserverMode()) {
+      showToast('Modo observador — sin permiso para participar en el debate')
+    } else {
+      showToast('Verificá tu identidad para participar en el debate')
+      if (_authUser) showScreen('verify-onboard'); else abrirAuth('registro')
+    }
     return
   }
   const qdata = PREGUNTAS_DATA[i]
@@ -7305,7 +7889,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
 // ══════════════════════════════════════════════════════════════
 function abrirModal() {
   if (!_authUser || !MY_SEAT) {
-    showToast('Verificá tu identidad para poder votar')
+    showToast(_isObserverMode() ? 'Modo observador — sin permiso para votar' : 'Verificá tu identidad para poder votar')
     return
   }
 
@@ -8187,9 +8771,9 @@ async function renderOtrasPropuestas() {
       <p class="otras-prop-text">${txt}</p>
       <div class="otras-prop-meta">
         <span class="otras-prop-cat">${escapeHtml(p.cat)}</span>
-        <span class="otras-prop-likes">
+        <span class="otras-prop-likes" id="sf-like-n-${p.id}">
           <svg width="11" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          ${p.likes}
+          <span class="sf-like-count">${p.likes}</span>
         </span>
         <span class="otras-prop-date">${date}</span>
       </div>
@@ -8231,9 +8815,9 @@ async function renderPropuestas() {
       </div>
       <div class="prop-card-v2-meta">
         <span class="prop-cat-tag">${escapeHtml(p.cat)}</span>
-        <span class="prop-likes">
+        <span class="prop-likes" id="sf-like-n-${p.id}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          ${p.likes}
+          <span class="sf-like-count">${p.likes}</span>
         </span>
         <span style="font-size:11px;color:var(--mid);margin-left:auto">${date}</span>
       </div>
@@ -8285,7 +8869,7 @@ function slmShowTab(tab) {
     const initials = alias.slice(0, 2).toUpperCase()
     const cIdx    = seatNum % AVATAR_COLORS.length
     const color   = AVATAR_COLORS[cIdx]
-    return `<div class="slm-user-card">
+    return `<div class="slm-user-card" style="--slm-color:${color}">
       <div class="slm-uav" style="background:${color}">${initials}</div>
       <div class="slm-uinfo">
         <div class="slm-uname">${escapeHtml(alias)}</div>
@@ -8342,13 +8926,6 @@ async function abrirUserProfile(seatNum, fromTab) {
   document.getElementById('upm-phrase-hero').textContent = isPrivate
     ? 'Este ciudadano eligió mantener su identidad privada.'
     : (phrase ? `"${phrase}"` : '')
-  const upmVotesStat = document.getElementById('upm-stat-votes')?.closest('.upm-stat')
-  if (showVotes) {
-    if (upmVotesStat) upmVotesStat.style.display = ''
-    document.getElementById('upm-stat-votes').textContent = votes
-  } else {
-    if (upmVotesStat) upmVotesStat.style.display = 'none'
-  }
 
   // Seguir button
   const fbtn = document.getElementById('upm-follow-btn')
@@ -8467,6 +9044,29 @@ async function upmLoadProposals() {
   }).join('')
 }
 
+// Actualiza contadores de likes de una propuesta con el valor exacto del DB (sin delta)
+function _propSetCount(propId, count) {
+  if (!propId) return
+  const upmEl = document.getElementById(`upm-like-n-${propId}`)
+  if (upmEl) upmEl.textContent = count
+  document.querySelectorAll(`#sf-like-n-${propId} .sf-like-count`).forEach(el => {
+    el.textContent = count
+  })
+}
+
+// Actualiza en el DOM todos los contadores de likes de una propuesta (delta = +1 o -1)
+// Cubre: perfil modal (upm-like-n-*), social footer mis propuestas y otras propuestas (sf-like-n-*)
+function _propLikeDelta(propId, delta) {
+  if (!propId) return
+  // Perfil modal (user profile popup)
+  const upmEl = document.getElementById(`upm-like-n-${propId}`)
+  if (upmEl) upmEl.textContent = Math.max(0, (parseInt(upmEl.textContent) || 0) + delta)
+
+  // Social footer (mis propuestas + otras propuestas — mismo ID pattern)
+  const sfEl = document.querySelector(`#sf-like-n-${propId} .sf-like-count`)
+  if (sfEl) sfEl.textContent = Math.max(0, (parseInt(sfEl.textContent) || 0) + delta)
+}
+
 async function upmToggleLike(propId) {
   if (!MY_SEAT) { showToast('Necesitás una butaca para dar likes'); return }
   const btn = document.getElementById(`upm-like-${propId}`)
@@ -8477,21 +9077,17 @@ async function upmToggleLike(propId) {
     await sb.from('proposal_likes').delete()
       .eq('proposal_id', propId).eq('from_seat', MY_SEAT)
     _upmLikes.delete(propId)
-    const n = parseInt(nEl.textContent) - 1
-    nEl.textContent = n
+    // El trigger en DB actualiza proposals.likes — solo actualizamos UI local
+    _propLikeDelta(propId, -1)
     btn.classList.remove('liked')
     btn.querySelector('svg path').setAttribute('fill','none')
-    // Sync DB
-    await sb.from('proposals').update({ likes: n }).eq('id', propId)
   } else {
     const { error } = await sb.from('proposal_likes').insert({ proposal_id: propId, from_seat: MY_SEAT })
     if (!error) {
       _upmLikes.add(propId)
-      const n = parseInt(nEl.textContent) + 1
-      nEl.textContent = n
+      _propLikeDelta(propId, +1)
       btn.classList.add('liked')
       btn.querySelector('svg path').setAttribute('fill','currentColor')
-      await sb.from('proposals').update({ likes: n }).eq('id', propId)
     }
   }
 }
