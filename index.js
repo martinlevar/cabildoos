@@ -4883,28 +4883,130 @@ function vpResetCamUI(tipo) {
   if (post) post.style.display = 'none'
 }
 
+// ── Tutorial animado pre-cámara ──────────────────────────────────────────────
+const VP_TUTORIALS = {
+  2: {
+    title: 'Fotografiá tu documento',
+    sub:   'Ubicá el frente del documento dentro del marco. Asegurate de que esté bien iluminado y sin reflejos.',
+    svg: `<svg viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Card outline -->
+      <rect x="20" y="48" width="140" height="90" rx="10" stroke="rgba(255,255,255,.25)" stroke-width="2" fill="rgba(255,255,255,.04)"/>
+      <!-- Corner guides -->
+      <path d="M20 68 L20 48 L40 48" stroke="#f76a1e" stroke-width="3" stroke-linecap="round"/>
+      <path d="M140 48 L160 48 L160 68" stroke="#f76a1e" stroke-width="3" stroke-linecap="round"/>
+      <path d="M20 118 L20 138 L40 138" stroke="#f76a1e" stroke-width="3" stroke-linecap="round"/>
+      <path d="M140 138 L160 138 L160 118" stroke="#f76a1e" stroke-width="3" stroke-linecap="round"/>
+      <!-- Photo placeholder on card -->
+      <rect x="30" y="60" width="36" height="44" rx="4" fill="rgba(255,255,255,.08)" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+      <circle cx="48" cy="75" r="8" fill="rgba(255,255,255,.15)"/>
+      <rect x="33" y="90" width="30" height="10" rx="3" fill="rgba(255,255,255,.1)"/>
+      <!-- Text lines on card -->
+      <rect x="76" y="64" width="70" height="6" rx="3" fill="rgba(255,255,255,.18)"/>
+      <rect x="76" y="76" width="50" height="5" rx="2.5" fill="rgba(255,255,255,.1)"/>
+      <rect x="76" y="87" width="60" height="5" rx="2.5" fill="rgba(255,255,255,.1)"/>
+      <!-- Scan line -->
+      <g style="animation:tut-scan 2s ease-in-out infinite">
+        <rect x="20" y="48" width="140" height="2" rx="1" fill="#f76a1e" opacity=".9" style="animation:tut-scan-glow 2s ease-in-out infinite"/>
+        <rect x="20" y="49" width="140" height="8" rx="0" fill="url(#scanGrad)"/>
+      </g>
+      <defs>
+        <linearGradient id="scanGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#f76a1e" stop-opacity=".25"/>
+          <stop offset="100%" stop-color="#f76a1e" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>`
+  },
+  3: {
+    title: 'Verificación de presencia',
+    sub:   'Mirá a la cámara y realizá la acción que aparece en pantalla. El sistema confirma que sos una persona real.',
+    svg: `<svg viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Pulsing ring -->
+      <circle cx="90" cy="82" r="52" stroke="rgba(247,106,30,.15)" stroke-width="1.5"/>
+      <circle cx="90" cy="82" r="52" stroke="rgba(247,106,30,.3)" stroke-width="1" style="animation:tut-pulse-ring 2s ease-out infinite"/>
+      <!-- Face circle -->
+      <circle cx="90" cy="82" r="46" stroke="rgba(255,255,255,.2)" stroke-width="2" fill="rgba(255,255,255,.04)"/>
+      <!-- Face group with head bob -->
+      <g style="transform-origin:90px 82px; animation:tut-head-bob 3s ease-in-out infinite">
+        <!-- Eyes -->
+        <g style="transform-origin:76px 72px; animation:tut-blink 3.5s ease-in-out infinite">
+          <ellipse cx="76" cy="72" rx="5" ry="6" fill="rgba(255,255,255,.8)"/>
+        </g>
+        <g style="transform-origin:104px 72px; animation:tut-blink 3.5s ease-in-out infinite">
+          <ellipse cx="104" cy="72" rx="5" ry="6" fill="rgba(255,255,255,.8)"/>
+        </g>
+        <!-- Nose -->
+        <path d="M88 78 Q90 84 92 78" stroke="rgba(255,255,255,.35)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <!-- Smile — animates from neutral to smile -->
+        <path d="M72 90 Q90 98 108 90" stroke="rgba(255,255,255,.7)" stroke-width="2.5" stroke-linecap="round" fill="none"
+              style="animation:tut-smile 3s ease-in-out infinite"/>
+      </g>
+      <!-- Label -->
+      <rect x="54" y="144" width="72" height="20" rx="10" fill="rgba(247,106,30,.15)" stroke="rgba(247,106,30,.4)" stroke-width="1"/>
+      <text x="90" y="158" text-anchor="middle" fill="#f76a1e" font-size="10" font-weight="700" font-family="system-ui">ACCIÓN EN VIVO</text>
+    </svg>`
+  },
+  4: {
+    title: 'Selfie con documento',
+    sub:   'Mostrá tu cara y el documento en la misma toma. El documento debe estar visible y ser legible.',
+    svg: `<svg viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Camera frame -->
+      <rect x="14" y="30" width="152" height="120" rx="12" stroke="rgba(255,255,255,.2)" stroke-width="2" fill="rgba(255,255,255,.03)"/>
+      <path d="M14 55 L14 30 L39 30" stroke="#f76a1e" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M141 30 L166 30 L166 55" stroke="#f76a1e" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M14 125 L14 150 L39 150" stroke="#f76a1e" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M141 150 L166 150 L166 125" stroke="#f76a1e" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- Face (left side) -->
+      <circle cx="72" cy="87" r="32" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+      <circle cx="63" cy="81" r="4" fill="rgba(255,255,255,.6)"/>
+      <circle cx="81" cy="81" r="4" fill="rgba(255,255,255,.6)"/>
+      <path d="M62 94 Q72 102 82 94" stroke="rgba(255,255,255,.6)" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <!-- Document (right side, floating) -->
+      <g style="animation:tut-doc-float 2.5s ease-in-out infinite">
+        <rect x="106" y="64" width="50" height="36" rx="5" fill="rgba(247,106,30,.12)" stroke="rgba(247,106,30,.5)" stroke-width="1.5"/>
+        <rect x="110" y="70" width="14" height="18" rx="2" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+        <rect x="128" y="72" width="22" height="4" rx="2" fill="rgba(255,255,255,.2)"/>
+        <rect x="128" y="79" width="16" height="3" rx="1.5" fill="rgba(255,255,255,.12)"/>
+        <rect x="128" y="85" width="19" height="3" rx="1.5" fill="rgba(255,255,255,.12)"/>
+      </g>
+      <!-- Divider hint -->
+      <line x1="100" y1="50" x2="100" y2="140" stroke="rgba(255,255,255,.08)" stroke-width="1" stroke-dasharray="4 4"/>
+    </svg>`
+  }
+}
+
+let _vpTutorialCallback = null
+
+function vpMostrarTutorial(step, callback) {
+  const tut = VP_TUTORIALS[step]
+  if (!tut) { callback(); return }
+
+  _vpTutorialCallback = callback
+
+  // Ocultar todos los vp-step y mostrar el tutorial
+  document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
+  const tutEl = document.getElementById('vp-tutorial')
+  tutEl.style.display = 'block'
+  document.getElementById('vp-tut-title').textContent = tut.title
+  document.getElementById('vp-tut-sub').textContent   = tut.sub
+  document.getElementById('vp-tut-anim').innerHTML    = tut.svg
+}
+
+function vpTutorialOk() {
+  const tutEl = document.getElementById('vp-tutorial')
+  if (tutEl) tutEl.style.display = 'none'
+  if (_vpTutorialCallback) { _vpTutorialCallback(); _vpTutorialCallback = null }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function vpShowStep(n) {
   // Parar todo al salir — y cancelar cualquier cadena de liveness en vuelo
   ++_vpLivenessToken  // invalida cualquier .then() pendiente de liveness
   vpPararBarcodeScanner()
   vpPararScanner()
   vpPararCamara()
-  // (streams del paso 2 ya no aplican — arquitectura simplificada)
 
-  document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
-  const el = document.getElementById('vp-s' + n)
-  if (el) el.classList.add('active')
-
-  if (n === 2) {
-    vpDocIniciar()
-  } else if (n === 3) {
-    vpLivenessIniciar()
-  } else if (n === 4) {
-    vpResetCamUI('selfiedoc')
-    vpSelfieDocIniciar()
-  }
-
-  // Progress dots
+  // Progress dots (siempre actualizar, incluso durante tutorial)
   const dots  = document.querySelectorAll('.vp-prog-dot')
   const lines = document.querySelectorAll('.vp-prog-line')
   const stepMap = { 1:0, 2:1, 3:2, '4a':2, '4b':2, 5:3, 6:3 }
@@ -4912,6 +5014,23 @@ function vpShowStep(n) {
   dots.forEach((d,i)  => { d.classList.toggle('active', i===idx); d.classList.toggle('done', i<idx) })
   lines.forEach((l,i) => l.classList.toggle('done', i<idx))
   vpCurrentStep = n
+
+  // Pasos con cámara: mostrar tutorial primero
+  if (n === 2 || n === 3 || n === 4) {
+    vpMostrarTutorial(n, () => {
+      document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
+      const el = document.getElementById('vp-s' + n)
+      if (el) el.classList.add('active')
+      if (n === 2)      vpDocIniciar()
+      else if (n === 3) vpLivenessIniciar()
+      else if (n === 4) { vpResetCamUI('selfiedoc'); vpSelfieDocIniciar() }
+    })
+    return
+  }
+
+  document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
+  const el = document.getElementById('vp-s' + n)
+  if (el) el.classList.add('active')
 }
 
 function vpGoStep(n) { vpShowStep(n) }

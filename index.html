@@ -1085,6 +1085,14 @@
     <button class="vp-close" onclick="if(MY_SEAT>0)cerrarVerificacion()" id="vp-close-btn">×</button>
     <button class="vp-logout-btn" onclick="cerrarSesion()" title="Cerrar sesión">↩ Salir</button>
 
+    <!-- ── Tutorial overlay (pasos 2/3/4) ── -->
+    <div id="vp-tutorial" style="display:none">
+      <div id="vp-tut-anim"></div>
+      <p class="vp-tut-title" id="vp-tut-title"></p>
+      <p class="vp-tut-sub"   id="vp-tut-sub"></p>
+      <button class="vp-btn-main" id="vp-tut-btn" onclick="vpTutorialOk()">Entendido, continuar →</button>
+    </div>
+
     <!-- Progress indicator -->
     <div class="vp-progress" id="vp-progress">
       <div class="vp-prog-dot active" data-s="1"></div>
