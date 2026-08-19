@@ -1492,7 +1492,7 @@ async function iniciarSimulacion() {
 
   // ── UI inicial ────────────────────────────────────────────────────────────
   SIM.active  = true
-  SIM.phase   = 'lights'   // fase 1: encender todas las luces
+  SIM.phase   = 'lights'
   SIM.results = {}
   SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
   SIM.revealed = 0
@@ -1501,10 +1501,11 @@ async function iniciarSimulacion() {
   SIM._done       = false
   SIM._settleStart= 0
   SIM.dramaticMap = {}
-  SIM._lightsStart = Date.now()
-  SIM._lightsColors = SEATS.map(() => Math.floor(Math.random() * 4))  // 0=verde 1=rojo 2=amarillo 3=gris
+  SIM._lightsStart    = Date.now()
+  SIM._lightsDur      = 0        // se setea cuando llega la data
+  SIM._lightsColors   = SEATS.map(() => Math.floor(Math.random() * 4))
   SIM._countdownStart = 0
-  SIM._lightsOff = false
+  SIM._lightsOff      = false
 
   document.getElementById('sim-overlay').classList.add('open')
   document.getElementById('sim-winner-banner').classList.remove('show')
@@ -1565,21 +1566,24 @@ async function iniciarSimulacion() {
   document.getElementById('sim-progress').textContent = '0'
   if (_lbl) _lbl.textContent = 'Revelando…'
 
-  // Data lista → esperar a que las luces estén encendidas, luego countdown
-  const waitForLights = () => {
-    const elapsed = Date.now() - SIM._lightsStart
-    if (elapsed < 1200) { setTimeout(waitForLights, 50); return }
-    // Luces encendidas → arranca countdown
-    SIM.phase = 'countdown'
-    SIM._countdownStart = Date.now()
-    // Después de 3s de countdown → apagar y revelar
-    setTimeout(() => {
-      SIM._lightsOff = true
-      SIM.phase     = 'counting'
-      SIM.startTime = Date.now()
-    }, 3200)
-  }
-  waitForLights()
+  // La duración real del fetch define cuánto tarda en encenderse todo
+  // Mínimo 1.2s para que se vea el efecto, máximo lo que tardó el fetch
+  const fetchMs = Date.now() - SIM._lightsStart
+  SIM._lightsDur = Math.max(fetchMs, 1200)
+
+  // Esperar a que las luces terminen de encenderse (si el fetch fue muy rápido)
+  const remaining = SIM._lightsDur - (Date.now() - SIM._lightsStart)
+  await new Promise(r => setTimeout(r, Math.max(0, remaining)))
+
+  // Luces todas encendidas → countdown 3-2-1
+  SIM.phase = 'countdown'
+  SIM._countdownStart = Date.now()
+  await new Promise(r => setTimeout(r, 3000))
+
+  // Countdown terminó → apagar luces y revelar en naranja
+  SIM._lightsOff = true
+  SIM.phase      = 'counting'
+  SIM.startTime  = Date.now()
 }
 
 function simToScreen(wx, wy) {
@@ -1603,7 +1607,10 @@ function simDraw() {
     const LIGHT_COLORS = ['#22c55e','#ef4444','#fbbf24','#9ca3af']
     const LIGHT_GLOWS  = ['rgba(34,197,94,','rgba(239,68,68,','rgba(251,191,36,','rgba(156,163,175,']
     const elapsed = t - SIM._lightsStart
-    const LIGHT_IN = 1000  // ms para que todas se enciendan
+    // LIGHT_IN: si ya llegó la data, usamos la duración real del fetch.
+    // Mientras espera, avanza ~500ms por delante del tiempo actual para crear
+    // una ola de encendido que llena el hemiciclo al ritmo del conteo real.
+    const LIGHT_IN = SIM._lightsDur > 0 ? SIM._lightsDur : Math.max(elapsed + 500, 1200)
 
     simCtx.clearRect(0, 0, W, H)
     simCtx.fillStyle = '#040C1E'
@@ -1613,9 +1620,9 @@ function simDraw() {
       const s = SEATS[i]
       const { x: sx, y: sy } = simToScreen(s.x, s.y)
       if (sx < -dotR*4 || sx > W+dotR*4 || sy < -dotR*4 || sy > H+dotR*4) continue
-      // Encendido escalonado: cada butaca se enciende en un momento aleatorio dentro de LIGHT_IN
-      const delay = (i / SEATS.length) * LIGHT_IN * 0.8 + Math.random() * LIGHT_IN * 0.2
-      const progress = Math.min(Math.max((elapsed - delay) / 200, 0), 1)
+      // Encendido escalonado: cada butaca se enciende de forma proporcional al tiempo total
+      const delay = (i / SEATS.length) * LIGHT_IN * 0.9
+      const progress = Math.min(Math.max((elapsed - delay) / 150, 0), 1)
       if (progress <= 0) continue
       const cIdx = SIM._lightsColors[i]
       simCtx.save()
