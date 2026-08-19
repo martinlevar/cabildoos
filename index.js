@@ -2482,6 +2482,7 @@ async function _onLogin(user) {
     document.getElementById('nav-user-divider')?.style.setProperty('display', 'block', 'important')
     voActualizarAlias('Observador')
     await cargarConteoReal()
+    initProfilesRealtime()  // detectar si el admin borra este observador
     return
   }
 
@@ -2590,6 +2591,7 @@ async function _onLogin(user) {
     initMessagesRealtime()
     _loadNotifications()
     initNotificationsRealtime()
+    initProfilesRealtime()  // reiniciar con token autenticado para capturar DELETE en profiles
     _checkProposalConsent()
     _syncBugFab()
     const _cabildo = localStorage.getItem('cabildoos_cabildo')
@@ -6047,14 +6049,13 @@ function initQuestionsRealtime() {
   try {
     sb.channel('questions-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, async payload => {
-        const newQ = payload.new  // vacío ({}) en DELETE
-        const oldQ = payload.old  // vacío ({}) en INSERT
+        const ev   = payload.eventType          // 'INSERT' | 'UPDATE' | 'DELETE'
+        const newQ = payload.new || {}
+        const oldQ = payload.old || {}
 
-        // ── DELETE: pregunta eliminada por el admin ──────────────────────────
-        const isDelete = !newQ?.id && !!oldQ?.id
-        if (isDelete) {
+        // ── DELETE: pregunta eliminada ──────────────────────────────────────
+        if (ev === 'DELETE') {
           const deletedId = oldQ.id
-          // Si el usuario tiene abierto el debate de esta pregunta → cerrarlo
           if (_debateQId === deletedId) {
             if (_debateCdIv) { clearInterval(_debateCdIv); _debateCdIv = null }
             cerrarDebate()
@@ -6066,9 +6067,9 @@ function initQuestionsRealtime() {
           return
         }
 
-        const q = newQ || {}
+        const q = newQ
 
-        // ── CLOSED: admin cerró la pregunta manualmente ──────────────────────
+        // ── CLOSED: admin cerró la pregunta ─────────────────────────────────
         if (q.status === 'cerrada') {
           if (_debateQId === q.id && !_debateEnded) {
             if (_debateCdIv) { clearInterval(_debateCdIv); _debateCdIv = null }
@@ -6088,20 +6089,18 @@ function initQuestionsRealtime() {
         }
 
         // ── UPDATE con nuevo ends_at: reiniciar countdown ────────────────────
-        // (admin cambió la duración de la pregunta activa)
-        if (newQ?.id && oldQ?.id && q.ends_at && q.status === 'activa') {
-          if (_debateQId === q.id && !_debateEnded) {
-            _dpStartCountdown(q.ends_at)
-          }
-          // Actualizar PREGUNTAS_DATA local para que el q-timer también sea correcto
+        if (ev === 'UPDATE' && q.status === 'activa' && q.ends_at) {
           const idx = PREGUNTAS_DATA.findIndex(p => p.id === q.id)
           if (idx !== -1) {
-            PREGUNTAS_DATA[idx].ends_at = q.ends_at
+            PREGUNTAS_DATA[idx].ends_at         = q.ends_at
             PREGUNTAS_DATA[idx].duration_minutes = q.duration_minutes
+          }
+          if (_debateQId === q.id && !_debateEnded) {
+            _dpStartCountdown(q.ends_at)
+            showToast('⏱ Duración actualizada')
           }
         }
 
-        // Recargar lista en todos los casos
         await cargarPreguntasActivas()
       })
       .subscribe()
