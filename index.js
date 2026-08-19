@@ -1217,7 +1217,8 @@ function showCard(seat, cx, cy) {
 
   // Color de tarjeta del usuario — fondo siempre blanco, color elegido solo como acento
   const CARD_ACCENT = {
-    white:  null,       // usa p.color (color por butaca)
+    white:  '#d1d5db',  // gris neutro
+    orange: '#f76a1e',
     yellow: '#f59e0b',
     green:  '#34d399',
     cyan:   '#22d3ee',
@@ -1233,10 +1234,11 @@ function showCard(seat, cx, cy) {
     black:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
     red:    { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
     pink:   { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
+    orange: { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
   }
   const cached = _profilesCache[seat.num]
-  const cardColor = cached?.cardColor || 'white'
-  const accentColor = CARD_ACCENT[cardColor] ?? p.color
+  const cardColor = cached?.cardColor || 'orange'
+  const accentColor = CARD_ACCENT[cardColor] ?? CARD_ACCENT.orange
   card.style.background = '#ffffff'
   document.getElementById('pc-name').style.color   = '#1c1c1e'
   document.getElementById('pc-butaca').style.color  = '#888'
@@ -6213,7 +6215,7 @@ async function abrirMiPerfil() {
   _syncVisibilidadUI()
 
   // Sincronizar swatch de color activo
-  const currentColor = _authProfile?.card_color || 'white'
+  const currentColor = _authProfile?.card_color || 'orange'
   document.querySelectorAll('.mp-color-swatch').forEach(s => s.classList.remove('active'))
   const activeEl = document.getElementById('mpc-' + currentColor)
   if (activeEl) activeEl.classList.add('active')
@@ -6645,7 +6647,7 @@ async function cargarPerfilesPublicos() {
           showPhrase: !!r.show_phrase,
           showVotes:  !!r.show_votes,
           isPublic:   !!(r.show_alias || r.show_phrase || r.show_votes),
-          cardColor:  r.card_color || 'white',
+          cardColor:  r.card_color || 'orange',
         }
       })
     }
