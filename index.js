@@ -6042,31 +6042,43 @@ function initProfilesRealtime() {
   } catch(e) { console.warn('profiles-live realtime:', e) }
 }
 
-// ── Realtime: auto-actualiza preguntas cuando el admin crea/activa/cierra una ──
+// ── Realtime: auto-actualiza preguntas cuando el admin crea/activa/cierra/borra una ──
 function initQuestionsRealtime() {
   try {
     sb.channel('questions-live')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'questions'
-      }, payload => {
-        const q = payload.new || payload.old || {}
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, async payload => {
+        const newQ = payload.new  // vacío ({}) en DELETE
+        const oldQ = payload.old  // vacío ({}) en INSERT
 
-        // Si el admin cerró una pregunta manualmente (status → 'cerrada')
-        if (q.status === 'cerrada') {
-          // 1. Si el usuario está en el debate de esa pregunta → terminar ahora
-          if (_debateQId && _debateQId === q.id && !_debateEnded) {
+        // ── DELETE: pregunta eliminada por el admin ──────────────────────────
+        const isDelete = !newQ?.id && !!oldQ?.id
+        if (isDelete) {
+          const deletedId = oldQ.id
+          // Si el usuario tiene abierto el debate de esta pregunta → cerrarlo
+          if (_debateQId === deletedId) {
             if (_debateCdIv) { clearInterval(_debateCdIv); _debateCdIv = null }
-            _debateEndsAt = new Date() // hacer que el countdown muestre 0 inmediatamente
+            cerrarDebate()
+            _debateQId   = null
+            _debateEnded = false
+            showToast('La votación fue eliminada por el administrador')
+          }
+          await cargarPreguntasActivas()
+          return
+        }
+
+        const q = newQ || {}
+
+        // ── CLOSED: admin cerró la pregunta manualmente ──────────────────────
+        if (q.status === 'cerrada') {
+          if (_debateQId === q.id && !_debateEnded) {
+            if (_debateCdIv) { clearInterval(_debateCdIv); _debateCdIv = null }
+            _debateEndsAt = new Date()
             const valEl = document.getElementById('dp-cd-val')
             const lblEl = document.getElementById('dp-cd-lbl')
             if (valEl) { valEl.textContent = 'Finalizada'; valEl.className = 'dp-cd-val ended' }
             if (lblEl) lblEl.textContent = 'Estado'
             _dpSetEndedUI(true)
           }
-
-          // 2. Actualizar timer en la q-card si está visible
           PREGUNTAS_DATA.forEach((qdata, i) => {
             if (qdata.id === q.id) {
               const timerEl = document.getElementById(`q-timer-${i}`)
@@ -6075,8 +6087,22 @@ function initQuestionsRealtime() {
           })
         }
 
-        // Recargar lista de preguntas activas en todos los casos
-        cargarPreguntasActivas()
+        // ── UPDATE con nuevo ends_at: reiniciar countdown ────────────────────
+        // (admin cambió la duración de la pregunta activa)
+        if (newQ?.id && oldQ?.id && q.ends_at && q.status === 'activa') {
+          if (_debateQId === q.id && !_debateEnded) {
+            _dpStartCountdown(q.ends_at)
+          }
+          // Actualizar PREGUNTAS_DATA local para que el q-timer también sea correcto
+          const idx = PREGUNTAS_DATA.findIndex(p => p.id === q.id)
+          if (idx !== -1) {
+            PREGUNTAS_DATA[idx].ends_at = q.ends_at
+            PREGUNTAS_DATA[idx].duration_minutes = q.duration_minutes
+          }
+        }
+
+        // Recargar lista en todos los casos
+        await cargarPreguntasActivas()
       })
       .subscribe()
   } catch(e) { console.warn('Realtime no disponible:', e) }
