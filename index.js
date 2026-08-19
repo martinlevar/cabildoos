@@ -1580,10 +1580,21 @@ async function iniciarSimulacion() {
   SIM._countdownStart = Date.now()
   await new Promise(r => setTimeout(r, 3000))
 
-  // Countdown terminó → apagar luces y revelar en naranja
+  // Countdown terminó → revelar TODOS los votos de golpe
+  // El fade-in de FADE_MS (900ms) anima el glow naranja suavemente
+  const revealNow = Date.now()
+  SIM.order.forEach(snum => {
+    SIM.revealedArr[snum] = 1
+    SIM.flashMap[snum]    = revealNow
+  })
+  SIM.revealed = SIM.order.length
+  const progEl = document.getElementById('sim-progress')
+  if (progEl) progEl.textContent = SIM.revealed.toLocaleString('es-AR')
+
   SIM._lightsOff = true
   SIM.phase      = 'counting'
-  SIM.startTime  = Date.now()
+  SIM.startTime  = revealNow
+  SIM._done      = false
 }
 
 function simToScreen(wx, wy) {
