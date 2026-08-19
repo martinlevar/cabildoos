@@ -1492,7 +1492,7 @@ async function iniciarSimulacion() {
 
   // ── UI inicial ────────────────────────────────────────────────────────────
   SIM.active  = true
-  SIM.phase   = 'fireworks'   // arranca en fireworks mientras carga la data
+  SIM.phase   = 'reveal'   // arranca directo en reveal
   SIM.results = {}
   SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
   SIM.revealed = 0
