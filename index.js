@@ -1551,7 +1551,7 @@ async function iniciarSimulacion() {
   SIM.order = SEATS.filter(s => s.num <= TOTAL_SEATS).map(s => s.num).sort(() => Math.random() - 0.5)
   const simTotal = SIM.order.length
   SIM.order.forEach(snum => {
-    SIM.dramaticMap[snum] = Math.random() < 0.5 ? 'si' : 'no'
+    SIM.dramaticMap[snum] = 'naranja'
   })
   SIM.REVEAL_DUR = simTotal <= 5 ? 4000 : simTotal <= 20 ? 3500 : simTotal <= 80 ? 4000 : 5000
 
@@ -1735,34 +1735,9 @@ function simDraw() {
     if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
     const w     = _warmup(_ft(s.num))
 
-    // Decidir color según fase — sin pulso, colores sólidos
-    let r, g, b, glowR, glowG, glowB
-    const isDramatic = SIM.dramaticMap?.[s.num]
-
-    if (settleT >= 1 || !isDramatic) {
-      // FINAL: naranja
-      r = 237; g = 100; b = 25
-      glowR = 247; glowG = 106; glowB = 30
-    } else if (settleT === 0) {
-      // CONTANDO: verde o rojo
-      if (isDramatic === 'si') {
-        r = 34; g = 197; b = 94
-        glowR = 34; glowG = 230; glowB = 120
-      } else {
-        r = 220; g = 38; b = 38
-        glowR = 240; glowG = 60; glowB = 60
-      }
-    } else {
-      // ASENTANDO: transición suave entre dramático y naranja sin flicker
-      const p = settleT
-      if (isDramatic === 'si') {
-        r = Math.round(34 + (237-34)*p); g = Math.round(197 + (100-197)*p); b = Math.round(94 + (25-94)*p)
-        glowR = Math.round(34 + (247-34)*p); glowG = Math.round(230 + (106-230)*p); glowB = Math.round(120 + (30-120)*p)
-      } else {
-        r = Math.round(220 + (237-220)*p); g = Math.round(38 + (100-38)*p); b = Math.round(38 + (25-38)*p)
-        glowR = Math.round(240 + (247-240)*p); glowG = Math.round(60 + (106-60)*p); glowB = Math.round(60 + (30-60)*p)
-      }
-    }
+    // Naranja directo — sin pasar por verde/rojo
+    const r = 237, g = 100, b = 25
+    const glowR = 247, glowG = 106, glowB = 30
 
     simCtx.shadowColor = `rgba(${glowR},${glowG},${glowB},0.5)`
     simCtx.shadowBlur  = dotR * 4 * w
