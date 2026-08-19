@@ -1217,11 +1217,13 @@ function showCard(seat, cx, cy) {
 
   // Color de tarjeta del usuario — fondo siempre blanco, color elegido solo como acento
   const CARD_ACCENT = {
-    white:  null,         // usa p.color (color por butaca)
-    yellow: '#b45309',
-    green:  '#15803d',
-    cyan:   '#0e7490',
-    black:  '#374151',
+    white:  null,       // usa p.color (color por butaca)
+    yellow: '#f59e0b',
+    green:  '#34d399',
+    cyan:   '#22d3ee',
+    black:  '#6b7280',
+    red:    '#f87171',
+    pink:   '#f472b6',
   }
   const CARD_THEMES = {
     white:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888',    border:'rgba(0,0,0,.1)' },
@@ -1229,6 +1231,8 @@ function showCard(seat, cx, cy) {
     green:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888',    border:'rgba(0,0,0,.1)' },
     cyan:   { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
     black:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
+    red:    { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
+    pink:   { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
   }
   const cached = _profilesCache[seat.num]
   const cardColor = cached?.cardColor || 'white'
