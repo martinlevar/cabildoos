@@ -6128,7 +6128,7 @@ function voActualizarAlias(alias) {
 //  MI PERFIL
 // ══════════════════════════════════════════════════════════════
 let perfilPublico = false  // derivado: true si ANY campo está visible
-let _visibilidad  = { alias: false, phrase: false }  // estado granular
+let _visibilidad  = { alias: false, phrase: false, votes: false }  // estado granular
 
 async function abrirMiPerfil() {
   if (!_requireButaca()) return
@@ -6143,6 +6143,7 @@ async function abrirMiPerfil() {
   // Sincronizar toggles granulares con valores de DB
   _visibilidad.alias  = !!_authProfile?.show_alias
   _visibilidad.phrase = !!_authProfile?.show_phrase
+  _visibilidad.votes  = !!_authProfile?.show_votes
   perfilPublico = _visibilidad.alias || _visibilidad.phrase
   _syncVisibilidadUI()
 
