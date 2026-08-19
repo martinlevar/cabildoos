@@ -1231,11 +1231,12 @@ function showCard(seat, cx, cy) {
   document.getElementById('pc-butaca').style.color  = theme.muted
   const phraseEl = document.getElementById('pc-phrase')
   phraseEl.style.color       = theme.text
-  phraseEl.style.borderColor = '#f76a1e'
+  phraseEl.style.borderColor = ''
 
   // Avatar
   const av = document.getElementById('pc-avatar')
   av.style.background = p.color
+  card.style.setProperty('--pc-color', p.color)
   av.textContent = p.initials
 
   document.getElementById('pc-name').textContent    = p.displayName

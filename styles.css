@@ -1456,6 +1456,7 @@ html, body {
   width:264px;
   background:var(--white);
   border-radius:16px;
+  border-left:4px solid var(--pc-color, #f76a1e);
   box-shadow: 0 2px 8px rgba(0,0,0,.06),
               0 8px 24px rgba(0,0,0,.1),
               0 24px 48px rgba(0,0,0,.08);
@@ -1488,9 +1489,12 @@ html, body {
 .pc-anon-badge::before { content:'●'; font-size:7px; }
 
 .pc-phrase {
-  font-size:13px; font-style:italic;
-  line-height:1.6; margin-bottom:12px;
-  border-left:3px solid #f76a1e; padding-left:11px; border-radius:0;
+  font-size:12px; font-style:italic;
+  line-height:1.5; margin-bottom:12px;
+  border-left:2px solid var(--pc-color, #f76a1e);
+  padding:6px 10px;
+  background:rgba(0,0,0,.03);
+  border-radius:0 6px 6px 0;
   min-height:0;
 }
 .pc-votes {
