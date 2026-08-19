@@ -4685,7 +4685,7 @@ function crearIdentidad() {
     abrirAuth('registro')
     return
   }
-  if (_authProfile?.butaca_numero) {
+  if (MY_SEAT > 0) {
     // Ya verificado
     abrirMiPerfil()
     return
