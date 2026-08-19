@@ -6645,7 +6645,7 @@ async function cargarPerfilesPublicos() {
 
 async function cargarPreguntasActivas() {
   try {
-    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url, links').eq('status', 'activa').order('created_at')
+    const { data } = await sb.from('questions').select('id, text, ends_at, duration_minutes, category, description, video_url, links, status').in('status', ['activa', 'cerrada']).order('created_at')
     if (data) {
       PREGUNTAS      = data.map(q => q.text)
       PREGUNTAS_IDS  = data.map(q => q.id)
