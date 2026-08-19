@@ -6017,9 +6017,8 @@ function initVotesRealtime() {
 function initProfilesRealtime() {
   if (_profilesChannel) { try { sb.removeChannel(_profilesChannel) } catch(_) {} }
   try {
-    // Escuchar seat_identities en lugar de profiles.
-    // seat_identities no contiene user_id — es la tabla pública de identidades de butaca.
     _profilesChannel = sb.channel('profiles-live')
+      // Cambios en seat_identities → refrescar hemiciclo para todos
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'seat_identities' }, async () => {
         await cargarPerfilesPublicos()
         buildSeats()
@@ -6027,6 +6026,17 @@ function initProfilesRealtime() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'seat_identities' }, async () => {
         await cargarPerfilesPublicos()
         buildSeats()
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'seat_identities' }, async () => {
+        await cargarPerfilesPublicos()
+        buildSeats()
+      })
+      // DELETE en profiles → si es el usuario actual, cerrar sesión inmediatamente
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'profiles' }, async (payload) => {
+        if (_authUser && payload.old?.id === _authUser.id) {
+          await sb.auth.signOut().catch(() => {})
+          _onLogout()
+        }
       })
       .subscribe()
   } catch(e) { console.warn('profiles-live realtime:', e) }
