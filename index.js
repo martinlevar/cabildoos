@@ -8870,7 +8870,7 @@ function slmShowTab(tab) {
     const initials = alias.slice(0, 2).toUpperCase()
     const cIdx    = seatNum % AVATAR_COLORS.length
     const color   = AVATAR_COLORS[cIdx]
-    return `<div class="slm-user-card" style="--slm-color:${color}">
+    return `<div class="slm-user-card">
       <div class="slm-uav" style="background:${color}">${initials}</div>
       <div class="slm-uinfo">
         <div class="slm-uname">${escapeHtml(alias)}</div>

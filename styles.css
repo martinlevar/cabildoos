@@ -3924,30 +3924,21 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 .slm-close:hover { background:rgba(0,0,0,.12); }
 .slm-body { flex:1; overflow-y:auto; padding:16px 20px; }
 .slm-user-card {
-  display:flex; align-items:center; gap:12px;
-  padding:11px 14px; border-radius:14px;
-  border:.5px solid var(--border);
-  border-left:3px solid var(--slm-color, #ccc);
-  margin-bottom:10px;
+  display:flex; align-items:center; gap:14px;
+  padding:12px 14px; border-radius:14px;
+  border:1.5px solid var(--border); margin-bottom:10px;
   transition:border-color .15s, background .15s; cursor:default;
 }
-.slm-user-card:hover { background:rgba(26,31,60,.02); }
+.slm-user-card:hover { border-color:rgba(26,31,60,.2); background:rgba(26,31,60,.02); }
 .slm-uav {
-  width:42px; height:42px; border-radius:50%; flex-shrink:0;
+  width:44px; height:44px; border-radius:50%; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
   font-size:14px; font-weight:700; color:#fff;
 }
 .slm-uinfo { flex:1; min-width:0; }
 .slm-uname { font-size:13px; font-weight:700; color:var(--dark); }
-.slm-uphrase {
-  font-size:11px; color:var(--mid); font-style:italic;
-  line-height:1.45; margin-top:5px;
-  padding:5px 9px;
-  background:rgba(0,0,0,.03);
-  border-left:2px solid var(--slm-color, #ccc);
-  border-radius:0 6px 6px 0;
-}
-.slm-umeta { font-size:10.5px; color:#bbb; margin-top:4px; }
+.slm-uphrase { font-size:11px; color:var(--mid); font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.slm-umeta { font-size:10.5px; color:#bbb; margin-top:2px; }
 .slm-ver-btn {
   padding:7px 14px; border-radius:20px; border:1.5px solid var(--border);
   background:none; cursor:pointer; font-family:inherit;
