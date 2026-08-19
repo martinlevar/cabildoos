@@ -1984,25 +1984,24 @@ let _certLogoB64 = null
   img.src = 'logo-cabildo.jpg'
 })()
 
-function _generarCopy(voto, gana, empate) {
-  if (voto === 'abs') {
-    return `"La abstención también es una postura. Butaca <b>#${MY_SEAT}</b> estuvo presente y eligió el silencio — que habla más fuerte de lo que parece."`
-  }
-  if (empate) {
-    return `"El hemiciclo quedó dividido. Pero la butaca <b>#${MY_SEAT}</b> estuvo ahí, y eso no se borra."`
-  }
-  const votoGano = (voto === 'si' && gana === 'si') || (voto === 'no' && gana === 'no')
-  if (votoGano) {
-    return `"Tu voz fue parte de la mayoría. La butaca <b>#${MY_SEAT}</b> habló — y Venezuela escuchó."`
-  } else {
-    return `"Tu voto no ganó esta vez. Pero la democracia vive porque voces como la de la butaca <b>#${MY_SEAT}</b> nunca se callan."`
-  }
+const CERT_FRASES = [
+  '"La democracia no es un espectáculo — es un acto. La butaca <b>#SEAT</b> participó."',
+  '"Cada voz cuenta. La butaca <b>#SEAT</b> estuvo presente cuando importaba."',
+  '"La participación ciudadana es el fundamento de toda democracia viva."',
+  '"Votar es ejercer soberanía. La butaca <b>#SEAT</b> lo hizo de forma anónima y verificada."',
+  '"La democracia participativa no promete mayorías — promete que todos tienen voz."',
+]
+function _generarCopy() {
+  // Frase aleatoria sobre democracia participativa — sin revelar el sentido del voto
+  const frase = CERT_FRASES[Math.floor(Math.random() * CERT_FRASES.length)]
+  return frase.replace(/SEAT/g, MY_SEAT)
 }
 
 function abrirCertificado() {
   if (!MY_SEAT) return
-  const voto = SIM.results ? SIM.results[MY_SEAT] : null
-  if (!voto) { alert('No se encontró tu voto para esta votación.'); return }
+  // Verificar que participó (sin revelar el sentido del voto)
+  const participo = SIM.results && SIM.results[MY_SEAT]
+  if (!participo) { alert('No se encontró tu participación en esta votación.'); return }
 
   const cntSi  = SIM._realSi  || 0
   const cntNo  = SIM._realNo  || 0
@@ -2022,25 +2021,19 @@ function abrirCertificado() {
   const fecha = new Date().toLocaleDateString('es-AR', { day:'numeric', month:'short', year:'numeric' })
   const hash  = 'cert·' + Math.random().toString(36).slice(2,6) + '·' + MY_SEAT.toString(16).padStart(4,'0')
 
-  // Logo: usar base64 si está disponible (garantiza captura en html2canvas)
+  // Logo: usar base64 si está disponible
   const logoEl = document.getElementById('cert-logo-img')
   if (logoEl && _certLogoB64) logoEl.src = _certLogoB64
 
-  const votoLabels = { si:'SÍ', no:'NO', abs:'ABS' }
-  const votoSubs   = { si:'A favor de la propuesta', no:'En contra de la propuesta', abs:'Se abstuvo de votar' }
   const winnerTxts = {
-    si: `<b>Ganó el SÍ</b> con ${pctSi}%`,
-    no: `<b>Ganó el NO</b> con ${pctNo}%`,
+    si:     `<b>Resultado: SÍ</b> · ${pctSi}%`,
+    no:     `<b>Resultado: NO</b> · ${pctNo}%`,
     empate: `<b>Empate</b> — ${pctSi}% SÍ · ${pctNo}% NO`
   }
 
   document.getElementById('cert-question-txt').textContent = pregunta
-  const pill = document.getElementById('cert-pill')
-  pill.textContent = votoLabels[voto] || voto.toUpperCase()
-  pill.className = 'cert-pill ' + voto
-  document.getElementById('cert-vote-sub').textContent = votoSubs[voto] || ''
 
-  // Stats
+  // Stats (solo resultados globales, no el voto individual)
   document.getElementById('cs-num-si').textContent  = cntSi.toLocaleString('es-AR')
   document.getElementById('cs-num-no').textContent  = cntNo.toLocaleString('es-AR')
   document.getElementById('cs-num-abs').textContent = cntAbs.toLocaleString('es-AR')
@@ -2055,7 +2048,7 @@ function abrirCertificado() {
   document.getElementById('cert-butaca').textContent = '#' + MY_SEAT
   document.getElementById('cert-participacion').textContent = participacion
   document.getElementById('cert-fecha').textContent = fecha
-  document.getElementById('cert-copy').innerHTML = _generarCopy(voto, gana, empate)
+  document.getElementById('cert-copy').innerHTML = _generarCopy()
   document.getElementById('cert-hash').textContent = hash
 
   document.getElementById('cert-overlay').classList.add('open')
