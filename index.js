@@ -2505,10 +2505,9 @@ async function _onLogin(user) {
     if (localVid) {
       try {
         await sb.rpc('claim_seat', { p_verification_id: localVid })
-        // Recargar profile para ver si ya tiene butaca
-        const { data: freshProfile } = await sb.from('profiles').select('*').eq('id', user.id).single()
-        if (freshProfile?.butaca_numero) {
-          // claim_seat actualizó el profile — recargar la página para aplicar cambios
+        // Verificar si claim_seat asignó butaca (sin leer profiles.butaca_numero)
+        const { data: seatNum } = await sb.rpc('get_my_seat')
+        if (seatNum) {
           window.location.reload()
           return
         }
@@ -2523,9 +2522,14 @@ async function _onLogin(user) {
     if (ddButaca) ddButaca.textContent = ''
   }
 
-  // Obtener número de butaca — cacheado directamente en profiles.butaca_numero
-  // (profiles.butaca_numero se actualiza via claim_seat() y assign_butaca())
-  let _seatNum = profile?.butaca_numero || 0
+  // Obtener butaca via get_my_seat() — sin leer profiles.butaca_numero
+  // El número de butaca vive en seat_identities, keyed por HMAC del user_id.
+  // profiles NO contiene la butaca: rompe el link email → butaca en la BD.
+  let _seatNum = 0
+  try {
+    const { data: myS } = await sb.rpc('get_my_seat')
+    _seatNum = myS || 0
+  } catch(_) {}
 
   if (_seatNum > 0) {
     MY_SEAT = _seatNum
@@ -2763,21 +2767,19 @@ async function guardarAliasGoogle() {
 
   btn.disabled = true; btn.textContent = 'Guardando…'; msg.textContent = ''
 
-  // Verificar alias único
-  const { data: existing } = await sb.from('profiles').select('id').eq('alias', alias).limit(1)
-  if (existing?.length) {
+  // Verificar alias único via RPC (alias vive en seat_identities, no en profiles)
+  const { data: available } = await sb.rpc('check_alias_available', { p_alias: alias })
+  if (available === false) {
     msg.textContent = 'Ese alias ya está en uso, elegí otro.'
     msg.className = 'auth-msg err'
     btn.disabled = false; btn.textContent = 'Confirmar alias →'
     return
   }
 
-  // Upsert perfil con alias
+  // Upsert perfil básico (sin alias ni butaca — esos viven en seat_identities)
   const { error } = await sb.from('profiles').upsert({
     id: _googleAliasUser.id,
-    alias,
     email: _googleAliasUser.email,
-    show_alias: true, show_phrase: false,
     status: 'sin_verificar'
   }, { onConflict: 'id' })
 
@@ -2954,9 +2956,9 @@ async function registrarse() {
     }
   }
 
-  // Verificar alias único antes de crear
-  const { data: existing } = await sb.from('profiles').select('id').eq('alias', alias).limit(1)
-  if (existing?.length) {
+  // Verificar alias único via RPC (alias vive en seat_identities, no en profiles)
+  const { data: aliasOk } = await sb.rpc('check_alias_available', { p_alias: alias })
+  if (aliasOk === false) {
     msg.textContent = 'Ese alias ya está en uso, elegí otro.'
     msg.className = 'auth-msg err'
     return
@@ -5955,27 +5957,21 @@ let _profilesChannel = null
 function initVotesRealtime() {
   if (_votesPollingInterval) clearInterval(_votesPollingInterval)
 
-  // Supabase Realtime: INSERT/DELETE en votes → actualizar butaca afectada al instante
-  // votes tiene SELECT policy para anon+authenticated → funciona para observadores también
+  // Realtime: escuchar vote_seats (participación pública) en lugar de votes.
+  // La tabla votes tiene RLS bloqueado — nadie puede leer votos directamente.
+  // vote_seats solo registra "butaca X participó" — sin el contenido del voto.
   if (_votesChannel) { try { sb.removeChannel(_votesChannel) } catch(_) {} }
   try {
     _votesChannel = sb.channel('votes-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'votes' }, payload => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vote_seats' }, payload => {
         const seat = payload.new?.seat_number
         if (!seat) return
         if (_profilesCache[seat]) {
           _profilesCache[seat].votes = (_profilesCache[seat].votes || 0) + 1
           buildSeats()
         } else {
-          // Butaca que aún no estaba en cache → recargar todo (p.ej. perfil recién hecho público)
           cargarPerfilesPublicos().then(() => buildSeats())
         }
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'votes' }, payload => {
-        const seat = payload.old?.seat_number
-        if (!seat || !_profilesCache[seat]) return
-        _profilesCache[seat].votes = Math.max(0, (_profilesCache[seat].votes || 1) - 1)
-        buildSeats()
       })
       .subscribe()
   } catch(e) { console.warn('votes-live realtime:', e) }
@@ -5990,13 +5986,14 @@ function initVotesRealtime() {
 function initProfilesRealtime() {
   if (_profilesChannel) { try { sb.removeChannel(_profilesChannel) } catch(_) {} }
   try {
+    // Escuchar seat_identities en lugar de profiles.
+    // seat_identities no contiene user_id — es la tabla pública de identidades de butaca.
     _profilesChannel = sb.channel('profiles-live')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, async () => {
-        // Un perfil cambió (alias, is_public, phrase) → recargamos cache y redibujamos
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'seat_identities' }, async () => {
         await cargarPerfilesPublicos()
         buildSeats()
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, async () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'seat_identities' }, async () => {
         await cargarPerfilesPublicos()
         buildSeats()
       })
