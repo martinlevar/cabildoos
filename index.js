@@ -1215,28 +1215,34 @@ function showCard(seat, cx, cy) {
   const p = getProfile(seat.num)
   const card = document.getElementById('profile-card')
 
-  // Color de tarjeta del usuario
+  // Color de tarjeta del usuario — fondo siempre blanco, color elegido solo como acento
+  const CARD_ACCENT = {
+    white:  null,         // usa p.color (color por butaca)
+    yellow: '#b45309',
+    green:  '#15803d',
+    cyan:   '#0e7490',
+    black:  '#374151',
+  }
   const CARD_THEMES = {
     white:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888',    border:'rgba(0,0,0,.1)' },
-    yellow: { bg:'#fef9c3', text:'#3d3000', muted:'#7a6a00', border:'rgba(0,0,0,.1)' },
-    green:  { bg:'#d1fae5', text:'#064e3b', muted:'#2a7a5e', border:'rgba(0,0,0,.1)' },
-    cyan:   { bg:'#cffafe', text:'#0e4f5c', muted:'#2a7a8a', border:'rgba(0,0,0,.1)' },
-    black:  { bg:'#1c1c1e', text:'#f5f5f5', muted:'#999',    border:'rgba(255,255,255,.12)' },
+    yellow: { bg:'#ffffff', text:'#1c1c1e', muted:'#888',    border:'rgba(0,0,0,.1)' },
+    green:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888',    border:'rgba(0,0,0,.1)' },
+    cyan:   { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
+    black:  { bg:'#ffffff', text:'#1c1c1e', muted:'#888', border:'rgba(0,0,0,.1)' },
   }
   const cached = _profilesCache[seat.num]
-  const theme = CARD_THEMES[cached?.cardColor || 'white'] || CARD_THEMES.white
-  card.style.background = theme.bg
-  card.style.borderColor = theme.border
-  document.getElementById('pc-name').style.color   = theme.text
-  document.getElementById('pc-butaca').style.color  = theme.muted
+  const cardColor = cached?.cardColor || 'white'
+  const accentColor = CARD_ACCENT[cardColor] ?? p.color
+  card.style.background = '#ffffff'
+  document.getElementById('pc-name').style.color   = '#1c1c1e'
+  document.getElementById('pc-butaca').style.color  = '#888'
   const phraseEl = document.getElementById('pc-phrase')
-  phraseEl.style.color       = theme.text
-  phraseEl.style.borderColor = ''
+  phraseEl.style.color = '#1c1c1e'
 
-  // Avatar
+  // Avatar y acento con el color elegido
   const av = document.getElementById('pc-avatar')
-  av.style.background = p.color
-  card.style.setProperty('--pc-color', p.color)
+  av.style.background = accentColor
+  card.style.setProperty('--pc-color', accentColor)
   av.textContent = p.initials
 
   document.getElementById('pc-name').textContent    = p.displayName
