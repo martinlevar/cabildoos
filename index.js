@@ -5675,11 +5675,12 @@ function _renderNotifBadge() {
         }
         if (typeof renderPropuestas === 'function') renderPropuestas()
       })
-      // Likes en tiempo real: INSERT o DELETE en proposal_likes → delta en todos los spans
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'proposal_likes' },
-        payload => _propLikeDelta(payload.new.proposal_id, +1))
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'proposal_likes' },
-        payload => _propLikeDelta(payload.old.proposal_id, -1))
+      // Likes en tiempo real: escucha proposals UPDATE (el trigger sync actualiza proposals.likes)
+      // Usar el count autoritative del DB en vez de delta sobre valor cacheado
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'proposals' }, payload => {
+        const p = payload.new
+        if (p?.id && typeof p.likes === 'number') _propSetCount(p.id, p.likes)
+      })
       .subscribe()
   }
 
@@ -9041,6 +9042,16 @@ async function upmLoadProposals() {
       <div class="upm-comments-wrap" id="upm-cmts-${p.id}" style="display:none"></div>
     </div>`
   }).join('')
+}
+
+// Actualiza contadores de likes de una propuesta con el valor exacto del DB (sin delta)
+function _propSetCount(propId, count) {
+  if (!propId) return
+  const upmEl = document.getElementById(`upm-like-n-${propId}`)
+  if (upmEl) upmEl.textContent = count
+  document.querySelectorAll(`#sf-like-n-${propId} .sf-like-count`).forEach(el => {
+    el.textContent = count
+  })
 }
 
 // Actualiza en el DOM todos los contadores de likes de una propuesta (delta = +1 o -1)
