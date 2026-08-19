@@ -1734,50 +1734,41 @@ function simDraw() {
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
     if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
     const w     = _warmup(_ft(s.num))
-    const phase = (s.num * 1.5) % (Math.PI * 2)
-    const pulse = (Math.sin(t / 750 + phase) + 1) / 2
 
-    // Decidir color según fase
+    // Decidir color según fase — sin pulso, colores sólidos
     let r, g, b, glowR, glowG, glowB
     const isDramatic = SIM.dramaticMap?.[s.num]
 
     if (settleT >= 1 || !isDramatic) {
       // FINAL: naranja
-      r = 220 + Math.round(pulse*27); g = 90 + Math.round(pulse*20); b = 20 + Math.round(pulse*10)
+      r = 237; g = 100; b = 25
       glowR = 247; glowG = 106; glowB = 30
     } else if (settleT === 0) {
       // CONTANDO: verde o rojo
       if (isDramatic === 'si') {
-        r = 30 + Math.round(pulse*30); g = 185 + Math.round(pulse*70); b = 80 + Math.round(pulse*40)
+        r = 34; g = 197; b = 94
         glowR = 34; glowG = 230; glowB = 120
       } else {
-        r = 185 + Math.round(pulse*70); g = 25 + Math.round(pulse*15); b = 25 + Math.round(pulse*15)
+        r = 220; g = 38; b = 38
         glowR = 240; glowG = 60; glowB = 60
       }
     } else {
-      // ASENTANDO: flicker — la probabilidad de mostrar naranja sube con settleT
-      // Velocidad de flicker alta al inicio, se frena al final
-      const flickerFreq = 80 + settleT * 200   // ms entre posibles cambios
-      const flickerPhase = Math.floor(t / flickerFreq + s.num * 0.37)
-      const showFinal = (flickerPhase % (Math.ceil(1 / (1 - settleT * 0.85 + 0.001)))) === 0
-      if (showFinal) {
-        r = 220 + Math.round(pulse*27); g = 90 + Math.round(pulse*20); b = 20 + Math.round(pulse*10)
-        glowR = 247; glowG = 106; glowB = 30
-      } else if (isDramatic === 'si') {
-        r = 30 + Math.round(pulse*30); g = 185 + Math.round(pulse*70); b = 80 + Math.round(pulse*40)
-        glowR = 34; glowG = 230; glowB = 120
+      // ASENTANDO: transición suave entre dramático y naranja sin flicker
+      const p = settleT
+      if (isDramatic === 'si') {
+        r = Math.round(34 + (237-34)*p); g = Math.round(197 + (100-197)*p); b = Math.round(94 + (25-94)*p)
+        glowR = Math.round(34 + (247-34)*p); glowG = Math.round(230 + (106-230)*p); glowB = Math.round(120 + (30-120)*p)
       } else {
-        r = 185 + Math.round(pulse*70); g = 25 + Math.round(pulse*15); b = 25 + Math.round(pulse*15)
-        glowR = 240; glowG = 60; glowB = 60
+        r = Math.round(220 + (237-220)*p); g = Math.round(38 + (100-38)*p); b = Math.round(38 + (25-38)*p)
+        glowR = Math.round(240 + (247-240)*p); glowG = Math.round(60 + (106-60)*p); glowB = Math.round(60 + (30-60)*p)
       }
     }
 
-    const glowAlpha = (0.3 + pulse * 0.35) * w
-    simCtx.shadowColor = `rgba(${glowR},${glowG},${glowB},${glowAlpha})`
-    simCtx.shadowBlur  = dotR * (3 + pulse * 6) * w
+    simCtx.shadowColor = `rgba(${glowR},${glowG},${glowB},0.5)`
+    simCtx.shadowBlur  = dotR * 4 * w
     simCtx.globalAlpha = 0.2 + w * 0.8
     simCtx.beginPath()
-    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.15), 0, Math.PI * 2)
+    simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
     simCtx.fillStyle = `rgb(${r},${g},${b})`
     simCtx.fill()
     simCtx.shadowBlur = 0
@@ -1791,14 +1782,12 @@ function simDraw() {
     const { x: sx, y: sy } = simToScreen(s.x, s.y)
     if (sx < -dotR*8 || sx > W+dotR*8 || sy < -dotR*8 || sy > H+dotR*8) return
     const w     = _warmup(_ft(s.num))
-    const phase = (s.num * 1.3) % (Math.PI * 2)
-    const pulse = (Math.sin(t / 800 + phase) + 1) / 2
-    simCtx.shadowColor = `rgba(250,204,21,${(0.35 + pulse * 0.3) * w})`
-    simCtx.shadowBlur  = dotR * (3 + pulse * 5) * w
+    simCtx.shadowColor = `rgba(250,204,21,${0.45 * w})`
+    simCtx.shadowBlur  = dotR * 4 * w
     simCtx.globalAlpha = 0.2 + w * 0.8
     simCtx.beginPath()
-    simCtx.arc(sx, sy, dotR * (1 + pulse * 0.12), 0, Math.PI * 2)
-    simCtx.fillStyle = `rgb(${200 + Math.round(pulse*30)},${160 + Math.round(pulse*30)},${20 + Math.round(pulse*10)})`
+    simCtx.arc(sx, sy, dotR, 0, Math.PI * 2)
+    simCtx.fillStyle = `rgb(214,171,22)`
     simCtx.fill()
     simCtx.shadowBlur = 0
   })
