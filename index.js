@@ -1492,7 +1492,7 @@ async function iniciarSimulacion() {
 
   // ── UI inicial ────────────────────────────────────────────────────────────
   SIM.active  = true
-  SIM.phase   = 'reveal'   // arranca directo en reveal
+  SIM.phase   = 'lights'   // fase 1: encender todas las luces
   SIM.results = {}
   SIM.totalSi = 0; SIM.totalNo = 0; SIM.totalAbs = 0
   SIM.revealed = 0
@@ -1501,6 +1501,10 @@ async function iniciarSimulacion() {
   SIM._done       = false
   SIM._settleStart= 0
   SIM.dramaticMap = {}
+  SIM._lightsStart = Date.now()
+  SIM._lightsColors = SEATS.map(() => Math.floor(Math.random() * 4))  // 0=verde 1=rojo 2=amarillo 3=gris
+  SIM._countdownStart = 0
+  SIM._lightsOff = false
 
   document.getElementById('sim-overlay').classList.add('open')
   document.getElementById('sim-winner-banner').classList.remove('show')
@@ -1550,9 +1554,7 @@ async function iniciarSimulacion() {
 
   SIM.order = SEATS.filter(s => s.num <= TOTAL_SEATS).map(s => s.num).sort(() => Math.random() - 0.5)
   const simTotal = SIM.order.length
-  SIM.order.forEach(snum => {
-    SIM.dramaticMap[snum] = 'naranja'
-  })
+  SIM.order.forEach(snum => { SIM.dramaticMap[snum] = 'naranja' })
   SIM.REVEAL_DUR = simTotal <= 5 ? 4000 : simTotal <= 20 ? 3500 : simTotal <= 80 ? 4000 : 5000
 
   // Actualizar header
@@ -1561,11 +1563,23 @@ async function iniciarSimulacion() {
   const simTotalEl = document.getElementById('sim-total')
   if (simTotalEl) simTotalEl.textContent = simTotal.toLocaleString('es-AR')
   document.getElementById('sim-progress').textContent = '0'
-  if (_lbl) _lbl.textContent = 'Contando sobres…'
+  if (_lbl) _lbl.textContent = 'Revelando…'
 
-  // Corte instantáneo: las luces se apagan y arranca el conteo real
-  SIM.phase     = 'counting'
-  SIM.startTime = Date.now()
+  // Data lista → esperar a que las luces estén encendidas, luego countdown
+  const waitForLights = () => {
+    const elapsed = Date.now() - SIM._lightsStart
+    if (elapsed < 1200) { setTimeout(waitForLights, 50); return }
+    // Luces encendidas → arranca countdown
+    SIM.phase = 'countdown'
+    SIM._countdownStart = Date.now()
+    // Después de 3s de countdown → apagar y revelar
+    setTimeout(() => {
+      SIM._lightsOff = true
+      SIM.phase     = 'counting'
+      SIM.startTime = Date.now()
+    }, 3200)
+  }
+  waitForLights()
 }
 
 function simToScreen(wx, wy) {
@@ -1582,9 +1596,64 @@ function simDraw() {
   const dotR = Math.max(3.5, DOT_R * SIM.camS)
 
   // ══════════════════════════════════════════════════════════════════════════
-  // FASE FUEGOS ARTIFICIALES — todas las butacas parpadeando 4 colores
-  // Corre mientras los datos cargan; corte instantáneo cuando llegan.
+  // FASE LIGHTS: todas las butacas se encienden con colores aleatorios
+  // FASE COUNTDOWN: 3-2-1 en el centro, luces encendidas
   // ══════════════════════════════════════════════════════════════════════════
+  if (SIM.phase === 'lights' || SIM.phase === 'countdown') {
+    const LIGHT_COLORS = ['#22c55e','#ef4444','#fbbf24','#9ca3af']
+    const LIGHT_GLOWS  = ['rgba(34,197,94,','rgba(239,68,68,','rgba(251,191,36,','rgba(156,163,175,']
+    const elapsed = t - SIM._lightsStart
+    const LIGHT_IN = 1000  // ms para que todas se enciendan
+
+    simCtx.clearRect(0, 0, W, H)
+    simCtx.fillStyle = '#040C1E'
+    simCtx.fillRect(0, 0, W, H)
+
+    for (let i = 0; i < SEATS.length; i++) {
+      const s = SEATS[i]
+      const { x: sx, y: sy } = simToScreen(s.x, s.y)
+      if (sx < -dotR*4 || sx > W+dotR*4 || sy < -dotR*4 || sy > H+dotR*4) continue
+      // Encendido escalonado: cada butaca se enciende en un momento aleatorio dentro de LIGHT_IN
+      const delay = (i / SEATS.length) * LIGHT_IN * 0.8 + Math.random() * LIGHT_IN * 0.2
+      const progress = Math.min(Math.max((elapsed - delay) / 200, 0), 1)
+      if (progress <= 0) continue
+      const cIdx = SIM._lightsColors[i]
+      simCtx.save()
+      simCtx.globalAlpha = progress
+      simCtx.shadowColor = LIGHT_GLOWS[cIdx] + '0.8)'
+      simCtx.shadowBlur  = dotR * 3 * progress
+      simCtx.beginPath()
+      simCtx.arc(sx, sy, dotR * progress, 0, Math.PI * 2)
+      simCtx.fillStyle = LIGHT_COLORS[cIdx]
+      simCtx.fill()
+      simCtx.restore()
+    }
+    simCtx.shadowBlur = 0
+
+    // Countdown
+    if (SIM.phase === 'countdown' && SIM._countdownStart) {
+      const cd = 3 - Math.floor((t - SIM._countdownStart) / 1000)
+      const numProgress = ((t - SIM._countdownStart) % 1000) / 1000
+      const scale = 1 + (1 - numProgress) * 0.6
+      const alpha = numProgress < 0.8 ? 1 : 1 - (numProgress - 0.8) / 0.2
+      if (cd > 0) {
+        simCtx.save()
+        simCtx.globalAlpha = alpha
+        simCtx.font = `bold ${Math.round(dotR * 8 * scale)}px Manrope, sans-serif`
+        simCtx.fillStyle = '#ffffff'
+        simCtx.textAlign = 'center'
+        simCtx.textBaseline = 'middle'
+        simCtx.shadowColor = 'rgba(247,106,30,0.8)'
+        simCtx.shadowBlur = dotR * 6
+        simCtx.fillText(cd, W / 2, H / 2)
+        simCtx.restore()
+        simCtx.shadowBlur = 0
+      }
+    }
+
+    requestAnimationFrame(simDraw)
+    return
+  }
   if (SIM.phase === 'fireworks') {
     // 4 colores del cabildo
     const FW_COLORS = ['#ef4444', '#22c55e', '#f59e0b', '#3b82f6']
