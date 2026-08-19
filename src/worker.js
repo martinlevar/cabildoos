@@ -10,7 +10,27 @@ export default {
       return fetch(upstream.toString(), request);
     }
 
-    // ─── Static assets (window.__ENV ya viene inyectado en el HTML por el build) ───
-    return env.ASSETS.fetch(request);
+    // ─── Static assets con inyección de window.__ENV para HTML ───
+    const response = await env.ASSETS.fetch(request);
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) {
+      return response;
+    }
+
+    const envPayload = {
+      // Cliente Supabase habla contra el mismo origen; el Worker proxy-ea /sb/* al upstream real.
+      SUPABASE_URL: `${url.origin}/sb`,
+      SUPABASE_KEY: env.SUPABASE_KEY,
+      API_ENDPOINT: env.API_ENDPOINT,
+    };
+    const envScript = `<script>window.__ENV=${JSON.stringify(envPayload)};</script>`;
+
+    return new HTMLRewriter()
+      .on('head', {
+        element(el) {
+          el.prepend(envScript, { html: true });
+        },
+      })
+      .transform(response);
   }
 };

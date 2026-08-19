@@ -1,9 +1,9 @@
-name: Deploy dev → dev.cabildodevenezuela.com
+name: Deploy stage → stage.cabildodevenezuela.com
 
 on:
   push:
     branches:
-      - dev
+      - stage
 
 jobs:
   deploy:
@@ -21,8 +21,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: adf1b988d06e8acccfc7616d676d76ce
-          command: deploy --env dev
-          environment: dev
+          command: deploy --env stage
+          environment: stage
           secrets: |
             SUPABASE_KEY
         env:
