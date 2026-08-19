@@ -1575,10 +1575,28 @@ async function iniciarSimulacion() {
   const remaining = SIM._lightsDur - (Date.now() - SIM._lightsStart)
   await new Promise(r => setTimeout(r, Math.max(0, remaining)))
 
-  // Luces todas encendidas → countdown 3-2-1
+  // Luces todas encendidas → barra de progreso 3 segundos
   SIM.phase = 'countdown'
   SIM._countdownStart = Date.now()
-  await new Promise(r => setTimeout(r, 3000))
+
+  const barWrap = document.getElementById('sim-reveal-bar-wrap')
+  const bar     = document.getElementById('sim-reveal-bar')
+  const check   = document.getElementById('sim-reveal-check')
+  const BAR_DUR = 3000
+
+  if (barWrap && bar) {
+    barWrap.classList.add('visible')
+    bar.style.transition = `width ${BAR_DUR}ms linear`
+    // forzar reflow para que la transición arranque desde 0
+    bar.getBoundingClientRect()
+    bar.style.width = '100%'
+  }
+
+  await new Promise(r => setTimeout(r, BAR_DUR))
+
+  // Barra completa → mostrar check verde brevemente
+  if (check) check.classList.add('show')
+  await new Promise(r => setTimeout(r, 500))
 
   // Countdown terminó → revelar TODOS los votos de golpe
   // El fade-in de FADE_MS (900ms) anima el glow naranja suavemente
@@ -1595,6 +1613,10 @@ async function iniciarSimulacion() {
   SIM.phase      = 'counting'
   SIM.startTime  = revealNow
   SIM._done      = false
+
+  // Ocultar barra y check
+  if (barWrap) { barWrap.classList.remove('visible'); bar.style.width = '0%' }
+  if (check)   check.classList.remove('show')
 }
 
 function simToScreen(wx, wy) {
@@ -1648,26 +1670,7 @@ function simDraw() {
     }
     simCtx.shadowBlur = 0
 
-    // Countdown
-    if (SIM.phase === 'countdown' && SIM._countdownStart) {
-      const cd = 3 - Math.floor((t - SIM._countdownStart) / 1000)
-      const numProgress = ((t - SIM._countdownStart) % 1000) / 1000
-      const scale = 1 + (1 - numProgress) * 0.6
-      const alpha = numProgress < 0.8 ? 1 : 1 - (numProgress - 0.8) / 0.2
-      if (cd > 0) {
-        simCtx.save()
-        simCtx.globalAlpha = alpha
-        simCtx.font = `bold ${Math.round(dotR * 8 * scale)}px Manrope, sans-serif`
-        simCtx.fillStyle = '#ffffff'
-        simCtx.textAlign = 'center'
-        simCtx.textBaseline = 'middle'
-        simCtx.shadowColor = 'rgba(247,106,30,0.8)'
-        simCtx.shadowBlur = dotR * 6
-        simCtx.fillText(cd, W / 2, H / 2)
-        simCtx.restore()
-        simCtx.shadowBlur = 0
-      }
-    }
+    // Countdown: barra HTML maneja el tiempo — nada en canvas
 
     requestAnimationFrame(simDraw)
     return
