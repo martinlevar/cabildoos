@@ -2,6 +2,9 @@ name: Deploy
 
 on:
   push:
+    branches:
+      - stage
+      - dev
   pull_request:
     types: [closed]
     branches:
