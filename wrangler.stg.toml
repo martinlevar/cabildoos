@@ -1,0 +1,36 @@
+main = "src/worker.js"
+name = "cabildoos-stage"
+compatibility_date = "2026-01-11"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+account_id = "adf1b988d06e8acccfc7616d676d76ce"
+routes = [
+  { pattern = "stage.cabildodevenezuela.com", custom_domain = true }
+]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+run_worker_first = true
+
+[vars]
+SUPABASE_URL = "https://ayxscmxmnoguktfgveud.supabase.co"
+API_ENDPOINT = "https://api.cabildodevenezuela.com"
+
+# SUPABASE_KEY se inyecta como wrangler secret via GitHub Actions
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+persist = true
+head_sampling_rate = 1

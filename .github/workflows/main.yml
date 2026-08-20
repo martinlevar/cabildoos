@@ -1,0 +1,32 @@
+name: Deploy
+
+on:
+  push:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - staging
+      - dev
+
+jobs:
+  deploy-dev:
+    name: "Development"
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      deployment_environment: dev
+
+  deploy-stage:
+    name: "Staging"
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'staging'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      deployment_environment: stage
+
+  deploy-prod:
+    name: "Production"
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      deployment_environment: prod

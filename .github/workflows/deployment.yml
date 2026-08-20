@@ -1,9 +1,12 @@
-name: Deploy production → cabildodevenezuela.com
+name: Deploy Workers
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      deployment_environment:
+        description: The short name of the environment to deploy to, e.g. dev, stg, prod
+        required: true
+        type: string
 
 jobs:
   deploy:
@@ -16,12 +19,15 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Prepare wrangler config
+        run: mv wrangler.${{ inputs.deployment_environment }}.toml wrangler.toml
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: adf1b988d06e8acccfc7616d676d76ce
-          command: deploy --env=""
+          command: deploy
           secrets: |
             SUPABASE_KEY
         env:
