@@ -27,7 +27,16 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: adf1b988d06e8acccfc7616d676d76ce
+          wranglerVersion: "4"
           command: deploy
+
+      - name: Upload secrets
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: adf1b988d06e8acccfc7616d676d76ce
+          wranglerVersion: "4"
+          command: deploy --dry-run
           secrets: |
             SUPABASE_KEY
         env:
