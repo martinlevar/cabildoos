@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: dev
+    secrets: inherit
 
   deploy-stage:
     name: "Staging"
@@ -30,6 +31,7 @@ jobs:
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: stage
+    secrets: inherit
 
   deploy-prod:
     name: "Production"
@@ -37,3 +39,4 @@ jobs:
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: prod
+    secrets: inherit
