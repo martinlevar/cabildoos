@@ -5484,7 +5484,10 @@ async function vpEnviarVerificacion() {
   // el cliente no recibió la respuesta (timeout, CORS previo, red cortada, etc.)
   if (vpVerificationId) {
     try {
-      const preCheck = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+      // SEC-016: pasar session_token para autenticar la consulta de estado
+      const preCheck = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`, {
+        headers: vpSessionToken ? { 'X-Session-Token': vpSessionToken } : {}
+      })
       if (preCheck.ok) {
         const preData = await preCheck.json()
         if (preData.status === 'pendiente_revision' || preData.status === 'aprobado') {
@@ -5631,7 +5634,10 @@ async function vpEnviarVerificacion() {
       for (const delay of delays) {
         await new Promise(r => setTimeout(r, delay))
         try {
-          const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+          // SEC-016: pasar session_token
+          const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`, {
+            headers: vpSessionToken ? { 'X-Session-Token': vpSessionToken } : {}
+          })
           if (statusResp.ok) {
             const statusData = await statusResp.json()
             console.log('[verify] Status check intento:', statusData.status)
@@ -5658,7 +5664,10 @@ function vpIniciarPolling(verification_id) {
   clearInterval(_vpPollingTimer)
   _vpPollingTimer = setInterval(async () => {
     try {
-      const resp = await fetch(`${VP_API_URL}/verify/status/${verification_id}`)
+      // SEC-016: pasar session_token en el polling de estado
+      const resp = await fetch(`${VP_API_URL}/verify/status/${verification_id}`, {
+        headers: vpSessionToken ? { 'X-Session-Token': vpSessionToken } : {}
+      })
       if (!resp.ok) return
       const data = await resp.json()
 
