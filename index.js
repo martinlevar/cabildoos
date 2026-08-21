@@ -5588,18 +5588,12 @@ async function vpEnviarVerificacion() {
         if (errDetail) errMsg = errDetail
       } catch (_) {}
 
-      // Errores 422 de validación de documento en selfie → volver a tomar la foto
-      const esErrorDocSelfie = resp.status === 422 && errDetail && (
-        errDetail.includes('dado vuelta') ||
-        errDetail.includes('no coincide con el documento verificado') ||
-        errDetail.includes('tapados') ||
-        errDetail.includes('visible con el frente') ||
-        errDetail.includes('no es válido')
-      )
-
-      if (esErrorDocSelfie) {
+      // Cualquier 422 en el paso submit es un problema con la selfie-doc
+      if (resp.status === 422) {
         if (btn) { btn.disabled = false; btn.textContent = 'Enviar verificación' }
-        vpMostrarErrorSelfieDoc(errDetail)
+        const mensajeModal = errDetail ||
+          'Hubo un problema con el documento en la selfie. Asegurate de sostener tu DNI o Cédula con el frente bien visible.'
+        vpMostrarErrorSelfieDoc(mensajeModal)
         return
       }
 
