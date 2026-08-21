@@ -3337,6 +3337,12 @@ let vpVerificationId = generateUUID();
 let vpGeminiResult = null
 // Bounding box de la foto del DNI detectada por Gemini — {x1,y1,x2,y2} en fracciones
 let vpFaceBox = null
+// Token HMAC firmado por el backend — prueba que los pasos se completaron en orden
+let vpSessionToken = null
+// Descriptor facial de la cara en el documento (face-api.js) — para comparar con selfie
+let vpDocFaceDescriptor = null
+// Score de similitud facial documento↔selfie (0-1)
+let vpFaceSimilarityScore = null
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PASO 2: FOTO DEL DOCUMENTO — getUserMedia + Gemini Vision
@@ -3503,7 +3509,30 @@ async function vpDocCapturarFrame(_unused) {
 
     const data = await resp.json()
     vpGeminiResult = data.extracted
-    vpFaceBox = data.face_box || null   // coordenadas exactas de la foto del DNI
+    vpFaceBox      = data.face_box     || null
+    vpSessionToken = data.session_token || null  // token HMAC firmado por el backend
+
+    // ── Bloqueo por fraude detectado en el backend ──
+    if (data.blocked) {
+      vpDocMsg('Documento bloqueado por seguridad', '#ef4444')
+      const panel = document.getElementById('vp-doc-sin-datos')
+      panel.style.display = ''
+      panel.querySelector('div').textContent = '⚠️ Verificación bloqueada'
+      panel.querySelector('p').textContent   = data.detail || 'Problemas detectados en el documento. Asegurate de no cubrir ninguna zona y de mostrar el documento original.'
+      const btnContinuar = panel.querySelector('.vp-btn-main')
+      if (btnContinuar) btnContinuar.style.display = 'none'
+      return
+    }
+
+    // ── Iniciar cómputo del descriptor facial del documento en background ──
+    // Se ejecuta en paralelo mientras el usuario lee el resultado.
+    // El descriptor se usará en el paso de selfie para comparar caras.
+    if (vpCapturedDoc && vpFaceBox) {
+      vpComputarDescriptorDocumento(vpCapturedDoc).catch(e =>
+        console.warn('[face-binding] No se pudo computar descriptor del doc:', e.message)
+      )
+    }
+
     vpMostrarResultadoGemini(data)
 
   } catch (err) {
@@ -3633,6 +3662,9 @@ function vpReiniciarTodo() {
   vpBarcodeData = null
   vpGeminiResult = null
   vpFaceBox = null
+  vpSessionToken = null
+  vpDocFaceDescriptor = null
+  vpFaceSimilarityScore = null
   vpCapturedSelfie = null
   vpCapturedSelfieDoc = null
   vpAnonBlob = null
@@ -4500,10 +4532,16 @@ async function vpVerificarLiveness(instruccion) {
     const resp = await fetch(`${VP_API_URL}/verify/liveness`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_b64: b64, instruccion }),
+      body: JSON.stringify({
+        image_b64:     b64,
+        instruccion,
+        session_token: vpSessionToken || null,  // HMAC chain
+      }),
     })
     if (!resp.ok) return true  // si el backend falla, no bloquear
     const data = await resp.json()
+    // Actualizar token con el nuevo que incluye el paso de liveness
+    if (data.session_token) vpSessionToken = data.session_token
     return data.cumplió === true
   } catch(e) {
     console.warn('Error verificando liveness:', e)
@@ -4594,6 +4632,70 @@ async function vpExtraerCaraDoc(blob) {
     img.onerror = reject
     img.src = URL.createObjectURL(blob)
   })
+}
+
+// ── Descriptor facial del documento para face-binding ─────────────────────────
+// Computa el descriptor de 128 dimensiones de la cara en el documento.
+// Corre DESPUÉS de recibir vpFaceBox desde el backend, en background.
+async function vpComputarDescriptorDocumento(docBlob) {
+  try {
+    await cargarFaceApi()
+    const caraBlob = await vpExtraerCaraDoc(docBlob)
+    const caraURL  = URL.createObjectURL(caraBlob)
+    const img      = new Image()
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = caraURL })
+    URL.revokeObjectURL(caraURL)
+
+    const detections = await faceapi
+      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor()
+
+    if (!detections) {
+      console.warn('[face-binding] No se detectó cara en el documento con face-api')
+      return
+    }
+    vpDocFaceDescriptor = detections.descriptor  // Float32Array(128)
+    console.log('[face-binding] Descriptor del documento listo ✓')
+  } catch(e) {
+    console.warn('[face-binding] Error computando descriptor del doc:', e.message)
+  }
+}
+
+// Computa el descriptor facial de la selfie y lo compara contra el del documento.
+// Devuelve un score de similitud (0=diferente, 1=idéntico).
+// Euclidean distance de face-api: < 0.6 = misma persona.
+async function vpCompararCaraConDocumento(selfieBlob) {
+  if (!vpDocFaceDescriptor) {
+    console.warn('[face-binding] Sin descriptor de documento — omitiendo comparación')
+    return null
+  }
+  try {
+    await cargarFaceApi()
+    const url = URL.createObjectURL(selfieBlob)
+    const img = new Image()
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
+    URL.revokeObjectURL(url)
+
+    const detections = await faceapi
+      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor()
+
+    if (!detections) {
+      console.warn('[face-binding] No se detectó cara en la selfie')
+      return null
+    }
+
+    // Distancia euclídea → similitud (invertida, normalizada al rango 0-1)
+    const distance   = faceapi.euclideanDistance(vpDocFaceDescriptor, detections.descriptor)
+    const similarity = Math.max(0, 1 - distance)  // 0=diferente, 1=idéntico
+    console.log(`[face-binding] Distancia: ${distance.toFixed(3)} | Similitud: ${similarity.toFixed(3)}`)
+    return similarity
+  } catch(e) {
+    console.warn('[face-binding] Error comparando caras:', e.message)
+    return null
+  }
 }
 
 async function vpPixelarDocumento(blob) {
@@ -5310,6 +5412,29 @@ async function vpEnviarVerificacion() {
     // doc_face_b64   → SOLO la cara recortada del DNI (sin ningún dato visible)
     const docFaceBlob = vpCapturedDoc ? await vpExtraerCaraDoc(vpCapturedDoc).catch(() => null) : null
 
+    // ── Face-binding: comparar cara del documento contra selfie ──────────────
+    // Si el descriptor del documento ya fue computado (en background desde paso 2),
+    // compara contra la selfie del paso de liveness.
+    let faceSimilarity = vpFaceSimilarityScore  // podría ya tener un valor previo
+    if (faceSimilarity === null && vpDocFaceDescriptor && vpCapturedSelfie) {
+      try {
+        faceSimilarity = await vpCompararCaraConDocumento(vpCapturedSelfie)
+        vpFaceSimilarityScore = faceSimilarity
+        console.log(`[face-binding] Score final: ${faceSimilarity?.toFixed(3) ?? 'null'}`)
+      } catch(e) {
+        console.warn('[face-binding] Error en comparación final:', e.message)
+      }
+    }
+
+    // Umbral cliente: bloquear antes de siquiera enviar al servidor
+    const FACE_BLOCK_THRESHOLD = 0.38
+    if (faceSimilarity !== null && faceSimilarity < FACE_BLOCK_THRESHOLD) {
+      if (btn) { btn.textContent = 'Enviar verificación'; btn.disabled = false }
+      showToast('⚠️ El rostro de la selfie no coincide con la foto del documento. Verificá que sos vos.', 'error')
+      console.warn(`[face-binding] Bloqueado en cliente — similitud: ${faceSimilarity.toFixed(3)}`)
+      return
+    }
+
     // Comprimir ambas imágenes antes de codificar — reduce payload de ~16MB a ~400KB
     const [selfieComprimida, docComprimida] = await Promise.all([
       vpAnonBlob  ? comprimirImagen(vpAnonBlob,  1280, 0.72).catch(() => vpAnonBlob)  : Promise.resolve(null),
@@ -5329,16 +5454,17 @@ async function vpEnviarVerificacion() {
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
-        verification_id: vpVerificationId,
-        selfie_doc_b64:  selfieDocB64,   // selfie real con documento (para admin)
-        doc_b64:         docB64,          // foto real del documento (para admin)
+        verification_id:      vpVerificationId,
+        selfie_doc_b64:       selfieDocB64,
+        doc_b64:              docB64,
+        session_token:        vpSessionToken || null,   // HMAC chain
+        face_similarity_score: faceSimilarity,           // score face-binding
         gemini_match: (() => {
           if (!vpGeminiResult) return false
           const _paisDec = (document.getElementById('vp-pais')?.value || '').trim()
           const _paisOk  = _paisDec ? vpGeminiResult.pais_coincide : true
           return vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide && _paisOk
         })(),
-        // Reforzar user_id y email en submit también (por si documento fue en otra sesión)
         user_id:       _authUser?.id || null,
         contact_email: _authUser?.email || null,
       }),
