@@ -5543,7 +5543,7 @@ async function vpEnviarVerificacion() {
         setTimeout(() => {
           vpSelfieDocReintentar()
         }, 2500)
-        if (btn) btn.disabled = false
+        if (btn) { btn.disabled = false; btn.textContent = 'Enviar verificación' }
         return
       }
 
