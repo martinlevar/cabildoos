@@ -1,0 +1,19 @@
+name = "cabildoos-verification"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Secrets (configurar con: wrangler secret put NOMBRE)
+# - GEMINI_API_KEY
+# - SESSION_SECRET    (genera con: openssl rand -base64 32)
+# - SUPABASE_URL
+# - SUPABASE_SERVICE_KEY
+
+[env.production]
+name = "cabildoos-verification"
+route = { pattern = "verify.cabildodevenezuela.com/*", zone_name = "cabildodevenezuela.com" }
+
+[env.staging]
+name = "cabildoos-verification-stage"
+
+[env.development]
+name = "cabildoos-verification-dev"
