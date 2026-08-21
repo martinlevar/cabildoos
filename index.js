@@ -546,7 +546,7 @@ async function consultarEstado(requestId) {
     .from('verification_requests')
     .select('status')
     .eq('id', requestId)
-    .single()
+    .maybeSingle()
   return data?.status
 }
 
@@ -2606,7 +2606,7 @@ async function _onLogin(user) {
       } catch(e) { console.warn('claim_seat recovery:', e) }
     }
     const { data: req } = await sb.from('verification_requests')
-      .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
+      .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (ddBadge) {
       ddBadge.textContent = req?.status === 'pending' ? 'En revisión' : 'Sin verificar'
       ddBadge.className = 'nav-dd-pending'
