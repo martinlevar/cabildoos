@@ -46,7 +46,9 @@ async function cargarTesseract() {
   if (window.Tesseract) return
   await new Promise((res, rej) => {
     const s = document.createElement('script')
-    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'
+    s.integrity = 'sha256-qOKZGNCYsrBuEBK9rv+0rsBEXF1WVHCQI+C9H0QqgOg=' // SEC-014
+    s.crossOrigin = 'anonymous'
     s.onload = res; s.onerror = rej
     document.head.appendChild(s)
   })
@@ -58,7 +60,9 @@ async function cargarFaceApi() {
   if (faceApiLoaded) return
   await new Promise((res, rej) => {
     const s = document.createElement('script')
-    s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js'
+    s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js'
+    s.integrity = 'sha256-AWD3rzqMeM7ORcfsx2U4O610vs/UOLt4fN1iey1vLPY=' // SEC-014
+    s.crossOrigin = 'anonymous'
     s.onload = res; s.onerror = rej
     document.head.appendChild(s)
   })
