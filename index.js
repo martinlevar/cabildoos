@@ -4619,6 +4619,66 @@ async function vpSelfieDocIniciar() {
   }
 }
 
+function vpMostrarErrorSelfieDoc(mensaje) {
+  document.getElementById('vp-selfiedoc-error-modal')?.remove()
+
+  const esFinal = vpReintentoSelfieDoc >= VP_MAX_REINTENTOS - 1
+  const restantes = VP_MAX_REINTENTOS - vpReintentoSelfieDoc - 1
+
+  const overlay = document.createElement('div')
+  overlay.id = 'vp-selfiedoc-error-modal'
+  overlay.style.cssText = [
+    'position:fixed', 'inset:0', 'background:rgba(0,0,0,0.82)',
+    'display:flex', 'align-items:center', 'justify-content:center',
+    'z-index:9999', 'padding:20px',
+  ].join(';')
+
+  overlay.innerHTML = `
+    <div style="background:#1a2744;border-radius:18px;padding:32px 24px;max-width:360px;width:100%;text-align:center;color:#fff;box-shadow:0 20px 60px rgba(0,0,0,0.6)">
+      <div style="font-size:2.8rem;margin-bottom:14px">${esFinal ? '❌' : '📄'}</div>
+      <h3 style="margin:0 0 10px;font-size:1.1rem;font-weight:700">
+        ${esFinal ? 'Verificación fallida' : 'Problema con el documento'}
+      </h3>
+      <p style="margin:0 0 20px;font-size:0.88rem;color:#a0aec0;line-height:1.55">${mensaje}</p>
+      ${!esFinal
+        ? `<p style="margin:0 0 18px;font-size:0.78rem;color:#718096">
+             Intentos restantes: ${restantes}
+           </p>
+           <button id="vp-err-reintentar" style="width:100%;padding:15px;background:#e8703a;border:none;border-radius:12px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px">
+             📷 Volver a intentar
+           </button>
+           <button id="vp-err-cancelar" style="width:100%;padding:12px;background:transparent;border:1px solid #4a5568;border-radius:12px;color:#718096;font-size:0.9rem;cursor:pointer">
+             Cancelar verificación
+           </button>`
+        : `<p style="margin:0 0 20px;font-size:0.85rem;color:#718096;line-height:1.5">
+             Superaste el número máximo de intentos. Podés reiniciar el proceso cuando quieras.
+           </p>
+           <button id="vp-err-volver" style="width:100%;padding:15px;background:#4a5568;border:none;border-radius:12px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer">
+             Volver al inicio
+           </button>`
+      }
+    </div>
+  `
+
+  document.body.appendChild(overlay)
+
+  if (!esFinal) {
+    document.getElementById('vp-err-reintentar').onclick = () => {
+      overlay.remove()
+      vpSelfieDocReintentar()
+    }
+    document.getElementById('vp-err-cancelar').onclick = () => {
+      overlay.remove()
+      vpReiniciarTodo()
+    }
+  } else {
+    document.getElementById('vp-err-volver').onclick = () => {
+      overlay.remove()
+      vpReiniciarTodo()
+    }
+  }
+}
+
 function vpSelfieDocReintentar() {
   vpReintentoSelfieDoc++
   if (vpReintentoSelfieDoc >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
@@ -5538,13 +5598,8 @@ async function vpEnviarVerificacion() {
       )
 
       if (esErrorDocSelfie) {
-        // Mostrar explicación clara y ofrecer retomar la foto — NO reintentar
-        showToast('📄 ' + errDetail, 6000)
-        // Dar 2 segundos para leer el toast y luego volver a la cámara del selfie
-        setTimeout(() => {
-          vpSelfieDocReintentar()
-        }, 2500)
         if (btn) { btn.disabled = false; btn.textContent = 'Enviar verificación' }
+        vpMostrarErrorSelfieDoc(errDetail)
         return
       }
 
