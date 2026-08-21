@@ -9,8 +9,8 @@
   X-Content-Type-Options: nosniff
   # Forzar HTTPS siempre
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-  # Limitar APIs de browser que no se usan
-  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
+  # Limitar APIs de browser que no se usan (camera=(self) permite al propio sitio usar la cámara)
+  Permissions-Policy: geolocation=(), microphone=(), camera=(self), payment=()
 
 /admin.html
   # Bloquear acceso directo — ya lo maneja _redirects pero doble protección
