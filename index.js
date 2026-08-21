@@ -62,9 +62,14 @@ async function cargarFaceApi() {
     s.onload = res; s.onerror = rej
     document.head.appendChild(s)
   })
-  await faceapi.nets.tinyFaceDetector.loadFromUri(
-    'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
-  )
+  // SEC-007: cargar los tres modelos necesarios para comparación facial de 128 dimensiones
+  // tinyFaceDetector: detecta la cara  |  faceLandmark68Net: puntos clave  |  faceRecognitionNet: descriptor 128-dim
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+  ])
   faceApiLoaded = true
 }
 
@@ -4585,14 +4590,18 @@ async function vpVerificarLiveness(instruccion) {
         session_token: vpSessionToken || null,  // HMAC chain
       }),
     })
-    if (!resp.ok) return true  // si el backend falla, no bloquear
+    if (!resp.ok) {
+      // SEC-005 / SEC-006: el backend ahora es fail-closed — si devuelve error, no aprobar liveness
+      console.warn('[liveness] Backend rechazó el gesto:', resp.status)
+      return false
+    }
     const data = await resp.json()
     // Actualizar token con el nuevo que incluye el paso de liveness
     if (data.session_token) vpSessionToken = data.session_token
     return data.cumplió === true
   } catch(e) {
-    console.warn('Error verificando liveness:', e)
-    return true  // ante error de red, no bloquear
+    console.warn('[liveness] Error de red:', e)
+    return false  // SEC-005: fail-closed también ante errores de red
   }
 }
 
@@ -4816,10 +4825,11 @@ async function vpPixelarDocumento(blob) {
       reader.onerror = rej
       reader.readAsDataURL(blob)
     })
+    // SEC-008: incluir session_token para que el backend pueda validar el llamado
     const resp = await fetch(`${VP_API_URL}/verify/censurar-campos`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ image_b64: b64 }),
+      body:    JSON.stringify({ image_b64: b64, session_token: vpSessionToken || null }),
     })
     if (resp.ok) {
       const data = await resp.json()
