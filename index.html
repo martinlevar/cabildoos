@@ -1119,7 +1119,6 @@
           <select class="vp-input" id="vp-tipo-doc" onchange="vpOnTipoDocChange()">
             <option value="">Seleccioná...</option>
             <option value="DNI">DNI / Cédula</option>
-            <option value="PASAPORTE">Pasaporte</option>
           </select>
         </div>
         <div class="vp-field">
@@ -1154,9 +1153,7 @@
           <label class="vp-label">País emisor del documento <span style="color:var(--orange)">*</span></label>
           <select class="vp-input" id="vp-pais" onchange="vpCheckStep1()">
             <option value="">Seleccioná tu país...</option>
-            <option>Argentina</option><option>Chile</option><option>Colombia</option>
-          <option>España</option><option>Estados Unidos</option><option>México</option>
-          <option>Perú</option><option>Uruguay</option><option>Venezuela</option><option>Otro</option>
+            <option>Argentina</option><option>Venezuela</option>
           </select>
         </div>
       </div>
@@ -1172,9 +1169,7 @@
       <!-- Chips de tipo -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
         <button class="vp-chip active" id="vp-chip-DNI_AR"   onclick="vpDocChip('DNI_AR')">🇦🇷 DNI</button>
-        <button class="vp-chip" id="vp-chip-PASAPORTE"       onclick="vpDocChip('PASAPORTE')">📘 Pasaporte</button>
         <button class="vp-chip" id="vp-chip-CEDULA_VE"       onclick="vpDocChip('CEDULA_VE')">🇻🇪 Cédula VE</button>
-        <button class="vp-chip" id="vp-chip-LICENCIA"        onclick="vpDocChip('LICENCIA')">🚗 Licencia</button>
       </div>
 
       <!-- Visor de cámara (getUserMedia, sin file input) -->
