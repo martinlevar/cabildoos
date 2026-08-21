@@ -5518,7 +5518,37 @@ async function vpEnviarVerificacion() {
     })
     clearTimeout(timeout)
 
-    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`)
+    if (!resp.ok) {
+      // Leer el cuerpo del error para mostrar el mensaje específico del servidor
+      let errMsg = `Error del servidor: ${resp.status}`
+      let errDetail = null
+      try {
+        const errBody = await resp.json()
+        errDetail = errBody.detail || errBody.error || null
+        if (errDetail) errMsg = errDetail
+      } catch (_) {}
+
+      // Errores 422 de validación de documento en selfie → volver a tomar la foto
+      const esErrorDocSelfie = resp.status === 422 && errDetail && (
+        errDetail.includes('dado vuelta') ||
+        errDetail.includes('no coincide con el documento verificado') ||
+        errDetail.includes('tapados') ||
+        errDetail.includes('visible con el frente')
+      )
+
+      if (esErrorDocSelfie) {
+        // Mostrar explicación clara y ofrecer retomar la foto — NO reintentar
+        showToast('📄 ' + errDetail, 6000)
+        // Dar 2 segundos para leer el toast y luego volver a la cámara del selfie
+        setTimeout(() => {
+          vpSelfieDocReintentar()
+        }, 2500)
+        if (btn) btn.disabled = false
+        return
+      }
+
+      throw new Error(errMsg)
+    }
     const data = await resp.json()
 
     window._vpSession = window._vpSession || {}
@@ -8523,10 +8553,10 @@ function showPh(n) {
 //  TOAST
 // ══════════════════════════════════════════════════════════════
 let toastT = null
-function showToast(msg) {
+function showToast(msg, duration = 2800) {
   const t = document.getElementById('toast')
   t.textContent = msg; t.classList.add('show')
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800)
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), duration)
 }
 
 // ══════════════════════════════════════════════════════════════
