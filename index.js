@@ -46,7 +46,9 @@ async function cargarTesseract() {
   if (window.Tesseract) return
   await new Promise((res, rej) => {
     const s = document.createElement('script')
-    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'
+    s.integrity = 'sha256-qOKZGNCYsrBuEBK9rv+0rsBEXF1WVHCQI+C9H0QqgOg=' // SEC-014
+    s.crossOrigin = 'anonymous'
     s.onload = res; s.onerror = rej
     document.head.appendChild(s)
   })
@@ -58,13 +60,20 @@ async function cargarFaceApi() {
   if (faceApiLoaded) return
   await new Promise((res, rej) => {
     const s = document.createElement('script')
-    s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js'
+    s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/dist/face-api.js'
+    s.integrity = 'sha256-AWD3rzqMeM7ORcfsx2U4O610vs/UOLt4fN1iey1vLPY=' // SEC-014
+    s.crossOrigin = 'anonymous'
     s.onload = res; s.onerror = rej
     document.head.appendChild(s)
   })
-  await faceapi.nets.tinyFaceDetector.loadFromUri(
-    'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
-  )
+  // SEC-007: cargar los tres modelos necesarios para comparación facial de 128 dimensiones
+  // tinyFaceDetector: detecta la cara  |  faceLandmark68Net: puntos clave  |  faceRecognitionNet: descriptor 128-dim
+  const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model'
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+  ])
   faceApiLoaded = true
 }
 
@@ -546,14 +555,17 @@ async function consultarEstado(requestId) {
     .from('verification_requests')
     .select('status')
     .eq('id', requestId)
-    .single()
+    .maybeSingle()
   return data?.status
 }
 
 // ══════════════════════════════════════════════════════════════
 //  DATA & PROFILES
 // ══════════════════════════════════════════════════════════════
+// SEC-015: demo mode solo permitido en localhost y dev.cabildodevenezuela.com
+const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'cabildoos.pages.dev']
 const IS_DEMO      = new URLSearchParams(location.search).has('demo')
+                  && DEMO_ALLOWED_HOSTS.some(h => location.hostname === h || location.hostname.endsWith('.' + h))
 const SEAT_CAPACITY = IS_DEMO ? 2847 : 300  // asientos totales del hemiciclo (fijos)
 let TOTAL_SEATS    = IS_DEMO ? 2847 : 0     // asientos ocupados (usuarios verificados)
 let MY_SEAT        = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
@@ -2486,7 +2498,7 @@ async function _onLogin(user) {
 
   // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
   const [{ data: profile, error: profileErr }, { data: seatRows }] = await Promise.all([
-    sb.from('profiles').select('*').eq('id', user.id).single(),
+    sb.from('profiles').select('*').eq('id', user.id).maybeSingle(),
     sb.rpc('get_my_seat_identity'),
   ])
   // Mezclar datos de seat_identities (alias, phrase, visibilidad) en el perfil
@@ -2606,7 +2618,7 @@ async function _onLogin(user) {
       } catch(e) { console.warn('claim_seat recovery:', e) }
     }
     const { data: req } = await sb.from('verification_requests')
-      .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single()
+      .select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
     if (ddBadge) {
       ddBadge.textContent = req?.status === 'pending' ? 'En revisión' : 'Sin verificar'
       ddBadge.className = 'nav-dd-pending'
@@ -2783,7 +2795,7 @@ function irAlCongreso() {
 async function _loadBetaActive() {
   try {
     const { data } = await sb.from('system_config')
-      .select('value').eq('key', 'beta_active').single()
+      .select('value').eq('key', 'beta_active').maybeSingle()
     _betaActive = data?.value === true || data?.value === 'true'
   } catch(e) { _betaActive = false }
   _applyBetaCodeField()
@@ -3337,6 +3349,12 @@ let vpVerificationId = generateUUID();
 let vpGeminiResult = null
 // Bounding box de la foto del DNI detectada por Gemini — {x1,y1,x2,y2} en fracciones
 let vpFaceBox = null
+// Token HMAC firmado por el backend — prueba que los pasos se completaron en orden
+let vpSessionToken = null
+// Descriptor facial de la cara en el documento (face-api.js) — para comparar con selfie
+let vpDocFaceDescriptor = null
+// Score de similitud facial documento↔selfie (0-1)
+let vpFaceSimilarityScore = null
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PASO 2: FOTO DEL DOCUMENTO — getUserMedia + Gemini Vision
@@ -3503,7 +3521,30 @@ async function vpDocCapturarFrame(_unused) {
 
     const data = await resp.json()
     vpGeminiResult = data.extracted
-    vpFaceBox = data.face_box || null   // coordenadas exactas de la foto del DNI
+    vpFaceBox      = data.face_box     || null
+    vpSessionToken = data.session_token || null  // token HMAC firmado por el backend
+
+    // ── Bloqueo por fraude detectado en el backend ──
+    if (data.blocked) {
+      vpDocMsg('Documento bloqueado por seguridad', '#ef4444')
+      const panel = document.getElementById('vp-doc-sin-datos')
+      panel.style.display = ''
+      panel.querySelector('div').textContent = '⚠️ Verificación bloqueada'
+      panel.querySelector('p').textContent   = data.detail || 'Problemas detectados en el documento. Asegurate de no cubrir ninguna zona y de mostrar el documento original.'
+      const btnContinuar = panel.querySelector('.vp-btn-main')
+      if (btnContinuar) btnContinuar.style.display = 'none'
+      return
+    }
+
+    // ── Iniciar cómputo del descriptor facial del documento en background ──
+    // Se ejecuta en paralelo mientras el usuario lee el resultado.
+    // El descriptor se usará en el paso de selfie para comparar caras.
+    if (vpCapturedDoc && vpFaceBox) {
+      vpComputarDescriptorDocumento(vpCapturedDoc).catch(e =>
+        console.warn('[face-binding] No se pudo computar descriptor del doc:', e.message)
+      )
+    }
+
     vpMostrarResultadoGemini(data)
 
   } catch (err) {
@@ -3633,6 +3674,9 @@ function vpReiniciarTodo() {
   vpBarcodeData = null
   vpGeminiResult = null
   vpFaceBox = null
+  vpSessionToken = null
+  vpDocFaceDescriptor = null
+  vpFaceSimilarityScore = null
   vpCapturedSelfie = null
   vpCapturedSelfieDoc = null
   vpAnonBlob = null
@@ -4225,6 +4269,22 @@ let vpCameraStream      = null  // MediaStream activo
 
 async function vpAbrirCamara(videoId, facing = 'environment') {
   vpPararCamara()
+
+  // Verificar estado del permiso antes de llamar getUserMedia.
+  // Si está 'denied', el navegador nunca muestra el diálogo — hay que guiar al usuario.
+  if (navigator.permissions) {
+    try {
+      const perm = await navigator.permissions.query({ name: 'camera' })
+      if (perm.state === 'denied') {
+        vpMostrarErrorCamara()
+        throw new DOMException('Permission denied', 'NotAllowedError')
+      }
+    } catch (e) {
+      if (e.name === 'NotAllowedError') throw e
+      // navigator.permissions.query puede fallar en algunos browsers — ignorar y seguir
+    }
+  }
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -4248,8 +4308,39 @@ async function vpAbrirCamara(videoId, facing = 'environment') {
     video.style.transform = isFront ? 'scaleX(-1)' : 'none'
   } catch (e) {
     console.error('Cámara no disponible:', e)
-    showToast('No se pudo acceder a la cámara — verificá los permisos del navegador')
+    if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+      vpMostrarErrorCamara()
+    } else {
+      showToast('No se pudo acceder a la cámara — verificá que no esté en uso por otra app')
+    }
     throw e
+  }
+}
+
+function vpMostrarErrorCamara() {
+  // Detectar sistema operativo para dar instrucciones específicas
+  const isMac = /Mac/.test(navigator.platform || navigator.userAgent)
+  const isIOS = /iPhone|iPad/.test(navigator.userAgent)
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+
+  let instrucciones = ''
+  if (isIOS || isSafari) {
+    instrucciones = 'En iOS/Safari: Configuración → Safari → Cámara → Permitir'
+  } else if (isMac) {
+    instrucciones = 'En Chrome: clickeá el ícono 🔒 en la barra de URL → Cámara → Permitir → recargá la página.\n\nEn Mac también: Configuración del Sistema → Privacidad → Cámara → activar Chrome.'
+  } else {
+    instrucciones = 'Clickeá el ícono de cámara o candado en la barra de URL de tu navegador, permitir el acceso y recargá la página.'
+  }
+
+  // Mostrar modal de ayuda si existe, si no showToast
+  const modal = document.getElementById('vp-camera-error-modal')
+  if (modal) {
+    const txt = modal.querySelector('.vp-camera-error-text')
+    if (txt) txt.textContent = instrucciones
+    modal.style.display = 'flex'
+  } else {
+    // Fallback: alerta clara
+    alert('⚠️ Sin acceso a la cámara\n\n' + instrucciones)
   }
 }
 
@@ -4500,14 +4591,24 @@ async function vpVerificarLiveness(instruccion) {
     const resp = await fetch(`${VP_API_URL}/verify/liveness`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_b64: b64, instruccion }),
+      body: JSON.stringify({
+        image_b64:     b64,
+        instruccion,
+        session_token: vpSessionToken || null,  // HMAC chain
+      }),
     })
-    if (!resp.ok) return true  // si el backend falla, no bloquear
+    if (!resp.ok) {
+      // SEC-005 / SEC-006: el backend ahora es fail-closed — si devuelve error, no aprobar liveness
+      console.warn('[liveness] Backend rechazó el gesto:', resp.status)
+      return false
+    }
     const data = await resp.json()
+    // Actualizar token con el nuevo que incluye el paso de liveness
+    if (data.session_token) vpSessionToken = data.session_token
     return data.cumplió === true
   } catch(e) {
-    console.warn('Error verificando liveness:', e)
-    return true  // ante error de red, no bloquear
+    console.warn('[liveness] Error de red:', e)
+    return false  // SEC-005: fail-closed también ante errores de red
   }
 }
 
@@ -4534,12 +4635,73 @@ async function vpSelfieDocIniciar() {
   }
 }
 
+function vpMostrarErrorSelfieDoc(mensaje) {
+  document.getElementById('vp-selfiedoc-error-modal')?.remove()
+
+  const esFinal = vpReintentoSelfieDoc >= VP_MAX_REINTENTOS - 1
+  const restantes = VP_MAX_REINTENTOS - vpReintentoSelfieDoc - 1
+
+  const overlay = document.createElement('div')
+  overlay.id = 'vp-selfiedoc-error-modal'
+  overlay.style.cssText = [
+    'position:fixed', 'inset:0', 'background:rgba(0,0,0,0.82)',
+    'display:flex', 'align-items:center', 'justify-content:center',
+    'z-index:9999', 'padding:20px',
+  ].join(';')
+
+  overlay.innerHTML = `
+    <div style="background:#1a2744;border-radius:18px;padding:32px 24px;max-width:360px;width:100%;text-align:center;color:#fff;box-shadow:0 20px 60px rgba(0,0,0,0.6)">
+      <div style="font-size:2.8rem;margin-bottom:14px">${esFinal ? '❌' : '📄'}</div>
+      <h3 style="margin:0 0 10px;font-size:1.1rem;font-weight:700">
+        ${esFinal ? 'Verificación fallida' : 'Problema con el documento'}
+      </h3>
+      <p style="margin:0 0 20px;font-size:0.88rem;color:#a0aec0;line-height:1.55">${mensaje}</p>
+      ${!esFinal
+        ? `<p style="margin:0 0 18px;font-size:0.78rem;color:#718096">
+             Intentos restantes: ${restantes}
+           </p>
+           <button id="vp-err-reintentar" style="width:100%;padding:15px;background:#e8703a;border:none;border-radius:12px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px">
+             📷 Volver a intentar
+           </button>
+           <button id="vp-err-cancelar" style="width:100%;padding:12px;background:transparent;border:1px solid #4a5568;border-radius:12px;color:#718096;font-size:0.9rem;cursor:pointer">
+             Cancelar verificación
+           </button>`
+        : `<p style="margin:0 0 20px;font-size:0.85rem;color:#718096;line-height:1.5">
+             Superaste el número máximo de intentos. Podés reiniciar el proceso cuando quieras.
+           </p>
+           <button id="vp-err-volver" style="width:100%;padding:15px;background:#4a5568;border:none;border-radius:12px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer">
+             Volver al inicio
+           </button>`
+      }
+    </div>
+  `
+
+  document.body.appendChild(overlay)
+
+  if (!esFinal) {
+    document.getElementById('vp-err-reintentar').onclick = () => {
+      overlay.remove()
+      vpSelfieDocReintentar()
+    }
+    document.getElementById('vp-err-cancelar').onclick = () => {
+      overlay.remove()
+      vpReiniciarTodo()
+    }
+  } else {
+    document.getElementById('vp-err-volver').onclick = () => {
+      overlay.remove()
+      vpReiniciarTodo()
+    }
+  }
+}
+
 function vpSelfieDocReintentar() {
   vpReintentoSelfieDoc++
   if (vpReintentoSelfieDoc >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
-  document.getElementById('cam-selfiedoc-post').style.display = 'none'
-  document.getElementById('cam-selfiedoc-preview').style.display = 'none'
-  document.getElementById('cam-selfiedoc-pre').style.display = ''
+  // Volver al paso 4 visible (sin mostrar tutorial de nuevo)
+  document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
+  const s4 = document.getElementById('vp-s4')
+  if (s4) s4.classList.add('active')
   vpResetCamUI('selfiedoc')
   vpSelfieDocIniciar()
 }
@@ -4596,6 +4758,70 @@ async function vpExtraerCaraDoc(blob) {
   })
 }
 
+// ── Descriptor facial del documento para face-binding ─────────────────────────
+// Computa el descriptor de 128 dimensiones de la cara en el documento.
+// Corre DESPUÉS de recibir vpFaceBox desde el backend, en background.
+async function vpComputarDescriptorDocumento(docBlob) {
+  try {
+    await cargarFaceApi()
+    const caraBlob = await vpExtraerCaraDoc(docBlob)
+    const caraURL  = URL.createObjectURL(caraBlob)
+    const img      = new Image()
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = caraURL })
+    URL.revokeObjectURL(caraURL)
+
+    const detections = await faceapi
+      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor()
+
+    if (!detections) {
+      console.warn('[face-binding] No se detectó cara en el documento con face-api')
+      return
+    }
+    vpDocFaceDescriptor = detections.descriptor  // Float32Array(128)
+    console.log('[face-binding] Descriptor del documento listo ✓')
+  } catch(e) {
+    console.warn('[face-binding] Error computando descriptor del doc:', e.message)
+  }
+}
+
+// Computa el descriptor facial de la selfie y lo compara contra el del documento.
+// Devuelve un score de similitud (0=diferente, 1=idéntico).
+// Euclidean distance de face-api: < 0.6 = misma persona.
+async function vpCompararCaraConDocumento(selfieBlob) {
+  if (!vpDocFaceDescriptor) {
+    console.warn('[face-binding] Sin descriptor de documento — omitiendo comparación')
+    return null
+  }
+  try {
+    await cargarFaceApi()
+    const url = URL.createObjectURL(selfieBlob)
+    const img = new Image()
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url })
+    URL.revokeObjectURL(url)
+
+    const detections = await faceapi
+      .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceDescriptor()
+
+    if (!detections) {
+      console.warn('[face-binding] No se detectó cara en la selfie')
+      return null
+    }
+
+    // Distancia euclídea → similitud (invertida, normalizada al rango 0-1)
+    const distance   = faceapi.euclideanDistance(vpDocFaceDescriptor, detections.descriptor)
+    const similarity = Math.max(0, 1 - distance)  // 0=diferente, 1=idéntico
+    console.log(`[face-binding] Distancia: ${distance.toFixed(3)} | Similitud: ${similarity.toFixed(3)}`)
+    return similarity
+  } catch(e) {
+    console.warn('[face-binding] Error comparando caras:', e.message)
+    return null
+  }
+}
+
 async function vpPixelarDocumento(blob) {
   // 1. Pedir a Gemini la caja del documento en la foto
   let docBox = null
@@ -4606,10 +4832,11 @@ async function vpPixelarDocumento(blob) {
       reader.onerror = rej
       reader.readAsDataURL(blob)
     })
+    // SEC-008: incluir session_token para que el backend pueda validar el llamado
     const resp = await fetch(`${VP_API_URL}/verify/censurar-campos`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ image_b64: b64 }),
+      body:    JSON.stringify({ image_b64: b64, session_token: vpSessionToken || null }),
     })
     if (resp.ok) {
       const data = await resp.json()
@@ -5261,7 +5488,10 @@ async function vpEnviarVerificacion() {
   // el cliente no recibió la respuesta (timeout, CORS previo, red cortada, etc.)
   if (vpVerificationId) {
     try {
-      const preCheck = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+      // SEC-016: pasar session_token para autenticar la consulta de estado
+      const preCheck = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`, {
+        headers: vpSessionToken ? { 'X-Session-Token': vpSessionToken } : {}
+      })
       if (preCheck.ok) {
         const preData = await preCheck.json()
         if (preData.status === 'pendiente_revision' || preData.status === 'aprobado') {
@@ -5310,6 +5540,29 @@ async function vpEnviarVerificacion() {
     // doc_face_b64   → SOLO la cara recortada del DNI (sin ningún dato visible)
     const docFaceBlob = vpCapturedDoc ? await vpExtraerCaraDoc(vpCapturedDoc).catch(() => null) : null
 
+    // ── Face-binding: comparar cara del documento contra selfie ──────────────
+    // Si el descriptor del documento ya fue computado (en background desde paso 2),
+    // compara contra la selfie del paso de liveness.
+    let faceSimilarity = vpFaceSimilarityScore  // podría ya tener un valor previo
+    if (faceSimilarity === null && vpDocFaceDescriptor && vpCapturedSelfie) {
+      try {
+        faceSimilarity = await vpCompararCaraConDocumento(vpCapturedSelfie)
+        vpFaceSimilarityScore = faceSimilarity
+        console.log(`[face-binding] Score final: ${faceSimilarity?.toFixed(3) ?? 'null'}`)
+      } catch(e) {
+        console.warn('[face-binding] Error en comparación final:', e.message)
+      }
+    }
+
+    // Umbral cliente: bloquear antes de siquiera enviar al servidor
+    const FACE_BLOCK_THRESHOLD = 0.38
+    if (faceSimilarity !== null && faceSimilarity < FACE_BLOCK_THRESHOLD) {
+      if (btn) { btn.textContent = 'Enviar verificación'; btn.disabled = false }
+      showToast('⚠️ El rostro de la selfie no coincide con la foto del documento. Verificá que sos vos.', 'error')
+      console.warn(`[face-binding] Bloqueado en cliente — similitud: ${faceSimilarity.toFixed(3)}`)
+      return
+    }
+
     // Comprimir ambas imágenes antes de codificar — reduce payload de ~16MB a ~400KB
     const [selfieComprimida, docComprimida] = await Promise.all([
       vpAnonBlob  ? comprimirImagen(vpAnonBlob,  1280, 0.72).catch(() => vpAnonBlob)  : Promise.resolve(null),
@@ -5329,23 +5582,44 @@ async function vpEnviarVerificacion() {
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
-        verification_id: vpVerificationId,
-        selfie_doc_b64:  selfieDocB64,   // selfie real con documento (para admin)
-        doc_b64:         docB64,          // foto real del documento (para admin)
+        verification_id:      vpVerificationId,
+        selfie_doc_b64:       selfieDocB64,
+        doc_b64:              docB64,
+        session_token:        vpSessionToken || null,   // HMAC chain
+        face_similarity_score: faceSimilarity,           // score face-binding
         gemini_match: (() => {
           if (!vpGeminiResult) return false
           const _paisDec = (document.getElementById('vp-pais')?.value || '').trim()
           const _paisOk  = _paisDec ? vpGeminiResult.pais_coincide : true
           return vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide && _paisOk
         })(),
-        // Reforzar user_id y email en submit también (por si documento fue en otra sesión)
         user_id:       _authUser?.id || null,
         contact_email: _authUser?.email || null,
       }),
     })
     clearTimeout(timeout)
 
-    if (!resp.ok) throw new Error(`Error del servidor: ${resp.status}`)
+    if (!resp.ok) {
+      // Leer el cuerpo del error para mostrar el mensaje específico del servidor
+      let errMsg = `Error del servidor: ${resp.status}`
+      let errDetail = null
+      try {
+        const errBody = await resp.json()
+        errDetail = errBody.detail || errBody.error || null
+        if (errDetail) errMsg = errDetail
+      } catch (_) {}
+
+      // Cualquier 422 en el paso submit es un problema con la selfie-doc
+      if (resp.status === 422) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Enviar verificación' }
+        const mensajeModal = errDetail ||
+          'Hubo un problema con el documento en la selfie. Asegurate de sostener tu DNI o Cédula con el frente bien visible.'
+        vpMostrarErrorSelfieDoc(mensajeModal)
+        return
+      }
+
+      throw new Error(errMsg)
+    }
     const data = await resp.json()
 
     window._vpSession = window._vpSession || {}
@@ -5364,7 +5638,10 @@ async function vpEnviarVerificacion() {
       for (const delay of delays) {
         await new Promise(r => setTimeout(r, delay))
         try {
-          const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`)
+          // SEC-016: pasar session_token
+          const statusResp = await fetch(`${VP_API_URL}/verify/status/${vpVerificationId}`, {
+            headers: vpSessionToken ? { 'X-Session-Token': vpSessionToken } : {}
+          })
           if (statusResp.ok) {
             const statusData = await statusResp.json()
             console.log('[verify] Status check intento:', statusData.status)
@@ -5391,7 +5668,10 @@ function vpIniciarPolling(verification_id) {
   clearInterval(_vpPollingTimer)
   _vpPollingTimer = setInterval(async () => {
     try {
-      const resp = await fetch(`${VP_API_URL}/verify/status/${verification_id}`)
+      // SEC-016: pasar session_token en el polling de estado
+      const resp = await fetch(`${VP_API_URL}/verify/status/${verification_id}`, {
+        headers: vpSessionToken ? { 'X-Session-Token': vpSessionToken } : {}
+      })
       if (!resp.ok) return
       const data = await resp.json()
 
@@ -5831,7 +6111,7 @@ function _renderNotifBadge() {
         .eq('consent_status', 'pending')
         .eq('status', 'pending')
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (data) _openConsentModal(data)
     } catch(e) { /* sin propuestas pendientes */ }
@@ -8350,10 +8630,10 @@ function showPh(n) {
 //  TOAST
 // ══════════════════════════════════════════════════════════════
 let toastT = null
-function showToast(msg) {
+function showToast(msg, duration = 2800) {
   const t = document.getElementById('toast')
   t.textContent = msg; t.classList.add('show')
-  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800)
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), duration)
 }
 
 // ══════════════════════════════════════════════════════════════
