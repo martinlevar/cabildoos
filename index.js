@@ -4682,9 +4682,10 @@ function vpMostrarErrorSelfieDoc(mensaje) {
 function vpSelfieDocReintentar() {
   vpReintentoSelfieDoc++
   if (vpReintentoSelfieDoc >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
-  document.getElementById('cam-selfiedoc-post').style.display = 'none'
-  document.getElementById('cam-selfiedoc-preview').style.display = 'none'
-  document.getElementById('cam-selfiedoc-pre').style.display = ''
+  // Volver al paso 4 visible (sin mostrar tutorial de nuevo)
+  document.querySelectorAll('.vp-step').forEach(s => s.classList.remove('active'))
+  const s4 = document.getElementById('vp-s4')
+  if (s4) s4.classList.add('active')
   vpResetCamUI('selfiedoc')
   vpSelfieDocIniciar()
 }
