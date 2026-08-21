@@ -5533,7 +5533,8 @@ async function vpEnviarVerificacion() {
         errDetail.includes('dado vuelta') ||
         errDetail.includes('no coincide con el documento verificado') ||
         errDetail.includes('tapados') ||
-        errDetail.includes('visible con el frente')
+        errDetail.includes('visible con el frente') ||
+        errDetail.includes('no es válido')
       )
 
       if (esErrorDocSelfie) {
