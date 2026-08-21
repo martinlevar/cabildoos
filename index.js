@@ -4257,6 +4257,22 @@ let vpCameraStream      = null  // MediaStream activo
 
 async function vpAbrirCamara(videoId, facing = 'environment') {
   vpPararCamara()
+
+  // Verificar estado del permiso antes de llamar getUserMedia.
+  // Si está 'denied', el navegador nunca muestra el diálogo — hay que guiar al usuario.
+  if (navigator.permissions) {
+    try {
+      const perm = await navigator.permissions.query({ name: 'camera' })
+      if (perm.state === 'denied') {
+        vpMostrarErrorCamara()
+        throw new DOMException('Permission denied', 'NotAllowedError')
+      }
+    } catch (e) {
+      if (e.name === 'NotAllowedError') throw e
+      // navigator.permissions.query puede fallar en algunos browsers — ignorar y seguir
+    }
+  }
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
@@ -4280,8 +4296,39 @@ async function vpAbrirCamara(videoId, facing = 'environment') {
     video.style.transform = isFront ? 'scaleX(-1)' : 'none'
   } catch (e) {
     console.error('Cámara no disponible:', e)
-    showToast('No se pudo acceder a la cámara — verificá los permisos del navegador')
+    if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+      vpMostrarErrorCamara()
+    } else {
+      showToast('No se pudo acceder a la cámara — verificá que no esté en uso por otra app')
+    }
     throw e
+  }
+}
+
+function vpMostrarErrorCamara() {
+  // Detectar sistema operativo para dar instrucciones específicas
+  const isMac = /Mac/.test(navigator.platform || navigator.userAgent)
+  const isIOS = /iPhone|iPad/.test(navigator.userAgent)
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+
+  let instrucciones = ''
+  if (isIOS || isSafari) {
+    instrucciones = 'En iOS/Safari: Configuración → Safari → Cámara → Permitir'
+  } else if (isMac) {
+    instrucciones = 'En Chrome: clickeá el ícono 🔒 en la barra de URL → Cámara → Permitir → recargá la página.\n\nEn Mac también: Configuración del Sistema → Privacidad → Cámara → activar Chrome.'
+  } else {
+    instrucciones = 'Clickeá el ícono de cámara o candado en la barra de URL de tu navegador, permitir el acceso y recargá la página.'
+  }
+
+  // Mostrar modal de ayuda si existe, si no showToast
+  const modal = document.getElementById('vp-camera-error-modal')
+  if (modal) {
+    const txt = modal.querySelector('.vp-camera-error-text')
+    if (txt) txt.textContent = instrucciones
+    modal.style.display = 'flex'
+  } else {
+    // Fallback: alerta clara
+    alert('⚠️ Sin acceso a la cámara\n\n' + instrucciones)
   }
 }
 
