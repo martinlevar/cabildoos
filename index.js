@@ -2486,7 +2486,7 @@ async function _onLogin(user) {
 
   // ── Ahora sí: cargar perfil async ──────────────────────────────────────────
   const [{ data: profile, error: profileErr }, { data: seatRows }] = await Promise.all([
-    sb.from('profiles').select('*').eq('id', user.id).single(),
+    sb.from('profiles').select('*').eq('id', user.id).maybeSingle(),
     sb.rpc('get_my_seat_identity'),
   ])
   // Mezclar datos de seat_identities (alias, phrase, visibilidad) en el perfil
@@ -2783,7 +2783,7 @@ function irAlCongreso() {
 async function _loadBetaActive() {
   try {
     const { data } = await sb.from('system_config')
-      .select('value').eq('key', 'beta_active').single()
+      .select('value').eq('key', 'beta_active').maybeSingle()
     _betaActive = data?.value === true || data?.value === 'true'
   } catch(e) { _betaActive = false }
   _applyBetaCodeField()
@@ -6004,7 +6004,7 @@ function _renderNotifBadge() {
         .eq('consent_status', 'pending')
         .eq('status', 'pending')
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (data) _openConsentModal(data)
     } catch(e) { /* sin propuestas pendientes */ }
