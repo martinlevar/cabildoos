@@ -23,10 +23,10 @@ export default {
     const contentType = assetResponse.headers.get('content-type') || '';
     if (!contentType.includes('text/html')) return assetResponse;
 
-    // Inyecta window.__ENV — usa el dominio propio como SUPABASE_URL
-    // para que el JS client y OAuth redirect_uri usen cabildodevenezuela.com
+    // Inyecta window.__ENV con la URL real de Supabase
+    // (necesaria para que el cliente JS mantenga las sesiones existentes)
     const envScript = `<script>window.__ENV=${JSON.stringify({
-      SUPABASE_URL: url.origin + '/sb',
+      SUPABASE_URL: env.SUPABASE_URL,
       SUPABASE_KEY: env.SUPABASE_KEY,
       API_ENDPOINT: env.API_ENDPOINT,
     })}</script>`;
