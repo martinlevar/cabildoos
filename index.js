@@ -3039,8 +3039,8 @@ async function registrarse() {
     return
   }
 
-  // Validar y consumir código de invitación (único por uso)
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', { p_code: code })
+  // Validar y consumir código de invitación (único por uso), guardando el email
+  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', { p_code: code, p_email: email })
   if (codeErr || !codeOk) {
     msg.textContent = 'Código de invitación inválido o ya utilizado.'
     msg.className = 'auth-msg err'
