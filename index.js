@@ -2881,11 +2881,12 @@ async function guardarAliasGoogle() {
     return
   }
 
-  // Upsert perfil básico (sin alias ni butaca — esos viven en seat_identities)
+  // Upsert perfil con alias elegido (butaca se asigna luego en verificación)
   const { error } = await sb.from('profiles').upsert({
     id: _googleAliasUser.id,
     email: _googleAliasUser.email,
-    status: 'sin_verificar'
+    status: 'sin_verificar',
+    alias: alias
   }, { onConflict: 'id' })
 
   if (error) {
