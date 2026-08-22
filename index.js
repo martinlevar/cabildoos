@@ -2403,7 +2403,8 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 // ══════════════════════════════════════════════════════════════
 
 let _authUser = null     // usuario logueado actual
-let _betaActive = false  // si el código beta es requerido para registrarse
+// Código de invitación siempre requerido (sistema de 300 códigos únicos)
+const _inviteCodeRequired = true
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
 // ── Observer mode helpers ──────────────────────────────────────────────────────
@@ -2427,8 +2428,8 @@ let _isPasswordRecovery = (
   new URLSearchParams(window.location.search).get('type') === 'recovery'
 )
 
-// Cargar estado beta antes de auth para que el form de registro ya lo refleje
-_loadBetaActive()
+// Mostrar el campo de código de invitación al cargar
+_applyInviteCodeField()
 
 // Inicializar auth al cargar
 ;(async () => {
@@ -2791,32 +2792,18 @@ function irAlCongreso() {
 }
 
 // ── Abrir / cerrar modal ──
-// ── Beta code: cargar estado y aplicar al form ────────────────
-async function _loadBetaActive() {
-  try {
-    const { data } = await sb.from('system_config')
-      .select('value').eq('key', 'beta_active').maybeSingle()
-    _betaActive = data?.value === true || data?.value === 'true'
-  } catch(e) { _betaActive = false }
-  _applyBetaCodeField()
-}
-
-function _applyBetaCodeField() {
+// ── Código de invitación: siempre visible en el form de registro ──────────────
+function _applyInviteCodeField() {
   const wrap = document.getElementById('reg-code-wrap')
   if (!wrap) return
-  wrap.style.display = _betaActive ? '' : 'none'
-  // Si no se requiere código, limpiar el campo para que no interfiera
-  if (!_betaActive) {
-    const inp = document.getElementById('reg-code')
-    if (inp) inp.value = ''
-  }
+  wrap.style.display = ''  // siempre visible
   authCheckRegistro()
 }
 
 function abrirAuth(tab = 'registro') {
   authSetTab(tab)
   document.getElementById('auth-overlay').classList.add('open')
-  if (tab === 'registro') _applyBetaCodeField()
+  if (tab === 'registro') _applyInviteCodeField()
 }
 function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
@@ -3023,7 +3010,7 @@ function authCheckRegistro() {
   }
 
   const code = document.getElementById('reg-code')?.value.trim()
-  const codeOk = !_betaActive || (code?.length >= 4)
+  const codeOk = code?.length >= 9  // formato XXXX-XXXX = 9 caracteres mínimo
   const ok = aliasOk && email.includes('@') && pass.length >= 8 && codeOk
   document.getElementById('reg-btn').disabled = !ok
 }
@@ -3052,14 +3039,12 @@ async function registrarse() {
     return
   }
 
-  // Validar código de acceso beta solo si está activo
-  if (_betaActive) {
-    const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
-    if (codeErr || !codeOk) {
-      msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
-      msg.className = 'auth-msg err'
-      return
-    }
+  // Validar y consumir código de invitación (único por uso)
+  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', { p_code: code })
+  if (codeErr || !codeOk) {
+    msg.textContent = 'Código de invitación inválido o ya utilizado.'
+    msg.className = 'auth-msg err'
+    return
   }
 
   // Verificar alias único via RPC (alias vive en seat_identities, no en profiles)
