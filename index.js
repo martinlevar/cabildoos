@@ -2811,11 +2811,24 @@ function cerrarAuth() {
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 async function loginConGoogle() {
+  // Si el tab de REGISTRO está activo, requerir código de invitación antes de OAuth.
+  // El tab de LOGIN no requiere código (usuarios existentes).
+  const regForm = document.getElementById('auth-form-registro')
+  const isRegistroTab = regForm && regForm.style.display !== 'none'
+
+  if (isRegistroTab) {
+    const code = (document.getElementById('reg-code')?.value || '').trim().toUpperCase()
+    const msg  = document.getElementById('reg-msg')
+    if (code.length < 9) {
+      if (msg) { msg.textContent = 'Ingresá tu código de invitación antes de continuar con Google.'; msg.className = 'auth-msg err' }
+      return
+    }
+    // Guardar en sessionStorage — sobrevive al redirect OAuth
+    sessionStorage.setItem('_pendingInviteCode', code)
+  }
+
   const redirectTo = window.location.origin + window.location.pathname
-  await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo }
-  })
+  await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
 }
 
 // ── Modal alias para usuarios nuevos de Google ────────────────────────────────
@@ -2865,6 +2878,24 @@ async function guardarAliasGoogle() {
     msg.textContent = 'Ese alias ya está en uso, elegí otro.'
     msg.className = 'auth-msg err'
     btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    return
+  }
+
+  // Validar y consumir el código de invitación guardado antes del redirect OAuth
+  const _pendingCode = sessionStorage.getItem('_pendingInviteCode') || ''
+  sessionStorage.removeItem('_pendingInviteCode')
+  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', {
+    p_code: _pendingCode,
+    p_email: _googleAliasUser.email
+  })
+  if (codeErr || !codeOk) {
+    msg.textContent = 'Código de invitación inválido o ya utilizado. Registrate con un código válido.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    // Cerrar sesión — la cuenta de Google no puede quedar activa sin código válido
+    await sb.auth.signOut().catch(() => {})
+    document.getElementById('google-alias-overlay').classList.remove('open')
+    setTimeout(() => abrirAuth('registro'), 300)
     return
   }
 
