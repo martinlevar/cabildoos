@@ -264,6 +264,9 @@ function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac, pais) {
       'Brasil':     ['brasil', 'brazil', 'brasileiro', 'brasileira'],
       'España':     ['espana', 'espanol', 'espanola', 'reino de espana'],
       'USA':        ['united states', 'usa', 'america'],
+      'Costa Rica': ['costa rica', 'costarricense'],
+      'Panama':     ['panama', 'panameno', 'panamena'],
+      'Puerto Rico': ['puerto rico', 'puertorriqueno', 'puertorriquena'],
     }
     const claves = PAISES[pais] || [pais.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')]
     const ocr3 = ocrTexto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
@@ -2403,8 +2406,7 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 // ══════════════════════════════════════════════════════════════
 
 let _authUser = null     // usuario logueado actual
-// Código de invitación siempre requerido (sistema de 300 códigos únicos)
-const _inviteCodeRequired = true
+let _betaActive = false  // si el código beta es requerido para registrarse
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
 // ── Observer mode helpers ──────────────────────────────────────────────────────
@@ -2428,8 +2430,8 @@ let _isPasswordRecovery = (
   new URLSearchParams(window.location.search).get('type') === 'recovery'
 )
 
-// Mostrar el campo de código de invitación al cargar
-_applyInviteCodeField()
+// Cargar estado beta antes de auth para que el form de registro ya lo refleje
+_loadBetaActive()
 
 // Inicializar auth al cargar
 ;(async () => {
@@ -2792,18 +2794,32 @@ function irAlCongreso() {
 }
 
 // ── Abrir / cerrar modal ──
-// ── Código de invitación: siempre visible en el form de registro ──────────────
-function _applyInviteCodeField() {
+// ── Beta code: cargar estado y aplicar al form ────────────────
+async function _loadBetaActive() {
+  try {
+    const { data } = await sb.from('system_config')
+      .select('value').eq('key', 'beta_active').maybeSingle()
+    _betaActive = data?.value === true || data?.value === 'true'
+  } catch(e) { _betaActive = false }
+  _applyBetaCodeField()
+}
+
+function _applyBetaCodeField() {
   const wrap = document.getElementById('reg-code-wrap')
   if (!wrap) return
-  wrap.style.display = ''  // siempre visible
+  wrap.style.display = _betaActive ? '' : 'none'
+  // Si no se requiere código, limpiar el campo para que no interfiera
+  if (!_betaActive) {
+    const inp = document.getElementById('reg-code')
+    if (inp) inp.value = ''
+  }
   authCheckRegistro()
 }
 
 function abrirAuth(tab = 'registro') {
   authSetTab(tab)
   document.getElementById('auth-overlay').classList.add('open')
-  if (tab === 'registro') _applyInviteCodeField()
+  if (tab === 'registro') _applyBetaCodeField()
 }
 function cerrarAuth() {
   document.getElementById('auth-overlay').classList.remove('open')
@@ -2811,24 +2827,11 @@ function cerrarAuth() {
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 async function loginConGoogle() {
-  // Si el tab de REGISTRO está activo, requerir código de invitación antes de OAuth.
-  // El tab de LOGIN no requiere código (usuarios existentes).
-  const regForm = document.getElementById('auth-form-registro')
-  const isRegistroTab = regForm && regForm.style.display !== 'none'
-
-  if (isRegistroTab) {
-    const code = (document.getElementById('reg-code')?.value || '').trim().toUpperCase()
-    const msg  = document.getElementById('reg-msg')
-    if (code.length < 9) {
-      if (msg) { msg.textContent = 'Ingresá tu código de invitación antes de continuar con Google.'; msg.className = 'auth-msg err' }
-      return
-    }
-    // Guardar en sessionStorage — sobrevive al redirect OAuth
-    sessionStorage.setItem('_pendingInviteCode', code)
-  }
-
   const redirectTo = window.location.origin + window.location.pathname
-  await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
+  await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  })
 }
 
 // ── Modal alias para usuarios nuevos de Google ────────────────────────────────
@@ -2878,24 +2881,6 @@ async function guardarAliasGoogle() {
     msg.textContent = 'Ese alias ya está en uso, elegí otro.'
     msg.className = 'auth-msg err'
     btn.disabled = false; btn.textContent = 'Confirmar alias →'
-    return
-  }
-
-  // Validar y consumir el código de invitación guardado antes del redirect OAuth
-  const _pendingCode = sessionStorage.getItem('_pendingInviteCode') || ''
-  sessionStorage.removeItem('_pendingInviteCode')
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', {
-    p_code: _pendingCode,
-    p_email: _googleAliasUser.email
-  })
-  if (codeErr || !codeOk) {
-    msg.textContent = 'Código de invitación inválido o ya utilizado. Registrate con un código válido.'
-    msg.className = 'auth-msg err'
-    btn.disabled = false; btn.textContent = 'Confirmar alias →'
-    // Cerrar sesión — la cuenta de Google no puede quedar activa sin código válido
-    await sb.auth.signOut().catch(() => {})
-    document.getElementById('google-alias-overlay').classList.remove('open')
-    setTimeout(() => abrirAuth('registro'), 300)
     return
   }
 
@@ -3041,7 +3026,7 @@ function authCheckRegistro() {
   }
 
   const code = document.getElementById('reg-code')?.value.trim()
-  const codeOk = code?.length >= 9  // formato XXXX-XXXX = 9 caracteres mínimo
+  const codeOk = !_betaActive || (code?.length >= 4)
   const ok = aliasOk && email.includes('@') && pass.length >= 8 && codeOk
   document.getElementById('reg-btn').disabled = !ok
 }
@@ -3070,12 +3055,14 @@ async function registrarse() {
     return
   }
 
-  // Validar y consumir código de invitación (único por uso), guardando el email
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', { p_code: code, p_email: email })
-  if (codeErr || !codeOk) {
-    msg.textContent = 'Código de invitación inválido o ya utilizado.'
-    msg.className = 'auth-msg err'
-    return
+  // Validar código de acceso beta solo si está activo
+  if (_betaActive) {
+    const { data: codeOk, error: codeErr } = await sb.rpc('validate_beta_code', { p_code: code })
+    if (codeErr || !codeOk) {
+      msg.textContent = 'Código de acceso incorrecto. Solicitalo al equipo de Cabildo de Venezuela.'
+      msg.className = 'auth-msg err'
+      return
+    }
   }
 
   // Verificar alias único via RPC (alias vive en seat_identities, no en profiles)
@@ -3714,7 +3701,8 @@ function vpDocChip(tipo) {
     DNI_AR:    'Fotografiar DNI (frente)',
     PASAPORTE: 'Fotografiar página de datos',
     CEDULA_VE: 'Fotografiar cédula (frente)',
-    LICENCIA:  'Fotografiar licencia (frente)'
+    LICENCIA:  'Fotografiar licencia (frente)',
+    CEDULA:    'Fotografiar cédula / ID (frente)'
   }
   const lbl = document.getElementById('vp-doc-foto-label')
   if (lbl) lbl.textContent = labels[tipo] || 'Fotografiar documento'
@@ -5364,6 +5352,29 @@ function vpCheckStep1() {
   // Mostrar hint de edad si la fecha está puesta pero no cumple
   const dobWrap = document.getElementById('vp-dob-wrap')
   if (dobWrap) dobWrap.classList.toggle('error', !!(fechaNac && !edadOk))
+}
+
+// Auto-selecciona el chip de doc correcto según país elegido
+function vpOnPaisChange() {
+  vpCheckStep1()
+  const pais = document.getElementById('vp-pais')?.value
+  const chipMap = {
+    'Argentina':   'DNI_AR',
+    'Venezuela':   'CEDULA_VE',
+    'Colombia':    'CEDULA',
+    'Mexico':      'CEDULA',
+    'USA':         'CEDULA',
+    'Chile':       'CEDULA',
+    'Ecuador':     'CEDULA',
+    'Peru':        'CEDULA',
+    'España':      'CEDULA',
+    'Costa Rica':  'CEDULA',
+    'Panama':      'CEDULA',
+    'Puerto Rico': 'CEDULA',
+    'Uruguay':     'CEDULA',
+  }
+  const tipo = chipMap[pais]
+  if (tipo) vpDocChip(tipo)
 }
 
 function vpPreview(input, type) {

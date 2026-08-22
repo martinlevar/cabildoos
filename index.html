@@ -1151,9 +1151,13 @@
         </div>
         <div class="vp-field">
           <label class="vp-label">País emisor del documento <span style="color:var(--orange)">*</span></label>
-          <select class="vp-input" id="vp-pais" onchange="vpCheckStep1()">
+          <select class="vp-input" id="vp-pais" onchange="vpOnPaisChange()">
             <option value="">Seleccioná tu país...</option>
             <option>Argentina</option><option>Venezuela</option>
+            <option>Colombia</option><option>Mexico</option><option>USA</option>
+            <option>Chile</option><option>Ecuador</option><option>Peru</option>
+            <option>España</option><option>Costa Rica</option><option>Panama</option>
+            <option>Puerto Rico</option><option>Uruguay</option>
           </select>
         </div>
       </div>
@@ -1170,6 +1174,8 @@
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
         <button class="vp-chip active" id="vp-chip-DNI_AR"   onclick="vpDocChip('DNI_AR')">🇦🇷 DNI</button>
         <button class="vp-chip" id="vp-chip-CEDULA_VE"       onclick="vpDocChip('CEDULA_VE')">🇻🇪 Cédula VE</button>
+        <button class="vp-chip" id="vp-chip-CEDULA"          onclick="vpDocChip('CEDULA')">🪪 Cédula / ID</button>
+        <button class="vp-chip" id="vp-chip-PASAPORTE"       onclick="vpDocChip('PASAPORTE')">🛂 Pasaporte</button>
       </div>
 
       <!-- Visor de cámara (getUserMedia, sin file input) -->
