@@ -264,6 +264,9 @@ function vpCompararDatos(ocrTexto, nombre, numDoc, fechaNac, pais) {
       'Brasil':     ['brasil', 'brazil', 'brasileiro', 'brasileira'],
       'España':     ['espana', 'espanol', 'espanola', 'reino de espana'],
       'USA':        ['united states', 'usa', 'america'],
+      'Costa Rica': ['costa rica', 'costarricense'],
+      'Panama':     ['panama', 'panameno', 'panamena'],
+      'Puerto Rico': ['puerto rico', 'puertorriqueno', 'puertorriquena'],
     }
     const claves = PAISES[pais] || [pais.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')]
     const ocr3 = ocrTexto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
@@ -2403,8 +2406,7 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 // ══════════════════════════════════════════════════════════════
 
 let _authUser = null     // usuario logueado actual
-// Código de invitación siempre requerido (sistema de 300 códigos únicos)
-const _inviteCodeRequired = true
+const _inviteCodeRequired = true  // código de invitación siempre requerido
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
 
 // ── Observer mode helpers ──────────────────────────────────────────────────────
@@ -2428,7 +2430,7 @@ let _isPasswordRecovery = (
   new URLSearchParams(window.location.search).get('type') === 'recovery'
 )
 
-// Mostrar el campo de código de invitación al cargar
+// Mostrar campo de código de invitación al cargar
 _applyInviteCodeField()
 
 // Inicializar auth al cargar
@@ -2811,22 +2813,17 @@ function cerrarAuth() {
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 async function loginConGoogle() {
-  // Si el tab de REGISTRO está activo, requerir código de invitación antes de OAuth.
-  // El tab de LOGIN no requiere código (usuarios existentes).
   const regForm = document.getElementById('auth-form-registro')
   const isRegistroTab = regForm && regForm.style.display !== 'none'
-
   if (isRegistroTab) {
     const code = (document.getElementById('reg-code')?.value || '').trim().toUpperCase()
-    const msg  = document.getElementById('reg-msg')
+    const msg = document.getElementById('reg-msg')
     if (code.length < 9) {
       if (msg) { msg.textContent = 'Ingresá tu código de invitación antes de continuar con Google.'; msg.className = 'auth-msg err' }
       return
     }
-    // Guardar en sessionStorage — sobrevive al redirect OAuth
     sessionStorage.setItem('_pendingInviteCode', code)
   }
-
   const redirectTo = window.location.origin + window.location.pathname
   await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
 }
@@ -2881,23 +2878,25 @@ async function guardarAliasGoogle() {
     return
   }
 
-  // Validar y consumir el código de invitación guardado antes del redirect OAuth
-  const _pendingCode = sessionStorage.getItem('_pendingInviteCode') || ''
-  sessionStorage.removeItem('_pendingInviteCode')
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', {
-    p_code: _pendingCode,
-    p_email: _googleAliasUser.email
-  })
-  if (codeErr || !codeOk) {
-    msg.textContent = 'Código de invitación inválido o ya utilizado. Registrate con un código válido.'
+  // Consumir código de invitación pendiente (guardado antes del OAuth de Google)
+  const pendingCode = sessionStorage.getItem('_pendingInviteCode')
+  if (!pendingCode) {
+    msg.textContent = 'Necesitás un código de invitación para registrarte. Volvé a intentarlo.'
     msg.className = 'auth-msg err'
     btn.disabled = false; btn.textContent = 'Confirmar alias →'
-    // Cerrar sesión — la cuenta de Google no puede quedar activa sin código válido
-    await sb.auth.signOut().catch(() => {})
-    document.getElementById('google-alias-overlay').classList.remove('open')
-    setTimeout(() => abrirAuth('registro'), 300)
     return
   }
+  const { data: inviteOk, error: inviteErr } = await sb.rpc('validate_invitation_code', {
+    p_code: pendingCode,
+    p_email: _googleAliasUser.email
+  })
+  if (inviteErr || !inviteOk) {
+    msg.textContent = 'Código de invitación inválido o ya utilizado.'
+    msg.className = 'auth-msg err'
+    btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    return
+  }
+  sessionStorage.removeItem('_pendingInviteCode')
 
   // Upsert perfil con alias elegido (butaca se asigna luego en verificación)
   const { error } = await sb.from('profiles').upsert({
@@ -3041,7 +3040,7 @@ function authCheckRegistro() {
   }
 
   const code = document.getElementById('reg-code')?.value.trim()
-  const codeOk = code?.length >= 9  // formato XXXX-XXXX = 9 caracteres mínimo
+  const codeOk = code?.length >= 9
   const ok = aliasOk && email.includes('@') && pass.length >= 8 && codeOk
   document.getElementById('reg-btn').disabled = !ok
 }
@@ -3070,7 +3069,7 @@ async function registrarse() {
     return
   }
 
-  // Validar y consumir código de invitación (único por uso), guardando el email
+  // Validar código de invitación (siempre requerido)
   const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', { p_code: code, p_email: email })
   if (codeErr || !codeOk) {
     msg.textContent = 'Código de invitación inválido o ya utilizado.'
@@ -3714,7 +3713,8 @@ function vpDocChip(tipo) {
     DNI_AR:    'Fotografiar DNI (frente)',
     PASAPORTE: 'Fotografiar página de datos',
     CEDULA_VE: 'Fotografiar cédula (frente)',
-    LICENCIA:  'Fotografiar licencia (frente)'
+    LICENCIA:  'Fotografiar licencia (frente)',
+    CEDULA:    'Fotografiar cédula / ID (frente)'
   }
   const lbl = document.getElementById('vp-doc-foto-label')
   if (lbl) lbl.textContent = labels[tipo] || 'Fotografiar documento'
@@ -5364,6 +5364,29 @@ function vpCheckStep1() {
   // Mostrar hint de edad si la fecha está puesta pero no cumple
   const dobWrap = document.getElementById('vp-dob-wrap')
   if (dobWrap) dobWrap.classList.toggle('error', !!(fechaNac && !edadOk))
+}
+
+// Auto-selecciona el chip de doc correcto según país elegido
+function vpOnPaisChange() {
+  vpCheckStep1()
+  const pais = document.getElementById('vp-pais')?.value
+  const chipMap = {
+    'Argentina':   'DNI_AR',
+    'Venezuela':   'CEDULA_VE',
+    'Colombia':    'CEDULA',
+    'Mexico':      'CEDULA',
+    'USA':         'CEDULA',
+    'Chile':       'CEDULA',
+    'Ecuador':     'CEDULA',
+    'Peru':        'CEDULA',
+    'España':      'CEDULA',
+    'Costa Rica':  'CEDULA',
+    'Panama':      'CEDULA',
+    'Puerto Rico': 'CEDULA',
+    'Uruguay':     'CEDULA',
+  }
+  const tipo = chipMap[pais]
+  if (tipo) vpDocChip(tipo)
 }
 
 function vpPreview(input, type) {
