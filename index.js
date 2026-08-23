@@ -3069,14 +3069,6 @@ async function registrarse() {
     return
   }
 
-  // Validar código de invitación (siempre requerido)
-  const { data: codeOk, error: codeErr } = await sb.rpc('validate_invitation_code', { p_code: code, p_email: email })
-  if (codeErr || !codeOk) {
-    msg.textContent = 'Código de invitación inválido o ya utilizado.'
-    msg.className = 'auth-msg err'
-    return
-  }
-
   // Verificar alias único via RPC (alias vive en seat_identities, no en profiles)
   const { data: aliasOk } = await sb.rpc('check_alias_available', { p_alias: alias })
   if (aliasOk === false) {
@@ -3098,7 +3090,8 @@ async function registrarse() {
     email,
     password: pass,
     options: {
-      data: { alias },
+      // invitation_code se valida y consume en el trigger server-side (enforce_invitation_code_on_signup)
+      data: { alias, invitation_code: code.toUpperCase() },
       ...(  _regRedirect ? { emailRedirectTo: _regRedirect } : {})
     }
   })
@@ -3107,7 +3100,10 @@ async function registrarse() {
     const msg422 = error.message?.toLowerCase() || ''
     const isExisting = msg422.includes('already registered') || msg422.includes('user already')
     const isDisabled = msg422.includes('signup') || msg422.includes('not allowed') || msg422.includes('disabled')
-    if (isExisting) {
+    const isInvalidCode = msg422.includes('código de invitación') || msg422.includes('invitation')
+    if (isInvalidCode) {
+      msg.textContent = 'Código de invitación inválido o ya utilizado.'
+    } else if (isExisting) {
       msg.innerHTML = 'Ese email ya tiene una cuenta. <button type="button" onclick="authSetTab(\'login\')" style="background:none;border:none;color:#f97316;font-weight:700;cursor:pointer;font-size:inherit;padding:0;text-decoration:underline">Iniciar sesión →</button>'
     } else if (isDisabled) {
       msg.textContent = 'Los registros están temporalmente cerrados. Contactá al equipo de Cabildo de Venezuela.'
