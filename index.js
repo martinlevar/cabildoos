@@ -1934,7 +1934,7 @@ function mostrarBannerGanador() {
 
   const wl = document.getElementById('sw-winner-line')
   if (totalVotos === 0) {
-    wl.textContent = 'Sin votos registrados'
+    wl.innerHTML = '<b>Votación nula</b> · participación insuficiente para publicar resultados'
     wl.style.color = '#888'
   } else if (empate) {
     wl.textContent = `Empate — ${pctSi}% SÍ · ${pctNo}% NO`
@@ -2045,19 +2045,22 @@ function abrirCertificado() {
     no:     `<b>Resultado: NO</b> · ${pctNo}%`,
     empate: `<b>Empate</b> — ${pctSi}% SÍ · ${pctNo}% NO`
   }
+  const nula = total === 0
 
   document.getElementById('cert-question-txt').textContent = pregunta
 
   // Stats (solo resultados globales, no el voto individual)
-  document.getElementById('cs-num-si').textContent  = cntSi.toLocaleString('es-AR')
-  document.getElementById('cs-num-no').textContent  = cntNo.toLocaleString('es-AR')
-  document.getElementById('cs-num-abs').textContent = cntAbs.toLocaleString('es-AR')
-  document.getElementById('cs-pct-si').textContent  = pctSi + '%'
-  document.getElementById('cs-pct-no').textContent  = pctNo + '%'
-  document.getElementById('cs-pct-abs').textContent = pctAbs + '%'
-  document.getElementById('cs-total-votos').textContent = total.toLocaleString('es-AR')
-  document.getElementById('cs-winner-txt').innerHTML = winnerTxts[gana] || ''
-  if (cntAbs === 0) document.getElementById('cs-row-abs').style.display = 'none'
+  document.getElementById('cs-num-si').textContent  = nula ? '—' : cntSi.toLocaleString('es-AR')
+  document.getElementById('cs-num-no').textContent  = nula ? '—' : cntNo.toLocaleString('es-AR')
+  document.getElementById('cs-num-abs').textContent = nula ? '—' : cntAbs.toLocaleString('es-AR')
+  document.getElementById('cs-pct-si').textContent  = nula ? '' : pctSi + '%'
+  document.getElementById('cs-pct-no').textContent  = nula ? '' : pctNo + '%'
+  document.getElementById('cs-pct-abs').textContent = nula ? '' : pctAbs + '%'
+  document.getElementById('cs-total-votos').textContent = nula ? '—' : total.toLocaleString('es-AR')
+  document.getElementById('cs-winner-txt').innerHTML = nula
+    ? '<b>Votación nula</b> · se requieren mín. 3 votos por opción para publicar resultados'
+    : (winnerTxts[gana] || '')
+  if (nula || cntAbs === 0) document.getElementById('cs-row-abs').style.display = 'none'
   else document.getElementById('cs-row-abs').style.display = ''
 
   document.getElementById('cert-butaca').textContent = '#' + MY_SEAT
@@ -7223,15 +7226,17 @@ function renderQCards() {
 
     // Chip de estado de voto (activo = clickeable para votar/cambiar, finalizado = solo lectura)
     let voteAreaHTML = ''
+    let _cdRightEnded = ''
     if (ended) {
-      // Estado final — no clickeable
+      // Estado final — chip de voto en countdown, botón revelación en acciones
       const statusMap = {
         si:  { lbl:'Voté SÍ',     bg:'#dcfce7', color:'#166534' },
         no:  { lbl:'Voté NO',     bg:'#fee2e2', color:'#991b1b' },
         abs: { lbl:'Me abstuve',  bg:'#fef9c3', color:'#854d0e' },
       }
       const st = votoVal ? statusMap[votoVal] : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
-      voteAreaHTML = `<span class="q-vote-status-chip" style="background:${st.bg};color:${st.color}">${st.lbl}</span>`
+      _cdRightEnded = `<span class="q-vote-status-chip" style="background:${st.bg};color:${st.color};font-size:10px;padding:4px 10px">${st.lbl}</span>`
+      voteAreaHTML = `<button class="q-card-revelacion-btn" style="flex:1" onclick="abrirVotoForQ(${i})">Ver Revelación →</button>`
     } else {
       // Activa — botón clickeable
       let voteBtnTxt, voteBtnCls = 'q-card-vote-btn'
@@ -7242,9 +7247,9 @@ function renderQCards() {
       voteAreaHTML = `<button class="${voteBtnCls}" style="flex:1" onclick="abrirVotoForQ(${i})">${voteBtnTxt}</button>`
     }
 
-    // Badge countdown: activa = "En curso", finalizada = botón revelación
+    // Badge countdown: activa = "En curso", finalizada = chip con estado del voto
     const cdRight = ended
-      ? `<button class="q-card-reveal-badge" onclick="abrirVotoForQ(${i})">Revelación</button>`
+      ? _cdRightEnded
       : `<span class="q-card-cd-badge" style="background:${theme.pill};color:${theme.txt}">En curso</span>`
 
     const card = document.createElement('div')
@@ -9185,10 +9190,14 @@ function sfSelectTab(tab) {
 
   // Modo: propuestas vs social
   const isPropsMode = tab === 'propuestas'
+  const panel   = document.querySelector('.sf-cm-panel')
   const titleEl = document.getElementById('sf-cm-title')
   const tabsEl  = document.getElementById('sf-cm-tabs')
-  if (titleEl) titleEl.textContent = isPropsMode ? 'Mis Propuestas' : 'Social'
+  const hdrExt  = document.getElementById('prop-hdr-ext')
+  if (panel)   panel.classList.toggle('propuestas-mode', isPropsMode)
+  if (titleEl) titleEl.textContent = isPropsMode ? 'Propuestas' : 'Social'
   if (tabsEl)  tabsEl.style.display = isPropsMode ? 'none' : 'flex'
+  if (hdrExt)  hdrExt.style.display = isPropsMode ? '' : 'none'
 
   // Activar tab en header del modal
   document.querySelectorAll('.sf-cm-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
@@ -9214,6 +9223,9 @@ function abrirSocialTab(tab) {
 function cerrarSocialPanel() {
   sfActiveTab = null
   document.getElementById('sf-center-modal')?.classList.remove('open')
+  document.querySelector('.sf-cm-panel')?.classList.remove('propuestas-mode')
+  const hdrExt = document.getElementById('prop-hdr-ext')
+  if (hdrExt) hdrExt.style.display = 'none'
   document.querySelectorAll('.sf-cm-tab').forEach(t => t.classList.remove('active'))
   document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'))
   document.querySelectorAll('#nav-social-btns .nav-act-btn').forEach(b => b.classList.remove('active-tab'))
@@ -9223,7 +9235,8 @@ let _propSubTab = 'mis'
 
 function propSelectSubTab(tab) {
   _propSubTab = tab
-  document.querySelectorAll('.prop-sub-tab').forEach(t =>
+  // Sync both old and new tab buttons
+  document.querySelectorAll('.prop-sub-tab, .prop-hdr-tab').forEach(t =>
     t.classList.toggle('active', t.dataset.tab === tab))
   const misEl   = document.getElementById('sf-propuestas-list')
   const otrasEl = document.getElementById('sf-otras-propuestas-list')
@@ -9238,9 +9251,10 @@ async function renderOtrasPropuestas() {
   if (!el) return
   el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
 
+  // Mostrar propuestas en campaña de otros usuarios (pendientes + aprobadas) ordenadas por apoyos
   const query = sb.from('proposals')
     .select('*')
-    .eq('status', 'approved')
+    .in('status', ['pending', 'approved'])
     .order('likes', { ascending: false })
     .limit(60)
   if (MY_SEAT > 0) query.neq('seat_number', MY_SEAT)
@@ -9248,9 +9262,13 @@ async function renderOtrasPropuestas() {
   const { data, error } = await query
 
   if (error || !data?.length) {
-    el.innerHTML = '<p class="sf-empty">No hay propuestas aprobadas de otros usuarios aún.</p>'
+    el.innerHTML = '<p class="sf-empty">No hay propuestas de la comunidad aún.</p>'
     return
   }
+
+  const GOAL = 10
+  const statusClass = { pending: 'camp', approved: 'approved', rejected: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', rejected: 'No aprobada' }
 
   el.innerHTML = data.map(p => {
     const ci    = p.seat_number % AVATAR_COLORS_CONVO.length
@@ -9258,19 +9276,36 @@ async function renderOtrasPropuestas() {
     const init  = alias.slice(0, 2).toUpperCase()
     const date  = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
     const txt   = escapeHtml(p.text.length > 110 ? p.text.slice(0, 110) + '…' : p.text)
-    return `<div class="otras-prop-card" onclick="abrirUserProfile(${p.seat_number},'propuestas');cerrarSocialPanel()">
-      <div class="otras-prop-author">
-        <div class="otras-prop-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${init}</div>
-        <span class="otras-prop-alias">${escapeHtml(alias)}</span>
-      </div>
-      <p class="otras-prop-text">${txt}</p>
-      <div class="otras-prop-meta">
-        <span class="otras-prop-cat">${escapeHtml(p.cat)}</span>
-        <span class="otras-prop-likes" id="sf-like-n-${p.id}">
-          <svg width="11" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span class="sf-like-count">${p.likes}</span>
-        </span>
-        <span class="otras-prop-date">${date}</span>
+    const sClass = statusClass[p.status] || 'camp'
+    const sLabel = statusLabel[p.status] || 'En campaña'
+    const isPend = p.status === 'pending'
+    const pct    = Math.min(100, Math.round((p.likes / GOAL) * 100))
+    const progressHTML = isPend ? `
+      <div class="prop-progress-wrap" style="margin-top:8px">
+        <div class="prop-progress-label">
+          <span>${p.likes} apoyo${p.likes !== 1 ? 's' : ''}</span>
+          <strong>meta: ${GOAL}</strong>
+        </div>
+        <div class="prop-progress-bar"><div class="prop-progress-fill" style="width:${pct}%"></div></div>
+      </div>` : ''
+    return `<div class="prop-card-v3 ${sClass}" style="cursor:pointer" onclick="abrirUserProfile(${p.seat_number},'propuestas');cerrarSocialPanel()">
+      <div class="prop-card-v3-stripe"></div>
+      <div class="prop-card-v3-body">
+        <div class="otras-prop-author" style="margin-bottom:8px">
+          <div class="otras-prop-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${init}</div>
+          <span class="otras-prop-alias">${escapeHtml(alias)}</span>
+          <span class="prop-badge ${sClass}" style="margin-left:auto">${sLabel}</span>
+        </div>
+        <p class="prop-card-v3-text" style="margin-bottom:0">${txt}</p>
+        ${progressHTML}
+        <div class="prop-card-v3-meta" style="margin-top:8px">
+          <span class="prop-card-v3-cat">${escapeHtml(p.cat)}</span>
+          <span class="otras-prop-likes" id="sf-like-n-${p.id}" style="margin-left:6px;font-size:12px;color:#aaa;display:flex;align-items:center;gap:3px">
+            <svg width="11" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span class="sf-like-count">${p.likes}</span>
+          </span>
+          <span class="prop-card-v3-date">${date}</span>
+        </div>
       </div>
     </div>`
   }).join('')
@@ -9298,23 +9333,54 @@ async function renderPropuestas() {
     return
   }
 
-  const statusLabel = { pending: 'En revisión', approved: '✓ Aprobada', rejected: 'Rechazada' }
-  const statusClass = { pending: 'pending', approved: 'approved', rejected: 'rejected' }
+  const GOAL = 10
+  const statusClass = { pending: 'camp', approved: 'approved', rejected: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', rejected: 'No aprobada' }
+
+  // Actualizar stats strip
+  const nCamp  = data.filter(p => p.status === 'pending').length
+  const nAprov = data.filter(p => p.status === 'approved').length
+  const nRej   = data.filter(p => p.status === 'rejected').length
+  const pspCamp  = document.getElementById('psp-camp')
+  const pspAprov = document.getElementById('psp-aprov')
+  const pspRej   = document.getElementById('psp-rej')
+  if (pspCamp)  pspCamp.textContent  = `${nCamp} en campaña`
+  if (pspAprov) pspAprov.textContent = `${nAprov} aprobada${nAprov !== 1 ? 's' : ''}`
+  if (pspRej)   pspRej.textContent   = `${nRej} rechazada${nRej !== 1 ? 's' : ''}`
 
   el.innerHTML = data.map(p => {
-    const date = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
-    return `<div class="prop-card-v2">
-      <div class="prop-card-v2-top">
-        <p class="prop-card-v2-text">${escapeHtml(p.text.length > 90 ? p.text.slice(0,90) + '…' : p.text)}</p>
-        <span class="prop-status-pill ${statusClass[p.status] || 'pending'}">${statusLabel[p.status] || 'En revisión'}</span>
-      </div>
-      <div class="prop-card-v2-meta">
-        <span class="prop-cat-tag">${escapeHtml(p.cat)}</span>
-        <span class="prop-likes" id="sf-like-n-${p.id}">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span class="sf-like-count">${p.likes}</span>
-        </span>
-        <span style="font-size:11px;color:var(--mid);margin-left:auto">${date}</span>
+    const date  = new Date(p.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short' })
+    const sClass = statusClass[p.status] || 'camp'
+    const sLabel = statusLabel[p.status] || 'En campaña'
+    const isPend = p.status === 'pending'
+    const isAppr = p.status === 'approved'
+    const pct    = Math.min(100, Math.round((p.likes / GOAL) * 100))
+    const progressHTML = isPend ? `
+      <div class="prop-progress-wrap">
+        <div class="prop-progress-label">
+          <span>${p.likes} apoyo${p.likes !== 1 ? 's' : ''} acumulados</span>
+          <strong>meta: ${GOAL}</strong>
+        </div>
+        <div class="prop-progress-bar"><div class="prop-progress-fill" style="width:${pct}%"></div></div>
+      </div>` : ''
+    const approvedHTML = isAppr ? `
+      <div class="prop-approved-msg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Esta propuesta fue admitida al hemiciclo
+      </div>` : ''
+    return `<div class="prop-card-v3 ${sClass}">
+      <div class="prop-card-v3-stripe"></div>
+      <div class="prop-card-v3-body">
+        <div class="prop-card-v3-top">
+          <p class="prop-card-v3-text">${escapeHtml(p.text.length > 100 ? p.text.slice(0,100) + '…' : p.text)}</p>
+          <span class="prop-badge ${sClass}">${sLabel}</span>
+        </div>
+        ${progressHTML}
+        ${approvedHTML}
+        <div class="prop-card-v3-meta">
+          <span class="prop-card-v3-cat">${escapeHtml(p.cat)}</span>
+          <span class="prop-card-v3-date">${date}</span>
+        </div>
       </div>
     </div>`
   }).join('')

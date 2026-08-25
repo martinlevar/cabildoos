@@ -478,7 +478,7 @@
           <div class="cal-days" id="cal-days"></div>
         </div>
         <div class="cal-legend">
-          <div class="cal-leg"><div class="cal-dot" style="background:#1D9E75"></div>Preguntas</div>
+          <div class="cal-leg"><div class="cal-dot" style="background:#1D9E75"></div>Sesiones</div>
           <div class="cal-leg"><div class="cal-dot" style="background:#7F77DD"></div>Con debate</div>
         </div>
       </div>
@@ -537,7 +537,7 @@
         <button class="map-btn orange" id="btn-map-butaca" onclick="mapButacaBtn()">↵ Mi butaca</button>
         <div class="citizen-count" onclick="abrirCiudadanos()" title="Ver lista de ciudadanos"><b id="citizen-num">0</b> ciudadanos</div>
         <button class="map-btn" onclick="zoomOut()">Ver todo</button>
-        <button class="map-btn" onclick="abrirPreguntas()" id="btn-preguntas">📋 Preguntas<span id="ctb-badge" style="display:none;margin-left:4px;background:#1D1F3C;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px"></span></button>
+        <button class="map-btn" onclick="abrirPreguntas()" id="btn-preguntas">📋 Sesiones<span id="ctb-badge" style="display:none;margin-left:4px;background:#1D1F3C;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px"></span></button>
         <button class="map-btn" onclick="iniciarSimulacion()" id="btn-simular" style="border-color:rgba(247,106,30,.4);color:var(--orange)">⚡ Simular votación</button>
         <button class="map-btn" onclick="abrirHemiConfig()" id="btn-hemi-config" style="border-color:rgba(0,0,0,.15)">◈ Hemiciclo</button>
       </div>
@@ -1742,7 +1742,7 @@
 <div id="preguntas-panel">
   <div class="cl-header">
     <div>
-      <span class="cl-title">Preguntas</span>
+      <span class="cl-title">Sesiones</span>
       <span class="cl-sub" id="pq-sub">— archivadas</span>
     </div>
     <button class="cl-close" onclick="cerrarPreguntas()">← Volver al congreso</button>
@@ -1784,18 +1784,30 @@
         <button class="sf-cm-tab" data-tab="seguidores" onclick="sfSelectTab('seguidores')">Seguidores</button>
         <button class="sf-cm-tab" data-tab="mensajes"   onclick="sfSelectTab('mensajes')">Mensajes</button>
       </div>
+      <!-- ── Propuestas extended header (visible solo en propuestas-mode) ── -->
+      <div id="prop-hdr-ext" style="display:none">
+        <div id="prop-hdr-eyebrow">Cabildo de Venezuela · Hemiciclo</div>
+        <div id="prop-stats-strip">
+          <span class="prop-stat-pill camp"     id="psp-camp">— en campaña</span>
+          <span class="prop-stat-pill approved" id="psp-aprov">— aprobadas</span>
+          <span class="prop-stat-pill rejected" id="psp-rej">— rechazadas</span>
+        </div>
+        <div id="prop-hdr-tabs">
+          <button class="prop-hdr-tab active" data-tab="mis"   onclick="propSelectSubTab('mis')">Mis propuestas</button>
+          <button class="prop-hdr-tab"         data-tab="otras" onclick="propSelectSubTab('otras')">Comunidad</button>
+        </div>
+      </div>
     </div>
     <div class="sf-cm-body">
       <div class="sf-cm-pane" id="sfp-propuestas">
-        <div class="prop-pane-hd">
-          <div class="prop-sub-tabs">
-            <button class="prop-sub-tab active" data-tab="mis"   onclick="propSelectSubTab('mis')">Mis propuestas</button>
-            <button class="prop-sub-tab"        data-tab="otras" onclick="propSelectSubTab('otras')">Otras propuestas</button>
-          </div>
-          <button class="prop-new-btn" onclick="cerrarSocialPanel();abrirPropuesta()">+ Proponer</button>
-        </div>
         <div id="sf-propuestas-list"></div>
         <div id="sf-otras-propuestas-list" style="display:none"></div>
+        <div id="prop-cta-bar">
+          <button id="prop-cta-btn" onclick="cerrarSocialPanel();abrirPropuesta()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Proponer al hemiciclo
+          </button>
+        </div>
       </div>
       <div class="sf-cm-pane" id="sfp-seguidores"><div id="sf-seguidores-list"></div></div>
       <div class="sf-cm-pane" id="sfp-seguidos">  <div id="sf-seguidos-list"></div></div>
