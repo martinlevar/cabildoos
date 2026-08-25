@@ -1784,18 +1784,30 @@
         <button class="sf-cm-tab" data-tab="seguidores" onclick="sfSelectTab('seguidores')">Seguidores</button>
         <button class="sf-cm-tab" data-tab="mensajes"   onclick="sfSelectTab('mensajes')">Mensajes</button>
       </div>
+      <!-- ── Propuestas extended header (visible solo en propuestas-mode) ── -->
+      <div id="prop-hdr-ext" style="display:none">
+        <div id="prop-hdr-eyebrow">Cabildo de Venezuela · Hemiciclo</div>
+        <div id="prop-stats-strip">
+          <span class="prop-stat-pill camp"     id="psp-camp">— en campaña</span>
+          <span class="prop-stat-pill approved" id="psp-aprov">— aprobadas</span>
+          <span class="prop-stat-pill rejected" id="psp-rej">— rechazadas</span>
+        </div>
+        <div id="prop-hdr-tabs">
+          <button class="prop-hdr-tab active" data-tab="mis"   onclick="propSelectSubTab('mis')">Mis propuestas</button>
+          <button class="prop-hdr-tab"         data-tab="otras" onclick="propSelectSubTab('otras')">Comunidad</button>
+        </div>
+      </div>
     </div>
     <div class="sf-cm-body">
       <div class="sf-cm-pane" id="sfp-propuestas">
-        <div class="prop-pane-hd">
-          <div class="prop-sub-tabs">
-            <button class="prop-sub-tab active" data-tab="mis"   onclick="propSelectSubTab('mis')">Mis propuestas</button>
-            <button class="prop-sub-tab"        data-tab="otras" onclick="propSelectSubTab('otras')">Otras propuestas</button>
-          </div>
-          <button class="prop-new-btn" onclick="cerrarSocialPanel();abrirPropuesta()">+ Proponer</button>
-        </div>
         <div id="sf-propuestas-list"></div>
         <div id="sf-otras-propuestas-list" style="display:none"></div>
+        <div id="prop-cta-bar">
+          <button id="prop-cta-btn" onclick="cerrarSocialPanel();abrirPropuesta()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Proponer al hemiciclo
+          </button>
+        </div>
       </div>
       <div class="sf-cm-pane" id="sfp-seguidores"><div id="sf-seguidores-list"></div></div>
       <div class="sf-cm-pane" id="sfp-seguidos">  <div id="sf-seguidos-list"></div></div>
