@@ -1934,7 +1934,7 @@ function mostrarBannerGanador() {
 
   const wl = document.getElementById('sw-winner-line')
   if (totalVotos === 0) {
-    wl.textContent = 'Sin votos registrados'
+    wl.innerHTML = '<b>Votación nula</b> · participación insuficiente para publicar resultados'
     wl.style.color = '#888'
   } else if (empate) {
     wl.textContent = `Empate — ${pctSi}% SÍ · ${pctNo}% NO`
@@ -2045,19 +2045,22 @@ function abrirCertificado() {
     no:     `<b>Resultado: NO</b> · ${pctNo}%`,
     empate: `<b>Empate</b> — ${pctSi}% SÍ · ${pctNo}% NO`
   }
+  const nula = total === 0
 
   document.getElementById('cert-question-txt').textContent = pregunta
 
   // Stats (solo resultados globales, no el voto individual)
-  document.getElementById('cs-num-si').textContent  = cntSi.toLocaleString('es-AR')
-  document.getElementById('cs-num-no').textContent  = cntNo.toLocaleString('es-AR')
-  document.getElementById('cs-num-abs').textContent = cntAbs.toLocaleString('es-AR')
-  document.getElementById('cs-pct-si').textContent  = pctSi + '%'
-  document.getElementById('cs-pct-no').textContent  = pctNo + '%'
-  document.getElementById('cs-pct-abs').textContent = pctAbs + '%'
-  document.getElementById('cs-total-votos').textContent = total.toLocaleString('es-AR')
-  document.getElementById('cs-winner-txt').innerHTML = winnerTxts[gana] || ''
-  if (cntAbs === 0) document.getElementById('cs-row-abs').style.display = 'none'
+  document.getElementById('cs-num-si').textContent  = nula ? '—' : cntSi.toLocaleString('es-AR')
+  document.getElementById('cs-num-no').textContent  = nula ? '—' : cntNo.toLocaleString('es-AR')
+  document.getElementById('cs-num-abs').textContent = nula ? '—' : cntAbs.toLocaleString('es-AR')
+  document.getElementById('cs-pct-si').textContent  = nula ? '' : pctSi + '%'
+  document.getElementById('cs-pct-no').textContent  = nula ? '' : pctNo + '%'
+  document.getElementById('cs-pct-abs').textContent = nula ? '' : pctAbs + '%'
+  document.getElementById('cs-total-votos').textContent = nula ? '—' : total.toLocaleString('es-AR')
+  document.getElementById('cs-winner-txt').innerHTML = nula
+    ? '<b>Votación nula</b> · se requieren mín. 3 votos por opción para publicar resultados'
+    : (winnerTxts[gana] || '')
+  if (nula || cntAbs === 0) document.getElementById('cs-row-abs').style.display = 'none'
   else document.getElementById('cs-row-abs').style.display = ''
 
   document.getElementById('cert-butaca').textContent = '#' + MY_SEAT
