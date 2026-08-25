@@ -10027,6 +10027,13 @@ let _audRafId = null
 let _audMuted = false   // estado de mute del video
 let _audTouchDist = 0
 
+// Chat & manos state
+let _audChatOpen   = false
+let _audChatMsgs   = []        // { seat, alias, text, at }
+let _audHandQueue  = []        // { seat, alias, raisedAt }
+let _audMyHandUp   = false
+const AUD_CHAT_MAX = 150
+
 async function abrirAuditorio() {
   document.getElementById('auditorio-overlay').classList.add('open')
   await _audLoadSession()
@@ -10044,6 +10051,17 @@ function cerrarAuditorio() {
   if (_audSessionChannel) { sb.removeChannel(_audSessionChannel); _audSessionChannel = null }
   _audPresenceState = {}
   _audCanvasDestroy()
+  // Resetear chat
+  _audChatOpen  = false
+  _audChatMsgs  = []
+  _audHandQueue = []
+  _audMyHandUp  = false
+  const content = document.getElementById('aud-session-content')
+  const panel   = document.getElementById('aud-chat-panel')
+  const btn     = document.getElementById('aud-chat-toggle-btn')
+  if (content) content.classList.remove('chat-open')
+  if (panel)   panel.style.display = 'none'
+  if (btn)     btn.classList.remove('active')
 }
 
 // ── Canvas interactivo ──────────────────────────────────────
@@ -10248,11 +10266,157 @@ function _audJoinPresence() {
     .on('broadcast', { event: 'reaction' }, ({ payload }) => {
       _audShowFloatReaction(payload.emoji)
     })
+    .on('broadcast', { event: 'aud_chat' }, ({ payload }) => {
+      _audChatMsgs.push(payload)
+      if (_audChatMsgs.length > AUD_CHAT_MAX) _audChatMsgs.shift()
+      _audRenderChat()
+      if (!_audChatOpen) _audBumpUnread()
+    })
+    .on('broadcast', { event: 'aud_hand' }, ({ payload }) => {
+      if (payload.action === 'raise') {
+        if (!_audHandQueue.find(h => h.seat === payload.seat)) {
+          _audHandQueue.push({ seat: payload.seat, alias: payload.alias, raisedAt: payload.at })
+        }
+      } else {
+        _audHandQueue = _audHandQueue.filter(h => h.seat !== payload.seat)
+      }
+      _audRenderHands()
+    })
     .subscribe(async (status) => {
       if (status === 'SUBSCRIBED' && MY_SEAT > 0) {
         await _audChannel.track({ seat: MY_SEAT, at: Date.now() })
       }
     })
+}
+
+// ── Chat toggle ──
+function audToggleChat() {
+  _audChatOpen = !_audChatOpen
+  const content = document.getElementById('aud-session-content')
+  const panel   = document.getElementById('aud-chat-panel')
+  const btn     = document.getElementById('aud-chat-toggle-btn')
+  const badge   = document.getElementById('aud-chat-unread')
+  if (content) content.classList.toggle('chat-open', _audChatOpen)
+  if (panel)   panel.style.display = _audChatOpen ? 'flex' : 'none'
+  if (btn)     btn.classList.toggle('active', _audChatOpen)
+  if (badge)   badge.style.display = 'none'
+  // Mostrar/ocultar input según butaca
+  const hasButaca = MY_SEAT > 0
+  const input   = document.getElementById('aud-chat-input')
+  const sendBtn = document.getElementById('aud-chat-send-btn')
+  const noButEl = document.getElementById('aud-chat-no-butaca')
+  const raiseBtn = document.getElementById('aud-raise-btn')
+  if (input)   input.style.display   = hasButaca ? '' : 'none'
+  if (sendBtn) sendBtn.style.display = hasButaca ? '' : 'none'
+  if (noButEl) noButEl.style.display = hasButaca ? 'none' : ''
+  if (raiseBtn) raiseBtn.style.display = hasButaca ? '' : 'none'
+  if (_audChatOpen) {
+    _audRenderChat()
+    _audRenderHands()
+    if (hasButaca) setTimeout(() => document.getElementById('aud-chat-input')?.focus(), 80)
+  }
+}
+
+function _audBumpUnread() {
+  const badge = document.getElementById('aud-chat-unread')
+  if (!badge) return
+  const cur = parseInt(badge.textContent) || 0
+  badge.textContent = Math.min(cur + 1, 99)
+  badge.style.display = 'flex'
+}
+
+// ── Enviar mensaje de chat ──
+function audSendChat() {
+  if (!_audChannel || MY_SEAT <= 0) return
+  const input = document.getElementById('aud-chat-input')
+  if (!input) return
+  const text = input.value.trim()
+  if (!text) return
+  const alias = _profilesCache[MY_SEAT]?.alias || `Butaca #${MY_SEAT}`
+  const payload = { seat: MY_SEAT, alias, text, at: Date.now() }
+  _audChannel.send({ type: 'broadcast', event: 'aud_chat', payload })
+  // Agregar el propio mensaje localmente (broadcast no se recibe de vuelta)
+  _audChatMsgs.push(payload)
+  if (_audChatMsgs.length > AUD_CHAT_MAX) _audChatMsgs.shift()
+  input.value = ''
+  _audRenderChat()
+}
+
+// ── Levantar / bajar mano ──
+function audToggleHand() {
+  if (!_audChannel || MY_SEAT <= 0) return
+  _audMyHandUp = !_audMyHandUp
+  const alias = _profilesCache[MY_SEAT]?.alias || `Butaca #${MY_SEAT}`
+  const action = _audMyHandUp ? 'raise' : 'lower'
+  const payload = { seat: MY_SEAT, alias, action, at: Date.now() }
+  _audChannel.send({ type: 'broadcast', event: 'aud_hand', payload })
+  // Actualizar estado local también
+  if (_audMyHandUp) {
+    if (!_audHandQueue.find(h => h.seat === MY_SEAT)) {
+      _audHandQueue.push({ seat: MY_SEAT, alias, raisedAt: Date.now() })
+    }
+  } else {
+    _audHandQueue = _audHandQueue.filter(h => h.seat !== MY_SEAT)
+  }
+  _audRenderHands()
+  // Actualizar botón
+  const btn = document.getElementById('aud-raise-btn')
+  if (btn) {
+    btn.classList.toggle('raised', _audMyHandUp)
+    const svg = btn.querySelector('svg')
+    btn.innerHTML = `${svg?.outerHTML || ''} ${_audMyHandUp ? 'Bajar la mano' : 'Pedir la palabra'}`
+  }
+}
+
+// ── Render chat ──
+function _audRenderChat() {
+  const el = document.getElementById('aud-chat-msgs')
+  if (!el) return
+  if (!_audChatMsgs.length) {
+    el.innerHTML = '<p class="aud-chat-empty">Aún no hay mensajes</p>'
+    return
+  }
+  const bottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60
+  el.innerHTML = _audChatMsgs.map(m => {
+    const ci     = m.seat % AVATAR_COLORS_CONVO.length
+    const init   = (m.alias || '?').slice(0, 2).toUpperCase()
+    const isMe   = m.seat === MY_SEAT
+    const color  = AVATAR_COLORS_CONVO[ci]
+    return `<div class="aud-msg">
+      <div class="aud-msg-av" style="background:${color}">${init}</div>
+      <div class="aud-msg-body">
+        <div class="aud-msg-alias${isMe ? ' me' : ''}">${escapeHtml(m.alias)}${isMe ? ' · tú' : ''}</div>
+        <div class="aud-msg-text">${escapeHtml(m.text)}</div>
+      </div>
+    </div>`
+  }).join('')
+  if (bottom) el.scrollTop = el.scrollHeight
+}
+
+// ── Render cola de manos ──
+function _audRenderHands() {
+  const listEl   = document.getElementById('aud-hands-list')
+  const countEl  = document.getElementById('aud-hands-count')
+  if (!listEl) return
+  if (countEl) {
+    countEl.textContent   = _audHandQueue.length
+    countEl.style.display = _audHandQueue.length ? 'flex' : 'none'
+  }
+  if (!_audHandQueue.length) {
+    listEl.innerHTML = '<p class="aud-chat-empty">Nadie ha pedido la palabra</p>'
+    return
+  }
+  listEl.innerHTML = _audHandQueue.map((h, i) => {
+    const ci   = h.seat % AVATAR_COLORS_CONVO.length
+    const init = (h.alias || '?').slice(0, 2).toUpperCase()
+    const isMe = h.seat === MY_SEAT
+    return `<div class="aud-hand-row">
+      <span class="aud-hand-pos">${i + 1}</span>
+      <div class="aud-hand-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${init}</div>
+      <span class="aud-hand-alias">${escapeHtml(h.alias)}</span>
+      ${isMe ? '<span class="aud-hand-me">tú</span>' : ''}
+    </div>`
+  }).join('')
 }
 
 function _audUpdatePresence() {

@@ -2186,6 +2186,10 @@
           <svg width="13" height="12" viewBox="0 0 13 12" fill="none"><circle cx="4.5" cy="3.5" r="2.5" fill="currentColor"/><path d="M0 11c0-2.76 2.01-5 4.5-5s4.5 2.24 4.5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="10.5" cy="3" r="2" fill="currentColor" opacity=".5"/><path d="M9 8.5c.7-.3 1.4-.3 2-.1 1 .3 1.7 1.3 1.7 2.6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" opacity=".5"/></svg>
           <span id="aud-count">0</span> viendo
         </div>
+        <button id="aud-chat-toggle-btn" class="aud-chat-toggle-btn" onclick="audToggleChat()" title="Chat del auditorio">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="aud-chat-unread" class="aud-chat-badge" style="display:none"></span>
+        </button>
         <button class="aud-close-btn" onclick="cerrarAuditorio()">✕</button>
       </div>
     </div>
@@ -2194,7 +2198,10 @@
     <p id="aud-session-desc" style="display:none"></p>
 
     <!-- Active session content -->
-    <div id="aud-session-content" style="display:none;flex:1;flex-direction:column">
+    <div id="aud-session-content" style="display:none">
+
+    <!-- Columna principal (video + reacciones + hemiciclo) -->
+    <div id="aud-main-col">
 
       <!-- Video embed -->
       <div id="aud-video-wrap">
@@ -2273,6 +2280,39 @@
         </div>
         <p id="aud-no-viewers" style="display:none">Sé el primero en conectarte</p>
       </div>
+
+    </div><!-- /aud-main-col -->
+
+    <!-- ── Chat lateral (oculto por defecto) ── -->
+    <div id="aud-chat-panel" style="display:none">
+      <!-- Cola de manos levantadas -->
+      <div id="aud-hands-section">
+        <div class="aud-chat-section-hd">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M21 15.5a2.5 2.5 0 0 1-2.5 2.5h-1v1a2 2 0 0 1-2 2h-1v.5a1.5 1.5 0 0 1-3 0V18H9.5A4.5 4.5 0 0 1 5 13.5V10a1 1 0 0 1 2 0v3h1V5a1 1 0 0 1 2 0v5h1V4a1 1 0 0 1 2 0v6h1V6a1 1 0 0 1 2 0v7.5h1.5a.5.5 0 0 0 .5-.5V10a1 1 0 0 1 2 0v5.5z"/></svg>
+          <span>Piden la palabra</span>
+          <span id="aud-hands-count" class="aud-hands-badge" style="display:none">0</span>
+        </div>
+        <div id="aud-hands-list"><p class="aud-chat-empty">Nadie ha pedido la palabra</p></div>
+        <button id="aud-raise-btn" onclick="audToggleHand()" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 15.5a2.5 2.5 0 0 1-2.5 2.5h-1v1a2 2 0 0 1-2 2h-1v.5a1.5 1.5 0 0 1-3 0V18H9.5A4.5 4.5 0 0 1 5 13.5V10a1 1 0 0 1 2 0v3h1V5a1 1 0 0 1 2 0v5h1V4a1 1 0 0 1 2 0v6h1V6a1 1 0 0 1 2 0v7.5h1.5a.5.5 0 0 0 .5-.5V10a1 1 0 0 1 2 0v5.5z"/></svg>
+          Pedir la palabra
+        </button>
+      </div>
+
+      <!-- Mensajes -->
+      <div id="aud-chat-msgs"></div>
+
+      <!-- Input -->
+      <div id="aud-chat-input-wrap">
+        <input id="aud-chat-input" type="text" placeholder="Mensaje al auditorio…" maxlength="280"
+               onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();audSendChat()}"
+               style="display:none"/>
+        <button id="aud-chat-send-btn" onclick="audSendChat()" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+        <p id="aud-chat-no-butaca" class="aud-chat-empty" style="display:none">Necesitás una butaca verificada para chatear</p>
+      </div>
+    </div><!-- /aud-chat-panel -->
 
     </div><!-- /aud-session-content -->
 
