@@ -131,13 +131,14 @@ html, body {
 #q-cards-strip {
   flex-shrink:0;
   display:flex; gap:12px;
-  flex-direction: row-reverse; justify-content: flex-start;
   padding:14px 20px 12px;
   overflow-x:auto; scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch; scrollbar-width:none;
   position:relative; z-index:5;
 }
-#q-cards-strip:has(.q-card:only-child) { justify-content: center; }
+/* Center cards as a group; collapses to left-align when overflowing */
+#q-cards-strip .q-card:first-child { margin-left: auto; }
+#q-cards-strip .q-card:last-child  { margin-right: auto; }
 #q-cards-strip::-webkit-scrollbar { display:none; }
 #q-cards-strip.empty { padding:18px 20px; align-items:center; }
 
