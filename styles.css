@@ -231,6 +231,15 @@ html, body {
   white-space:nowrap; transition:background .18s, color .18s;
 }
 .q-card-reveal-badge:hover { background:#3b82f6; color:#fff; }
+/* Botón de revelación en el área de acciones (sesión finalizada) */
+.q-card-revelacion-btn {
+  padding:9px 10px; border-radius:11px;
+  background:#2563eb; color:#fff; border:none;
+  font-family:'Manrope',sans-serif; font-size:12px; font-weight:800;
+  cursor:pointer; transition:background .15s; white-space:nowrap;
+  text-align:center;
+}
+.q-card-revelacion-btn:hover { background:#1d4ed8; }
 
 .q-empty-msg { font-size:13px; color:var(--mid); font-weight:600; }
 .debate-dot { width:6px; height:6px; border-radius:50%; background:#22c55e; flex-shrink:0;

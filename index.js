@@ -7223,15 +7223,17 @@ function renderQCards() {
 
     // Chip de estado de voto (activo = clickeable para votar/cambiar, finalizado = solo lectura)
     let voteAreaHTML = ''
+    let _cdRightEnded = ''
     if (ended) {
-      // Estado final — no clickeable
+      // Estado final — chip de voto en countdown, botón revelación en acciones
       const statusMap = {
         si:  { lbl:'Voté SÍ',     bg:'#dcfce7', color:'#166534' },
         no:  { lbl:'Voté NO',     bg:'#fee2e2', color:'#991b1b' },
         abs: { lbl:'Me abstuve',  bg:'#fef9c3', color:'#854d0e' },
       }
       const st = votoVal ? statusMap[votoVal] : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
-      voteAreaHTML = `<span class="q-vote-status-chip" style="background:${st.bg};color:${st.color}">${st.lbl}</span>`
+      _cdRightEnded = `<span class="q-vote-status-chip" style="background:${st.bg};color:${st.color};font-size:10px;padding:4px 10px">${st.lbl}</span>`
+      voteAreaHTML = `<button class="q-card-revelacion-btn" style="flex:1" onclick="abrirVotoForQ(${i})">Ver Revelación →</button>`
     } else {
       // Activa — botón clickeable
       let voteBtnTxt, voteBtnCls = 'q-card-vote-btn'
@@ -7242,9 +7244,9 @@ function renderQCards() {
       voteAreaHTML = `<button class="${voteBtnCls}" style="flex:1" onclick="abrirVotoForQ(${i})">${voteBtnTxt}</button>`
     }
 
-    // Badge countdown: activa = "En curso", finalizada = botón revelación
+    // Badge countdown: activa = "En curso", finalizada = chip con estado del voto
     const cdRight = ended
-      ? `<button class="q-card-reveal-badge" onclick="abrirVotoForQ(${i})">Revelación</button>`
+      ? _cdRightEnded
       : `<span class="q-card-cd-badge" style="background:${theme.pill};color:${theme.txt}">En curso</span>`
 
     const card = document.createElement('div')
