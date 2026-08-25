@@ -131,16 +131,18 @@ html, body {
 #q-cards-strip {
   flex-shrink:0;
   display:flex; gap:12px;
+  flex-direction: row-reverse; justify-content: flex-start;
   padding:14px 20px 12px;
   overflow-x:auto; scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch; scrollbar-width:none;
   position:relative; z-index:5;
 }
+#q-cards-strip:has(.q-card:only-child) { justify-content: center; }
 #q-cards-strip::-webkit-scrollbar { display:none; }
 #q-cards-strip.empty { padding:18px 20px; align-items:center; }
 
 .q-card {
-  min-width:290px; max-width:330px; flex-shrink:0;
+  min-width:320px; max-width:380px; flex-shrink:0;
   background:#fff; border-radius:18px;
   border:1px solid rgba(0,0,0,.09);
   box-shadow:0 2px 12px rgba(0,0,0,.06), 0 0 0 0.5px rgba(0,0,0,.04);
@@ -149,8 +151,11 @@ html, body {
   transition:box-shadow .2s;
 }
 .q-card:hover { box-shadow:0 6px 24px rgba(0,0,0,.1), 0 0 0 0.5px rgba(0,0,0,.06); }
-.q-card.ended { opacity:.45; filter:grayscale(.35); transition:opacity .25s, filter .25s, box-shadow .2s; }
-.q-card.ended:hover { opacity:1; filter:grayscale(0); }
+.q-card.ended { transition:box-shadow .2s; }
+.q-card.ended .q-card-inner,
+.q-card.ended .q-card-countdown { opacity:.45; filter:grayscale(.35); transition:opacity .25s, filter .25s; }
+.q-card.ended:hover .q-card-inner,
+.q-card.ended:hover .q-card-countdown { opacity:1; filter:grayscale(0); }
 
 /* Category pill on card */
 .q-cat-pill {
