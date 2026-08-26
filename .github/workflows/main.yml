@@ -43,11 +43,3 @@ jobs:
     with:
       deployment_environment: prod
     secrets: inherit
-
-  deploy-prod:
-    name: "Production"
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-    uses: ./.github/workflows/deployment.yml
-    with:
-      deployment_environment: prod
-    secrets: inherit
