@@ -875,6 +875,7 @@
     <!-- Message bar (solo visible en tab mensajes) -->
     <div class="upm-msg-bar" id="upm-msg-bar" style="display:none">
       <input class="upm-msg-input" id="upm-msg-input" placeholder="Escribe un mensaje privado…"
+             autocomplete="off"
              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();upmSendMsg()}">
       <button class="upm-msg-send" onclick="upmSendMsg()" title="Enviar">➤</button>
     </div>
@@ -2311,6 +2312,7 @@
         </div>
         <!-- Estado: mano levantada → input habilitado -->
         <input id="aud-chat-input" type="text" placeholder="Escribí tu mensaje…" maxlength="280"
+               autocomplete="off"
                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();audSendChat()}"
                style="display:none"/>
         <button id="aud-chat-send-btn" onclick="audSendChat()" style="display:none">
