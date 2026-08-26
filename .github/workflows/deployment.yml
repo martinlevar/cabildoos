@@ -1,0 +1,48 @@
+name: Deploy Workers
+
+on:
+  workflow_call:
+    inputs:
+      deployment_environment:
+        description: The short name of the environment to deploy to, e.g. dev, stg, prod
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Prepare wrangler config
+        run: mv wrangler.${{ inputs.deployment_environment }}.toml wrangler.toml
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: adf1b988d06e8acccfc7616d676d76ce
+          wranglerVersion: "4"
+          command: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: adf1b988d06e8acccfc7616d676d76ce
+
+      - name: Upload secrets
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: adf1b988d06e8acccfc7616d676d76ce
+          wranglerVersion: "4"
+          command: deploy --dry-run
+          secrets: |
+            SUPABASE_KEY
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: adf1b988d06e8acccfc7616d676d76ce
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}

@@ -1,0 +1,45 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - stage
+      - dev
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - stage
+      - dev
+
+jobs:
+  deploy-dev:
+    name: "Development"
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev')
+    uses: ./.github/workflows/deployment.yml
+    with:
+      deployment_environment: dev
+    secrets: inherit
+
+  deploy-stage:
+    name: "Staging"
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/stage') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'stage')
+    uses: ./.github/workflows/deployment.yml
+    with:
+      deployment_environment: stage
+    secrets: inherit
+
+  deploy-prod:
+    name: "Production"
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    uses: ./.github/workflows/deployment.yml
+    with:
+      deployment_environment: prod
+    secrets: inherit
