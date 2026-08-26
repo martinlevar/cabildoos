@@ -3771,14 +3771,11 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Reactions */
 #aud-reactions-wrap {
-  padding:10px 20px; position:relative; flex-shrink:0;
+  padding:10px 16px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  overflow:hidden; min-height:48px;
+  min-height:58px;
 }
-#aud-float-area {
-  position:absolute; inset:0; pointer-events:none; overflow:hidden;
-}
-#aud-reaction-btns { display:flex; gap:6px; position:relative; z-index:1; }
+#aud-reaction-btns { display:flex; gap:6px; align-items:center; }
 .aud-react-btn {
   background:rgba(255,255,255,.07); border:0.5px solid rgba(255,255,255,.1);
   font-size:22px; cursor:pointer;
@@ -3787,15 +3784,56 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 .aud-react-btn:hover { background:rgba(255,255,255,.14); transform:scale(1.15); }
 .aud-react-btn:active { transform:scale(.9); }
+.aud-react-divider {
+  width:1px; height:30px; background:rgba(255,255,255,.12);
+  flex-shrink:0; margin:0 4px;
+}
+.aud-chat-react-btn {
+  position:relative; font-size:0 !important;
+  padding:8px 14px !important; border-radius:12px !important;
+  background:rgba(255,255,255,.09) !important;
+  border-color:rgba(255,255,255,.15) !important;
+  color:rgba(255,255,255,.8);
+  display:flex; align-items:center; justify-content:center;
+}
+.aud-chat-react-btn svg { width:21px; height:21px; }
+.aud-chat-react-btn:hover { background:rgba(255,255,255,.16) !important; color:#fff; }
+.aud-chat-react-btn.active {
+  background:rgba(239,68,68,.3) !important;
+  border-color:rgba(239,68,68,.5) !important; color:#fff;
+}
+
+/* Burbujas de reacción — overlay sobre el video-wrap */
+#aud-video-wrap { position:relative; }
+#aud-float-area {
+  position:absolute; inset:0; pointer-events:none; overflow:hidden;
+  z-index:10;
+}
+
+/* Burbuja de reacción: emoji grande + nombre del remitente */
 .aud-float-reaction {
-  position:absolute; bottom:0; font-size:24px;
-  animation:aud-float 2.4s ease-out forwards;
+  position:absolute;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  animation:aud-float-bubble 3.5s ease-out forwards;
   pointer-events:none; user-select:none;
 }
-@keyframes aud-float {
-  0%   { transform:translateY(0) scale(1);   opacity:1; }
-  60%  { transform:translateY(-80px) scale(1.18); opacity:.9; }
-  100% { transform:translateY(-150px) scale(.8); opacity:0; }
+.aud-float-reaction-emoji {
+  font-size:36px; line-height:1;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));
+}
+.aud-float-reaction-name {
+  background:rgba(0,0,0,.55); color:#fff;
+  font-size:10px; font-weight:700; letter-spacing:.02em;
+  padding:2px 8px; border-radius:10px;
+  white-space:nowrap; max-width:160px;
+  overflow:hidden; text-overflow:ellipsis;
+  backdrop-filter:blur(4px);
+}
+@keyframes aud-float-bubble {
+  0%   { transform:translateX(-50%) translateY(0) scale(.8);    opacity:0; }
+  8%   { transform:translateX(-50%) translateY(-12px) scale(1); opacity:1; }
+  70%  { opacity:.9; }
+  100% { transform:translateX(-50%) translateY(-260px) scale(.75); opacity:0; }
 }
 
 /* Hemiciclo presence — canvas interactivo */
@@ -3839,6 +3877,139 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 #aud-empty-icon { font-size:48px; margin-bottom:14px; opacity:.5; }
 #aud-empty-title { font-size:17px; font-weight:700; margin:0 0 8px; }
 #aud-empty-sub { font-size:13px; color:rgba(255,255,255,.35); line-height:1.5; max-width:320px; }
+
+/* ── Badge de chat no leído ── */
+.aud-chat-badge {
+  position:absolute; top:-3px; right:-3px;
+  background:#ef4444; color:#fff; font-size:9px; font-weight:800;
+  min-width:16px; height:16px; border-radius:8px; padding:0 4px;
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid #080B0F;
+}
+
+/* ── Layout: columna por defecto, row cuando chat abierto ── */
+#aud-session-content { display:flex; flex-direction:column; flex:1; overflow:hidden; }
+#aud-session-content.chat-open { flex-direction:row; }
+
+#aud-main-col {
+  flex:1; display:flex; flex-direction:column;
+  overflow-y:auto; min-width:0;
+}
+/* Cuando chat está abierto el video se achica un poco */
+#aud-session-content.chat-open #aud-video-stage,
+#aud-session-content.chat-open #aud-no-stream,
+#aud-session-content.chat-open #aud-join-wrap {
+  width:min(44vw, 560px);
+}
+
+/* ── Panel de chat lateral ── */
+#aud-chat-panel {
+  width:320px; flex-shrink:0;
+  background:rgba(255,255,255,.03);
+  border-left:0.5px solid rgba(255,255,255,.08);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  animation:aud-chat-slide .28s cubic-bezier(.22,1,.36,1);
+}
+@keyframes aud-chat-slide {
+  from { transform:translateX(40px); opacity:0; }
+  to   { transform:translateX(0);    opacity:1; }
+}
+
+/* Cola de manos levantadas */
+#aud-hands-section {
+  border-bottom:0.5px solid rgba(255,255,255,.08);
+  padding:12px 14px 10px; flex-shrink:0;
+}
+.aud-chat-section-hd {
+  display:flex; align-items:center; gap:7px;
+  font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+  color:rgba(255,255,255,.4); margin-bottom:8px;
+}
+.aud-chat-section-hd svg { opacity:.6; flex-shrink:0; }
+.aud-hands-badge {
+  background:#f59e0b; color:#000; font-size:9px; font-weight:900;
+  padding:1px 6px; border-radius:10px; margin-left:auto;
+}
+#aud-hands-list {
+  display:flex; flex-direction:column; gap:5px; max-height:110px; overflow-y:auto;
+}
+.aud-hand-row {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,.05); border-radius:8px; padding:6px 10px;
+}
+.aud-hand-pos {
+  font-size:10px; font-weight:900; color:#f59e0b; width:14px; flex-shrink:0;
+}
+.aud-hand-av {
+  width:22px; height:22px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:8px; font-weight:800; color:#fff;
+}
+.aud-hand-alias { font-size:12px; font-weight:600; color:rgba(255,255,255,.85); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aud-hand-me { font-size:10px; color:#f59e0b; font-weight:700; }
+#aud-raise-btn {
+  margin-top:8px; width:100%; padding:7px 12px; border:none; border-radius:8px;
+  background:rgba(245,158,11,.15); color:#f59e0b; border:0.5px solid rgba(245,158,11,.3);
+  font-family:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  transition:all .15s;
+}
+#aud-raise-btn:hover { background:rgba(245,158,11,.25); }
+#aud-raise-btn.raised { background:rgba(239,68,68,.15); color:#ef4444; border-color:rgba(239,68,68,.3); }
+#aud-raise-btn.raised:hover { background:rgba(239,68,68,.25); }
+
+/* Mensajes de chat */
+#aud-chat-msgs {
+  flex:1; overflow-y:auto; padding:10px 14px;
+  display:flex; flex-direction:column; gap:8px;
+  scroll-behavior:smooth;
+}
+#aud-chat-msgs::-webkit-scrollbar { width:3px; }
+#aud-chat-msgs::-webkit-scrollbar-thumb { background:rgba(255,255,255,.15); border-radius:2px; }
+.aud-msg {
+  display:flex; gap:8px; align-items:flex-start;
+}
+.aud-msg-av {
+  width:26px; height:26px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:800; color:#fff;
+}
+.aud-msg-body { flex:1; min-width:0; }
+.aud-msg-alias {
+  font-size:10px; font-weight:700; color:rgba(255,255,255,.45);
+  margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.aud-msg-alias.me { color:#ef4444; }
+.aud-msg-text {
+  font-size:13px; color:rgba(255,255,255,.88); line-height:1.4;
+  word-break:break-word;
+}
+.aud-chat-empty {
+  font-size:12px; color:rgba(255,255,255,.25); text-align:center;
+  padding:12px 0; margin:0;
+}
+
+/* Input del chat */
+#aud-chat-input-wrap {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 12px; border-top:0.5px solid rgba(255,255,255,.08);
+  flex-shrink:0;
+}
+#aud-chat-input {
+  flex:1; background:rgba(255,255,255,.07); border:0.5px solid rgba(255,255,255,.12);
+  border-radius:10px; padding:8px 12px; color:#fff; font-family:inherit; font-size:13px;
+  outline:none; transition:border .15s;
+}
+#aud-chat-input::placeholder { color:rgba(255,255,255,.3); }
+#aud-chat-input:focus { border-color:rgba(255,255,255,.3); }
+#aud-chat-send-btn {
+  width:34px; height:34px; border-radius:50%; border:none; flex-shrink:0;
+  background:#ef4444; color:#fff; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s; padding-left:2px;
+}
+#aud-chat-send-btn:hover { background:#dc2626; transform:scale(1.08); }
 
 /* Live badge on nav */
 #nav-auditorio-badge {
