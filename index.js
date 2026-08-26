@@ -10028,11 +10028,14 @@ let _audMuted = false   // estado de mute del video
 let _audTouchDist = 0
 
 // Chat & manos state
-let _audChatOpen   = false
-let _audChatMsgs   = []        // { seat, alias, text, at }
-let _audHandQueue  = []        // { seat, alias, raisedAt }
-let _audMyHandUp   = false
-const AUD_CHAT_MAX = 150
+let _audChatOpen      = false
+let _audChatMsgs      = []        // { seat, alias, text, at }
+let _audHandQueue     = []        // { seat, alias, raisedAt }
+let _audMyHandUp      = false
+let _audLastSentAt    = 0         // timestamp del último mensaje enviado
+let _audCooldownTimer = null      // intervalID del countdown
+const AUD_CHAT_MAX    = 150
+const AUD_COOLDOWN_MS = 60_000   // 1 minuto de cooldown entre mensajes
 
 async function abrirAuditorio() {
   document.getElementById('auditorio-overlay').classList.add('open')
@@ -10052,10 +10055,12 @@ function cerrarAuditorio() {
   _audPresenceState = {}
   _audCanvasDestroy()
   // Resetear chat
-  _audChatOpen  = false
-  _audChatMsgs  = []
-  _audHandQueue = []
-  _audMyHandUp  = false
+  _audChatOpen   = false
+  _audChatMsgs   = []
+  _audHandQueue  = []
+  _audMyHandUp   = false
+  _audLastSentAt = 0
+  if (_audCooldownTimer) { clearInterval(_audCooldownTimer); _audCooldownTimer = null }
   const content = document.getElementById('aud-session-content')
   const panel   = document.getElementById('aud-chat-panel')
   const btn     = document.getElementById('aud-chat-toggle-btn')
@@ -10300,20 +10305,10 @@ function audToggleChat() {
   if (panel)   panel.style.display = _audChatOpen ? 'flex' : 'none'
   if (btn)     btn.classList.toggle('active', _audChatOpen)
   if (badge)   badge.style.display = 'none'
-  // Mostrar/ocultar input según butaca
-  const hasButaca = MY_SEAT > 0
-  const input   = document.getElementById('aud-chat-input')
-  const sendBtn = document.getElementById('aud-chat-send-btn')
-  const noButEl = document.getElementById('aud-chat-no-butaca')
-  const raiseBtn = document.getElementById('aud-raise-btn')
-  if (input)   input.style.display   = hasButaca ? '' : 'none'
-  if (sendBtn) sendBtn.style.display = hasButaca ? '' : 'none'
-  if (noButEl) noButEl.style.display = hasButaca ? 'none' : ''
-  if (raiseBtn) raiseBtn.style.display = hasButaca ? '' : 'none'
+  _audUpdateChatInput()
   if (_audChatOpen) {
     _audRenderChat()
     _audRenderHands()
-    if (hasButaca) setTimeout(() => document.getElementById('aud-chat-input')?.focus(), 80)
   }
 }
 
@@ -10325,9 +10320,75 @@ function _audBumpUnread() {
   badge.style.display = 'flex'
 }
 
+// ── Actualizar estado visual del input según permisos ──
+function _audUpdateChatInput() {
+  const hasButaca  = MY_SEAT > 0
+  const inCooldown = _audLastSentAt > 0 && (Date.now() - _audLastSentAt) < AUD_COOLDOWN_MS
+
+  const inputEl    = document.getElementById('aud-chat-input')
+  const sendBtn    = document.getElementById('aud-chat-send-btn')
+  const noButEl    = document.getElementById('aud-chat-no-butaca')
+  const hintEl     = document.getElementById('aud-chat-hint')
+  const cooldownEl = document.getElementById('aud-chat-cooldown')
+  const raiseBtn   = document.getElementById('aud-raise-btn')
+
+  // Ocultar todo por defecto
+  const hide = el => { if (el) el.style.display = 'none' }
+  hide(inputEl); hide(sendBtn); hide(noButEl); hide(hintEl); hide(cooldownEl)
+
+  if (!hasButaca) {
+    // Sin butaca: mensaje estático
+    if (noButEl) noButEl.style.display = ''
+    if (raiseBtn) raiseBtn.style.display = 'none'
+    return
+  }
+
+  // Tiene butaca
+  if (raiseBtn) {
+    raiseBtn.style.display = inCooldown ? 'none' : ''
+    raiseBtn.disabled = inCooldown
+    raiseBtn.classList.toggle('raised', _audMyHandUp)
+    const svgHand = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 15.5a2.5 2.5 0 0 1-2.5 2.5h-1v1a2 2 0 0 1-2 2h-1v.5a1.5 1.5 0 0 1-3 0V18H9.5A4.5 4.5 0 0 1 5 13.5V10a1 1 0 0 1 2 0v3h1V5a1 1 0 0 1 2 0v5h1V4a1 1 0 0 1 2 0v6h1V6a1 1 0 0 1 2 0v7.5h1.5a.5.5 0 0 0 .5-.5V10a1 1 0 0 1 2 0v5.5z"/></svg>`
+    raiseBtn.innerHTML = `${svgHand} ${_audMyHandUp ? 'Bajar la mano' : 'Pedir la palabra'}`
+  }
+
+  if (inCooldown) {
+    // Mostrando cooldown
+    if (cooldownEl) cooldownEl.style.display = 'block'
+    return
+  }
+
+  if (_audMyHandUp) {
+    // Mano levantada: mostrar input
+    if (inputEl) { inputEl.style.display = ''; setTimeout(() => inputEl.focus(), 60) }
+    if (sendBtn) sendBtn.style.display = ''
+  } else {
+    // Sin mano levantada: mostrar hint
+    if (hintEl) hintEl.style.display = ''
+  }
+}
+
+// ── Iniciar cooldown de 1 minuto ──
+function _audStartCooldown() {
+  _audLastSentAt = Date.now()
+  if (_audCooldownTimer) clearInterval(_audCooldownTimer)
+  _audUpdateChatInput()
+  _audCooldownTimer = setInterval(() => {
+    const remaining = Math.ceil((AUD_COOLDOWN_MS - (Date.now() - _audLastSentAt)) / 1000)
+    const secsEl = document.getElementById('aud-cooldown-secs')
+    if (secsEl) secsEl.textContent = Math.max(0, remaining)
+    if (remaining <= 0) {
+      clearInterval(_audCooldownTimer)
+      _audCooldownTimer = null
+      _audUpdateChatInput()
+    }
+  }, 1000)
+}
+
 // ── Enviar mensaje de chat ──
 function audSendChat() {
   if (!_audChannel || MY_SEAT <= 0) return
+  if (!_audMyHandUp) return   // Debe tener la mano levantada
   const input = document.getElementById('aud-chat-input')
   if (!input) return
   const text = input.value.trim()
@@ -10335,22 +10396,35 @@ function audSendChat() {
   const alias = _profilesCache[MY_SEAT]?.alias || `Butaca #${MY_SEAT}`
   const payload = { seat: MY_SEAT, alias, text, at: Date.now() }
   _audChannel.send({ type: 'broadcast', event: 'aud_chat', payload })
-  // Agregar el propio mensaje localmente (broadcast no se recibe de vuelta)
+  // Agregar localmente (broadcast no se recibe de vuelta)
   _audChatMsgs.push(payload)
   if (_audChatMsgs.length > AUD_CHAT_MAX) _audChatMsgs.shift()
   input.value = ''
   _audRenderChat()
+  // Auto-bajar la mano y arrancar cooldown
+  _audLowerHand()
+  _audStartCooldown()
 }
 
-// ── Levantar / bajar mano ──
+// ── Bajar mano (interno) ──
+function _audLowerHand() {
+  if (!_audMyHandUp) return
+  _audMyHandUp = false
+  const alias = _profilesCache[MY_SEAT]?.alias || `Butaca #${MY_SEAT}`
+  if (_audChannel) _audChannel.send({ type:'broadcast', event:'aud_hand', payload:{ seat:MY_SEAT, alias, action:'lower', at:Date.now() } })
+  _audHandQueue = _audHandQueue.filter(h => h.seat !== MY_SEAT)
+  _audRenderHands()
+}
+
+// ── Levantar / bajar mano (manual) ──
 function audToggleHand() {
   if (!_audChannel || MY_SEAT <= 0) return
+  // Bloquear si está en cooldown
+  if (_audLastSentAt > 0 && (Date.now() - _audLastSentAt) < AUD_COOLDOWN_MS) return
   _audMyHandUp = !_audMyHandUp
   const alias = _profilesCache[MY_SEAT]?.alias || `Butaca #${MY_SEAT}`
   const action = _audMyHandUp ? 'raise' : 'lower'
-  const payload = { seat: MY_SEAT, alias, action, at: Date.now() }
-  _audChannel.send({ type: 'broadcast', event: 'aud_hand', payload })
-  // Actualizar estado local también
+  _audChannel.send({ type:'broadcast', event:'aud_hand', payload:{ seat:MY_SEAT, alias, action, at:Date.now() } })
   if (_audMyHandUp) {
     if (!_audHandQueue.find(h => h.seat === MY_SEAT)) {
       _audHandQueue.push({ seat: MY_SEAT, alias, raisedAt: Date.now() })
@@ -10359,13 +10433,7 @@ function audToggleHand() {
     _audHandQueue = _audHandQueue.filter(h => h.seat !== MY_SEAT)
   }
   _audRenderHands()
-  // Actualizar botón
-  const btn = document.getElementById('aud-raise-btn')
-  if (btn) {
-    btn.classList.toggle('raised', _audMyHandUp)
-    const svg = btn.querySelector('svg')
-    btn.innerHTML = `${svg?.outerHTML || ''} ${_audMyHandUp ? 'Bajar la mano' : 'Pedir la palabra'}`
-  }
+  _audUpdateChatInput()
 }
 
 // ── Render chat ──

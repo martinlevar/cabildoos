@@ -2305,13 +2305,23 @@
 
       <!-- Input -->
       <div id="aud-chat-input-wrap">
-        <input id="aud-chat-input" type="text" placeholder="Mensaje al auditorio…" maxlength="280"
+        <!-- Estado: sin butaca -->
+        <p id="aud-chat-no-butaca" class="aud-chat-hint-msg" style="display:none">Necesitás una butaca verificada para participar</p>
+        <!-- Estado: butaca OK pero mano no levantada -->
+        <p id="aud-chat-hint" class="aud-chat-hint-msg" style="display:none">
+          ✋ Levantá la mano para escribir un mensaje
+        </p>
+        <!-- Estado: en cooldown de 1 minuto -->
+        <div id="aud-chat-cooldown" style="display:none">
+          <span id="aud-chat-cooldown-txt">Podés volver a pedir la palabra en <strong id="aud-cooldown-secs">60</strong>s</span>
+        </div>
+        <!-- Estado: mano levantada → input habilitado -->
+        <input id="aud-chat-input" type="text" placeholder="Escribí tu mensaje…" maxlength="280"
                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();audSendChat()}"
                style="display:none"/>
         <button id="aud-chat-send-btn" onclick="audSendChat()" style="display:none">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
-        <p id="aud-chat-no-butaca" class="aud-chat-empty" style="display:none">Necesitás una butaca verificada para chatear</p>
       </div>
     </div><!-- /aud-chat-panel -->
 

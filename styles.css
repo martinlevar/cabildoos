@@ -3990,9 +3990,22 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   padding:12px 0; margin:0;
 }
 
+/* Hint y cooldown en el input-wrap */
+.aud-chat-hint-msg {
+  font-size:12px; color:rgba(255,255,255,.35); text-align:center;
+  padding:10px 14px; margin:0; line-height:1.4; width:100%;
+}
+#aud-chat-cooldown {
+  width:100%; text-align:center; padding:10px 14px;
+}
+#aud-chat-cooldown-txt {
+  font-size:11px; color:rgba(255,255,255,.3);
+}
+#aud-cooldown-secs { color:rgba(255,180,0,.7); font-variant-numeric:tabular-nums; }
+
 /* Input del chat */
 #aud-chat-input-wrap {
-  display:flex; align-items:center; gap:8px;
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
   padding:10px 12px; border-top:0.5px solid rgba(255,255,255,.08);
   flex-shrink:0;
 }
