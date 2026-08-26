@@ -3908,7 +3908,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   background:rgba(255,255,255,.03);
   border-left:0.5px solid rgba(255,255,255,.08);
   display:flex; flex-direction:column;
-  overflow:hidden;
+  overflow:hidden; position:relative;
   animation:aud-chat-slide .28s cubic-bezier(.22,1,.36,1);
 }
 @keyframes aud-chat-slide {
@@ -3981,6 +3981,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .aud-msg-alias.me { color:#ef4444; }
+.aud-msg-seat { font-weight:400; color:rgba(255,255,255,.3); font-size:10px; margin-left:2px; }
 .aud-msg-text {
   font-size:13px; color:rgba(255,255,255,.88); line-height:1.4;
   word-break:break-word;
@@ -3996,19 +3997,54 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   padding:10px 14px; margin:0; line-height:1.4; width:100%;
 }
 #aud-chat-cooldown {
-  width:100%; text-align:center; padding:10px 14px;
-}
-#aud-chat-cooldown-txt {
-  font-size:11px; color:rgba(255,255,255,.3);
+  width:100%; text-align:center; padding:8px 14px;
+  font-size:12px; color:rgba(255,255,255,.35); line-height:1.4;
 }
 #aud-cooldown-secs { color:rgba(255,180,0,.7); font-variant-numeric:tabular-nums; }
 
 /* Input del chat */
 #aud-chat-input-wrap {
-  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding:10px 12px; border-top:0.5px solid rgba(255,255,255,.08);
+  display:flex; flex-direction:column; align-items:stretch; gap:0;
+  border-top:0.5px solid rgba(255,255,255,.08);
   flex-shrink:0;
 }
+#aud-chat-input-row {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 12px;
+}
+#aud-raise-area {
+  display:flex; flex-direction:column; align-items:stretch; gap:0;
+  padding:8px 12px 10px;
+}
+#aud-raise-btn {
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  background:rgba(255,255,255,.08); border:0.5px solid rgba(255,255,255,.14);
+  color:#fff; border-radius:12px; padding:9px 16px; font-size:13px;
+  font-family:inherit; font-weight:600; cursor:pointer;
+  transition:background .15s, border-color .15s; width:100%;
+}
+#aud-raise-btn:hover { background:rgba(255,255,255,.14); border-color:rgba(255,255,255,.25); }
+#aud-raise-btn.raised {
+  background:rgba(239,68,68,.18); border-color:rgba(239,68,68,.4); color:#f87171;
+}
+#aud-raise-btn.raised:hover { background:rgba(239,68,68,.26); }
+
+/* Toast de primera vez */
+#aud-first-toast {
+  position:absolute; bottom:80px; left:12px; right:12px; z-index:10;
+}
+#aud-first-toast-inner {
+  background:#1a1a2e; border:0.5px solid rgba(255,255,255,.18);
+  border-radius:14px; padding:12px 14px;
+  font-size:12px; color:rgba(255,255,255,.8); line-height:1.5;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  position:relative;
+}
+#aud-first-toast-close {
+  position:absolute; top:8px; right:10px;
+  font-size:11px; color:rgba(255,255,255,.35); cursor:pointer;
+}
+#aud-first-toast-close:hover { color:rgba(255,255,255,.7); }
 #aud-chat-input {
   flex:1; background:rgba(255,255,255,.07); border:0.5px solid rgba(255,255,255,.12);
   border-radius:10px; padding:8px 12px; color:#fff; font-family:inherit; font-size:13px;

@@ -10034,6 +10034,7 @@ let _audHandQueue     = []        // { seat, alias, raisedAt }
 let _audMyHandUp      = false
 let _audLastSentAt    = 0         // timestamp del último mensaje enviado
 let _audCooldownTimer = null      // intervalID del countdown
+let _audHasEverSent   = false     // flag para el toast de primera vez
 const AUD_CHAT_MAX    = 150
 const AUD_COOLDOWN_MS = 60_000   // 1 minuto de cooldown entre mensajes
 
@@ -10325,46 +10326,50 @@ function _audUpdateChatInput() {
   const hasButaca  = MY_SEAT > 0
   const inCooldown = _audLastSentAt > 0 && (Date.now() - _audLastSentAt) < AUD_COOLDOWN_MS
 
-  const inputEl    = document.getElementById('aud-chat-input')
-  const sendBtn    = document.getElementById('aud-chat-send-btn')
   const noButEl    = document.getElementById('aud-chat-no-butaca')
-  const hintEl     = document.getElementById('aud-chat-hint')
-  const cooldownEl = document.getElementById('aud-chat-cooldown')
+  const inputRowEl = document.getElementById('aud-chat-input-row')
+  const raiseArea  = document.getElementById('aud-raise-area')
   const raiseBtn   = document.getElementById('aud-raise-btn')
+  const cooldownEl = document.getElementById('aud-chat-cooldown')
+  const inputEl    = document.getElementById('aud-chat-input')
 
   // Ocultar todo por defecto
-  const hide = el => { if (el) el.style.display = 'none' }
-  hide(inputEl); hide(sendBtn); hide(noButEl); hide(hintEl); hide(cooldownEl)
+  if (noButEl)    noButEl.style.display    = 'none'
+  if (inputRowEl) inputRowEl.style.display = 'none'
+  if (raiseArea)  raiseArea.style.display  = 'none'
+  if (raiseBtn)   raiseBtn.style.display   = ''
+  if (cooldownEl) cooldownEl.style.display = 'none'
 
   if (!hasButaca) {
     // Sin butaca: mensaje estático
     if (noButEl) noButEl.style.display = ''
-    if (raiseBtn) raiseBtn.style.display = 'none'
     return
   }
 
-  // Tiene butaca
+  // Tiene butaca: mostrar área de raise
+  if (raiseArea) raiseArea.style.display = ''
+
+  if (inCooldown) {
+    // En cooldown: ocultar botón, mostrar contador
+    if (raiseBtn)   raiseBtn.style.display   = 'none'
+    if (cooldownEl) cooldownEl.style.display = ''
+    return
+  }
+
+  // No en cooldown: actualizar botón
   if (raiseBtn) {
-    raiseBtn.style.display = inCooldown ? 'none' : ''
-    raiseBtn.disabled = inCooldown
+    raiseBtn.disabled = false
     raiseBtn.classList.toggle('raised', _audMyHandUp)
     const svgHand = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 15.5a2.5 2.5 0 0 1-2.5 2.5h-1v1a2 2 0 0 1-2 2h-1v.5a1.5 1.5 0 0 1-3 0V18H9.5A4.5 4.5 0 0 1 5 13.5V10a1 1 0 0 1 2 0v3h1V5a1 1 0 0 1 2 0v5h1V4a1 1 0 0 1 2 0v6h1V6a1 1 0 0 1 2 0v7.5h1.5a.5.5 0 0 0 .5-.5V10a1 1 0 0 1 2 0v5.5z"/></svg>`
     raiseBtn.innerHTML = `${svgHand} ${_audMyHandUp ? 'Bajar la mano' : 'Pedir la palabra'}`
   }
 
-  if (inCooldown) {
-    // Mostrando cooldown
-    if (cooldownEl) cooldownEl.style.display = 'block'
-    return
-  }
-
   if (_audMyHandUp) {
     // Mano levantada: mostrar input
-    if (inputEl) { inputEl.style.display = ''; setTimeout(() => inputEl.focus(), 60) }
-    if (sendBtn) sendBtn.style.display = ''
-  } else {
-    // Sin mano levantada: mostrar hint
-    if (hintEl) hintEl.style.display = ''
+    if (inputRowEl) {
+      inputRowEl.style.display = ''
+      setTimeout(() => { if (inputEl) inputEl.focus() }, 60)
+    }
   }
 }
 
@@ -10393,6 +10398,17 @@ function audSendChat() {
   if (!input) return
   const text = input.value.trim()
   if (!text) return
+
+  // Toast de primera vez
+  if (!_audHasEverSent) {
+    _audHasEverSent = true
+    const toast = document.getElementById('aud-first-toast')
+    if (toast) {
+      toast.style.display = ''
+      setTimeout(() => { toast.style.display = 'none' }, 7000)
+    }
+  }
+
   const alias = _profilesCache[MY_SEAT]?.alias || `Butaca #${MY_SEAT}`
   const payload = { seat: MY_SEAT, alias, text, at: Date.now() }
   _audChannel.send({ type: 'broadcast', event: 'aud_chat', payload })
@@ -10453,7 +10469,7 @@ function _audRenderChat() {
     return `<div class="aud-msg">
       <div class="aud-msg-av" style="background:${color}">${init}</div>
       <div class="aud-msg-body">
-        <div class="aud-msg-alias${isMe ? ' me' : ''}">${escapeHtml(m.alias)}${isMe ? ' · tú' : ''}</div>
+        <div class="aud-msg-alias${isMe ? ' me' : ''}">${escapeHtml(m.alias)}${isMe ? ' · tú' : ''} <span class="aud-msg-seat">· Butaca #${m.seat}</span></div>
         <div class="aud-msg-text">${escapeHtml(m.text)}</div>
       </div>
     </div>`
