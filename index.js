@@ -7193,7 +7193,7 @@ function renderQCards() {
   strip.innerHTML = ''
   if (PREGUNTAS_DATA.length === 0) {
     strip.classList.add('empty')
-    strip.innerHTML = '<p class="q-empty-msg">Sin preguntas activas…</p>'
+    strip.innerHTML = '<p class="q-empty-msg">No hay sesiones activas</p>'
     return
   }
   const CAT_THEME = window._CAT_THEME
@@ -7213,7 +7213,7 @@ function renderQCards() {
 
   if (sorted.length === 0) {
     strip.classList.add('empty')
-    strip.innerHTML = '<p class="q-empty-msg">Sin preguntas activas…</p>'
+    strip.innerHTML = '<p class="q-empty-msg">No hay sesiones activas</p>'
     return
   }
   strip.classList.remove('empty')

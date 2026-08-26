@@ -140,7 +140,7 @@ html, body {
 #q-cards-strip .q-card:first-child { margin-left: auto; }
 #q-cards-strip .q-card:last-child  { margin-right: auto; }
 #q-cards-strip::-webkit-scrollbar { display:none; }
-#q-cards-strip.empty { padding:18px 20px; align-items:center; }
+#q-cards-strip.empty { padding:24px 20px; align-items:center; justify-content:center; width:100%; }
 
 .q-card {
   min-width:320px; max-width:380px; flex-shrink:0;
@@ -247,7 +247,7 @@ html, body {
 }
 .q-card-revelacion-btn:hover { background:#1d4ed8; }
 
-.q-empty-msg { font-size:13px; color:var(--mid); font-weight:600; }
+.q-empty-msg { font-size:13px; color:var(--fg); opacity:.28; font-weight:500; text-align:center; width:100%; margin:0; }
 .debate-dot { width:6px; height:6px; border-radius:50%; background:#22c55e; flex-shrink:0;
   animation:pulse-dot 1.4s ease-in-out infinite; }
 @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.75)} }
