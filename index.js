@@ -10674,8 +10674,7 @@ function _audShowFloatReaction(emoji, alias) {
   const el = document.createElement('div')
   el.className = 'aud-float-reaction'
   el.style.left = xPct + '%'
-  el.style.bottom = '8px'
-  el.style.transform = 'translateX(-50%)'
+  el.style.bottom = '12px'
 
   const emojiEl = document.createElement('div')
   emojiEl.className = 'aud-float-reaction-emoji'

@@ -3803,15 +3803,11 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   border-color:rgba(239,68,68,.5) !important; color:#fff;
 }
 
-/* ── Columna izquierda: burbujas de reacción ── */
-#aud-float-col {
-  width:190px; flex-shrink:0;
-  position:relative; overflow:hidden;
-  border-right:0.5px solid rgba(255,255,255,.05);
-  background:rgba(0,0,0,.18);
-}
+/* Burbujas de reacción — overlay sobre el video-wrap */
+#aud-video-wrap { position:relative; }
 #aud-float-area {
   position:absolute; inset:0; pointer-events:none; overflow:hidden;
+  z-index:10;
 }
 
 /* Burbuja de reacción: emoji grande + nombre del remitente */
@@ -3834,10 +3830,10 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   backdrop-filter:blur(4px);
 }
 @keyframes aud-float-bubble {
-  0%   { transform:translateY(0) scale(.8);    opacity:0; }
-  8%   { transform:translateY(-10px) scale(1); opacity:1; }
+  0%   { transform:translateX(-50%) translateY(0) scale(.8);    opacity:0; }
+  8%   { transform:translateX(-50%) translateY(-12px) scale(1); opacity:1; }
   70%  { opacity:.9; }
-  100% { transform:translateY(-320px) scale(.7); opacity:0; }
+  100% { transform:translateX(-50%) translateY(-260px) scale(.75); opacity:0; }
 }
 
 /* Hemiciclo presence — canvas interactivo */
@@ -3891,8 +3887,9 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   border:2px solid #080B0F;
 }
 
-/* ── Layout 3 columnas (siempre row) ── */
-#aud-session-content { display:flex; flex-direction:row; flex:1; overflow:hidden; }
+/* ── Layout: columna por defecto, row cuando chat abierto ── */
+#aud-session-content { display:flex; flex-direction:column; flex:1; overflow:hidden; }
+#aud-session-content.chat-open { flex-direction:row; }
 
 #aud-main-col {
   flex:1; display:flex; flex-direction:column;
@@ -3902,7 +3899,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 #aud-session-content.chat-open #aud-video-stage,
 #aud-session-content.chat-open #aud-no-stream,
 #aud-session-content.chat-open #aud-join-wrap {
-  width:min(40vw, 520px);
+  width:min(44vw, 560px);
 }
 
 /* ── Panel de chat lateral ── */
