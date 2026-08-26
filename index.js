@@ -10264,7 +10264,7 @@ function _audJoinPresence() {
       _audUpdatePresence()
     })
     .on('broadcast', { event: 'reaction' }, ({ payload }) => {
-      _audShowFloatReaction(payload.emoji)
+      _audShowFloatReaction(payload.emoji, payload.alias || '')
     })
     .on('broadcast', { event: 'aud_chat' }, ({ payload }) => {
       _audChatMsgs.push(payload)
@@ -10659,19 +10659,36 @@ function _audRenderHemi_UNUSED(presentSeats) {
 
 function audReaccionar(emoji) {
   if (!_audChannel) return
-  _audChannel.send({ type: 'broadcast', event: 'reaction', payload: { emoji } })
-  _audShowFloatReaction(emoji)
+  const alias = (MY_SEAT > 0 ? (_profilesCache[MY_SEAT]?.alias || `Butaca #${MY_SEAT}`) : 'Invitado')
+  _audChannel.send({ type: 'broadcast', event: 'reaction', payload: { emoji, seat: MY_SEAT, alias } })
+  _audShowFloatReaction(emoji, alias)
 }
 
-function _audShowFloatReaction(emoji) {
+function _audShowFloatReaction(emoji, alias) {
   const area = document.getElementById('aud-float-area')
   if (!area) return
+
+  // Posición X aleatoria dentro de la columna, evitando los bordes
+  const xPct = 10 + Math.random() * 70
+
   const el = document.createElement('div')
   el.className = 'aud-float-reaction'
-  el.textContent = emoji
-  el.style.left = (15 + Math.random() * 70) + '%'
+  el.style.left = xPct + '%'
+  el.style.bottom = '8px'
+  el.style.transform = 'translateX(-50%)'
+
+  const emojiEl = document.createElement('div')
+  emojiEl.className = 'aud-float-reaction-emoji'
+  emojiEl.textContent = emoji
+
+  const nameEl = document.createElement('div')
+  nameEl.className = 'aud-float-reaction-name'
+  nameEl.textContent = alias || 'Invitado'
+
+  el.appendChild(emojiEl)
+  el.appendChild(nameEl)
   area.appendChild(el)
-  setTimeout(() => el.remove(), 2500)
+  setTimeout(() => el.remove(), 3600)
 }
 
 // Badge en nav cuando hay sesión activa (check al iniciar sesión)

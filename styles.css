@@ -3771,14 +3771,11 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Reactions */
 #aud-reactions-wrap {
-  padding:10px 20px; position:relative; flex-shrink:0;
+  padding:10px 16px; flex-shrink:0;
   display:flex; align-items:center; justify-content:center;
-  overflow:hidden; min-height:48px;
+  min-height:58px;
 }
-#aud-float-area {
-  position:absolute; inset:0; pointer-events:none; overflow:hidden;
-}
-#aud-reaction-btns { display:flex; gap:6px; position:relative; z-index:1; }
+#aud-reaction-btns { display:flex; gap:6px; align-items:center; }
 .aud-react-btn {
   background:rgba(255,255,255,.07); border:0.5px solid rgba(255,255,255,.1);
   font-size:22px; cursor:pointer;
@@ -3787,15 +3784,60 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 .aud-react-btn:hover { background:rgba(255,255,255,.14); transform:scale(1.15); }
 .aud-react-btn:active { transform:scale(.9); }
+.aud-react-divider {
+  width:1px; height:30px; background:rgba(255,255,255,.12);
+  flex-shrink:0; margin:0 4px;
+}
+.aud-chat-react-btn {
+  position:relative; font-size:0 !important;
+  padding:8px 14px !important; border-radius:12px !important;
+  background:rgba(255,255,255,.09) !important;
+  border-color:rgba(255,255,255,.15) !important;
+  color:rgba(255,255,255,.8);
+  display:flex; align-items:center; justify-content:center;
+}
+.aud-chat-react-btn svg { width:21px; height:21px; }
+.aud-chat-react-btn:hover { background:rgba(255,255,255,.16) !important; color:#fff; }
+.aud-chat-react-btn.active {
+  background:rgba(239,68,68,.3) !important;
+  border-color:rgba(239,68,68,.5) !important; color:#fff;
+}
+
+/* ── Columna izquierda: burbujas de reacción ── */
+#aud-float-col {
+  width:190px; flex-shrink:0;
+  position:relative; overflow:hidden;
+  border-right:0.5px solid rgba(255,255,255,.05);
+  background:rgba(0,0,0,.18);
+}
+#aud-float-area {
+  position:absolute; inset:0; pointer-events:none; overflow:hidden;
+}
+
+/* Burbuja de reacción: emoji grande + nombre del remitente */
 .aud-float-reaction {
-  position:absolute; bottom:0; font-size:24px;
-  animation:aud-float 2.4s ease-out forwards;
+  position:absolute;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  animation:aud-float-bubble 3.5s ease-out forwards;
   pointer-events:none; user-select:none;
 }
-@keyframes aud-float {
-  0%   { transform:translateY(0) scale(1);   opacity:1; }
-  60%  { transform:translateY(-80px) scale(1.18); opacity:.9; }
-  100% { transform:translateY(-150px) scale(.8); opacity:0; }
+.aud-float-reaction-emoji {
+  font-size:36px; line-height:1;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));
+}
+.aud-float-reaction-name {
+  background:rgba(0,0,0,.55); color:#fff;
+  font-size:10px; font-weight:700; letter-spacing:.02em;
+  padding:2px 8px; border-radius:10px;
+  white-space:nowrap; max-width:160px;
+  overflow:hidden; text-overflow:ellipsis;
+  backdrop-filter:blur(4px);
+}
+@keyframes aud-float-bubble {
+  0%   { transform:translateY(0) scale(.8);    opacity:0; }
+  8%   { transform:translateY(-10px) scale(1); opacity:1; }
+  70%  { opacity:.9; }
+  100% { transform:translateY(-320px) scale(.7); opacity:0; }
 }
 
 /* Hemiciclo presence — canvas interactivo */
@@ -3840,16 +3882,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 #aud-empty-title { font-size:17px; font-weight:700; margin:0 0 8px; }
 #aud-empty-sub { font-size:13px; color:rgba(255,255,255,.35); line-height:1.5; max-width:320px; }
 
-/* ── Botón chat toggle en header ── */
-.aud-chat-toggle-btn {
-  position:relative;
-  background:rgba(255,255,255,.1); border:none; color:rgba(255,255,255,.8);
-  width:34px; height:34px; border-radius:50%; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:background .15s, color .15s;
-}
-.aud-chat-toggle-btn:hover { background:rgba(255,255,255,.2); color:#fff; }
-.aud-chat-toggle-btn.active { background:#ef4444; color:#fff; }
+/* ── Badge de chat no leído ── */
 .aud-chat-badge {
   position:absolute; top:-3px; right:-3px;
   background:#ef4444; color:#fff; font-size:9px; font-weight:800;
@@ -3858,9 +3891,8 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   border:2px solid #080B0F;
 }
 
-/* ── Layout dos columnas cuando chat está abierto ── */
-#aud-session-content { display:flex; flex-direction:column; flex:1; overflow:hidden; }
-#aud-session-content.chat-open { flex-direction:row; }
+/* ── Layout 3 columnas (siempre row) ── */
+#aud-session-content { display:flex; flex-direction:row; flex:1; overflow:hidden; }
 
 #aud-main-col {
   flex:1; display:flex; flex-direction:column;
@@ -3870,7 +3902,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 #aud-session-content.chat-open #aud-video-stage,
 #aud-session-content.chat-open #aud-no-stream,
 #aud-session-content.chat-open #aud-join-wrap {
-  width:min(44vw, 560px);
+  width:min(40vw, 520px);
 }
 
 /* ── Panel de chat lateral ── */

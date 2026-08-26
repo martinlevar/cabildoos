@@ -2186,10 +2186,6 @@
           <svg width="13" height="12" viewBox="0 0 13 12" fill="none"><circle cx="4.5" cy="3.5" r="2.5" fill="currentColor"/><path d="M0 11c0-2.76 2.01-5 4.5-5s4.5 2.24 4.5 5" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="10.5" cy="3" r="2" fill="currentColor" opacity=".5"/><path d="M9 8.5c.7-.3 1.4-.3 2-.1 1 .3 1.7 1.3 1.7 2.6" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round" opacity=".5"/></svg>
           <span id="aud-count">0</span> viendo
         </div>
-        <button id="aud-chat-toggle-btn" class="aud-chat-toggle-btn" onclick="audToggleChat()" title="Chat del auditorio">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span id="aud-chat-unread" class="aud-chat-badge" style="display:none"></span>
-        </button>
         <button class="aud-close-btn" onclick="cerrarAuditorio()">✕</button>
       </div>
     </div>
@@ -2199,6 +2195,11 @@
 
     <!-- Active session content -->
     <div id="aud-session-content" style="display:none">
+
+    <!-- Columna izquierda: reacciones flotantes -->
+    <div id="aud-float-col" aria-hidden="true">
+      <div id="aud-float-area"></div>
+    </div>
 
     <!-- Columna principal (video + reacciones + hemiciclo) -->
     <div id="aud-main-col">
@@ -2255,7 +2256,6 @@
 
       <!-- Reactions -->
       <div id="aud-reactions-wrap">
-        <div id="aud-float-area" aria-hidden="true"></div>
         <div id="aud-reaction-btns">
           <button class="aud-react-btn" onclick="audReaccionar('👏')">👏</button>
           <button class="aud-react-btn" onclick="audReaccionar('🔥')">🔥</button>
@@ -2263,6 +2263,11 @@
           <button class="aud-react-btn" onclick="audReaccionar('🤔')">🤔</button>
           <button class="aud-react-btn" onclick="audReaccionar('✊')">✊</button>
           <button class="aud-react-btn" onclick="audReaccionar('❤️')">❤️</button>
+          <div class="aud-react-divider"></div>
+          <button class="aud-react-btn aud-chat-react-btn" id="aud-chat-toggle-btn" onclick="audToggleChat()" title="Chat del auditorio">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span id="aud-chat-unread" class="aud-chat-badge" style="display:none"></span>
+          </button>
         </div>
       </div>
 
