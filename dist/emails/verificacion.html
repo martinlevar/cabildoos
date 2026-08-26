@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Verificá tu cuenta — Cabildo de Venezuela</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#F2F1ED; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+    .wrapper { width:100%; background:#F2F1ED; padding:40px 16px; }
+    .container { max-width:560px; margin:0 auto; }
+
+    /* Header */
+    .header { text-align:center; margin-bottom:28px; }
+    .logo-dots { display:inline-block; margin-bottom:10px; }
+    .brand-name { font-size:13px; font-weight:700; color:#8B8FA8; letter-spacing:.12em; text-transform:uppercase; }
+
+    /* Card */
+    .card { background:#ffffff; border-radius:20px; overflow:hidden; box-shadow:0 2px 20px rgba(0,0,0,.06); }
+
+    /* Card hero */
+    .hero { background:#1D1F3C; padding:36px 40px 32px; text-align:center; }
+    .hero-flag { font-size:36px; margin-bottom:12px; display:block; }
+    .hero-title { font-size:24px; font-weight:800; color:#ffffff; letter-spacing:-.4px; line-height:1.25; margin-bottom:8px; }
+    .hero-sub { font-size:14px; color:rgba(255,255,255,.6); line-height:1.5; }
+
+    /* Card body */
+    .body { padding:36px 40px; }
+    .greeting { font-size:15px; color:#1D1F3C; font-weight:600; margin-bottom:12px; }
+    .text { font-size:14px; color:#5F5E5A; line-height:1.7; margin-bottom:24px; }
+
+    /* Button */
+    .btn-wrap { text-align:center; margin:28px 0; }
+    .btn {
+      display:inline-block; background:#1D9E75; color:#ffffff;
+      font-size:15px; font-weight:700; text-decoration:none;
+      padding:15px 40px; border-radius:12px; letter-spacing:-.1px;
+    }
+    .btn:hover { background:#178763; }
+
+    /* Divider */
+    .divider { border:none; border-top:1px solid #EFEFEC; margin:28px 0; }
+
+    /* Alt link */
+    .alt-link-label { font-size:12px; color:#ABABAB; margin-bottom:8px; }
+    .alt-link { font-size:12px; color:#5C67E8; word-break:break-all; text-decoration:none; }
+
+    /* Warning */
+    .warning { background:#FAFAF8; border:1px solid #EFEFEC; border-radius:10px; padding:14px 16px; }
+    .warning p { font-size:12px; color:#8B8FA8; line-height:1.6; }
+    .warning strong { color:#5F5E5A; }
+
+    /* Stars row */
+    .stars { text-align:center; font-size:11px; color:#E8A020; letter-spacing:3px; margin-top:4px; }
+
+    /* Footer */
+    .footer { padding:24px 40px 32px; text-align:center; }
+    .footer p { font-size:11px; color:#ABABAB; line-height:1.7; }
+    .footer a { color:#ABABAB; text-decoration:underline; }
+
+    @media(max-width:480px) {
+      .hero, .body, .footer { padding-left:24px; padding-right:24px; }
+      .hero-title { font-size:20px; }
+      .btn { padding:14px 28px; font-size:14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+
+      <!-- Logo header -->
+      <div class="header">
+        <div class="logo-dots">
+          <!-- Hemiciclo SVG miniatura -->
+          <svg width="52" height="30" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+            <g fill="#1D1F3C" opacity="0.7">
+              <circle cx="20" cy="100" r="6"/><circle cx="38" cy="78" r="6"/><circle cx="62" cy="60" r="6"/>
+              <circle cx="90" cy="50" r="6"/><circle cx="118" cy="50" r="6"/><circle cx="144" cy="60" r="6"/>
+              <circle cx="166" cy="78" r="6"/><circle cx="180" cy="100" r="5.5"/>
+              <circle cx="40" cy="108" r="5"/><circle cx="58" cy="88" r="5"/><circle cx="80" cy="72" r="5"/>
+              <circle cx="104" cy="66" r="5"/><circle cx="128" cy="72" r="5"/><circle cx="150" cy="88" r="5"/>
+              <circle cx="166" cy="108" r="5"/>
+              <circle cx="168" cy="68" r="7" fill="#1D9E75"/>
+            </g>
+          </svg>
+        </div>
+        <div class="brand-name">Cabildo de Venezuela</div>
+        <div class="stars">★ ★ ★ ★ ★ ★ ★ ★</div>
+      </div>
+
+      <!-- Main card -->
+      <div class="card">
+
+        <div class="hero">
+          <span class="hero-flag">🇻🇪</span>
+          <div class="hero-title">Verificá tu cuenta</div>
+          <div class="hero-sub">Un paso para unirte al hemiciclo digital de Venezuela</div>
+        </div>
+
+        <div class="body">
+          <div class="greeting">Hola, {{nombre}} 👋</div>
+          <p class="text">
+            Gracias por registrarte en <strong style="color:#1D1F3C">Cabildo de Venezuela</strong> —
+            la plataforma de democracia digital donde cada venezolano tiene voz y voto.<br><br>
+            Para activar tu cuenta y acceder al hemiciclo, hacé clic en el botón de abajo:
+          </p>
+
+          <div class="btn-wrap">
+            <a href="{{url}}" class="btn">Verificar mi cuenta →</a>
+          </div>
+
+          <hr class="divider">
+
+          <p class="alt-link-label">¿El botón no funciona? Copiá este enlace en tu navegador:</p>
+          <a href="{{url}}" class="alt-link">{{url}}</a>
+
+          <hr class="divider">
+
+          <div class="warning">
+            <p>
+              <strong>Este enlace expira en 24 horas.</strong> Si no creaste esta cuenta,
+              podés ignorar este email — nadie más puede acceder sin verificar.
+            </p>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>
+            © 2025 Cabildo de Venezuela · Todos los derechos reservados<br>
+            <a href="https://cabildodevenezuela.com/privacidad.html">Privacidad</a> ·
+            <a href="https://cabildodevenezuela.com/terminos.html">Términos</a> ·
+            <a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a>
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>
