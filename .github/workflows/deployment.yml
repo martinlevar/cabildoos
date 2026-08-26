@@ -7,12 +7,19 @@ on:
         description: The short name of the environment to deploy to, e.g. dev, stg, prod
         required: true
         type: string
+      checkout_ref:
+        description: Branch/ref to check out. Defaults to the ref that triggered the workflow.
+        required: false
+        type: string
+        default: ""
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || github.ref }}
 
       - uses: pnpm/action-setup@v4
 

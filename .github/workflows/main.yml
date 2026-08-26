@@ -3,22 +3,21 @@ name: Deploy
 on:
   push:
     branches:
-      - stage
       - dev
-      - main
   pull_request:
     types: [closed]
     branches:
-      - main
       - stage
-      - dev
+      - main
+
+concurrency:
+  group: deploy-${{ github.event.pull_request.base.ref || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   deploy-dev:
     name: "Development"
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: dev
@@ -26,20 +25,24 @@ jobs:
 
   deploy-stage:
     name: "Staging"
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/stage') ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'stage')
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.merged == true
+      && github.event.pull_request.base.ref == 'stage'
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: stage
+      checkout_ref: stage
     secrets: inherit
 
   deploy-prod:
     name: "Production"
-    if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.merged == true
+      && github.event.pull_request.base.ref == 'main'
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: prod
+      checkout_ref: main
     secrets: inherit
