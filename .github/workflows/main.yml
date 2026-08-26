@@ -9,26 +9,40 @@ on:
     branches:
       - stage
       - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
 
 concurrency:
-  group: deploy-${{ github.event.pull_request.base.ref || github.ref_name }}
+  group: deploy-${{ github.event.pull_request.base.ref || inputs.environment || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   deploy-dev:
     name: "Development"
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev')
+      || (github.event_name == 'workflow_dispatch' && inputs.environment == 'dev')
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: dev
+      checkout_ref: dev
     secrets: inherit
 
   deploy-stage:
     name: "Staging"
     if: >-
-      github.event_name == 'pull_request'
-      && github.event.pull_request.merged == true
-      && github.event.pull_request.base.ref == 'stage'
+      (github.event_name == 'pull_request'
+        && github.event.pull_request.merged == true
+        && github.event.pull_request.base.ref == 'stage')
+      || (github.event_name == 'workflow_dispatch' && inputs.environment == 'stage')
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: stage
@@ -38,9 +52,10 @@ jobs:
   deploy-prod:
     name: "Production"
     if: >-
-      github.event_name == 'pull_request'
-      && github.event.pull_request.merged == true
-      && github.event.pull_request.base.ref == 'main'
+      (github.event_name == 'pull_request'
+        && github.event.pull_request.merged == true
+        && github.event.pull_request.base.ref == 'main')
+      || (github.event_name == 'workflow_dispatch' && inputs.environment == 'prod')
     uses: ./.github/workflows/deployment.yml
     with:
       deployment_environment: prod
