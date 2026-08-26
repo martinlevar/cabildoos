@@ -5,6 +5,7 @@ on:
     branches:
       - stage
       - dev
+      - main
   pull_request:
     types: [closed]
     branches:
