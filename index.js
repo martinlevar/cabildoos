@@ -2825,7 +2825,13 @@ async function loginConGoogle() {
       if (msg) { msg.textContent = 'Ingresá tu código de invitación antes de continuar con Google.'; msg.className = 'auth-msg err' }
       return
     }
-    sessionStorage.setItem('_pendingInviteCode', code)
+    // Emitir un pase server-side antes del redirect; guardamos el UUID en sessionStorage
+    const { data: oauthToken, error: passErr } = await sb.rpc('issue_oauth_pass', { p_code: code })
+    if (passErr || !oauthToken) {
+      if (msg) { msg.textContent = passErr?.message || 'Código de invitación inválido o ya utilizado.'; msg.className = 'auth-msg err' }
+      return
+    }
+    sessionStorage.setItem('_pendingOauthToken', oauthToken)
   }
   const redirectTo = window.location.origin + window.location.pathname
   await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
@@ -2881,25 +2887,29 @@ async function guardarAliasGoogle() {
     return
   }
 
-  // Consumir código de invitación pendiente (guardado antes del OAuth de Google)
-  const pendingCode = sessionStorage.getItem('_pendingInviteCode')
-  if (!pendingCode) {
+  // Canjear el pase server-side (valida + consume el código de invitación)
+  const pendingToken = sessionStorage.getItem('_pendingOauthToken')
+  if (!pendingToken) {
     msg.textContent = 'Necesitás un código de invitación para registrarte. Volvé a intentarlo.'
     msg.className = 'auth-msg err'
     btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    // Eliminar la sesión OAuth huérfana
+    await sb.auth.signOut()
     return
   }
-  const { data: inviteOk, error: inviteErr } = await sb.rpc('validate_invitation_code', {
-    p_code: pendingCode,
+  const { data: redeemed, error: redeemErr } = await sb.rpc('redeem_oauth_pass', {
+    p_token: pendingToken,
+    p_user_id: _googleAliasUser.id,
     p_email: _googleAliasUser.email
   })
-  if (inviteErr || !inviteOk) {
-    msg.textContent = 'Código de invitación inválido o ya utilizado.'
+  if (redeemErr || !redeemed) {
+    msg.textContent = 'Código de invitación inválido, expirado o ya utilizado.'
     msg.className = 'auth-msg err'
     btn.disabled = false; btn.textContent = 'Confirmar alias →'
+    await sb.auth.signOut()
     return
   }
-  sessionStorage.removeItem('_pendingInviteCode')
+  sessionStorage.removeItem('_pendingOauthToken')
 
   // Upsert perfil con alias elegido (butaca se asigna luego en verificación)
   const { error } = await sb.from('profiles').upsert({
