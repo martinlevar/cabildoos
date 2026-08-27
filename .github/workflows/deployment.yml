@@ -26,6 +26,10 @@ jobs:
       - name: Build
         run: pnpm run build
 
+      - name: Inject Google Analytics (production only)
+        if: inputs.deployment_environment == 'prod'
+        run: make inject-gtag FILE=dist/index.html
+
       - name: Prepare wrangler config
         run: mv wrangler.${{ inputs.deployment_environment }}.toml wrangler.toml
 
