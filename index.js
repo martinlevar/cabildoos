@@ -3357,6 +3357,19 @@ const VP_API_URL = (location.hostname === 'localhost' || location.hostname === '
   ? 'http://localhost:8787'
   : 'https://verify.cabildodevenezuela.com'  // Cloudflare verification-worker
 
+// Helper: devuelve el header Authorization con el JWT de la sesión activa
+async function _vpAuthHeaders() {
+  try {
+    const { data: { session } } = await sb.auth.getSession()
+    const token = session?.access_token
+    return token
+      ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+      : { 'Content-Type': 'application/json' }
+  } catch {
+    return { 'Content-Type': 'application/json' }
+  }
+}
+
 
 function uuidv4() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
@@ -3511,7 +3524,7 @@ async function vpDocCapturarFrame(_unused) {
 
     const resp = await fetch(`${VP_API_URL}/verify/documento`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await _vpAuthHeaders(),
       signal: docCtrl.signal,
       body: JSON.stringify({
         verification_id:      vpVerificationId,
@@ -4616,7 +4629,7 @@ async function vpVerificarLiveness(instruccion) {
     })
     const resp = await fetch(`${VP_API_URL}/verify/liveness`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await _vpAuthHeaders(),
       body: JSON.stringify({
         image_b64:     b64,
         instruccion,
@@ -4861,7 +4874,7 @@ async function vpPixelarDocumento(blob) {
     // SEC-008: incluir session_token para que el backend pueda validar el llamado
     const resp = await fetch(`${VP_API_URL}/verify/censurar-campos`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await _vpAuthHeaders(),
       body:    JSON.stringify({ image_b64: b64, session_token: vpSessionToken || null }),
     })
     if (resp.ok) {
@@ -5628,7 +5641,7 @@ async function vpEnviarVerificacion() {
 
     const resp = await fetch(`${VP_API_URL}/verify/submit`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await _vpAuthHeaders(),
       signal: controller.signal,
       body: JSON.stringify({
         verification_id:      vpVerificationId,
