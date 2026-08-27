@@ -1,0 +1,22 @@
+# Cabildo de Venezuela
+
+> Plataforma de democracia digital en tiempo real operada por CabildoOS. Simula un hemiciclo legislativo donde cada ciudadano verificado ocupa una butaca permanente y participa en debates y votaciones anónimas, verificables y auditables mediante criptografía. CabildoOS es infraestructura de tecnología cívica independiente, sin afiliación política.
+
+## Conceptos clave
+
+- Butaca: asiento numerado y permanente que representa a cada ciudadano verificado en el hemiciclo.
+- VaV (Voto Anónimo Verificable): protocolo criptográfico propio que permite que un voto sea a la vez anónimo y verificable.
+- Verificación humana: validación de identidad procesada en memoria y descartada; solo se almacena el hash del número de documento a efectos anti-duplicación.
+- Sistema centralizado: CabildoOS es operador central; sus capacidades y límites técnicos se declaran explícitamente en la documentación.
+
+## Páginas principales
+
+- [Inicio](https://cabildodevenezuela.com/): página principal de la plataforma Cabildo de Venezuela.
+- [Whitepaper](https://cabildodevenezuela.com/paper.html): qué construimos, por qué así y hacia dónde vamos.
+- [Preguntas frecuentes](https://cabildodevenezuela.com/faq.html): funcionamiento, privacidad, verificación y modelo de votación.
+- [Demo](https://cabildodevenezuela.com/demo.html): demostración interactiva del hemiciclo.
+
+## Legal
+
+- [Política de Privacidad](https://cabildodevenezuela.com/privacidad.html): qué datos se recopilan, cómo se usan y su tratamiento criptográfico.
+- [Términos y Condiciones](https://cabildodevenezuela.com/terminos.html): condiciones de uso de la plataforma.

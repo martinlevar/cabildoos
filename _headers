@@ -1,6 +1,4 @@
 /*
-  # Bloquear indexing por buscadores
-  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
   # Evitar que la URL se filtre via Referer cuando el usuario hace clic en links externos
   Referrer-Policy: no-referrer
   # Evitar clickjacking y embeds que puedan exponer la URL
