@@ -4,6 +4,92 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Preguntas Frecuentes — Cabildo de Venezuela</title>
+<meta name="description" content="Preguntas frecuentes de Cabildo de Venezuela: qué es la plataforma, cómo funciona el hemiciclo, verificación de identidad, privacidad y el protocolo de Voto Anónimo Verificable (VaV).">
+<link rel="canonical" href="https://cabildodevenezuela.com/faq.html">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cabildo de Venezuela">
+<meta property="og:locale" content="es_VE">
+<meta property="og:url" content="https://cabildodevenezuela.com/faq.html">
+<meta property="og:title" content="Preguntas Frecuentes — Cabildo de Venezuela">
+<meta property="og:description" content="Cómo funciona el hemiciclo, la verificación de identidad, la privacidad y el Voto Anónimo Verificable (VaV).">
+<meta property="og:image" content="https://cabildodevenezuela.com/logo-cabildo.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Preguntas Frecuentes — Cabildo de Venezuela">
+<meta name="twitter:description" content="Cómo funciona el hemiciclo, la verificación de identidad, la privacidad y el Voto Anónimo Verificable (VaV).">
+<meta name="twitter:image" content="https://cabildodevenezuela.com/logo-cabildo.jpg">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "¿Qué es Cabildo de Venezuela?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cabildo de Venezuela es una plataforma de democracia participativa digital que permite a ciudadanos venezolanos verificados ejercer su voto de forma anónima y auditable. Cada ciudadano verificado ocupa una butaca numerada en un hemiciclo virtual. La plataforma es operada por CabildoOS, una empresa de tecnología cívica independiente sin afiliación política."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Quién puede crear una cuenta?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Cualquier ciudadano venezolano mayor de 18 años con un documento de identidad válido. Durante la fase beta, el registro requiere además un código de acceso. Cada persona puede tener una sola cuenta: el sistema rechaza automáticamente registrar el mismo documento más de una vez, incluso desde emails diferentes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Cómo funciona el hemiciclo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "El hemiciclo es la representación visual de todos los ciudadanos verificados. Cada butaca numerada corresponde a un ciudadano real y se asigna en orden cronológico de verificación. Durante una votación, el hemiciclo revela los resultados butaca por butaca en tiempo real mediante el protocolo VaV; el color indica el voto pero no revela la identidad de quien ocupa la butaca."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Por qué necesito verificar mi identidad?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "La verificación garantiza que cada butaca corresponde a una persona real (no un bot) y que nadie ocupa más de una butaca. Sin ella, el sistema sería vulnerable a cuentas falsas que controlen el resultado. La verificación se hace una sola vez; una vez aprobada, tu butaca es permanente."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿CabildoOS guarda mis datos personales?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No se guarda tu nombre, número de documento, fecha de nacimiento ni dirección. Solo se guarda un hash irreversible del número de documento (HMAC-SHA256) para detectar duplicados, una foto censurada del selfie con los datos pixelados para la revisión humana, y el resultado del análisis (verdadero/falso). La foto censurada puede eliminarse a tu solicitud."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Qué es VaV (Voto Anónimo Verificable)?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "VaV es el protocolo criptográfico propio de CabildoOS que permite que tu voto sea a la vez anónimo y verificable. Funciona en dos fases: commit, donde se registra un hash SHA-256 de tu voto más un nonce secreto (como un sobre sellado); y reveal, donde al cerrar la votación se abre el sobre y se verifica el hash contra el voto revelado. Durante la fase de commit nadie sabe cómo votaste."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿Puedo votar dos veces?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. El sistema tiene dos capas independientes de protección a nivel de base de datos: un constraint único por (pregunta + butaca) y otro por (pregunta + identity hash). Son reglas de integridad que no pueden eludirse por bugs de código ni modificando las solicitudes de red."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "¿CabildoOS tiene afiliación política?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. CabildoOS es infraestructura tecnológica neutral y no toma posición en ninguna de las preguntas o votaciones. Las preguntas que se someten a votación son definidas por los administradores del cabildo específico, no por CabildoOS."
+      }
+    }
+  ]
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
