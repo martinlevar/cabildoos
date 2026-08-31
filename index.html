@@ -477,6 +477,9 @@
 
     <!-- Create account button (logged out) — oculto por defecto, _onLogout() lo muestra -->
     <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()" style="display:none">Crear cuenta</button>
+
+    <!-- Dark mode toggle -->
+    <button class="dm-toggle" id="dm-toggle-btn-main" onclick="toggleDarkMode()" title="Cambiar modo oscuro/claro">🌙</button>
   </nav>
 
   <!-- ══ PANEL CALENDARIO HISTÓRICO ══ -->
@@ -2381,8 +2384,11 @@
 
   function applyTheme(theme) {
     root.setAttribute('data-theme', theme);
-    const btn = document.getElementById(BTN_ID);
-    if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    const emoji = theme === 'dark' ? '☀️' : '🌙';
+    ['dm-toggle-btn', 'dm-toggle-btn-main'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.textContent = emoji;
+    });
   }
 
   // Aplicar al cargar
