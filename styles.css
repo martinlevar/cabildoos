@@ -5798,3 +5798,122 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
     background: rgba(255,255,255,.1);
   }
 }
+
+
+/* ======================================================
+   DARK MODE — Refinements esteticos v2
+   Corrige colores hardcodeados no cubiertos por tokens
+====================================================== */
+@media (prefers-color-scheme: dark) {
+  /* Reloj VEN: sin fondo blanco */
+  :root:not([data-theme="light"]) #hemi-dt-pill,
+  :root[data-theme="dark"] #hemi-dt-pill {
+    background: rgba(255,255,255,.07);
+  }
+  :root:not([data-theme="light"]) #hemi-datetime:hover #hemi-dt-pill,
+  :root[data-theme="dark"] #hemi-datetime:hover #hemi-dt-pill {
+    background: rgba(255,255,255,.12);
+  }
+  :root:not([data-theme="light"]) #hemi-dt-time,
+  :root[data-theme="dark"] #hemi-dt-time { color: #c8c8e0; }
+  :root:not([data-theme="light"]) #hemi-dt-date,
+  :root[data-theme="dark"] #hemi-dt-date { color: #6a6a80; }
+
+  /* Butacas: sin gradiente blanco de fondo */
+  :root:not([data-theme="light"]) #congress .body::before,
+  :root[data-theme="dark"] #congress .body::before {
+    background: none !important;
+  }
+
+  /* Footer del congreso: negro */
+  :root:not([data-theme="light"]) .cong-footer,
+  :root[data-theme="dark"] .cong-footer {
+    background: rgba(15,17,23,.97);
+    border-top-color: rgba(255,255,255,.06);
+  }
+  :root:not([data-theme="light"]) .cf-brand,
+  :root[data-theme="dark"] .cf-brand { color: rgba(255,255,255,.18); }
+  :root:not([data-theme="light"]) .cf-links a,
+  :root[data-theme="dark"] .cf-links a { color: #5a5a70; }
+  :root:not([data-theme="light"]) .cf-links a:hover,
+  :root[data-theme="dark"] .cf-links a:hover { color: #c8c8e0; }
+  :root:not([data-theme="light"]) .cf-copy,
+  :root[data-theme="dark"] .cf-copy { color: #4a4a60; }
+
+  /* Q-cards: countdown footer matte oscuro */
+  :root:not([data-theme="light"]) .q-card-countdown,
+  :root[data-theme="dark"] .q-card-countdown {
+    background: #13141f;
+    border-top-color: rgba(255,255,255,.06);
+  }
+  :root:not([data-theme="light"]) .q-card-cd-lbl,
+  :root[data-theme="dark"] .q-card-cd-lbl { color: #4a4a62; }
+  :root:not([data-theme="light"]) .q-card-timer-val.ended,
+  :root[data-theme="dark"] .q-card-timer-val.ended {
+    background: rgba(255,255,255,.06); color: #5a5a70;
+  }
+
+  /* Q-cards: boton debate colores dark */
+  :root:not([data-theme="light"]) .q-card-debate-btn,
+  :root[data-theme="dark"] .q-card-debate-btn {
+    border-color: rgba(74,222,128,.2);
+    background: rgba(74,222,128,.07);
+    color: #4ade80;
+  }
+  :root:not([data-theme="light"]) .q-card-debate-btn:hover,
+  :root[data-theme="dark"] .q-card-debate-btn:hover {
+    background: rgba(74,222,128,.14);
+    border-color: rgba(74,222,128,.4);
+  }
+  :root:not([data-theme="light"]) .q-card-debate-btn.off,
+  :root[data-theme="dark"] .q-card-debate-btn.off {
+    border-color: rgba(248,113,113,.2);
+    background: rgba(248,113,113,.07);
+    color: #f87171;
+  }
+  :root:not([data-theme="light"]) .q-card-debate-btn.off:hover,
+  :root[data-theme="dark"] .q-card-debate-btn.off:hover {
+    background: rgba(248,113,113,.14);
+    border-color: rgba(248,113,113,.4);
+  }
+
+  /* Q-card vote btn */
+  :root:not([data-theme="light"]) .q-card-vote-btn,
+  :root[data-theme="dark"] .q-card-vote-btn {
+    background: #e8e8f0; color: #0f1117;
+  }
+  :root:not([data-theme="light"]) .q-card-vote-btn:hover,
+  :root[data-theme="dark"] .q-card-vote-btn:hover { background: #fff; }
+
+  /* Q-card shadow flat sin brillo */
+  :root:not([data-theme="light"]) .q-card,
+  :root[data-theme="dark"] .q-card {
+    box-shadow: 0 1px 8px rgba(0,0,0,.4);
+    border-color: rgba(255,255,255,.06);
+  }
+  :root:not([data-theme="light"]) .q-card:hover,
+  :root[data-theme="dark"] .q-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    border-color: rgba(255,255,255,.1);
+  }
+
+  /* Prop-cards */
+  :root:not([data-theme="light"]) .prop-card-v2-text,
+  :root[data-theme="dark"] .prop-card-v2-text { color: var(--dark); }
+  :root:not([data-theme="light"]) .prop-card-v2,
+  :root[data-theme="dark"] .prop-card-v2 {
+    background: var(--surface); border-color: var(--border); box-shadow: none;
+  }
+  :root:not([data-theme="light"]) .prop-card-v2:hover,
+  :root[data-theme="dark"] .prop-card-v2:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    border-color: rgba(255,255,255,.12);
+  }
+
+  /* Social modal */
+  :root:not([data-theme="light"]) .slm-panel,
+  :root[data-theme="dark"] .slm-panel {
+    background: var(--surface);
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  }
+}
