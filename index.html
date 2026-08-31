@@ -75,6 +75,7 @@
     </div>
     <div class="nav-right">
       <!-- Estado: no logueado -->
+      <button class="dm-toggle" id="dm-toggle-btn" onclick="toggleDarkMode()" title="Cambiar modo oscuro/claro">🌙</button>
       <button id="btn-auth-nav" onclick="abrirAuth()" style="display:none">Crear cuenta</button>
       <!-- Estado: logueado — dropdown con nombre -->
       <div id="nav-user-info" style="display:none; position:relative;">
@@ -2363,6 +2364,45 @@
 </div>
 
 <script src="index.js"></script>
+
+
+<script>
+/* ── Dark Mode Toggle ── */
+(function() {
+  const root = document.documentElement;
+  const BTN_ID = 'dm-toggle-btn';
+  const KEY = 'cdv-theme';
+
+  function getEffectiveTheme() {
+    const stored = localStorage.getItem(KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    const btn = document.getElementById(BTN_ID);
+    if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  }
+
+  // Aplicar al cargar
+  applyTheme(getEffectiveTheme());
+
+  window.toggleDarkMode = function() {
+    const current = root.getAttribute('data-theme') || getEffectiveTheme();
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(KEY, next);
+    applyTheme(next);
+  };
+
+  // Escuchar cambios del sistema operativo
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (!localStorage.getItem(KEY)) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
