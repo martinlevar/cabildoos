@@ -5917,3 +5917,81 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
     box-shadow: 0 24px 60px rgba(0,0,0,.5);
   }
 }
+
+
+/* ======================================================
+   DARK MODE — Reglas standalone para toggle manual
+   (aplican cuando data-theme="dark" sin importar el OS)
+====================================================== */
+:root[data-theme="dark"] #hemi-dt-pill { background: rgba(255,255,255,.07) !important; }
+:root[data-theme="dark"] #hemi-datetime:hover #hemi-dt-pill { background: rgba(255,255,255,.12) !important; }
+:root[data-theme="dark"] #hemi-dt-time { color: #c8c8e0 !important; }
+:root[data-theme="dark"] #hemi-dt-date { color: #6a6a80 !important; }
+
+:root[data-theme="dark"] #congress .body::before { background: none !important; }
+
+:root[data-theme="dark"] .cong-footer {
+  background: rgba(15,17,23,.97) !important;
+  border-top-color: rgba(255,255,255,.06) !important;
+}
+:root[data-theme="dark"] .cf-brand { color: rgba(255,255,255,.18) !important; }
+:root[data-theme="dark"] .cf-links a { color: #5a5a70 !important; }
+:root[data-theme="dark"] .cf-links a:hover { color: #c8c8e0 !important; }
+:root[data-theme="dark"] .cf-copy { color: #4a4a60 !important; }
+
+:root[data-theme="dark"] .q-card-countdown {
+  background: #13141f !important;
+  border-top-color: rgba(255,255,255,.06) !important;
+}
+:root[data-theme="dark"] .q-card-cd-lbl { color: #4a4a62 !important; }
+:root[data-theme="dark"] .q-card-timer-val.ended {
+  background: rgba(255,255,255,.06) !important;
+  color: #5a5a70 !important;
+}
+
+:root[data-theme="dark"] .q-card-debate-btn {
+  border-color: rgba(74,222,128,.2) !important;
+  background: rgba(74,222,128,.07) !important;
+  color: #4ade80 !important;
+}
+:root[data-theme="dark"] .q-card-debate-btn:hover {
+  background: rgba(74,222,128,.14) !important;
+  border-color: rgba(74,222,128,.4) !important;
+}
+:root[data-theme="dark"] .q-card-debate-btn.off {
+  border-color: rgba(248,113,113,.2) !important;
+  background: rgba(248,113,113,.07) !important;
+  color: #f87171 !important;
+}
+:root[data-theme="dark"] .q-card-debate-btn.off:hover {
+  background: rgba(248,113,113,.14) !important;
+  border-color: rgba(248,113,113,.4) !important;
+}
+
+:root[data-theme="dark"] .q-card-vote-btn { background: #e8e8f0 !important; color: #0f1117 !important; }
+:root[data-theme="dark"] .q-card-vote-btn:hover { background: #fff !important; }
+
+:root[data-theme="dark"] .q-card {
+  box-shadow: 0 1px 8px rgba(0,0,0,.4) !important;
+  border-color: rgba(255,255,255,.06) !important;
+}
+:root[data-theme="dark"] .q-card:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,.5) !important;
+  border-color: rgba(255,255,255,.1) !important;
+}
+
+:root[data-theme="dark"] .prop-card-v2-text { color: var(--dark) !important; }
+:root[data-theme="dark"] .prop-card-v2 {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  box-shadow: none !important;
+}
+:root[data-theme="dark"] .prop-card-v2:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,.4) !important;
+  border-color: rgba(255,255,255,.12) !important;
+}
+
+:root[data-theme="dark"] .slm-panel {
+  background: var(--surface) !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5) !important;
+}
