@@ -6343,18 +6343,36 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Shared game overlay ── */
+/* ── Shared overlays ── */
 #nerd-overlay,
 #yop-overlay {
   position: fixed; inset: 0; z-index: 950;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,.75); backdrop-filter: blur(6px);
   opacity: 0; pointer-events: none;
-  transition: opacity .2s;
+  transition: opacity .25s;
 }
 #nerd-overlay.open,
 #yop-overlay.open { opacity: 1; pointer-events: all; }
 
-#nerd-panel,
+/* ── Nerdmocracy: HQ-style — white card on purple gradient ── */
+#nerd-overlay {
+  background: linear-gradient(160deg, #2d1b69 0%, #1a1040 40%, #0f0828 100%);
+}
+#nerd-panel {
+  background: #fff;
+  border-radius: 24px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: 92dvh;
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+  box-shadow: 0 32px 80px rgba(0,0,0,.55);
+  position: relative;
+}
+
+/* ── Yo Presidente panel (unchanged dark style) ── */
+#yop-overlay {
+  background: rgba(0,0,0,.78); backdrop-filter: blur(6px);
+}
 #yop-panel {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -6365,9 +6383,6 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   padding: 20px 20px 28px;
   display: flex; flex-direction: column; gap: 18px;
 }
-
-:root:not([data-theme="light"]) #nerd-panel,
-:root[data-theme="dark"] #nerd-panel,
 :root:not([data-theme="light"]) #yop-panel,
 :root[data-theme="dark"] #yop-panel { background: #0d0d1a; }
 
@@ -6557,89 +6572,136 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   margin: 0 auto;
 }
 
-/* ── Nerdmocracy header ──────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   NERDMOCRACY — HQ-style white card
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Feedback badge (Correcto / Incorrecto) ── */
+#nerd-feedback-badge {
+  position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+  padding: 7px 22px; border-radius: 50px;
+  font-size: 14px; font-weight: 800; letter-spacing: .04em;
+  white-space: nowrap; pointer-events: none;
+  animation: nerd-badge-pop .25s cubic-bezier(.34,1.56,.64,1);
+  z-index: 10;
+}
+#nerd-feedback-badge.nerd-correct {
+  background: #46c97c; color: #fff;
+  box-shadow: 0 4px 20px rgba(70,201,124,.4);
+}
+#nerd-feedback-badge.nerd-wrong {
+  background: #ef4444; color: #fff;
+  box-shadow: 0 4px 20px rgba(239,68,68,.4);
+}
+@keyframes nerd-badge-pop {
+  from { transform: translateX(-50%) scale(.7); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1);  opacity: 1; }
+}
+
+/* ── Header ── */
+#nerd-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 0;
+}
 #nerd-hdr-left {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 700; color: #555;
 }
-#nerd-hdr-right {
-  display: flex; align-items: center; gap: 10px;
-  margin-left: auto;
+.nerd-score-icon { font-size: 16px; }
+#nerd-score { font-size: 15px; font-weight: 900; color: #1a1a2e; }
+.nerd-score-lbl { font-size: 12px; color: #888; }
+#nerd-hdr-center {
+  font-size: 11px; font-weight: 900; letter-spacing: .1em;
+  color: #6366f1;
 }
-.nerd-logo-icon { font-size: 26px; }
-#nerd-title-txt {
-  font-size: 14px; font-weight: 900;
-  letter-spacing: .08em;
-  color: #a5b4fc;
+#nerd-hdr-right { display: flex; }
+#nerd-panel .game-close-btn {
+  background: #f0f0f5; border: none; color: #666;
+  width: 30px; height: 30px; border-radius: 50%;
 }
-#nerd-subtitle {
-  font-size: 10px; color: rgba(165,180,252,.55);
-  letter-spacing: .04em;
-}
+#nerd-panel .game-close-btn:hover { background: #e0e0eb; }
 
-/* ── Score pill ─────────────────────────────────────────── */
-#nerd-score-pill {
-  display: flex; align-items: baseline; gap: 3px;
-  background: rgba(99,102,241,.15);
-  border: 1px solid rgba(99,102,241,.25);
-  border-radius: 20px;
-  padding: 3px 12px;
-  font-weight: 800; font-size: 15px; color: #a5b4fc;
-}
-.nerd-score-lbl { font-size: 10px; color: rgba(165,180,252,.6); font-weight: 600; }
+/* ── Loading ── */
+.nerd-spinner { border-top-color: #6366f1; border-color: #e0e0f0; border-top-color: #6366f1; }
+#nerd-state-loading { padding: 48px 24px; gap: 14px; }
+#nerd-loading-txt { color: #888; font-size: 13px; text-align: center; margin: 0; }
 
-/* ── Timer wrap + danger state ──────────────────────────── */
-#nerd-timer-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 88px; height: 88px; flex-shrink: 0; }
+/* ── Timer ── */
+#nerd-timer-wrap {
+  position: relative; display: flex;
+  align-items: center; justify-content: center;
+  width: 96px; height: 96px;
+  margin: 20px auto 4px;
+}
 #nerd-timer-svg  { position: absolute; top: 0; left: 0; }
-#nerd-timer-num  { position: relative; font-size: 24px; font-weight: 900; color: #a5b4fc; z-index: 1; }
+#nerd-timer-num  {
+  position: relative; z-index: 1;
+  font-size: 28px; font-weight: 900; color: #1a1a2e;
+}
 .nerd-timer-danger #nerd-timer-num { color: #ef4444; }
 .nerd-timer-danger #nerd-timer-arc { stroke: #ef4444; }
 
-/* ── Option A/B/C/D key badge ──────────────────────────── */
-.nerd-opt-key {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
-  font-size: 11px; font-weight: 900; letter-spacing: .03em;
-  background: rgba(99,102,241,.2);
-  border: 1px solid rgba(99,102,241,.35);
-  color: #a5b4fc;
-  transition: background .15s, border-color .15s;
+/* ── Question ── */
+#nerd-question-text {
+  font-size: 20px; font-weight: 800; color: #1a1a2e;
+  text-align: center; line-height: 1.35;
+  margin: 12px 24px 20px; text-wrap: balance;
 }
-.nerd-opt-txt { flex: 1; font-size: 13px; line-height: 1.4; color: var(--text); }
 
-/* ── Option state classes ───────────────────────────────── */
-.nerd-opt-btn { position: relative; display: flex; align-items: center; gap: 10px; }
-.nerd-opt-btn.nerd-opt-selected .nerd-opt-key {
-  background: rgba(99,102,241,.35);
-  border-color: #6366f1;
+/* ── Options grid ── */
+#nerd-options-grid {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 0 18px 24px;
 }
+.nerd-opt-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; padding: 14px 20px;
+  border-radius: 50px;
+  border: 2px solid #dde0f0;
+  background: #fff;
+  font-size: 14px; font-weight: 600; color: #1a1a2e;
+  cursor: pointer; text-align: center;
+  transition: border-color .12s, background .12s, color .12s, opacity .2s;
+  line-height: 1.3;
+}
+.nerd-opt-btn:hover:not(:disabled) {
+  border-color: #a5b4fc; background: #f5f5ff;
+}
+.nerd-opt-btn:disabled { cursor: not-allowed; }
+.nerd-opt-txt { font-size: 14px; font-weight: 600; }
+
+/* ── Option state: selected (while answering) ── */
+.nerd-opt-btn.nerd-opt-selected {
+  border-color: #6366f1; background: #6366f1; color: #fff;
+}
+/* ── Option state: correct answer reveal ── */
 .nerd-opt-btn.nerd-opt-correct {
-  background: rgba(34,197,94,.12) !important;
-  border-color: rgba(34,197,94,.4) !important;
+  border-color: #46c97c !important; background: #46c97c !important; color: #fff !important;
 }
-.nerd-opt-btn.nerd-opt-correct .nerd-opt-key {
-  background: rgba(34,197,94,.25);
-  border-color: #22c55e;
-  color: #86efac;
-}
+/* ── Option state: wrong (all others dim) ── */
 .nerd-opt-btn.nerd-opt-wrong {
-  background: rgba(239,68,68,.12) !important;
-  border-color: rgba(239,68,68,.4) !important;
-}
-.nerd-opt-btn.nerd-opt-wrong .nerd-opt-key {
-  background: rgba(239,68,68,.25);
-  border-color: #ef4444;
-  color: #fca5a5;
+  border-color: #e8e8ee !important; background: #f7f7fa !important;
+  color: #aaa !important; opacity: .7;
 }
 
-/* ── Nerdmocracy game-over ──────────────────────────────── */
-#nerd-go-skull  { font-size: 52px; text-align: center; }
+/* ── Game Over ── */
+#nerd-state-gameover {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 36px 24px 32px;
+}
+#nerd-go-skull  { font-size: 56px; }
 #nerd-go-label  {
-  font-size: 20px; font-weight: 900; letter-spacing: .1em;
-  color: #ef4444; text-align: center; margin: 6px 0 4px;
+  font-size: 18px; font-weight: 900; letter-spacing: .08em;
+  color: #ef4444; margin: 4px 0 0;
 }
 #nerd-go-score-big {
-  font-size: 48px; font-weight: 900; text-align: center;
-  color: #a5b4fc; line-height: 1;
+  font-size: 52px; font-weight: 900; color: #6366f1; line-height: 1;
+  margin: 4px 0 2px;
+}
+#nerd-go-score-sub { font-size: 13px; color: #888; }
+.nerd-retry-btn {
+  margin-top: 18px; background: linear-gradient(135deg,#6366f1,#8b5cf6);
+  border-radius: 50px; font-size: 14px;
 }
 
 /* ── Yo Presidente header ───────────────────────────────── */

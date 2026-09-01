@@ -2465,47 +2465,46 @@
 <div id="nerd-overlay" onclick="if(event.target===this)cerrarNerdmocracy()">
   <div id="nerd-panel">
 
+    <!-- Feedback badge: Correcto / Incorrecto -->
+    <div id="nerd-feedback-badge" hidden></div>
+
+    <!-- Header -->
     <div id="nerd-header">
       <div id="nerd-hdr-left">
-        <span class="nerd-logo-icon">🧠</span>
-        <div>
-          <div id="nerd-title-txt">NERDMOCRACY</div>
-          <div id="nerd-subtitle">Trivia cívica venezolana</div>
-        </div>
+        <span class="nerd-score-icon">🧠</span>
+        <span id="nerd-score">0</span><span class="nerd-score-lbl"> pts</span>
       </div>
+      <div id="nerd-hdr-center">NERDMOCRACY</div>
       <div id="nerd-hdr-right">
-        <div id="nerd-score-pill"><span id="nerd-score">0</span><span class="nerd-score-lbl">pts</span></div>
         <button class="game-close-btn" onclick="cerrarNerdmocracy()">✕</button>
       </div>
     </div>
 
     <!-- Loading -->
     <div id="nerd-state-loading" class="game-loading-screen">
-      <div class="game-spinner-ring"></div>
+      <div class="game-spinner-ring nerd-spinner"></div>
       <p id="nerd-loading-txt">Generando pregunta…</p>
     </div>
 
     <!-- Question -->
     <div id="nerd-state-question" hidden>
       <div id="nerd-timer-wrap">
-        <svg id="nerd-timer-svg" width="88" height="88" viewBox="0 0 88 88">
-          <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/>
-          <circle id="nerd-timer-arc" cx="44" cy="44" r="38" fill="none" stroke="#6366f1" stroke-width="6"
-            stroke-dasharray="238.76" stroke-dashoffset="0" stroke-linecap="round"
-            transform="rotate(-90 44 44)"/>
+        <svg id="nerd-timer-svg" width="96" height="96" viewBox="0 0 96 96">
+          <circle cx="48" cy="48" r="40" fill="none" stroke="#e8e8f4" stroke-width="6"/>
+          <circle id="nerd-timer-arc" cx="48" cy="48" r="40" fill="none" stroke="#6366f1" stroke-width="6"
+            stroke-dasharray="251.33" stroke-dashoffset="0" stroke-linecap="round"
+            transform="rotate(-90 48 48)"/>
         </svg>
         <span id="nerd-timer-num">5</span>
       </div>
 
-      <div id="nerd-question-card">
-        <p id="nerd-question-text"></p>
-      </div>
+      <p id="nerd-question-text"></p>
 
       <div id="nerd-options-grid">
-        <button class="nerd-opt-btn" id="nerd-opt-0"><span class="nerd-opt-key">A</span><span class="nerd-opt-txt" id="nerd-opt-txt-0"></span></button>
-        <button class="nerd-opt-btn" id="nerd-opt-1"><span class="nerd-opt-key">B</span><span class="nerd-opt-txt" id="nerd-opt-txt-1"></span></button>
-        <button class="nerd-opt-btn" id="nerd-opt-2"><span class="nerd-opt-key">C</span><span class="nerd-opt-txt" id="nerd-opt-txt-2"></span></button>
-        <button class="nerd-opt-btn" id="nerd-opt-3"><span class="nerd-opt-key">D</span><span class="nerd-opt-txt" id="nerd-opt-txt-3"></span></button>
+        <button class="nerd-opt-btn" id="nerd-opt-0"><span class="nerd-opt-txt" id="nerd-opt-txt-0"></span></button>
+        <button class="nerd-opt-btn" id="nerd-opt-1"><span class="nerd-opt-txt" id="nerd-opt-txt-1"></span></button>
+        <button class="nerd-opt-btn" id="nerd-opt-2"><span class="nerd-opt-txt" id="nerd-opt-txt-2"></span></button>
+        <button class="nerd-opt-btn" id="nerd-opt-3"><span class="nerd-opt-txt" id="nerd-opt-txt-3"></span></button>
       </div>
     </div>
 
@@ -2515,7 +2514,7 @@
       <div id="nerd-go-label">ELIMINADO</div>
       <div id="nerd-go-score-big"><span id="nerd-go-score">0</span></div>
       <div id="nerd-go-score-sub">respuestas correctas</div>
-      <button class="game-primary-btn" onclick="_nerdRetry()">🔁 Jugar de nuevo</button>
+      <button class="game-primary-btn nerd-retry-btn" onclick="_nerdRetry()">🔁 Jugar de nuevo</button>
     </div>
 
   </div>

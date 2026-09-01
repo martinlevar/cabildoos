@@ -11105,7 +11105,7 @@ function _nerdTimerUI(t) {
   if (num) num.textContent = Math.max(0, t)
   const arc = document.getElementById('nerd-timer-arc')
   if (arc) {
-    const C = 2 * Math.PI * 38  // r=38
+    const C = 2 * Math.PI * 40  // r=40
     arc.style.strokeDashoffset = C * (1 - Math.max(0, t) / 5)
     arc.style.transition = t < 5 ? 'stroke-dashoffset .92s linear' : 'none'
     arc.style.stroke = t <= 1 ? '#ef4444' : t <= 2 ? '#f59e0b' : '#6366f1'
@@ -11114,6 +11114,16 @@ function _nerdTimerUI(t) {
   if (wrap) {
     wrap.classList.toggle('nerd-timer-danger', t <= 2)
   }
+}
+
+function _nerdShowFeedback(correct) {
+  const badge = document.getElementById('nerd-feedback-badge')
+  if (!badge) return
+  badge.className = 'nerd-feedback-badge ' + (correct ? 'nerd-correct' : 'nerd-wrong')
+  badge.textContent = correct ? '✓ Correcto' : '✗ Incorrecto'
+  badge.hidden = false
+  clearTimeout(badge._hideTimer)
+  badge._hideTimer = setTimeout(() => { badge.hidden = true }, 1500)
 }
 
 async function _nerdAnswer(idx) {
@@ -11136,6 +11146,7 @@ async function _nerdAnswer(idx) {
       })
     })
     const d = await r.json()
+    _nerdShowFeedback(d.correct)
     if (d.correct) {
       if (idx >= 0) { const b = document.getElementById('nerd-opt-' + idx); if(b) b.classList.add('nerd-opt-correct') }
       _nerd.score = d.score
