@@ -5616,7 +5616,8 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   /* Q-cards */
   :root:not([data-theme="light"]) .q-card,
   :root[data-theme="dark"] .q-card {
-    border-color: rgba(255,255,255,.08);
+    background: #1a1b2e !important;
+    border-color: rgba(255,255,255,.08) !important;
     box-shadow: 0 2px 12px rgba(0,0,0,.3);
   }
   :root:not([data-theme="light"]) .q-card-cd-badge,

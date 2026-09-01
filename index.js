@@ -7245,8 +7245,7 @@ function renderQCards() {
     const ended = remaining <= 0
     const yaVoto = votos[qdata.id]
     const votoVal = yaVoto?.voto
-    const _lt = CAT_THEME[qdata.category] || CAT_DEFAULT
-    const theme = _isDark() ? _catThemeDark(_lt) : _lt
+    const theme = CAT_THEME[qdata.category] || CAT_DEFAULT
 
     // Chip de estado de voto (activo = clickeable para votar/cambiar, finalizado = solo lectura)
     let voteAreaHTML = ''
