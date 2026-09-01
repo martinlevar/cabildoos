@@ -10883,11 +10883,12 @@ async function _checkSystemConfig() {
     const { data, error } = await sb
       .from('system_config')
       .select('key, value')
-      .in('key', ['maintenance_mode', 'announcement'])
+      .in('key', ['maintenance_mode', 'announcement', 'playroom_active'])
     if (error || !data) return
     for (const row of data) {
       if (row.key === 'maintenance_mode') _showMaintenance(row.value)
       if (row.key === 'announcement')     _showAnnouncement(row.value)
+      if (row.key === 'playroom_active')  _updatePlayroomBtn(row.value)
     }
   } catch(e) { console.warn('_checkSystemConfig:', e) }
 }
@@ -10900,9 +10901,88 @@ function _initSystemConfigRealtime() {
       if (!row) return
       if (row.key === 'maintenance_mode') _showMaintenance(row.value)
       if (row.key === 'announcement')     _showAnnouncement(row.value)
+      if (row.key === 'playroom_active')  _updatePlayroomBtn(row.value)
     })
     .subscribe()
 }
+
+// ══════════════════════════════════════════════════════════════
+//  PLAYROOM
+// ══════════════════════════════════════════════════════════════
+let _playroomActive = false
+
+function _updatePlayroomBtn(val) {
+  _playroomActive = val === true || val === 'true'
+  const btn = document.getElementById('nav-btn-playroom')
+  const lbl = document.querySelector('.nav-playroom-lbl')
+  if (!btn) return
+  // Always show the button once user is logged in (visibility controlled by nav-social-btns)
+  btn.style.display = ''
+  if (_playroomActive) {
+    btn.classList.remove('pr-btn-closed')
+    btn.title = 'Playroom'
+    if (lbl) lbl.textContent = 'Playroom'
+  } else {
+    btn.classList.add('pr-btn-closed')
+    btn.title = 'Playroom cerrado'
+    if (lbl) lbl.textContent = 'Playroom cerrado'
+  }
+}
+
+async function abrirPlayroom() {
+  if (!_playroomActive) return   // no-op when closed; button is visually disabled
+  const overlay = document.getElementById('playroom-overlay')
+  if (overlay) overlay.classList.add('open')
+  _prLoadState()
+  _prLoadRankings()
+}
+
+function cerrarPlayroom() {
+  const overlay = document.getElementById('playroom-overlay')
+  if (overlay) overlay.classList.remove('open')
+}
+
+async function _prLoadState() {
+  // Load user's YoPresidente state to show meters
+  try {
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return
+    const { data } = await sb.from('yopresidente_state').select('energia,capital_politico,salud_mental').eq('user_id', user.id).maybeSingle()
+    if (data) {
+      const setW = (id, v) => { const el = document.getElementById(id); if (el) el.style.width = Math.max(0, Math.min(100, v)) + '%' }
+      setW('pr-m-energia',  data.energia)
+      setW('pr-m-capital',  data.capital_politico)
+      setW('pr-m-salud',    data.salud_mental)
+    }
+  } catch(e) { console.warn('_prLoadState:', e) }
+}
+
+async function _prLoadRankings() {
+  try {
+    const [{ data: nerd }, { data: yop }] = await Promise.all([
+      sb.rpc('get_nerdmocracy_ranking', { limit_n: 10 }),
+      sb.rpc('get_yopresidente_ranking', { limit_n: 10 })
+    ])
+    _renderRanking('pr-rank-nerd-list', nerd, r => `<b>${r.score} pts</b>`)
+    _renderRanking('pr-rank-yop-list',  yop,  r => `<b>Día ${r.day}</b>${r.game_over ? ' <span class="pr-rank-go">game over</span>' : ''}`)
+  } catch(e) { console.warn('_prLoadRankings:', e) }
+}
+
+function _renderRanking(containerId, rows, detailFn) {
+  const el = document.getElementById(containerId)
+  if (!el) return
+  if (!rows || !rows.length) { el.innerHTML = '<div class="pr-rank-empty">Sin datos todavía</div>'; return }
+  el.innerHTML = rows.map((r, i) => `
+    <div class="pr-rank-row${i < 3 ? ' pr-rank-top' : ''}">
+      <span class="pr-rank-pos">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + r.rank}</span>
+      <span class="pr-rank-name">${r.display_name}</span>
+      <span class="pr-rank-detail">${detailFn(r)}</span>
+    </div>`).join('')
+}
+
+// Placeholders — will be implemented in subsequent tasks
+function abrirNerdmocracy() { /* TODO: abrir juego Nerdmocracy */ }
+function abrirYoPresidente() { /* TODO: abrir juego YoPresidente */ }
 
 document.addEventListener('DOMContentLoaded', () => {
   _checkSystemConfig()
