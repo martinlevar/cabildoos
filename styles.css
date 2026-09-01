@@ -6124,3 +6124,13 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 :root[data-theme="dark"] .ph2-vote-label.abs   { color: #fde68a !important; }
 :root[data-theme="dark"] .ph2-question         { color: #8888a8 !important; }
 :root[data-theme="dark"] .ph2-pill             { color: #6a6a80 !important; }
+
+/* ── Dark mode: btn-full (Volver al congreso) ─────────────────────────── */
+:root[data-theme="dark"] .btn-full {
+  background: #e8e8f0 !important;
+  color: #0f1017 !important;
+}
+:root[data-theme="dark"] .btn-full:hover {
+  background: #ffffff !important;
+  color: #0f1017 !important;
+}
