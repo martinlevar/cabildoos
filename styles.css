@@ -6090,3 +6090,37 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   border-color: rgba(255,255,255,.22) !important;
   opacity: 1 !important;
 }
+
+/* ── Dark mode: modal de votación ─────────────────────────────────────── */
+:root[data-theme="dark"] .modal-head {
+  background: #0f1017 !important;
+}
+/* "Sellar y enviar" button — var(--dark) inverts to near-white in dark mode */
+:root[data-theme="dark"] .btn-ok {
+  background: #e8e8f0 !important;
+  color: #0f1017 !important;
+}
+:root[data-theme="dark"] .btn-ok:hover {
+  background: #ffffff !important;
+  color: #0f1017 !important;
+}
+/* "Cambiar voto" back button */
+:root[data-theme="dark"] .btn-back {
+  color: #8888a8 !important;
+}
+:root[data-theme="dark"] .btn-back:hover {
+  background: rgba(255,255,255,.06) !important;
+  color: #c8c8e0 !important;
+}
+/* Ph2 vote confirmation card — replace hardcoded light bg with dark equivalents */
+:root[data-theme="dark"] .ph2-vote-display.si  { background: rgba(22,101,52,.22) !important; }
+:root[data-theme="dark"] .ph2-vote-display.no  { background: rgba(153,27,27,.22) !important; }
+:root[data-theme="dark"] .ph2-vote-display.abs { background: rgba(133,77,14,.20) !important; }
+:root[data-theme="dark"] .ph2-vote-icon.si     { background: rgba(22,101,52,.35) !important; }
+:root[data-theme="dark"] .ph2-vote-icon.no     { background: rgba(153,27,27,.35) !important; }
+:root[data-theme="dark"] .ph2-vote-icon.abs    { background: rgba(133,77,14,.30) !important; }
+:root[data-theme="dark"] .ph2-vote-label.si    { color: #86efac !important; }
+:root[data-theme="dark"] .ph2-vote-label.no    { color: #fca5a5 !important; }
+:root[data-theme="dark"] .ph2-vote-label.abs   { color: #fde68a !important; }
+:root[data-theme="dark"] .ph2-question         { color: #8888a8 !important; }
+:root[data-theme="dark"] .ph2-pill             { color: #6a6a80 !important; }
