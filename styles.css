@@ -6001,3 +6001,46 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   background: var(--surface) !important;
   box-shadow: 0 24px 60px rgba(0,0,0,.5) !important;
 }
+
+/* ── Dark mode: modales Mi Butaca + Resultados ─────────────────────────── */
+:root[data-theme="dark"] .modal-bd {
+  background: rgba(8,9,18,.72) !important;
+}
+:root[data-theme="dark"] .modal-body {
+  background: #13141f !important;
+  color: #e0e0f0 !important;
+}
+:root[data-theme="dark"] .modal {
+  box-shadow: 0 2px 8px rgba(0,0,0,.4), 0 16px 48px rgba(0,0,0,.5) !important;
+}
+
+/* Stats / Resultados panel */
+:root[data-theme="dark"] .sp-header {
+  background: #1a1b2e !important;
+  border-bottom-color: rgba(255,255,255,.07) !important;
+}
+:root[data-theme="dark"] .sp-title { color: #e0e0f0 !important; }
+:root[data-theme="dark"] .sp-close { color: #6a6a80 !important; }
+:root[data-theme="dark"] .sp-close:hover { background: rgba(255,255,255,.08) !important; }
+:root[data-theme="dark"] .sp-summary {
+  background: #1a1b2e !important;
+  border-bottom-color: rgba(255,255,255,.07) !important;
+}
+:root[data-theme="dark"] .sp-body { background: #0f1017 !important; }
+:root[data-theme="dark"] #stats-modal-inner {
+  background: #0f1017 !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.55) !important;
+}
+:root[data-theme="dark"] .sp-q-card {
+  background: #1a1b2e !important;
+  border-color: rgba(255,255,255,.07) !important;
+}
+:root[data-theme="dark"] .sp-q-text { color: #d0d0e8 !important; }
+:root[data-theme="dark"] .sp-bar-track { background: rgba(255,255,255,.08) !important; }
+:root[data-theme="dark"] .sp-bar-num,
+:root[data-theme="dark"] .sp-bar-pct { color: #6a6a80 !important; }
+:root[data-theme="dark"] .sp-result-badge.tie { background: rgba(255,255,255,.07) !important; color: #8a8aa8 !important; }
+:root[data-theme="dark"] .sp-result-badge.open { background: rgba(29,78,216,.2) !important; color: #93c5fd !important; }
+:root[data-theme="dark"] .sp-my-vote.si  { background: rgba(22,101,52,.3) !important; color: #86efac !important; }
+:root[data-theme="dark"] .sp-my-vote.no  { background: rgba(153,27,27,.3) !important; color: #fca5a5 !important; }
+:root[data-theme="dark"] .sp-my-vote.abs { background: rgba(133,77,14,.3) !important; color: #fde68a !important; }
