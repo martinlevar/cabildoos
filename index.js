@@ -7287,6 +7287,7 @@ function renderQCards() {
     card.className = ended ? 'q-card ended' : 'q-card'
     card.style.background = theme.bg
     card.style.borderColor = theme.pill
+    card.dataset.qcat = (qdata && qdata.category) ? qdata.category : ''
     card.innerHTML = `
       <div class="q-card-inner" onclick="abrirInfoModal(${i})">
         ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${escapeHtml(qdata.category)}</span>` : ''}

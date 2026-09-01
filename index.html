@@ -2389,6 +2389,17 @@
       const btn = document.getElementById(id);
       if (btn) btn.textContent = emoji;
     });
+    // Re-theme q-cards so inline styles update on toggle
+    const isDk = theme === 'dark';
+    const CAT = window._CAT_THEME || {};
+    const DEF = window._CAT_DEFAULT || { bg:'#F9F9F7', pill:'#E4E4E0', txt:'#555', cd:'#F2F2F0' };
+    document.querySelectorAll('.q-card[data-qcat]').forEach(function(card) {
+      const lt = CAT[card.dataset.qcat] || DEF;
+      card.style.background = isDk ? '#1a1b2e' : lt.bg;
+      card.style.borderColor = isDk ? 'rgba(255,255,255,0.06)' : lt.pill;
+      const cd = card.querySelector('.q-card-countdown');
+      if (cd) { cd.style.background = isDk ? '#0f1017' : lt.cd; cd.style.borderTopColor = isDk ? 'rgba(255,255,255,0.06)' : lt.pill; }
+    });
   }
 
   // Aplicar al cargar
