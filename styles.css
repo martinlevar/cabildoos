@@ -5794,6 +5794,14 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   :root[data-theme="dark"] .cal-day-cell.selected .cdn {
     color: #fff;
   }
+  :root:not([data-theme="light"]) .cal-month-lbl,
+  :root[data-theme="dark"] .cal-month-lbl { color: rgba(255,255,255,.90); }
+  :root:not([data-theme="light"]) .cal-mid-title,
+  :root[data-theme="dark"] .cal-mid-title { color: rgba(255,255,255,.90); }
+  :root:not([data-theme="light"]) .cal-nav-btn,
+  :root[data-theme="dark"] .cal-nav-btn { color: rgba(255,255,255,.65); }
+  :root:not([data-theme="light"]) .cal-dow-row span,
+  :root[data-theme="dark"] .cal-dow-row span { color: rgba(255,255,255,.40); }
 
   /* Resultado oficial banner — fondo blanco hardcoded, adaptar a dark */
   :root:not([data-theme="light"]) #sim-winner-inner,
@@ -5927,6 +5935,10 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 
 
+:root[data-theme="dark"] .cal-month-lbl { color: rgba(255,255,255,.90); }
+:root[data-theme="dark"] .cal-mid-title { color: rgba(255,255,255,.90); }
+:root[data-theme="dark"] .cal-nav-btn { color: rgba(255,255,255,.65); }
+:root[data-theme="dark"] .cal-dow-row span { color: rgba(255,255,255,.40); }
 .dm-toggle {
   width: 34px; height: 34px;
   border-radius: 50%;
