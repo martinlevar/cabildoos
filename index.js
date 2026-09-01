@@ -2510,12 +2510,14 @@ async function _onLogin(user) {
   // Mezclar datos de seat_identities (alias, phrase, visibilidad) en el perfil
   if (profile && seatRows && seatRows[0]) {
     const si = seatRows[0]
-    profile.alias      = si.alias
-    profile.phrase     = si.phrase
-    profile.show_alias = si.show_alias
-    profile.show_phrase= si.show_phrase
-    profile.show_votes = si.show_votes
-    profile.is_public  = si.is_public
+    // Solo sobreescribir si el campo de seat_identities tiene valor;
+    // si no, preservar lo que ya tiene profiles (ej: alias guardado en registro)
+    if (si.alias      != null) profile.alias      = si.alias
+    if (si.phrase     != null) profile.phrase     = si.phrase
+    if (si.show_alias != null) profile.show_alias = si.show_alias
+    if (si.show_phrase!= null) profile.show_phrase= si.show_phrase
+    if (si.show_votes != null) profile.show_votes = si.show_votes
+    if (si.is_public  != null) profile.is_public  = si.is_public
   }
 
   // ── Si no hay perfil, verificar que el usuario aún existe en el servidor ───
@@ -10883,11 +10885,12 @@ async function _checkSystemConfig() {
     const { data, error } = await sb
       .from('system_config')
       .select('key, value')
-      .in('key', ['maintenance_mode', 'announcement'])
+      .in('key', ['maintenance_mode', 'announcement', 'playroom_active'])
     if (error || !data) return
     for (const row of data) {
       if (row.key === 'maintenance_mode') _showMaintenance(row.value)
       if (row.key === 'announcement')     _showAnnouncement(row.value)
+      if (row.key === 'playroom_active')  _updatePlayroomBtn(row.value)
     }
   } catch(e) { console.warn('_checkSystemConfig:', e) }
 }
@@ -10900,9 +10903,456 @@ function _initSystemConfigRealtime() {
       if (!row) return
       if (row.key === 'maintenance_mode') _showMaintenance(row.value)
       if (row.key === 'announcement')     _showAnnouncement(row.value)
+      if (row.key === 'playroom_active')  _updatePlayroomBtn(row.value)
     })
     .subscribe()
 }
+
+// ══════════════════════════════════════════════════════════════
+//  PLAYROOM
+// ══════════════════════════════════════════════════════════════
+let _playroomActive = false
+
+function _updatePlayroomBtn(val) {
+  _playroomActive = val === true || val === 'true'
+  const btn = document.getElementById('nav-btn-playroom')
+  const lbl = document.querySelector('.nav-playroom-lbl')
+  if (!btn) return
+  // Always show the button once user is logged in (visibility controlled by nav-social-btns)
+  btn.style.display = ''
+  if (_playroomActive) {
+    btn.classList.remove('pr-btn-closed')
+    btn.title = 'Playroom'
+    if (lbl) lbl.textContent = 'Playroom'
+  } else {
+    btn.classList.add('pr-btn-closed')
+    btn.title = 'Playroom cerrado'
+    if (lbl) lbl.textContent = 'Playroom cerrado'
+  }
+}
+
+async function abrirPlayroom() {
+  if (!_playroomActive) return   // no-op when closed; button is visually disabled
+  const overlay = document.getElementById('playroom-overlay')
+  if (overlay) overlay.classList.add('open')
+  _prLoadState()
+  _prLoadRankings()
+}
+
+function cerrarPlayroom() {
+  const overlay = document.getElementById('playroom-overlay')
+  if (overlay) overlay.classList.remove('open')
+}
+
+async function _prLoadState() {
+  // Load user's YoPresidente state to show meters
+  try {
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return
+    const { data } = await sb.from('yopresidente_state').select('energia,capital_politico,salud_mental').eq('user_id', user.id).maybeSingle()
+    if (data) {
+      const setW = (id, v) => { const el = document.getElementById(id); if (el) el.style.width = Math.max(0, Math.min(100, v)) + '%' }
+      setW('pr-m-energia',  data.energia)
+      setW('pr-m-capital',  data.capital_politico)
+      setW('pr-m-salud',    data.salud_mental)
+    }
+  } catch(e) { console.warn('_prLoadState:', e) }
+}
+
+async function _prLoadRankings() {
+  try {
+    const [{ data: nerd }, { data: yop }] = await Promise.all([
+      sb.rpc('get_nerdmocracy_ranking', { limit_n: 10 }),
+      sb.rpc('get_yopresidente_ranking', { limit_n: 10 })
+    ])
+    _renderRanking('pr-rank-nerd-list', nerd, r => `<b>${r.score} pts</b>`)
+    _renderRanking('pr-rank-yop-list',  yop,  r => `<b>Día ${r.day}</b>${r.game_over ? ' <span class="pr-rank-go">game over</span>' : ''}`)
+  } catch(e) { console.warn('_prLoadRankings:', e) }
+}
+
+function _renderRanking(containerId, rows, detailFn) {
+  const el = document.getElementById(containerId)
+  if (!el) return
+  if (!rows || !rows.length) { el.innerHTML = '<div class="pr-rank-empty">Sin datos todavía</div>'; return }
+  el.innerHTML = rows.map((r, i) => `
+    <div class="pr-rank-row${i < 3 ? ' pr-rank-top' : ''}">
+      <span class="pr-rank-pos">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + r.rank}</span>
+      <span class="pr-rank-name">${r.display_name}</span>
+      <span class="pr-rank-detail">${detailFn(r)}</span>
+    </div>`).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PLAYROOM — GAME LOGIC
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function _getAuthToken() {
+  const { data } = await sb.auth.getSession()
+  return data.session?.access_token || ''
+}
+
+const _API = () => (window.__ENV && window.__ENV.API_ENDPOINT) || 'https://api.cabildodevenezuela.com'
+
+// ── NERDMOCRACY ───────────────────────────────────────────────────────────────
+
+const _nerd = { sessionId: null, score: 0, timer: null, timeLeft: 5, questionId: null, answering: false, nextQ: null, prefetching: false }
+
+function abrirNerdmocracy() {
+  document.getElementById('nerd-overlay').classList.add('open')
+  _nerdInit()
+}
+
+function cerrarNerdmocracy() {
+  clearInterval(_nerd.timer)
+  document.getElementById('nerd-overlay').classList.remove('open')
+}
+
+async function _nerdInit() {
+  _nerd.score = 0; _nerd.answering = false; _nerd.sessionId = null; _nerd.nextQ = null; _nerd.prefetching = false
+  clearInterval(_nerd.timer)
+  _nerdSetScore(0)
+  _nerdState('loading')
+  document.getElementById('nerd-loading-txt').textContent = 'Iniciando sesión…'
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/session/start', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    if (!r.ok) throw new Error(await r.text())
+    const d = await r.json()
+    _nerd.sessionId = d.session_id
+    await _nerdNextQuestion()
+  } catch(e) {
+    console.error('_nerdInit:', e)
+    _nerdShowError('Error iniciando sesión. Intenta de nuevo.')
+  }
+}
+
+async function _nerdRetry() { await _nerdInit() }
+
+async function _nerdNextQuestion() {
+  // Si ya tenemos una pregunta pre-cargada, úsala instantáneamente
+  if (_nerd.nextQ) {
+    const q = _nerd.nextQ
+    _nerd.nextQ = null
+    _nerd.questionId = q.question_id
+    _nerd.answering = false
+    _nerdShowQuestion(q)
+    _nerdStartTimer()
+    _nerdPrefetch()   // pre-cargar la siguiente en background
+    return
+  }
+  _nerdState('loading')
+  document.getElementById('nerd-loading-txt').textContent = 'Generando pregunta…'
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/question', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    if (!r.ok) throw new Error(await r.text())
+    const q = await r.json()
+    _nerd.questionId = q.question_id
+    _nerd.answering = false
+    _nerdShowQuestion(q)
+    _nerdStartTimer()
+    _nerdPrefetch()   // pre-cargar la siguiente en background
+  } catch(e) {
+    console.error('_nerdNextQuestion:', e)
+    _nerdShowError('Error generando pregunta. Intenta de nuevo.')
+  }
+}
+
+async function _nerdPrefetch() {
+  if (_nerd.prefetching || _nerd.nextQ) return
+  _nerd.prefetching = true
+  try {
+    const token = await _getAuthToken()
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/question', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    if (r.ok) _nerd.nextQ = await r.json()
+  } catch(e) { /* silencioso — si falla, se pide en el momento */ }
+  finally { _nerd.prefetching = false }
+}
+
+const _NERD_KEYS = ['A','B','C','D']
+function _nerdShowQuestion(q) {
+  document.getElementById('nerd-question-text').textContent = q.question_text
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById('nerd-opt-' + i)
+    const txt = document.getElementById('nerd-opt-txt-' + i)
+    if (txt) txt.textContent = q.options[i]
+    if (btn) {
+      btn.disabled = false
+      btn.className = 'nerd-opt-btn'
+      btn.onclick = () => _nerdAnswer(i)
+    }
+  }
+  _nerdState('question')
+}
+
+function _nerdStartTimer() {
+  _nerd.timeLeft = 5
+  clearInterval(_nerd.timer)
+  _nerdTimerUI(5)
+  _nerd.timer = setInterval(() => {
+    _nerd.timeLeft--
+    _nerdTimerUI(_nerd.timeLeft)
+    if (_nerd.timeLeft <= 0) { clearInterval(_nerd.timer); if (!_nerd.answering) _nerdAnswer(-1) }
+  }, 1000)
+}
+
+function _nerdTimerUI(t) {
+  const num = document.getElementById('nerd-timer-num')
+  if (num) num.textContent = Math.max(0, t)
+  const arc = document.getElementById('nerd-timer-arc')
+  if (arc) {
+    const C = 2 * Math.PI * 40  // r=40
+    arc.style.strokeDashoffset = C * (1 - Math.max(0, t) / 5)
+    arc.style.transition = t < 5 ? 'stroke-dashoffset .92s linear' : 'none'
+    arc.style.stroke = t <= 1 ? '#ef4444' : t <= 2 ? '#f59e0b' : '#6366f1'
+  }
+  const wrap = document.getElementById('nerd-timer-wrap')
+  if (wrap) {
+    wrap.classList.toggle('nerd-timer-danger', t <= 2)
+  }
+}
+
+function _nerdShowFeedback(correct) {
+  const badge = document.getElementById('nerd-feedback-badge')
+  if (!badge) return
+  badge.className = 'nerd-feedback-badge ' + (correct ? 'nerd-correct' : 'nerd-wrong')
+  badge.textContent = correct ? '✓ Correcto' : '✗ Incorrecto'
+  badge.hidden = false
+  clearTimeout(badge._hideTimer)
+  badge._hideTimer = setTimeout(() => { badge.hidden = true }, 1500)
+}
+
+async function _nerdAnswer(idx) {
+  if (_nerd.answering) return
+  _nerd.answering = true
+  clearInterval(_nerd.timer)
+  for (let i = 0; i < 4; i++) {
+    const b = document.getElementById('nerd-opt-' + i)
+    if (b) { b.disabled = true; if (i === idx) b.classList.add('nerd-opt-selected') }
+  }
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/answer', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: _nerd.sessionId,
+        question_id: _nerd.questionId,
+        answer_index: idx < 0 ? 0 : idx
+      })
+    })
+    const d = await r.json()
+    _nerdShowFeedback(d.correct)
+    if (d.correct) {
+      if (idx >= 0) { const b = document.getElementById('nerd-opt-' + idx); if(b) b.classList.add('nerd-opt-correct') }
+      _nerd.score = d.score
+      _nerdSetScore(d.score)
+      await new Promise(res => setTimeout(res, 500))
+      await _nerdNextQuestion()
+    } else {
+      if (idx >= 0) { const b = document.getElementById('nerd-opt-' + idx); if(b) b.classList.add('nerd-opt-wrong') }
+      await new Promise(res => setTimeout(res, 600))
+      _nerdGameOver(d.score)
+    }
+  } catch(e) {
+    console.error('_nerdAnswer:', e)
+    _nerdGameOver(_nerd.score)
+  }
+}
+
+function _nerdGameOver(score) {
+  clearInterval(_nerd.timer)
+  document.getElementById('nerd-go-score').textContent = score
+  _nerdState('gameover')
+  _prLoadRankings()
+}
+
+function _nerdSetScore(n) {
+  const el = document.getElementById('nerd-score')
+  if (el) el.textContent = n
+}
+
+function _nerdState(s) {
+  ;['loading','question','gameover'].forEach(name => {
+    const el = document.getElementById('nerd-state-' + name)
+    if (el) el.hidden = (name !== s)
+  })
+}
+
+function _nerdShowError(msg) {
+  const el = document.getElementById('nerd-loading-txt')
+  if (el) el.textContent = msg
+  _nerdState('loading')
+}
+
+// ── YO, PRESIDENTE ────────────────────────────────────────────────────────────
+
+const _yop = { day: 1, scenario: null }
+
+function abrirYoPresidente() {
+  document.getElementById('yop-overlay').classList.add('open')
+  _yopLoad()
+}
+
+function cerrarYoPresidente() {
+  document.getElementById('yop-overlay').classList.remove('open')
+}
+
+async function _yopLoad() {
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/yopresidente/state', {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+    if (!r.ok) throw new Error(await r.text())
+    const state = await r.json()
+    _yopApplyMeters(state)
+    _yop.day = state.day || 1
+    if (state.game_over) {
+      document.getElementById('yop-survived-days').textContent = Math.max(0, state.day - 1)
+      _yopState('gameover')
+    } else {
+      await _yopGetScenario()
+    }
+  } catch(e) {
+    console.error('_yopLoad:', e)
+    _yopState('loading')
+  }
+}
+
+function _yopApplyMeters(state) {
+  _yopMeter('yop-m-energia', state.energia ?? 70)
+  _yopMeter('yop-m-capital', state.capital_politico ?? 70)
+  _yopMeter('yop-m-salud',   state.salud_mental ?? 70)
+  const dayEl = document.getElementById('yop-day')
+  if (dayEl) dayEl.textContent = state.day || 1
+  ;['yop-delta-energia','yop-delta-capital','yop-delta-salud'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) { el.textContent = ''; el.className = 'yop-delta' }
+  })
+}
+
+function _yopMeter(id, val) {
+  const el = document.getElementById(id)
+  if (el) el.style.width = Math.max(0, Math.min(100, val)) + '%'
+}
+
+async function _yopGetScenario() {
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/yopresidente/scenario', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    if (r.status === 409) { _yopState('gameover'); return }
+    if (!r.ok) throw new Error(await r.text())
+    const scenario = await r.json()
+    _yop.scenario = scenario
+    _yop.day = scenario.day
+    document.getElementById('yop-day').textContent = scenario.day
+    _yopApplyMeters({ ...scenario.current_meters, day: scenario.day })
+    _yopShowScenario(scenario)
+  } catch(e) {
+    console.error('_yopGetScenario:', e)
+  }
+}
+
+function _yopShowScenario(s) {
+  document.getElementById('yop-crisis-text').textContent = s.crisis_text
+  const list = document.getElementById('yop-options-list')
+  list.innerHTML = ''
+  const riskIcon  = { low: '🟢', medium: '🟡', high: '🔴' }
+  const riskLabel = { low: 'CONSERVADOR', medium: 'MODERADO', high: 'AUDAZ' }
+  s.options.forEach((opt, i) => {
+    const btn = document.createElement('button')
+    btn.className = 'yop-opt-btn yop-risk-' + opt.risk_level
+    btn.innerHTML =
+      '<span class="yop-opt-risk-badge">' + (riskIcon[opt.risk_level]||'⚪') + ' ' + (riskLabel[opt.risk_level]||'') + '</span>' +
+      '<span class="yop-opt-txt">' + opt.text + '</span>'
+    btn.onclick = () => _yopDecide(i, opt.text)
+    list.appendChild(btn)
+  })
+  _yopState('scenario')
+}
+
+async function _yopDecide(idx, optText) {
+  document.querySelectorAll('.yop-opt-btn').forEach(b => b.disabled = true)
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/yopresidente/decision', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        decision_index: idx,
+        crisis_text: _yop.scenario.crisis_text,
+        option_text: optText
+      })
+    })
+    if (!r.ok) throw new Error(await r.text())
+    const result = await r.json()
+    _yopShowConsequence(result)
+  } catch(e) {
+    console.error('_yopDecide:', e)
+    await _yopGetScenario()
+  }
+}
+
+function _yopShowConsequence(result) {
+  document.getElementById('yop-consequence-text').textContent = result.consequence_text
+  const d = result.meter_deltas
+  const s = result.new_state
+  _yopMeter('yop-m-energia', s.energia)
+  _yopMeter('yop-m-capital', s.capital_politico)
+  _yopMeter('yop-m-salud',   s.salud_mental)
+  document.getElementById('yop-day').textContent = s.day
+  function setDelta(id, val) {
+    const el = document.getElementById(id); if (!el) return
+    el.textContent = val >= 0 ? '+' + val : '' + val
+    el.className = 'yop-delta ' + (val >= 0 ? 'yop-delta-pos' : 'yop-delta-neg')
+  }
+  setDelta('yop-delta-energia', d.energia)
+  setDelta('yop-delta-capital', d.capital_politico)
+  setDelta('yop-delta-salud',   d.salud_mental)
+  const btn = document.getElementById('yop-next-btn')
+  if (result.game_over) {
+    document.getElementById('yop-survived-days').textContent = Math.max(0, s.day - 1)
+    btn.textContent = '⚰️ Ver resumen final'
+    btn.onclick = () => _yopState('gameover')
+  } else {
+    btn.textContent = '→ Día ' + s.day
+    btn.onclick = _yopGetScenario
+  }
+  _yopState('consequence')
+  _prLoadState()
+}
+
+async function _yopReset() {
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    await fetch(_API() + '/api/playroom/yopresidente/reset', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    await _yopGetScenario()
+  } catch(e) { console.error('_yopReset:', e) }
+}
+
+function _yopState(s) {
+  ;['loading','scenario','consequence','gameover'].forEach(name => {
+    const el = document.getElementById('yop-state-' + name)
+    if (el) el.hidden = (name !== s)
+  })
+}
+
+document.addEventListener('DOMContentLoaded', checkBloqueMatch)
 
 document.addEventListener('DOMContentLoaded', () => {
   _checkSystemConfig()
