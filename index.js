@@ -6831,12 +6831,8 @@ function _renderStatsPanel(rows) {
       ? `<span class="sp-q-pill" style="background:${theme.pill};color:${theme.txt}">${r.category}</span>`
       : ''
 
-    return `<div class="sp-q-card">
-      <div class="sp-q-top">
-        <p class="sp-q-text">${r.text}</p>
-        ${catPill}
-      </div>
-      <div class="sp-bars">
+    const barsHtml = ended
+      ? `<div class="sp-bars">
         <div class="sp-bar-row">
           <span class="sp-bar-lbl si">SÍ</span>
           <div class="sp-bar-track"><div class="sp-bar-fill si" style="width:${pctSi}%"></div></div>
@@ -6859,7 +6855,18 @@ function _renderStatsPanel(rows) {
       <div class="sp-q-footer">
         <span class="sp-bar-lbl" style="color:var(--mid);font-size:10px">${revealed} votos totales</span>
         ${resultBadge}
+      </div>`
+      : `<div class="sp-q-footer" style="padding-top:10px">
+        <span style="font-size:12px;color:var(--mid)">Resultados disponibles al cierre de la votación</span>
+        ${resultBadge}
+      </div>`
+
+    return `<div class="sp-q-card">
+      <div class="sp-q-top">
+        <p class="sp-q-text">${r.text}</p>
+        ${catPill}
       </div>
+      ${barsHtml}
     </div>`
   }).join('')
 
@@ -7252,12 +7259,19 @@ function renderQCards() {
     let _cdRightEnded = ''
     if (ended) {
       // Estado final — chip de voto en countdown, botón revelación en acciones
-      const statusMap = {
+      const _smLight = {
         si:  { lbl:'Voté SÍ',     bg:'#dcfce7', color:'#166534' },
         no:  { lbl:'Voté NO',     bg:'#fee2e2', color:'#991b1b' },
         abs: { lbl:'Me abstuve',  bg:'#fef9c3', color:'#854d0e' },
       }
-      const st = votoVal ? statusMap[votoVal] : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
+      const _smDark = {
+        si:  { lbl:'Voté SÍ',     bg:'rgba(22,101,52,.35)',  color:'#86efac' },
+        no:  { lbl:'Voté NO',     bg:'rgba(153,27,27,.35)',  color:'#fca5a5' },
+        abs: { lbl:'Me abstuve',  bg:'rgba(133,77,14,.35)',  color:'#fde68a' },
+      }
+      const statusMap = _isDark() ? _smDark : _smLight
+      const _stAbsent = _isDark() ? { lbl:'Ausente', bg:'rgba(255,255,255,.07)', color:'#6a6a80' } : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
+      const st = votoVal ? statusMap[votoVal] : _stAbsent
       _cdRightEnded = `<span class="q-vote-status-chip" style="background:${st.bg};color:${st.color};font-size:10px;padding:4px 10px">${st.lbl}</span>`
       voteAreaHTML = `<button class="q-card-revelacion-btn" style="flex:1" onclick="abrirVotoForQ(${i})">Ver Revelación →</button>`
     } else {
@@ -7279,6 +7293,7 @@ function renderQCards() {
     card.className = ended ? 'q-card ended' : 'q-card'
     card.style.background = theme.bg
     card.style.borderColor = theme.pill
+    card.dataset.qcat = (qdata && qdata.category) ? qdata.category : ''
     card.innerHTML = `
       <div class="q-card-inner" onclick="abrirInfoModal(${i})">
         ${qdata.category ? `<span class="q-cat-pill" style="background:${theme.pill};color:${theme.txt}">${escapeHtml(qdata.category)}</span>` : ''}
@@ -7504,6 +7519,16 @@ window._CAT_THEME = {
   'Electoral':      { bg:'#FFFBEB', pill:'#FDE68A', txt:'#92400E', cd:'#FEF3C7' },
 }
 const _CAT_DEFAULT = { bg:'#F9F9F7', pill:'#E4E4E0', txt:'#555', cd:'#F2F2F0' }
+// Dark mode helpers for card theming
+function _isDark() {
+  const dt = document.documentElement.getAttribute('data-theme')
+  if (dt === 'dark') return true
+  if (dt === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+function _catThemeDark(lt) {
+  return { bg:'#1a1b2e', pill:lt.pill, txt:lt.txt, cd:'#0f1017' }
+}
 
 // Deriva tema completo desde un color hex
 function _catThemeFromHex(hex) {
@@ -10818,3 +10843,68 @@ function _audInitBadgeRealtime() {
     })
     .subscribe()
 }
+
+// ── Sistema de mantenimiento y anuncios globales ─────────────────────────
+function _showAnnouncement(val) {
+  const banner = document.getElementById('sys-announcement')
+  const txt    = document.getElementById('sys-announcement-text')
+  if (!banner || !txt) return
+  if (!val?.active || !val?.text) { _hideAnnouncement(); return }
+  txt.textContent = val.text
+  banner.className = val.type || 'error'   // color class
+  banner.style.display = 'flex'
+  // animate in next frame
+  requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('visible')))
+}
+
+function _hideAnnouncement() {
+  const banner = document.getElementById('sys-announcement')
+  if (!banner) return
+  banner.classList.remove('visible')
+  setTimeout(() => { if (!banner.classList.contains('visible')) banner.style.display = 'none' }, 350)
+}
+
+function _cerrarAnuncio() { _hideAnnouncement() }
+
+function _showMaintenance(val) {
+  const overlay = document.getElementById('maint-overlay')
+  const msg     = document.getElementById('maint-msg')
+  if (!overlay) return
+  if (val?.active) {
+    if (msg && val.message) msg.textContent = val.message
+    overlay.classList.add('active')
+  } else {
+    overlay.classList.remove('active')
+  }
+}
+
+async function _checkSystemConfig() {
+  try {
+    const { data, error } = await sb
+      .from('system_config')
+      .select('key, value')
+      .in('key', ['maintenance_mode', 'announcement'])
+    if (error || !data) return
+    for (const row of data) {
+      if (row.key === 'maintenance_mode') _showMaintenance(row.value)
+      if (row.key === 'announcement')     _showAnnouncement(row.value)
+    }
+  } catch(e) { console.warn('_checkSystemConfig:', e) }
+}
+
+function _initSystemConfigRealtime() {
+  sb.channel('system-config-watch')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'system_config'
+    }, ({ new: row }) => {
+      if (!row) return
+      if (row.key === 'maintenance_mode') _showMaintenance(row.value)
+      if (row.key === 'announcement')     _showAnnouncement(row.value)
+    })
+    .subscribe()
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  _checkSystemConfig()
+  _initSystemConfigRealtime()
+})

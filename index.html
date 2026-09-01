@@ -75,6 +75,7 @@
     </div>
     <div class="nav-right">
       <!-- Estado: no logueado -->
+      <button class="dm-toggle" id="dm-toggle-btn" onclick="toggleDarkMode()" title="Cambiar modo oscuro/claro">🌙</button>
       <button id="btn-auth-nav" onclick="abrirAuth()" style="display:none">Crear cuenta</button>
       <!-- Estado: logueado — dropdown con nombre -->
       <div id="nav-user-info" style="display:none; position:relative;">
@@ -476,6 +477,9 @@
 
     <!-- Create account button (logged out) — oculto por defecto, _onLogout() lo muestra -->
     <button class="nav-creat-btn" id="nav-creat-btn" onclick="abrirAuth()" style="display:none">Crear cuenta</button>
+
+    <!-- Dark mode toggle -->
+    <button class="dm-toggle" id="dm-toggle-btn-main" onclick="toggleDarkMode()" title="Cambiar modo oscuro/claro">🌙</button>
   </nav>
 
   <!-- ══ PANEL CALENDARIO HISTÓRICO ══ -->
@@ -1906,9 +1910,12 @@
 
 <!-- ══ BANNER DE ANUNCIO ══ -->
 <div id="sys-announcement">
-  <span id="sys-announcement-text"></span>
-  <button onclick="document.getElementById('sys-announcement').style.display='none'"
-    style="background:none;border:none;cursor:pointer;font-size:16px;color:inherit;padding:0 4px">✕</button>
+  <div class="sya-accent"></div>
+  <div class="sya-body">
+    <p class="sya-eyebrow">📢 ANUNCIO</p>
+    <p class="sya-text" id="sys-announcement-text"></p>
+  </div>
+  <button class="sya-close" onclick="_cerrarAnuncio()" title="Cerrar">✕</button>
 </div>
 
 <!-- ══ MODAL REPORTAR / CONTACTO ══ -->
@@ -2363,6 +2370,48 @@
 </div>
 
 <script src="index.js"></script>
+
+
+<script>
+/* ── Dark Mode Toggle ── */
+(function() {
+  const root = document.documentElement;
+  const BTN_ID = 'dm-toggle-btn';
+  const KEY = 'cdv-theme';
+
+  function getEffectiveTheme() {
+    const stored = localStorage.getItem(KEY);
+    if (stored === 'dark' || stored === 'light') return stored;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    const emoji = theme === 'dark' ? '☀️' : '🌙';
+    ['dm-toggle-btn', 'dm-toggle-btn-main'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.textContent = emoji;
+    });
+  }
+
+  // Aplicar al cargar
+  applyTheme(getEffectiveTheme());
+
+  window.toggleDarkMode = function() {
+    const current = root.getAttribute('data-theme') || getEffectiveTheme();
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(KEY, next);
+    applyTheme(next);
+  };
+
+  // Escuchar cambios del sistema operativo
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (!localStorage.getItem(KEY)) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+})();
+</script>
 
 </body>
 </html>
