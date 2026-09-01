@@ -10843,3 +10843,38 @@ function _audInitBadgeRealtime() {
     })
     .subscribe()
 }
+
+// ── Sistema de mantenimiento y anuncios globales ─────────────────────────
+async function _checkSystemConfig() {
+  try {
+    const { data, error } = await sb
+      .from('system_config')
+      .select('key, value')
+      .in('key', ['maintenance_mode', 'announcement'])
+
+    if (error || !data) return
+
+    for (const row of data) {
+      if (row.key === 'maintenance_mode' && row.value?.active) {
+        const overlay = document.getElementById('maint-overlay')
+        const msg = document.getElementById('maint-msg')
+        if (overlay) overlay.classList.add('active')
+        if (msg && row.value.message) msg.textContent = row.value.message
+      }
+      if (row.key === 'announcement' && row.value?.active && row.value?.text) {
+        const banner = document.getElementById('sys-announcement')
+        const txt    = document.getElementById('sys-announcement-text')
+        if (banner && txt) {
+          txt.textContent = row.value.text
+          banner.className = ''  // reset classes
+          banner.classList.add(row.value.type || 'info')
+          banner.style.display = 'flex'
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('_checkSystemConfig:', e)
+  }
+}
+
+document.addEventListener('DOMContentLoaded', _checkSystemConfig)
