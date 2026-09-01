@@ -6074,3 +6074,19 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   border-color: transparent !important;
 }
 :root[data-theme="dark"] .map-btn.orange:hover { background: #d45510 !important; }
+
+/* ── Dark mode: Mi Butaca header strip + CTA button → negro ──────────── */
+:root[data-theme="dark"] .mp-top-strip {
+  background: #0f1017 !important;
+  border-bottom: 1px solid rgba(255,255,255,.07) !important;
+}
+:root[data-theme="dark"] .mp-cta {
+  background: #1a1b2e !important;
+  border: 1.5px solid rgba(255,255,255,.12) !important;
+  color: #e0e0f0 !important;
+}
+:root[data-theme="dark"] .mp-cta:hover {
+  background: #22233a !important;
+  border-color: rgba(255,255,255,.22) !important;
+  opacity: 1 !important;
+}
