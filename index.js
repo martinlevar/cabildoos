@@ -10845,36 +10845,66 @@ function _audInitBadgeRealtime() {
 }
 
 // ── Sistema de mantenimiento y anuncios globales ─────────────────────────
+function _showAnnouncement(val) {
+  const banner = document.getElementById('sys-announcement')
+  const txt    = document.getElementById('sys-announcement-text')
+  if (!banner || !txt) return
+  if (!val?.active || !val?.text) { _hideAnnouncement(); return }
+  txt.textContent = val.text
+  banner.className = val.type || 'error'   // color class
+  banner.style.display = 'flex'
+  // animate in next frame
+  requestAnimationFrame(() => requestAnimationFrame(() => banner.classList.add('visible')))
+}
+
+function _hideAnnouncement() {
+  const banner = document.getElementById('sys-announcement')
+  if (!banner) return
+  banner.classList.remove('visible')
+  setTimeout(() => { if (!banner.classList.contains('visible')) banner.style.display = 'none' }, 350)
+}
+
+function _cerrarAnuncio() { _hideAnnouncement() }
+
+function _showMaintenance(val) {
+  const overlay = document.getElementById('maint-overlay')
+  const msg     = document.getElementById('maint-msg')
+  if (!overlay) return
+  if (val?.active) {
+    if (msg && val.message) msg.textContent = val.message
+    overlay.classList.add('active')
+  } else {
+    overlay.classList.remove('active')
+  }
+}
+
 async function _checkSystemConfig() {
   try {
     const { data, error } = await sb
       .from('system_config')
       .select('key, value')
       .in('key', ['maintenance_mode', 'announcement'])
-
     if (error || !data) return
-
     for (const row of data) {
-      if (row.key === 'maintenance_mode' && row.value?.active) {
-        const overlay = document.getElementById('maint-overlay')
-        const msg = document.getElementById('maint-msg')
-        if (overlay) overlay.classList.add('active')
-        if (msg && row.value.message) msg.textContent = row.value.message
-      }
-      if (row.key === 'announcement' && row.value?.active && row.value?.text) {
-        const banner = document.getElementById('sys-announcement')
-        const txt    = document.getElementById('sys-announcement-text')
-        if (banner && txt) {
-          txt.textContent = row.value.text
-          banner.className = ''  // reset classes
-          banner.classList.add(row.value.type || 'info')
-          banner.style.display = 'flex'
-        }
-      }
+      if (row.key === 'maintenance_mode') _showMaintenance(row.value)
+      if (row.key === 'announcement')     _showAnnouncement(row.value)
     }
-  } catch(e) {
-    console.warn('_checkSystemConfig:', e)
-  }
+  } catch(e) { console.warn('_checkSystemConfig:', e) }
 }
 
-document.addEventListener('DOMContentLoaded', _checkSystemConfig)
+function _initSystemConfigRealtime() {
+  sb.channel('system-config-watch')
+    .on('postgres_changes', {
+      event: '*', schema: 'public', table: 'system_config'
+    }, ({ new: row }) => {
+      if (!row) return
+      if (row.key === 'maintenance_mode') _showMaintenance(row.value)
+      if (row.key === 'announcement')     _showAnnouncement(row.value)
+    })
+    .subscribe()
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  _checkSystemConfig()
+  _initSystemConfigRealtime()
+})

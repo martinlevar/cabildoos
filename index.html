@@ -1910,9 +1910,12 @@
 
 <!-- ══ BANNER DE ANUNCIO ══ -->
 <div id="sys-announcement">
-  <span id="sys-announcement-text"></span>
-  <button onclick="document.getElementById('sys-announcement').style.display='none'"
-    style="background:none;border:none;cursor:pointer;font-size:16px;color:inherit;padding:0 4px">✕</button>
+  <div class="sya-accent"></div>
+  <div class="sya-body">
+    <p class="sya-eyebrow">📢 ANUNCIO</p>
+    <p class="sya-text" id="sys-announcement-text"></p>
+  </div>
+  <button class="sya-close" onclick="_cerrarAnuncio()" title="Cerrar">✕</button>
 </div>
 
 <!-- ══ MODAL REPORTAR / CONTACTO ══ -->
