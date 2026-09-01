@@ -5781,6 +5781,64 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
     background: #3d4fd4 !important;
   }
 
+  /* Calendar day numbers — hardcoded dark, override for dark mode */
+  :root:not([data-theme="light"]) .cal-day-cell .cdn,
+  :root[data-theme="dark"] .cal-day-cell .cdn {
+    color: rgba(255,255,255,.82);
+  }
+  :root:not([data-theme="light"]) .cal-day-cell.inactive .cdn,
+  :root[data-theme="dark"] .cal-day-cell.inactive .cdn {
+    color: rgba(255,255,255,.25);
+  }
+  :root:not([data-theme="light"]) .cal-day-cell.selected .cdn,
+  :root[data-theme="dark"] .cal-day-cell.selected .cdn {
+    color: #fff;
+  }
+  :root:not([data-theme="light"]) .cal-month-lbl,
+  :root[data-theme="dark"] .cal-month-lbl { color: rgba(255,255,255,.90); }
+  :root:not([data-theme="light"]) .cal-mid-title,
+  :root[data-theme="dark"] .cal-mid-title { color: rgba(255,255,255,.90); }
+  :root:not([data-theme="light"]) .cal-nav-btn,
+  :root[data-theme="dark"] .cal-nav-btn { color: rgba(255,255,255,.65); }
+  :root:not([data-theme="light"]) .cal-dow-row span,
+  :root[data-theme="dark"] .cal-dow-row span { color: rgba(255,255,255,.40); }
+
+  /* Resultado oficial banner — fondo blanco hardcoded, adaptar a dark */
+  :root:not([data-theme="light"]) #sim-winner-inner,
+  :root[data-theme="dark"] #sim-winner-inner {
+    background: #1e1f3b;
+  }
+  :root:not([data-theme="light"]) .sw-question,
+  :root[data-theme="dark"] .sw-question {
+    color: rgba(255,255,255,.92);
+  }
+  :root:not([data-theme="light"]) .sw-label,
+  :root[data-theme="dark"] .sw-label {
+    color: rgba(255,255,255,.5);
+  }
+  :root:not([data-theme="light"]) .sw-bar-track,
+  :root[data-theme="dark"] .sw-bar-track {
+    background: rgba(255,255,255,.1);
+  }
+  :root:not([data-theme="light"]) .sw-bar-num,
+  :root[data-theme="dark"] .sw-bar-num {
+    color: rgba(255,255,255,.65);
+  }
+  :root:not([data-theme="light"]) #sw-winner-line,
+  :root[data-theme="dark"] #sw-winner-line {
+    color: rgba(255,255,255,.95);
+  }
+  :root:not([data-theme="light"]) .sw-close,
+  :root[data-theme="dark"] .sw-close {
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.9);
+    border: 1px solid rgba(255,255,255,.18);
+  }
+  :root:not([data-theme="light"]) .sw-close:hover,
+  :root[data-theme="dark"] .sw-close:hover {
+    background: rgba(255,255,255,.22);
+  }
+
   /* Hemicicle seats — ya usan clases de JS, pero el canvas-bg */
   :root:not([data-theme="light"]) .map-canvas,
   :root[data-theme="dark"] .map-canvas {
@@ -5839,6 +5897,48 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 
 /* ── Dark mode toggle button ── */
+/* ── Dark mode toggle (data-theme="dark") — aplica sin importar OS preference ── */
+:root[data-theme="dark"] .cal-day-cell .cdn {
+  color: rgba(255,255,255,.82);
+}
+:root[data-theme="dark"] .cal-day-cell.inactive .cdn {
+  color: rgba(255,255,255,.25);
+}
+:root[data-theme="dark"] .cal-day-cell.selected .cdn {
+  color: #fff;
+}
+:root[data-theme="dark"] #sim-winner-inner {
+  background: #1e1f3b;
+}
+:root[data-theme="dark"] .sw-question {
+  color: rgba(255,255,255,.92);
+}
+:root[data-theme="dark"] .sw-label {
+  color: rgba(255,255,255,.5);
+}
+:root[data-theme="dark"] .sw-bar-track {
+  background: rgba(255,255,255,.1);
+}
+:root[data-theme="dark"] .sw-bar-num {
+  color: rgba(255,255,255,.65);
+}
+:root[data-theme="dark"] #sw-winner-line {
+  color: rgba(255,255,255,.95);
+}
+:root[data-theme="dark"] .sw-close {
+  background: rgba(255,255,255,.12);
+  color: rgba(255,255,255,.9);
+  border: 1px solid rgba(255,255,255,.18);
+}
+:root[data-theme="dark"] .sw-close:hover {
+  background: rgba(255,255,255,.22);
+}
+
+
+:root[data-theme="dark"] .cal-month-lbl { color: rgba(255,255,255,.90); }
+:root[data-theme="dark"] .cal-mid-title { color: rgba(255,255,255,.90); }
+:root[data-theme="dark"] .cal-nav-btn { color: rgba(255,255,255,.65); }
+:root[data-theme="dark"] .cal-dow-row span { color: rgba(255,255,255,.40); }
 .dm-toggle {
   width: 34px; height: 34px;
   border-radius: 50%;
