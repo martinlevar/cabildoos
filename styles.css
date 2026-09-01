@@ -5940,7 +5940,8 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 :root[data-theme="dark"] .cf-links a:hover { color: #c8c8e0 !important; }
 :root[data-theme="dark"] .cf-copy { color: #4a4a60 !important; }
 
-:root[data-theme="dark"] .q-card {
+:root[data-theme="dark"] .q-card,
+:root[data-theme="dark"] .q-card-actions {
   background: #1a1b2e !important;
   border-color: rgba(255,255,255,.08) !important;
 }
