@@ -5889,6 +5889,44 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 
 /* ── Dark mode toggle button ── */
+/* ── Dark mode toggle (data-theme="dark") — aplica sin importar OS preference ── */
+:root[data-theme="dark"] .cal-day-cell .cdn {
+  color: rgba(255,255,255,.82);
+}
+:root[data-theme="dark"] .cal-day-cell.inactive .cdn {
+  color: rgba(255,255,255,.25);
+}
+:root[data-theme="dark"] .cal-day-cell.selected .cdn {
+  color: #fff;
+}
+:root[data-theme="dark"] #sim-winner-inner {
+  background: #1e1f3b;
+}
+:root[data-theme="dark"] .sw-question {
+  color: rgba(255,255,255,.92);
+}
+:root[data-theme="dark"] .sw-label {
+  color: rgba(255,255,255,.5);
+}
+:root[data-theme="dark"] .sw-bar-track {
+  background: rgba(255,255,255,.1);
+}
+:root[data-theme="dark"] .sw-bar-num {
+  color: rgba(255,255,255,.65);
+}
+:root[data-theme="dark"] #sw-winner-line {
+  color: rgba(255,255,255,.95);
+}
+:root[data-theme="dark"] .sw-close {
+  background: rgba(255,255,255,.12);
+  color: rgba(255,255,255,.9);
+  border: 1px solid rgba(255,255,255,.18);
+}
+:root[data-theme="dark"] .sw-close:hover {
+  background: rgba(255,255,255,.22);
+}
+
+
 .dm-toggle {
   width: 34px; height: 34px;
   border-radius: 50%;
