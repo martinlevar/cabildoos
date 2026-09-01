@@ -10993,7 +10993,7 @@ const _API = () => (window.__ENV && window.__ENV.API_ENDPOINT) || 'https://api.c
 
 // ── NERDMOCRACY ───────────────────────────────────────────────────────────────
 
-const _nerd = { sessionId: null, score: 0, timer: null, timeLeft: 5, questionId: null, answering: false }
+const _nerd = { sessionId: null, score: 0, timer: null, timeLeft: 5, questionId: null, answering: false, nextQ: null, prefetching: false }
 
 function abrirNerdmocracy() {
   document.getElementById('nerd-overlay').classList.add('open')
@@ -11006,7 +11006,7 @@ function cerrarNerdmocracy() {
 }
 
 async function _nerdInit() {
-  _nerd.score = 0; _nerd.answering = false; _nerd.sessionId = null
+  _nerd.score = 0; _nerd.answering = false; _nerd.sessionId = null; _nerd.nextQ = null; _nerd.prefetching = false
   clearInterval(_nerd.timer)
   _nerdSetScore(0)
   _nerdState('loading')
@@ -11029,6 +11029,17 @@ async function _nerdInit() {
 async function _nerdRetry() { await _nerdInit() }
 
 async function _nerdNextQuestion() {
+  // Si ya tenemos una pregunta pre-cargada, úsala instantáneamente
+  if (_nerd.nextQ) {
+    const q = _nerd.nextQ
+    _nerd.nextQ = null
+    _nerd.questionId = q.question_id
+    _nerd.answering = false
+    _nerdShowQuestion(q)
+    _nerdStartTimer()
+    _nerdPrefetch()   // pre-cargar la siguiente en background
+    return
+  }
   _nerdState('loading')
   document.getElementById('nerd-loading-txt').textContent = 'Generando pregunta…'
   const token = await _getAuthToken()
@@ -11042,10 +11053,24 @@ async function _nerdNextQuestion() {
     _nerd.answering = false
     _nerdShowQuestion(q)
     _nerdStartTimer()
+    _nerdPrefetch()   // pre-cargar la siguiente en background
   } catch(e) {
     console.error('_nerdNextQuestion:', e)
     _nerdShowError('Error generando pregunta. Intenta de nuevo.')
   }
+}
+
+async function _nerdPrefetch() {
+  if (_nerd.prefetching || _nerd.nextQ) return
+  _nerd.prefetching = true
+  try {
+    const token = await _getAuthToken()
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/question', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    if (r.ok) _nerd.nextQ = await r.json()
+  } catch(e) { /* silencioso — si falla, se pide en el momento */ }
+  finally { _nerd.prefetching = false }
 }
 
 const _NERD_KEYS = ['A','B','C','D']
