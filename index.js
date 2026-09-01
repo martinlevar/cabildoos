@@ -6831,12 +6831,8 @@ function _renderStatsPanel(rows) {
       ? `<span class="sp-q-pill" style="background:${theme.pill};color:${theme.txt}">${r.category}</span>`
       : ''
 
-    return `<div class="sp-q-card">
-      <div class="sp-q-top">
-        <p class="sp-q-text">${r.text}</p>
-        ${catPill}
-      </div>
-      <div class="sp-bars">
+    const barsHtml = ended
+      ? `<div class="sp-bars">
         <div class="sp-bar-row">
           <span class="sp-bar-lbl si">SÍ</span>
           <div class="sp-bar-track"><div class="sp-bar-fill si" style="width:${pctSi}%"></div></div>
@@ -6859,7 +6855,18 @@ function _renderStatsPanel(rows) {
       <div class="sp-q-footer">
         <span class="sp-bar-lbl" style="color:var(--mid);font-size:10px">${revealed} votos totales</span>
         ${resultBadge}
+      </div>`
+      : `<div class="sp-q-footer" style="padding-top:10px">
+        <span style="font-size:12px;color:var(--mid)">Resultados disponibles al cierre de la votación</span>
+        ${resultBadge}
+      </div>`
+
+    return `<div class="sp-q-card">
+      <div class="sp-q-top">
+        <p class="sp-q-text">${r.text}</p>
+        ${catPill}
       </div>
+      ${barsHtml}
     </div>`
   }).join('')
 
