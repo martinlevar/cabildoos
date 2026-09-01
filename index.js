@@ -7245,19 +7245,27 @@ function renderQCards() {
     const ended = remaining <= 0
     const yaVoto = votos[qdata.id]
     const votoVal = yaVoto?.voto
-    const theme = CAT_THEME[qdata.category] || CAT_DEFAULT
+    const _lt = CAT_THEME[qdata.category] || CAT_DEFAULT
+    const theme = _isDark() ? _catThemeDark(_lt) : _lt
 
     // Chip de estado de voto (activo = clickeable para votar/cambiar, finalizado = solo lectura)
     let voteAreaHTML = ''
     let _cdRightEnded = ''
     if (ended) {
       // Estado final — chip de voto en countdown, botón revelación en acciones
-      const statusMap = {
+      const _smLight = {
         si:  { lbl:'Voté SÍ',     bg:'#dcfce7', color:'#166534' },
         no:  { lbl:'Voté NO',     bg:'#fee2e2', color:'#991b1b' },
         abs: { lbl:'Me abstuve',  bg:'#fef9c3', color:'#854d0e' },
       }
-      const st = votoVal ? statusMap[votoVal] : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
+      const _smDark = {
+        si:  { lbl:'Voté SÍ',     bg:'rgba(22,101,52,.35)',  color:'#86efac' },
+        no:  { lbl:'Voté NO',     bg:'rgba(153,27,27,.35)',  color:'#fca5a5' },
+        abs: { lbl:'Me abstuve',  bg:'rgba(133,77,14,.35)',  color:'#fde68a' },
+      }
+      const statusMap = _isDark() ? _smDark : _smLight
+      const _stAbsent = _isDark() ? { lbl:'Ausente', bg:'rgba(255,255,255,.07)', color:'#6a6a80' } : { lbl:'Ausente', bg:'#f1f1ef', color:'#999' }
+      const st = votoVal ? statusMap[votoVal] : _stAbsent
       _cdRightEnded = `<span class="q-vote-status-chip" style="background:${st.bg};color:${st.color};font-size:10px;padding:4px 10px">${st.lbl}</span>`
       voteAreaHTML = `<button class="q-card-revelacion-btn" style="flex:1" onclick="abrirVotoForQ(${i})">Ver Revelación →</button>`
     } else {
@@ -7504,6 +7512,16 @@ window._CAT_THEME = {
   'Electoral':      { bg:'#FFFBEB', pill:'#FDE68A', txt:'#92400E', cd:'#FEF3C7' },
 }
 const _CAT_DEFAULT = { bg:'#F9F9F7', pill:'#E4E4E0', txt:'#555', cd:'#F2F2F0' }
+// Dark mode helpers for card theming
+function _isDark() {
+  const dt = document.documentElement.getAttribute('data-theme')
+  if (dt === 'dark') return true
+  if (dt === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+function _catThemeDark(lt) {
+  return { bg:'#1a1b2e', pill:lt.pill, txt:lt.txt, cd:'#0f1017' }
+}
 
 // Deriva tema completo desde un color hex
 function _catThemeFromHex(hex) {
