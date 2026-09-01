@@ -10980,9 +10980,310 @@ function _renderRanking(containerId, rows, detailFn) {
     </div>`).join('')
 }
 
-// Placeholders — will be implemented in subsequent tasks
-function abrirNerdmocracy() { /* TODO: abrir juego Nerdmocracy */ }
-function abrirYoPresidente() { /* TODO: abrir juego YoPresidente */ }
+// ══════════════════════════════════════════════════════════════════════════════
+// PLAYROOM — GAME LOGIC
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function _getAuthToken() {
+  const { data } = await sb.auth.getSession()
+  return data.session?.access_token || ''
+}
+
+const _API = () => (window.__ENV && window.__ENV.API_ENDPOINT) || 'https://api.cabildodevenezuela.com'
+
+// ── NERDMOCRACY ───────────────────────────────────────────────────────────────
+
+const _nerd = { sessionId: null, score: 0, timer: null, timeLeft: 5, questionId: null, answering: false }
+
+function abrirNerdmocracy() {
+  document.getElementById('nerd-overlay').classList.add('open')
+  _nerdInit()
+}
+
+function cerrarNerdmocracy() {
+  clearInterval(_nerd.timer)
+  document.getElementById('nerd-overlay').classList.remove('open')
+}
+
+async function _nerdInit() {
+  _nerd.score = 0; _nerd.answering = false; _nerd.sessionId = null
+  clearInterval(_nerd.timer)
+  _nerdSetScore(0)
+  _nerdState('loading')
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/session/start', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    const d = await r.json()
+    _nerd.sessionId = d.session_id
+    await _nerdNextQuestion()
+  } catch(e) { _nerdShowError('Error iniciando sesión. Intenta de nuevo.') }
+}
+
+async function _nerdRetry() { await _nerdInit() }
+
+async function _nerdNextQuestion() {
+  _nerdState('loading')
+  document.getElementById('nerd-loading-txt').textContent = 'Generando pregunta…'
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/question', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    const q = await r.json()
+    _nerd.questionId = q.question_id
+    _nerd.answering = false
+    _nerdShowQuestion(q)
+    _nerdStartTimer()
+  } catch(e) { _nerdShowError('Error generando pregunta. Intenta de nuevo.') }
+}
+
+function _nerdShowQuestion(q) {
+  document.getElementById('nerd-question-text').textContent = q.question_text
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById('nerd-opt-' + i)
+    btn.textContent = q.options[i]
+    btn.disabled = false
+    btn.className = 'nerd-opt-btn'
+    btn.onclick = () => _nerdAnswer(i)
+  }
+  _nerdState('question')
+}
+
+function _nerdStartTimer() {
+  _nerd.timeLeft = 5
+  clearInterval(_nerd.timer)
+  _nerdTimerUI(5)
+  _nerd.timer = setInterval(() => {
+    _nerd.timeLeft--
+    _nerdTimerUI(_nerd.timeLeft)
+    if (_nerd.timeLeft <= 0) { clearInterval(_nerd.timer); if (!_nerd.answering) _nerdAnswer(-1) }
+  }, 1000)
+}
+
+function _nerdTimerUI(t) {
+  const num = document.getElementById('nerd-timer-num')
+  if (num) num.textContent = Math.max(0, t)
+  const ring = document.getElementById('nerd-timer-ring-fill')
+  if (ring) {
+    const C = 2 * Math.PI * 26  // r=26 → circumference≈163.36
+    ring.style.strokeDashoffset = C * (1 - Math.max(0, t) / 5)
+    ring.style.transition = t < 5 ? 'stroke-dashoffset .9s linear' : 'none'
+    ring.style.stroke = t <= 1 ? '#ef4444' : t <= 2 ? '#f59e0b' : '#6366f1'
+  }
+}
+
+async function _nerdAnswer(idx) {
+  if (_nerd.answering) return
+  _nerd.answering = true
+  clearInterval(_nerd.timer)
+  for (let i = 0; i < 4; i++) {
+    const b = document.getElementById('nerd-opt-' + i)
+    if (b) b.disabled = true
+  }
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/nerdmocracy/answer', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: _nerd.sessionId,
+        question_id: _nerd.questionId,
+        answer_index: idx < 0 ? 0 : idx   // timeout treated as wrong (server validates)
+      })
+    })
+    const d = await r.json()
+    if (d.correct) {
+      _nerd.score = d.score
+      _nerdSetScore(d.score)
+      await new Promise(res => setTimeout(res, 350))
+      await _nerdNextQuestion()
+    } else {
+      _nerdGameOver(d.score)
+    }
+  } catch(e) { _nerdGameOver(_nerd.score) }
+}
+
+function _nerdGameOver(score) {
+  clearInterval(_nerd.timer)
+  document.getElementById('nerd-go-score').textContent = score
+  _nerdState('gameover')
+  // Refresh playroom rankings
+  _prLoadRankings()
+}
+
+function _nerdSetScore(n) {
+  const el = document.getElementById('nerd-score')
+  if (el) el.textContent = n
+}
+
+function _nerdState(s) {
+  ;['loading','question','gameover'].forEach(name => {
+    const el = document.getElementById('nerd-state-' + name)
+    if (el) el.hidden = (name !== s)
+  })
+}
+
+function _nerdShowError(msg) {
+  const el = document.getElementById('nerd-loading-txt')
+  if (el) el.textContent = msg
+  _nerdState('loading')
+}
+
+// ── YO, PRESIDENTE ────────────────────────────────────────────────────────────
+
+const _yop = { day: 1, scenario: null }
+
+function abrirYoPresidente() {
+  document.getElementById('yop-overlay').classList.add('open')
+  _yopLoad()
+}
+
+function cerrarYoPresidente() {
+  document.getElementById('yop-overlay').classList.remove('open')
+}
+
+async function _yopLoad() {
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/yopresidente/state', {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+    const state = await r.json()
+    _yopApplyMeters(state)
+    _yop.day = state.day || 1
+    if (state.game_over) {
+      document.getElementById('yop-survived-days').textContent = Math.max(0, state.day - 1)
+      _yopState('gameover')
+    } else {
+      await _yopGetScenario()
+    }
+  } catch(e) { console.warn('_yopLoad:', e) }
+}
+
+function _yopApplyMeters(state) {
+  _yopMeter('yop-m-energia', state.energia ?? 70)
+  _yopMeter('yop-m-capital', state.capital_politico ?? 70)
+  _yopMeter('yop-m-salud',   state.salud_mental ?? 70)
+  const dayEl = document.getElementById('yop-day')
+  if (dayEl) dayEl.textContent = state.day || 1
+  // Clear deltas
+  ;['yop-delta-energia','yop-delta-capital','yop-delta-salud'].forEach(id => {
+    const el = document.getElementById(id)
+    if (el) { el.textContent = ''; el.className = 'yop-delta' }
+  })
+}
+
+function _yopMeter(id, val) {
+  const el = document.getElementById(id)
+  if (el) el.style.width = Math.max(0, Math.min(100, val)) + '%'
+}
+
+async function _yopGetScenario() {
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/yopresidente/scenario', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    if (r.status === 409) { _yopState('gameover'); return }
+    const scenario = await r.json()
+    _yop.scenario = scenario
+    _yop.day = scenario.day
+    document.getElementById('yop-day').textContent = scenario.day
+    _yopApplyMeters({ ...scenario.current_meters, day: scenario.day })
+    _yopShowScenario(scenario)
+  } catch(e) { console.warn('_yopGetScenario:', e) }
+}
+
+function _yopShowScenario(s) {
+  document.getElementById('yop-crisis-text').textContent = s.crisis_text
+  const list = document.getElementById('yop-options-list')
+  list.innerHTML = ''
+  const riskIcon = { low: '🟢', medium: '🟡', high: '🔴' }
+  s.options.forEach((opt, i) => {
+    const btn = document.createElement('button')
+    btn.className = 'yop-opt-btn yop-risk-' + opt.risk_level
+    btn.innerHTML = '<span class="yop-opt-icon">' + (riskIcon[opt.risk_level] || '⚪') + '</span>' +
+                    '<span class="yop-opt-txt">' + opt.text + '</span>'
+    btn.onclick = () => _yopDecide(i, opt.text)
+    list.appendChild(btn)
+  })
+  _yopState('scenario')
+}
+
+async function _yopDecide(idx, optText) {
+  document.querySelectorAll('.yop-opt-btn').forEach(b => b.disabled = true)
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    const r = await fetch(_API() + '/api/playroom/yopresidente/decision', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        decision_index: idx,
+        crisis_text: _yop.scenario.crisis_text,
+        option_text: optText
+      })
+    })
+    const result = await r.json()
+    _yopShowConsequence(result)
+  } catch(e) { console.warn('_yopDecide:', e); await _yopGetScenario() }
+}
+
+function _yopShowConsequence(result) {
+  document.getElementById('yop-consequence-text').textContent = result.consequence_text
+  const d = result.meter_deltas
+  const s = result.new_state
+  // Update meters
+  _yopMeter('yop-m-energia', s.energia)
+  _yopMeter('yop-m-capital', s.capital_politico)
+  _yopMeter('yop-m-salud',   s.salud_mental)
+  document.getElementById('yop-day').textContent = s.day
+  // Show deltas
+  function setDelta(id, val) {
+    const el = document.getElementById(id)
+    if (!el) return
+    el.textContent = val >= 0 ? '+' + val : '' + val
+    el.className = 'yop-delta ' + (val >= 0 ? 'yop-delta-pos' : 'yop-delta-neg')
+  }
+  setDelta('yop-delta-energia', d.energia)
+  setDelta('yop-delta-capital', d.capital_politico)
+  setDelta('yop-delta-salud',   d.salud_mental)
+  // Next / game over button
+  const btn = document.getElementById('yop-next-btn')
+  if (result.game_over) {
+    document.getElementById('yop-survived-days').textContent = Math.max(0, s.day - 1)
+    btn.textContent = '⚰️ Ver resumen'
+    btn.onclick = () => _yopState('gameover')
+  } else {
+    btn.textContent = 'Día ' + s.day + ' →'
+    btn.onclick = _yopGetScenario
+  }
+  _yopState('consequence')
+  // Refresh playroom card meters too
+  _prLoadState()
+}
+
+async function _yopReset() {
+  _yopState('loading')
+  const token = await _getAuthToken()
+  try {
+    await fetch(_API() + '/api/playroom/yopresidente/reset', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token }
+    })
+    await _yopGetScenario()
+  } catch(e) { console.warn('_yopReset:', e) }
+}
+
+function _yopState(s) {
+  ;['loading','scenario','consequence','gameover'].forEach(name => {
+    const el = document.getElementById('yop-state-' + name)
+    if (el) el.hidden = (name !== s)
+  })
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   _checkSystemConfig()

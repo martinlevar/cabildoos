@@ -6336,3 +6336,180 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   background: #0d0d1a;
   border-color: rgba(99,102,241,.2);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GAME SCREENS — Nerdmocracy + Yo, Presidente
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Shared game overlay ── */
+#nerd-overlay,
+#yop-overlay {
+  position: fixed; inset: 0; z-index: 950;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.75); backdrop-filter: blur(6px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+}
+#nerd-overlay.open,
+#yop-overlay.open { opacity: 1; pointer-events: all; }
+
+#nerd-panel,
+#yop-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  width: min(540px, calc(100vw - 32px));
+  max-height: 90dvh;
+  overflow-y: auto;
+  padding: 20px 20px 28px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+:root:not([data-theme="light"]) #nerd-panel,
+:root[data-theme="dark"] #nerd-panel,
+:root:not([data-theme="light"]) #yop-panel,
+:root[data-theme="dark"] #yop-panel { background: #0d0d1a; }
+
+/* Shared header */
+#nerd-header,
+#yop-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+#nerd-header-left,
+#yop-header-left {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 17px; font-weight: 800; color: var(--text);
+}
+#nerd-header-right,
+#yop-header-right {
+  display: flex; align-items: center; gap: 10px;
+}
+#nerd-score-box {
+  font-size: 13px; color: var(--muted2);
+  background: rgba(99,102,241,.12); border-radius: 8px; padding: 4px 10px;
+}
+#nerd-score-box strong { color: #6366f1; font-size: 15px; }
+
+#yop-day-label { font-size: 13px; color: var(--muted2); }
+#yop-day { color: #d4af37; }
+
+/* Shared loading state */
+.game-state-loading {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 40px 0; color: var(--muted2); font-size: 13px;
+}
+.game-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: game-spin .7s linear infinite;
+}
+@keyframes game-spin { to { transform: rotate(360deg); } }
+
+/* Shared game over */
+.game-go-icon { font-size: 48px; text-align: center; }
+.game-go-msg  { font-size: 20px; font-weight: 800; color: var(--text); text-align: center; margin: 0; }
+.game-go-sub  { font-size: 14px; color: var(--muted2); text-align: center; margin: 4px 0 0; }
+.game-retry-btn {
+  display: block; width: 100%; margin-top: 4px;
+  padding: 12px; border-radius: 12px;
+  background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3);
+  color: #6366f1; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: background .15s;
+}
+.game-retry-btn:hover { background: rgba(99,102,241,.25); }
+
+/* ── Nerdmocracy ── */
+#nerd-timer-container {
+  position: relative; width: 64px; height: 64px;
+  margin: 0 auto 12px;
+}
+#nerd-timer-num {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 900; color: var(--text);
+}
+#nerd-question-text {
+  font-size: 17px; font-weight: 700; color: var(--text);
+  text-align: center; line-height: 1.45;
+  margin: 0 0 16px;
+}
+#nerd-options-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.nerd-opt-btn {
+  padding: 13px 12px; border-radius: 12px; cursor: pointer;
+  background: rgba(99,102,241,.08); border: 1.5px solid rgba(99,102,241,.2);
+  color: var(--text); font-size: 13px; font-weight: 600;
+  text-align: left; line-height: 1.4;
+  transition: background .12s, border-color .12s;
+}
+.nerd-opt-btn:hover:not(:disabled) {
+  background: rgba(99,102,241,.18); border-color: rgba(99,102,241,.5);
+}
+.nerd-opt-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+#nerd-go-score-box {
+  text-align: center; margin: 8px 0 4px;
+}
+#nerd-go-score {
+  display: block; font-size: 56px; font-weight: 900;
+  color: #6366f1; line-height: 1;
+}
+.nerd-go-lbl { font-size: 13px; color: var(--muted2); }
+
+/* ── Yo, Presidente ── */
+#yop-meters {
+  display: flex; flex-direction: column; gap: 7px;
+  background: rgba(212,175,55,.06);
+  border: 1px solid rgba(212,175,55,.15);
+  border-radius: 12px; padding: 12px 14px;
+}
+.yop-meter-row { display: flex; align-items: center; gap: 10px; }
+.yop-meter-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.yop-meter-track {
+  flex: 1; height: 6px; background: rgba(255,255,255,.08);
+  border-radius: 3px; overflow: hidden;
+}
+.yop-meter-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+.ym-energia { background: #6366f1; }
+.ym-capital { background: #d4af37; }
+.ym-salud   { background: #22c55e; }
+.yop-delta {
+  font-size: 12px; font-weight: 700; min-width: 32px;
+  text-align: right; flex-shrink: 0;
+}
+.yop-delta-pos { color: #22c55e; }
+.yop-delta-neg { color: #ef4444; }
+
+#yop-crisis-text {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  line-height: 1.5; margin: 0 0 14px;
+  padding: 14px; border-radius: 12px;
+  background: rgba(212,175,55,.07); border: 1px solid rgba(212,175,55,.15);
+}
+
+#yop-options-list { display: flex; flex-direction: column; gap: 10px; }
+.yop-opt-btn {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border-radius: 12px; cursor: pointer;
+  background: rgba(255,255,255,.04); border: 1.5px solid var(--border);
+  color: var(--text); font-size: 13px; text-align: left; line-height: 1.45;
+  transition: background .12s, border-color .12s;
+}
+.yop-opt-btn:hover:not(:disabled) { background: rgba(255,255,255,.09); border-color: rgba(212,175,55,.35); }
+.yop-opt-btn:disabled { opacity: .4; cursor: not-allowed; }
+.yop-risk-low    { border-color: rgba(34,197,94,.3); }
+.yop-risk-medium { border-color: rgba(245,158,11,.3); }
+.yop-risk-high   { border-color: rgba(239,68,68,.3); }
+.yop-opt-icon { font-size: 16px; flex-shrink: 0; }
+.yop-opt-txt  { flex: 1; }
+
+#yop-consequence-text {
+  font-size: 14px; line-height: 1.6; color: var(--text);
+  padding: 14px; border-radius: 12px;
+  background: rgba(99,102,241,.06); border: 1px solid rgba(99,102,241,.15);
+  margin: 0 0 4px;
+}
