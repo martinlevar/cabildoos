@@ -6513,3 +6513,222 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   background: rgba(99,102,241,.06); border: 1px solid rgba(99,102,241,.15);
   margin: 0 0 4px;
 }
+
+/* ══════════════════════════════════════════════════════════
+   PLAYROOM — REDESIGN GAMING CLASSES
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Shared close & primary buttons ─────────────────────── */
+.game-close-btn {
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--text);
+  border-radius: 8px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; cursor: pointer;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.game-close-btn:hover { background: rgba(255,255,255,.16); }
+
+.game-primary-btn {
+  display: block; width: 100%;
+  padding: 13px 20px;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s, transform .1s;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  margin-top: 14px;
+}
+.game-primary-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.game-primary-btn:active { transform: translateY(0); }
+
+/* ── Spinner ring (SVG-less CSS version) ─────────────────── */
+.game-spinner-ring {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(99,102,241,.18);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: game-spin .7s linear infinite;
+  margin: 0 auto;
+}
+
+/* ── Nerdmocracy header ──────────────────────────────────── */
+#nerd-hdr-left {
+  display: flex; align-items: center; gap: 10px;
+}
+#nerd-hdr-right {
+  display: flex; align-items: center; gap: 10px;
+  margin-left: auto;
+}
+.nerd-logo-icon { font-size: 26px; }
+#nerd-title-txt {
+  font-size: 14px; font-weight: 900;
+  letter-spacing: .08em;
+  color: #a5b4fc;
+}
+#nerd-subtitle {
+  font-size: 10px; color: rgba(165,180,252,.55);
+  letter-spacing: .04em;
+}
+
+/* ── Score pill ─────────────────────────────────────────── */
+#nerd-score-pill {
+  display: flex; align-items: baseline; gap: 3px;
+  background: rgba(99,102,241,.15);
+  border: 1px solid rgba(99,102,241,.25);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-weight: 800; font-size: 15px; color: #a5b4fc;
+}
+.nerd-score-lbl { font-size: 10px; color: rgba(165,180,252,.6); font-weight: 600; }
+
+/* ── Timer wrap + danger state ──────────────────────────── */
+#nerd-timer-wrap { position: relative; display: flex; align-items: center; justify-content: center; width: 88px; height: 88px; flex-shrink: 0; }
+#nerd-timer-svg  { position: absolute; top: 0; left: 0; }
+#nerd-timer-num  { position: relative; font-size: 24px; font-weight: 900; color: #a5b4fc; z-index: 1; }
+.nerd-timer-danger #nerd-timer-num { color: #ef4444; }
+.nerd-timer-danger #nerd-timer-arc { stroke: #ef4444; }
+
+/* ── Option A/B/C/D key badge ──────────────────────────── */
+.nerd-opt-key {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+  font-size: 11px; font-weight: 900; letter-spacing: .03em;
+  background: rgba(99,102,241,.2);
+  border: 1px solid rgba(99,102,241,.35);
+  color: #a5b4fc;
+  transition: background .15s, border-color .15s;
+}
+.nerd-opt-txt { flex: 1; font-size: 13px; line-height: 1.4; color: var(--text); }
+
+/* ── Option state classes ───────────────────────────────── */
+.nerd-opt-btn { position: relative; display: flex; align-items: center; gap: 10px; }
+.nerd-opt-btn.nerd-opt-selected .nerd-opt-key {
+  background: rgba(99,102,241,.35);
+  border-color: #6366f1;
+}
+.nerd-opt-btn.nerd-opt-correct {
+  background: rgba(34,197,94,.12) !important;
+  border-color: rgba(34,197,94,.4) !important;
+}
+.nerd-opt-btn.nerd-opt-correct .nerd-opt-key {
+  background: rgba(34,197,94,.25);
+  border-color: #22c55e;
+  color: #86efac;
+}
+.nerd-opt-btn.nerd-opt-wrong {
+  background: rgba(239,68,68,.12) !important;
+  border-color: rgba(239,68,68,.4) !important;
+}
+.nerd-opt-btn.nerd-opt-wrong .nerd-opt-key {
+  background: rgba(239,68,68,.25);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* ── Nerdmocracy game-over ──────────────────────────────── */
+#nerd-go-skull  { font-size: 52px; text-align: center; }
+#nerd-go-label  {
+  font-size: 20px; font-weight: 900; letter-spacing: .1em;
+  color: #ef4444; text-align: center; margin: 6px 0 4px;
+}
+#nerd-go-score-big {
+  font-size: 48px; font-weight: 900; text-align: center;
+  color: #a5b4fc; line-height: 1;
+}
+
+/* ── Yo Presidente header ───────────────────────────────── */
+#yop-hdr-left {
+  display: flex; align-items: center; gap: 10px;
+}
+.yop-logo-icon { font-size: 26px; }
+#yop-title-txt {
+  font-size: 14px; font-weight: 900;
+  letter-spacing: .08em;
+  color: #fbbf24;
+}
+#yop-day-label {
+  font-size: 10px; color: rgba(251,191,36,.55);
+  letter-spacing: .04em;
+}
+
+/* ── Crisis card & badge ─────────────────────────────────── */
+#yop-crisis-card {
+  background: rgba(239,68,68,.07);
+  border: 1px solid rgba(239,68,68,.2);
+  border-radius: 14px;
+  padding: 14px 14px 10px;
+  position: relative;
+}
+#yop-crisis-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 800; letter-spacing: .07em;
+  color: #f87171;
+  background: rgba(239,68,68,.15);
+  border: 1px solid rgba(239,68,68,.3);
+  border-radius: 20px;
+  padding: 2px 9px;
+  margin-bottom: 8px;
+}
+
+/* ── Consequence card & badge ────────────────────────────── */
+#yop-consequence-card {
+  background: rgba(99,102,241,.07);
+  border: 1px solid rgba(99,102,241,.2);
+  border-radius: 14px;
+  padding: 14px 14px 10px;
+  position: relative;
+}
+#yop-consequence-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 800; letter-spacing: .07em;
+  color: #a5b4fc;
+  background: rgba(99,102,241,.15);
+  border: 1px solid rgba(99,102,241,.3);
+  border-radius: 20px;
+  padding: 2px 9px;
+  margin-bottom: 8px;
+}
+
+/* ── Option risk badge ───────────────────────────────────── */
+.yop-opt-risk-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: .05em;
+  border-radius: 20px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+.yop-opt-btn[data-risk="low"]    .yop-opt-risk-badge { background: rgba(34,197,94,.12);  color: #86efac; border: 1px solid rgba(34,197,94,.3); }
+.yop-opt-btn[data-risk="medium"] .yop-opt-risk-badge { background: rgba(245,158,11,.12); color: #fcd34d; border: 1px solid rgba(245,158,11,.3); }
+.yop-opt-btn[data-risk="high"]   .yop-opt-risk-badge { background: rgba(239,68,68,.12);  color: #fca5a5; border: 1px solid rgba(239,68,68,.3); }
+
+/* ── Yo Presidente game-over ────────────────────────────── */
+#yop-go-icon   { font-size: 52px; text-align: center; }
+#yop-go-title  {
+  font-size: 18px; font-weight: 900; letter-spacing: .05em;
+  color: #d4af37; text-align: center; margin: 8px 0 4px;
+}
+#yop-go-days   {
+  font-size: 14px; color: var(--muted2); text-align: center;
+}
+#yop-go-days strong { color: #fbbf24; }
+
+/* ── Dark-mode reinforcement ─────────────────────────────── */
+:root:not([data-theme="light"]) .game-close-btn,
+:root[data-theme="dark"] .game-close-btn {
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.1);
+}
+:root:not([data-theme="light"]) #yop-crisis-card,
+:root[data-theme="dark"] #yop-crisis-card {
+  background: rgba(239,68,68,.09);
+}
+:root:not([data-theme="light"]) #yop-consequence-card,
+:root[data-theme="dark"] #yop-consequence-card {
+  background: rgba(99,102,241,.09);
+}

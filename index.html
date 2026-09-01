@@ -2460,103 +2460,133 @@
 </div>
 
 
+
 <!-- ══ NERDMOCRACY OVERLAY ══ -->
 <div id="nerd-overlay" onclick="if(event.target===this)cerrarNerdmocracy()">
   <div id="nerd-panel">
+
     <div id="nerd-header">
-      <div id="nerd-header-left"><span>🧠</span><span id="nerd-title-txt">Nerdmocracy</span></div>
-      <div id="nerd-header-right">
-        <div id="nerd-score-box">Score: <strong id="nerd-score">0</strong></div>
-        <button class="pr-close-btn" onclick="cerrarNerdmocracy()">✕</button>
+      <div id="nerd-hdr-left">
+        <span class="nerd-logo-icon">🧠</span>
+        <div>
+          <div id="nerd-title-txt">NERDMOCRACY</div>
+          <div id="nerd-subtitle">Trivia cívica venezolana</div>
+        </div>
+      </div>
+      <div id="nerd-hdr-right">
+        <div id="nerd-score-pill"><span id="nerd-score">0</span><span class="nerd-score-lbl">pts</span></div>
+        <button class="game-close-btn" onclick="cerrarNerdmocracy()">✕</button>
       </div>
     </div>
 
-    <div id="nerd-state-loading" class="game-state-loading">
-      <div class="game-spinner"></div>
+    <!-- Loading -->
+    <div id="nerd-state-loading" class="game-loading-screen">
+      <div class="game-spinner-ring"></div>
       <p id="nerd-loading-txt">Generando pregunta…</p>
     </div>
 
+    <!-- Question -->
     <div id="nerd-state-question" hidden>
-      <div id="nerd-timer-container">
-        <svg width="64" height="64" viewBox="0 0 64 64">
-          <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(99,102,241,.18)" stroke-width="5"/>
-          <circle id="nerd-timer-ring-fill" cx="32" cy="32" r="26" fill="none" stroke="#6366f1" stroke-width="5"
-            stroke-dasharray="163.36" stroke-dashoffset="0" stroke-linecap="round"
-            transform="rotate(-90 32 32)"/>
+      <div id="nerd-timer-wrap">
+        <svg id="nerd-timer-svg" width="88" height="88" viewBox="0 0 88 88">
+          <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/>
+          <circle id="nerd-timer-arc" cx="44" cy="44" r="38" fill="none" stroke="#6366f1" stroke-width="6"
+            stroke-dasharray="238.76" stroke-dashoffset="0" stroke-linecap="round"
+            transform="rotate(-90 44 44)"/>
         </svg>
         <span id="nerd-timer-num">5</span>
       </div>
-      <p id="nerd-question-text"></p>
+
+      <div id="nerd-question-card">
+        <p id="nerd-question-text"></p>
+      </div>
+
       <div id="nerd-options-grid">
-        <button class="nerd-opt-btn" id="nerd-opt-0"></button>
-        <button class="nerd-opt-btn" id="nerd-opt-1"></button>
-        <button class="nerd-opt-btn" id="nerd-opt-2"></button>
-        <button class="nerd-opt-btn" id="nerd-opt-3"></button>
+        <button class="nerd-opt-btn" id="nerd-opt-0"><span class="nerd-opt-key">A</span><span class="nerd-opt-txt" id="nerd-opt-txt-0"></span></button>
+        <button class="nerd-opt-btn" id="nerd-opt-1"><span class="nerd-opt-key">B</span><span class="nerd-opt-txt" id="nerd-opt-txt-1"></span></button>
+        <button class="nerd-opt-btn" id="nerd-opt-2"><span class="nerd-opt-key">C</span><span class="nerd-opt-txt" id="nerd-opt-txt-2"></span></button>
+        <button class="nerd-opt-btn" id="nerd-opt-3"><span class="nerd-opt-key">D</span><span class="nerd-opt-txt" id="nerd-opt-txt-3"></span></button>
       </div>
     </div>
 
+    <!-- Game Over -->
     <div id="nerd-state-gameover" hidden>
-      <div class="game-go-icon">💀</div>
-      <p class="game-go-msg">¡Se acabó!</p>
-      <div id="nerd-go-score-box">
-        <span id="nerd-go-score">0</span>
-        <span class="nerd-go-lbl">respuestas correctas</span>
-      </div>
-      <button class="game-retry-btn" onclick="_nerdRetry()">🔁 Jugar de nuevo</button>
+      <div id="nerd-go-skull">💀</div>
+      <div id="nerd-go-label">ELIMINADO</div>
+      <div id="nerd-go-score-big"><span id="nerd-go-score">0</span></div>
+      <div id="nerd-go-score-sub">respuestas correctas</div>
+      <button class="game-primary-btn" onclick="_nerdRetry()">🔁 Jugar de nuevo</button>
     </div>
+
   </div>
 </div>
 
 <!-- ══ YO, PRESIDENTE OVERLAY ══ -->
 <div id="yop-overlay" onclick="if(event.target===this)cerrarYoPresidente()">
   <div id="yop-panel">
+
     <div id="yop-header">
-      <div id="yop-header-left"><span>🏛️</span><span id="yop-title-txt">Yo, Presidente</span></div>
-      <div id="yop-header-right">
-        <span id="yop-day-label">Día <strong id="yop-day">1</strong></span>
-        <button class="pr-close-btn" onclick="cerrarYoPresidente()">✕</button>
+      <div id="yop-hdr-left">
+        <span class="yop-logo-icon">🏛️</span>
+        <div>
+          <div id="yop-title-txt">YO, PRESIDENTE</div>
+          <div id="yop-day-label">DÍA <span id="yop-day">1</span> DE TU MANDATO</div>
+        </div>
       </div>
+      <button class="game-close-btn" onclick="cerrarYoPresidente()">✕</button>
     </div>
 
+    <!-- Meters always visible -->
     <div id="yop-meters">
       <div class="yop-meter-row">
-        <span class="yop-meter-icon">⚡</span>
+        <span class="yop-meter-lbl">⚡ Energía del pueblo</span>
         <div class="yop-meter-track"><div class="yop-meter-fill ym-energia" id="yop-m-energia" style="width:70%"></div></div>
         <span id="yop-delta-energia" class="yop-delta"></span>
       </div>
       <div class="yop-meter-row">
-        <span class="yop-meter-icon">🏛</span>
+        <span class="yop-meter-lbl">🏛 Capital Político</span>
         <div class="yop-meter-track"><div class="yop-meter-fill ym-capital" id="yop-m-capital" style="width:70%"></div></div>
         <span id="yop-delta-capital" class="yop-delta"></span>
       </div>
       <div class="yop-meter-row">
-        <span class="yop-meter-icon">🧠</span>
+        <span class="yop-meter-lbl">🧠 Salud Mental</span>
         <div class="yop-meter-track"><div class="yop-meter-fill ym-salud" id="yop-m-salud" style="width:70%"></div></div>
         <span id="yop-delta-salud" class="yop-delta"></span>
       </div>
     </div>
 
-    <div id="yop-state-loading" class="game-state-loading">
-      <div class="game-spinner"></div>
+    <!-- Loading -->
+    <div id="yop-state-loading" class="game-loading-screen">
+      <div class="game-spinner-ring yop-spinner"></div>
       <p>Preparando la crisis del día…</p>
     </div>
 
+    <!-- Scenario -->
     <div id="yop-state-scenario" hidden>
-      <p id="yop-crisis-text"></p>
+      <div id="yop-crisis-card">
+        <div id="yop-crisis-badge">⚠ CRISIS</div>
+        <p id="yop-crisis-text"></p>
+      </div>
       <div id="yop-options-list"></div>
     </div>
 
+    <!-- Consequence -->
     <div id="yop-state-consequence" hidden>
-      <p id="yop-consequence-text"></p>
-      <button id="yop-next-btn" class="game-retry-btn"></button>
+      <div id="yop-consequence-card">
+        <div id="yop-consequence-badge">📰 RESULTADO</div>
+        <p id="yop-consequence-text"></p>
+      </div>
+      <button id="yop-next-btn" class="game-primary-btn"></button>
     </div>
 
+    <!-- Game Over -->
     <div id="yop-state-gameover" hidden>
-      <div class="game-go-icon">⚰️</div>
-      <p class="game-go-msg">Tu mandato ha terminado</p>
-      <p class="game-go-sub">Sobreviviste <strong id="yop-survived-days">0</strong> días</p>
-      <button class="game-retry-btn" onclick="_yopReset()">🔁 Volver a intentarlo</button>
+      <div id="yop-go-icon">⚰️</div>
+      <div id="yop-go-title">TU MANDATO HA TERMINADO</div>
+      <div id="yop-go-days">Sobreviviste <strong id="yop-survived-days">0</strong> días</div>
+      <button class="game-primary-btn" onclick="_yopReset()">🔁 Nuevo mandato</button>
     </div>
+
   </div>
 </div>
 
