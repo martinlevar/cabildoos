@@ -6044,3 +6044,33 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 :root[data-theme="dark"] .sp-my-vote.si  { background: rgba(22,101,52,.3) !important; color: #86efac !important; }
 :root[data-theme="dark"] .sp-my-vote.no  { background: rgba(153,27,27,.3) !important; color: #fca5a5 !important; }
 :root[data-theme="dark"] .sp-my-vote.abs { background: rgba(133,77,14,.3) !important; color: #fde68a !important; }
+
+/* ── Dark mode: Mi Butaca modal panel ─────────────────────────────────── */
+:root[data-theme="dark"] #mi-perfil-panel {
+  background: #1a1b2e !important;
+  box-shadow: 0 32px 80px rgba(0,0,0,.55), 0 2px 12px rgba(0,0,0,.35) !important;
+}
+:root[data-theme="dark"] .mp-field-row:focus-within {
+  background: rgba(255,255,255,.05) !important;
+  border-color: rgba(100,130,255,.4) !important;
+}
+:root[data-theme="dark"] .mp-field-label { color: #6a6a80 !important; }
+:root[data-theme="dark"] .mp-overlay { background: rgba(8,9,18,.72) !important; }
+:root[data-theme="dark"] #mi-perfil-overlay { background: rgba(8,9,18,.72) !important; }
+
+/* ── Dark mode: map overlay buttons (Ver todo, Sesiones) ──────────────── */
+:root[data-theme="dark"] .map-btn {
+  background: rgba(26,27,46,.88) !important;
+  border-color: rgba(255,255,255,.12) !important;
+  color: #e0e0f0 !important;
+}
+:root[data-theme="dark"] .map-btn:hover {
+  background: rgba(40,42,68,.96) !important;
+  border-color: rgba(255,255,255,.22) !important;
+}
+:root[data-theme="dark"] .map-btn.orange {
+  background: var(--orange) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+:root[data-theme="dark"] .map-btn.orange:hover { background: #d45510 !important; }
