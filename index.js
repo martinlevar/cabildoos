@@ -2510,12 +2510,14 @@ async function _onLogin(user) {
   // Mezclar datos de seat_identities (alias, phrase, visibilidad) en el perfil
   if (profile && seatRows && seatRows[0]) {
     const si = seatRows[0]
-    profile.alias      = si.alias
-    profile.phrase     = si.phrase
-    profile.show_alias = si.show_alias
-    profile.show_phrase= si.show_phrase
-    profile.show_votes = si.show_votes
-    profile.is_public  = si.is_public
+    // Solo sobreescribir si el campo de seat_identities tiene valor;
+    // si no, preservar lo que ya tiene profiles (ej: alias guardado en registro)
+    if (si.alias      != null) profile.alias      = si.alias
+    if (si.phrase     != null) profile.phrase     = si.phrase
+    if (si.show_alias != null) profile.show_alias = si.show_alias
+    if (si.show_phrase!= null) profile.show_phrase= si.show_phrase
+    if (si.show_votes != null) profile.show_votes = si.show_votes
+    if (si.is_public  != null) profile.is_public  = si.is_public
   }
 
   // ── Si no hay perfil, verificar que el usuario aún existe en el servidor ───
