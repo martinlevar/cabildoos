@@ -2447,7 +2447,13 @@ _applyInviteCodeField()
       return
     }
     if (event === 'SIGNED_OUT') { _isPasswordRecovery = false; _onLogout(); return }
-    if (_isPasswordRecovery) return
+    if (_isPasswordRecovery) {
+      if (event === 'SIGNED_IN') {
+        showScreen('congress')
+        setTimeout(() => abrirAuth('reset'), 80)
+      }
+      return
+    }
     if (event === 'SIGNED_IN' && session?.user) await _onLogin(session.user)
     if (event === 'TOKEN_REFRESHED') {
       if (!session?.user) {
