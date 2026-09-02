@@ -2463,7 +2463,16 @@ _applyInviteCodeField()
   // getUser() valida server-side — detecta usuarios eliminados por el admin
   // (getSession() usa solo el JWT local y no detecta si el user fue borrado)
   try {
-    if (_isPasswordRecovery) { showScreen('congress'); return }
+    if (_isPasswordRecovery) {
+      showScreen('congress')
+      // Intercambiar token_hash por sesión para disparar PASSWORD_RECOVERY event
+      const _recoveryParams = new URLSearchParams(window.location.search)
+      const _tokenHash = _recoveryParams.get('token_hash')
+      if (_tokenHash) {
+        sb.auth.verifyOtp({ token_hash: _tokenHash, type: 'recovery' }).catch(() => {})
+      }
+      return
+    }
     const { data: { user }, error } = await sb.auth.getUser()
     if (error || !user) {
       // Token inválido o user eliminado → limpiar sesión local
