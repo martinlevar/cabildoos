@@ -2432,6 +2432,7 @@ let _isPasswordRecovery = (
   new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery' ||
   new URLSearchParams(window.location.search).get('type') === 'recovery'
 )
+console.log('[recovery] _isPasswordRecovery:', _isPasswordRecovery, '| search:', window.location.search)
 
 // Mostrar campo de código de invitación al cargar
 _applyInviteCodeField()
@@ -2440,6 +2441,7 @@ _applyInviteCodeField()
 ;(async () => {
   // onAuthStateChange para eventos posteriores (login, logout, cambio de pestaña)
   sb.auth.onAuthStateChange(async (event, session) => {
+    console.log('[recovery] auth event:', event, '| _isPasswordRecovery:', _isPasswordRecovery)
     if (event === 'PASSWORD_RECOVERY') {
       _isPasswordRecovery = true
       showScreen('congress')
@@ -2470,6 +2472,7 @@ _applyInviteCodeField()
   // (getSession() usa solo el JWT local y no detecta si el user fue borrado)
   try {
     if (_isPasswordRecovery) {
+      console.log('[recovery] try block: entering recovery path')
       showScreen('congress')
       // Intercambiar token_hash por sesión para disparar PASSWORD_RECOVERY event
       const _recoveryParams = new URLSearchParams(window.location.search)
@@ -2488,7 +2491,7 @@ _applyInviteCodeField()
       await _onLogin(user)
     }
   } catch(e) {
-    console.error('[auth] init error:', e)
+    console.error('[recovery] catch block fired:', e, '| _isPasswordRecovery:', _isPasswordRecovery)
     try { await sb.auth.signOut().catch(() => {}); _onLogout() } catch(_) {}
   }
 })()
