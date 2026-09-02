@@ -2472,13 +2472,13 @@ _applyInviteCodeField()
   // (getSession() usa solo el JWT local y no detecta si el user fue borrado)
   try {
     if (_isPasswordRecovery) {
-      console.log('[recovery] try block: entering recovery path')
-      showScreen('congress')
-      // Intercambiar token_hash por sesión para disparar PASSWORD_RECOVERY event
+      console.log('[recovery] try block: recovery path, llamando verifyOtp')
+      // NO llamar showScreen aquí: _introRaf todavía no está inicializado (TDZ)
+      // El handler de onAuthStateChange lo hará cuando verifyOtp dispare el evento
       const _recoveryParams = new URLSearchParams(window.location.search)
       const _tokenHash = _recoveryParams.get('token_hash')
       if (_tokenHash) {
-        sb.auth.verifyOtp({ token_hash: _tokenHash, type: 'recovery' }).catch(() => {})
+        sb.auth.verifyOtp({ token_hash: _tokenHash, type: 'recovery' }).catch(e => console.error('[recovery] verifyOtp error:', e))
       }
       return
     }
