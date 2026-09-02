@@ -13,10 +13,15 @@ export default {
     // ─── Static assets ───
     const assetResponse = await env.ASSETS.fetch(request);
 
+    // SPA fallback: rutas como /auth/recovery no son archivos → servir index.html
+    const targetResponse = (assetResponse.status === 404)
+      ? await env.ASSETS.fetch(new URL('/', request.url).toString())
+      : assetResponse;
+
     // Inyecta window.__ENV en HTML para que el frontend consuma SUPABASE_URL/KEY
-    const contentType = assetResponse.headers.get('content-type') || '';
+    const contentType = targetResponse.headers.get('content-type') || '';
     if (!contentType.includes('text/html')) {
-      return assetResponse;
+      return targetResponse;
     }
 
     const envScript = `<script>window.__ENV=${JSON.stringify({
@@ -31,6 +36,6 @@ export default {
           el.prepend(envScript, { html: true });
         },
       })
-      .transform(assetResponse);
+      .transform(targetResponse);
   }
 };
