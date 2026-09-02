@@ -3199,11 +3199,7 @@ async function enviarResetEmail() {
   btn.textContent = 'Enviando…'
   msg.textContent = ''
 
-  // Construir redirectTo solo si estamos en http/https (no file://)
-  const origin = window.location.origin
-  const redirectOpts = (origin && origin.startsWith('http'))
-    ? { redirectTo: origin + window.location.pathname }
-    : {}
+  const redirectOpts = { redirectTo: 'https://cabildodevenezuela.com/auth/recovery' }
 
   const { error } = await sb.auth.resetPasswordForEmail(email, redirectOpts)
 
