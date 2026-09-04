@@ -755,7 +755,7 @@ calcMinScale()   // límite de zoom-out = ver todas las sillas
   const fmt = TOTAL_SEATS > 0 ? TOTAL_SEATS.toLocaleString('es-VE').replace(',','.') : '0'
   const el = document.getElementById('citizen-num')
   if (el) el.textContent = fmt
-  const cl = document.querySelector('.cl-sub')
+  const cl = document.getElementById('cl-hemiciclo-sub')
   if (cl) cl.textContent = `— ${fmt} butacas en el hemiciclo`
   // En modo real: ocultar botones de demo/simulación
   if (!IS_DEMO) {
@@ -782,7 +782,7 @@ function rebuildHemiciclo(count) {
   const fmt = count.toLocaleString('es-VE')
   const el = document.getElementById('citizen-num')
   if (el) el.textContent = fmt.replace(',','.')
-  const cl = document.querySelector('.cl-sub')
+  const cl = document.getElementById('cl-hemiciclo-sub')
   if (cl) cl.textContent = `— ${fmt.replace(',','.')} butacas en el hemiciclo`
   // Fly to full view
   calcMinScale()   // actualizar límite con nuevo bounding box
@@ -5856,7 +5856,7 @@ async function cargarConteoReal() {
     const fmt = n.toLocaleString('es-VE').replace(',', '.')
     const el = document.getElementById('citizen-num')
     if (el) el.textContent = fmt
-    const cl = document.querySelector('.cl-sub')
+    const cl = document.getElementById('cl-hemiciclo-sub')
     if (cl) cl.textContent = `— ${fmt} ${n === 1 ? 'butaca' : 'butacas'} en el hemiciclo`
     // Si tengo butaca, centrar la cámara en mi dot naranja
     if (MY_SEAT > 0 && MY_SEAT_POS) {
