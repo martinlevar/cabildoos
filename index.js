@@ -10886,6 +10886,8 @@ function _showMaintenance(val) {
   const overlay = document.getElementById('maint-overlay')
   const msg     = document.getElementById('maint-msg')
   if (!overlay) return
+  // En dev no se aplica mantenimiento — permite seguir trabajando
+  if (location.hostname === 'dev.cabildodevenezuela.com') return
   if (val?.active) {
     if (msg && val.message) msg.textContent = val.message
     overlay.classList.add('active')
