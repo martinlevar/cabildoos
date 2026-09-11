@@ -569,7 +569,7 @@ async function consultarEstado(requestId) {
 const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'cabildoos.pages.dev']
 const IS_DEMO      = new URLSearchParams(location.search).has('demo')
                   && DEMO_ALLOWED_HOSTS.some(h => location.hostname === h || location.hostname.endsWith('.' + h))
-const SEAT_CAPACITY = IS_DEMO ? 2847 : 300  // asientos totales del hemiciclo (fijos)
+const SEAT_CAPACITY = IS_DEMO ? 2847 : 500  // asientos totales del hemiciclo (fijos)
 let TOTAL_SEATS    = IS_DEMO ? 2847 : 0     // asientos ocupados (usuarios verificados)
 let MY_SEAT        = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
 
@@ -1207,7 +1207,7 @@ canvas.addEventListener('touchend', e => {
     const hitR = Math.max(DOT_R, DOT_R * cam.scale * 2.8) + 12
     let closest = null, minD = hitR
     SEATS.forEach(s => {
-      if (s.num > TOTAL_SEATS && s.num !== MY_SEAT) return
+      if (s.num > SEAT_CAPACITY && s.num !== MY_SEAT) return
       const { x: ssx, y: ssy } = toScreen(s.x, s.y, W, H)
       const d = Math.hypot(sx - ssx, sy - ssy)
       if (d < minD) { minD = d; closest = s }
