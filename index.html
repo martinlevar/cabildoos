@@ -2409,204 +2409,176 @@
   </div>
 </div>
 
-<!-- ══ PLAYROOM OVERLAY ══ -->
+<!-- ══ NERDOCRASY ══ -->
 <div id="playroom-overlay" onclick="if(event.target===this)cerrarPlayroom()">
-  <div id="playroom-panel">
+  <div id="nd-panel">
 
-    <!-- Header -->
-    <div id="pr-header">
-      <div id="pr-header-left">
-        <span id="pr-icon">🎮</span>
-        <h2 id="pr-title">Playroom</h2>
-      </div>
-      <button class="pr-close-btn" onclick="cerrarPlayroom()">✕</button>
-    </div>
-
-    <!-- Juegos -->
-    <div id="pr-games-grid">
-
-      <!-- Nerdmocracy -->
-      <div class="pr-game-card pr-card-nerd" id="pr-card-nerd" onclick="abrirNerdmocracy()">
-        <div class="pr-game-badge">TRIVIA</div>
-        <div class="pr-game-icon">🧠</div>
-        <div class="pr-game-info">
-          <p class="pr-game-name">Nerdmocracy</p>
-          <p class="pr-game-desc">5 segundos por pregunta. Un error y estás fuera. ¿Cuánto sabés sobre democracia?</p>
-        </div>
-        <div class="pr-game-cta">Jugar →</div>
+    <!-- ── HOME ──────────────────────────────────────── -->
+    <div id="nd-state-home">
+      <div class="nd-topbar">
+        <button class="game-close-btn nd-close" onclick="cerrarPlayroom()">✕</button>
       </div>
 
-      <!-- Yo, Presidente -->
-      <div class="pr-game-card pr-card-yop" id="pr-card-yop" onclick="abrirYoPresidente()">
-        <div class="pr-game-badge">DIARIO</div>
-        <div class="pr-game-icon">🏛️</div>
-        <div class="pr-game-info">
-          <p class="pr-game-name">Yo, Presidente</p>
-          <p class="pr-game-desc">Cada día una crisis. Cada decisión tiene consecuencias. ¿Podés mantener al país en pie?</p>
-        </div>
-        <div id="pr-yop-meters" class="pr-yop-meters">
-          <div class="pr-meter-row">
-            <span class="pr-meter-lbl">⚡ Energía</span>
-            <div class="pr-meter-bar"><div class="pr-meter-fill pm-energia" id="pr-m-energia" style="width:100%"></div></div>
+      <div id="nd-home-identity">
+        <div id="nd-home-title">NERDOCRASY</div>
+        <div id="nd-home-level-big">0</div>
+        <div id="nd-home-stage-lbl"></div>
+        <div id="nd-home-meta-row">
+          <div class="nd-meta-cell">
+            <span class="nd-meta-lbl">RANKING</span>
+            <span id="nd-home-rank" class="nd-meta-val">#—</span>
           </div>
-          <div class="pr-meter-row">
-            <span class="pr-meter-lbl">🏛 Cap. Político</span>
-            <div class="pr-meter-bar"><div class="pr-meter-fill pm-capital" id="pr-m-capital" style="width:60%"></div></div>
-          </div>
-          <div class="pr-meter-row">
-            <span class="pr-meter-lbl">🧠 Salud Mental</span>
-            <div class="pr-meter-bar"><div class="pr-meter-fill pm-salud" id="pr-m-salud" style="width:100%"></div></div>
+          <div class="nd-meta-sep">·</div>
+          <div class="nd-meta-cell">
+            <span class="nd-meta-lbl">BUTACA</span>
+            <span id="nd-home-butaca" class="nd-meta-val">#—</span>
           </div>
         </div>
-        <div class="pr-game-cta">Gobernar →</div>
       </div>
 
-    </div>
+      <button id="nd-play-btn" class="nd-play-btn" onclick="ndJugar()">JUGAR</button>
 
-    <!-- Rankings -->
-    <div id="pr-rankings">
-      <div class="pr-rank-section">
-        <h3 class="pr-rank-title">🏆 Nerdmocracy — Top 10</h3>
-        <div id="pr-rank-nerd-list" class="pr-rank-list">
-          <div class="pr-rank-loading">Cargando ranking…</div>
+      <div id="nd-home-tabs">
+        <button class="nd-tab-btn nd-tab-active" id="nd-tab-btn-perfil" onclick="ndTabSwitch('perfil')">Mi perfil</button>
+        <button class="nd-tab-btn" id="nd-tab-btn-ranking" onclick="ndTabSwitch('ranking')">Ranking</button>
+      </div>
+
+      <div id="nd-tab-perfil">
+        <div id="nd-stages-list">
+          <div class="nd-stage-row" id="nd-sr-know">
+            <span class="nd-sr-range">01–30</span>
+            <span class="nd-sr-name">KNOW</span>
+            <span class="nd-sr-check nd-sr-check-know" id="nd-check-know"></span>
+          </div>
+          <div class="nd-stage-row" id="nd-sr-think">
+            <span class="nd-sr-range">31–60</span>
+            <span class="nd-sr-name">THINK</span>
+            <span class="nd-sr-check nd-sr-check-think" id="nd-check-think"></span>
+          </div>
+          <div class="nd-stage-row" id="nd-sr-trap">
+            <span class="nd-sr-range">61–90</span>
+            <span class="nd-sr-name">TRAP</span>
+            <span class="nd-sr-check nd-sr-check-trap" id="nd-check-trap"></span>
+          </div>
         </div>
+        <p id="nd-total-attempts" class="nd-attempts-lbl"></p>
+        <p class="nd-tagline">"Nerdocrasy no se gana.<br>Descubrís hasta dónde sabés."</p>
       </div>
-      <div class="pr-rank-section">
-        <h3 class="pr-rank-title">📅 Yo, Presidente — Top 10</h3>
-        <div id="pr-rank-yop-list" class="pr-rank-list">
-          <div class="pr-rank-loading">Cargando ranking…</div>
+
+      <div id="nd-tab-ranking" hidden>
+        <div id="nd-ranking-list"><div class="nd-rank-loading">Cargando…</div></div>
+      </div>
+    </div>
+
+    <!-- ── LOADING ──────────────────────────────────── -->
+    <div id="nd-state-loading" hidden>
+      <div class="game-spinner-ring nd-spinner"></div>
+      <p id="nd-loading-txt">Iniciando…</p>
+    </div>
+
+    <!-- ── QUESTION ─────────────────────────────────── -->
+    <div id="nd-state-question" hidden>
+      <div class="nd-topbar">
+        <div id="nd-q-level-badge">
+          <span class="nd-q-level-word">NIVEL</span>
+          <span id="nd-q-level-num" class="nd-q-level-num">1</span>
         </div>
+        <div id="nd-q-stage-chip" class="nd-stage-chip nd-chip-know">KNOW</div>
+        <button class="game-close-btn nd-close" onclick="ndAbandonar()">✕</button>
       </div>
-    </div>
 
-  </div>
-</div>
-
-
-
-<!-- ══ NERDMOCRACY OVERLAY ══ -->
-<div id="nerd-overlay" onclick="if(event.target===this)cerrarNerdmocracy()">
-  <div id="nerd-panel">
-
-    <!-- Feedback badge: Correcto / Incorrecto -->
-    <div id="nerd-feedback-badge" hidden></div>
-
-    <!-- Header -->
-    <div id="nerd-header">
-      <div id="nerd-hdr-left">
-        <span class="nerd-score-icon">🧠</span>
-        <span id="nerd-score">0</span><span class="nerd-score-lbl"> pts</span>
+      <!-- Visual (hidden for TEXT questions) -->
+      <div id="nd-visual-wrap" hidden>
+        <img id="nd-visual-single" class="nd-visual-img" alt="" src="" hidden>
+        <div id="nd-visual-compare" hidden>
+          <div class="nd-compare-panel">
+            <span class="nd-compare-lbl">A</span>
+            <img id="nd-visual-a" class="nd-visual-img" alt="" src="">
+          </div>
+          <div class="nd-compare-panel">
+            <span class="nd-compare-lbl">B</span>
+            <img id="nd-visual-b" class="nd-visual-img" alt="" src="">
+          </div>
+        </div>
+        <p id="nd-visual-caption" class="nd-visual-caption"></p>
       </div>
-      <div id="nerd-hdr-center">NERDMOCRACY</div>
-      <div id="nerd-hdr-right">
-        <button class="game-close-btn" onclick="cerrarNerdmocracy()">✕</button>
-      </div>
-    </div>
 
-    <!-- Loading -->
-    <div id="nerd-state-loading" class="game-loading-screen">
-      <div class="game-spinner-ring nerd-spinner"></div>
-      <p id="nerd-loading-txt">Generando pregunta…</p>
-    </div>
+      <p id="nd-question-text" class="nd-question-text"></p>
 
-    <!-- Question -->
-    <div id="nerd-state-question" hidden>
-      <div id="nerd-timer-wrap">
-        <svg id="nerd-timer-svg" width="96" height="96" viewBox="0 0 96 96">
-          <circle cx="48" cy="48" r="40" fill="none" stroke="#e8e8f4" stroke-width="6"/>
-          <circle id="nerd-timer-arc" cx="48" cy="48" r="40" fill="none" stroke="#6366f1" stroke-width="6"
-            stroke-dasharray="251.33" stroke-dashoffset="0" stroke-linecap="round"
-            transform="rotate(-90 48 48)"/>
+      <!-- Countdown -->
+      <div id="nd-timer-wrap">
+        <svg id="nd-timer-svg" viewBox="0 0 96 96" width="72" height="72">
+          <circle cx="48" cy="48" r="40" fill="none" stroke="var(--nd-track)" stroke-width="5"/>
+          <circle id="nd-timer-arc" cx="48" cy="48" r="40" fill="none" stroke="var(--nd-arc)"
+            stroke-width="5" stroke-dasharray="251.33" stroke-dashoffset="0"
+            stroke-linecap="round" transform="rotate(-90 48 48)"/>
         </svg>
-        <span id="nerd-timer-num">5</span>
+        <span id="nd-timer-num" class="nd-timer-num">8</span>
       </div>
 
-      <p id="nerd-question-text"></p>
-
-      <div id="nerd-options-grid">
-        <button class="nerd-opt-btn" id="nerd-opt-0"><span class="nerd-opt-txt" id="nerd-opt-txt-0"></span></button>
-        <button class="nerd-opt-btn" id="nerd-opt-1"><span class="nerd-opt-txt" id="nerd-opt-txt-1"></span></button>
-        <button class="nerd-opt-btn" id="nerd-opt-2"><span class="nerd-opt-txt" id="nerd-opt-txt-2"></span></button>
-        <button class="nerd-opt-btn" id="nerd-opt-3"><span class="nerd-opt-txt" id="nerd-opt-txt-3"></span></button>
+      <!-- IN / OUT -->
+      <div id="nd-answer-btns">
+        <button id="nd-btn-out" class="nd-answer-btn nd-btn-out" onclick="ndAnswer('OUT')"
+                aria-label="OUT — Rechazar / Incorrecto">OUT</button>
+        <button id="nd-btn-in" class="nd-answer-btn nd-btn-in" onclick="ndAnswer('IN')"
+                aria-label="IN — Aceptar / Correcto">IN</button>
       </div>
+      <p class="nd-keyboard-hint">← OUT &nbsp;&nbsp; IN →</p>
     </div>
 
-    <!-- Game Over -->
-    <div id="nerd-state-gameover" hidden>
-      <div id="nerd-go-skull">💀</div>
-      <div id="nerd-go-label">ELIMINADO</div>
-      <div id="nerd-go-score-big"><span id="nerd-go-score">0</span></div>
-      <div id="nerd-go-score-sub">respuestas correctas</div>
-      <button class="game-primary-btn nerd-retry-btn" onclick="_nerdRetry()">🔁 Jugar de nuevo</button>
+    <!-- ── STAGE TRANSITION ──────────────────────────── -->
+    <div id="nd-state-transition" hidden>
+      <div id="nd-trans-completed-stage" class="nd-trans-completed"></div>
+      <div id="nd-trans-check-icon" class="nd-trans-check">✓</div>
+      <div id="nd-trans-message" class="nd-trans-message"></div>
+      <div id="nd-trans-next-chip" class="nd-stage-chip nd-chip-think" style="margin:0 auto"></div>
     </div>
 
-  </div>
-</div>
-
-<!-- ══ YO, PRESIDENTE OVERLAY ══ -->
-<div id="yop-overlay" onclick="if(event.target===this)cerrarYoPresidente()">
-  <div id="yop-panel">
-
-    <div id="yop-header">
-      <div id="yop-hdr-left">
-        <span class="yop-logo-icon">🏛️</span>
-        <div>
-          <div id="yop-title-txt">YO, PRESIDENTE</div>
-          <div id="yop-day-label">DÍA <span id="yop-day">1</span> DE TU MANDATO</div>
-        </div>
+    <!-- ── ELIMINATED ────────────────────────────────── -->
+    <div id="nd-state-eliminated" hidden>
+      <div class="nd-topbar">
+        <button class="game-close-btn nd-close" onclick="ndVolverHome()">✕</button>
       </div>
-      <button class="game-close-btn" onclick="cerrarYoPresidente()">✕</button>
+      <div id="nd-elim-label">ELIMINADO</div>
+      <div class="nd-elim-reached-lbl">LLEGASTE A</div>
+      <div id="nd-elim-level-display">
+        <span class="nd-elim-title-word">NERDOCRASY</span>
+        <span id="nd-elim-level-num" class="nd-elim-level-num">0</span>
+      </div>
+      <div id="nd-elim-stage-chip" class="nd-stage-chip" style="margin:0 auto"></div>
+
+      <!-- Explanation (wrong answer) -->
+      <div id="nd-elim-exp-box" hidden>
+        <div class="nd-elim-answer-row">RESPUESTA: <strong id="nd-elim-correct-ans"></strong></div>
+        <p id="nd-elim-exp-text" class="nd-elim-exp-text"></p>
+      </div>
+
+      <!-- New record -->
+      <div id="nd-elim-record-box" hidden>
+        <div class="nd-record-badge">NUEVO RÉCORD</div>
+        <div id="nd-record-arrow" class="nd-record-arrow"></div>
+      </div>
+
+      <!-- Previous best (when not new record) -->
+      <div id="nd-elim-prev-best" class="nd-elim-prev-best"></div>
+
+      <button class="nd-play-btn nd-retry-btn" onclick="ndJugar()">JUGAR DE NUEVO</button>
+      <button class="nd-back-btn" onclick="ndVolverHome()">← Volver</button>
     </div>
 
-    <!-- Meters always visible -->
-    <div id="yop-meters">
-      <div class="yop-meter-row">
-        <span class="yop-meter-lbl">⚡ Energía del pueblo</span>
-        <div class="yop-meter-track"><div class="yop-meter-fill ym-energia" id="yop-m-energia" style="width:70%"></div></div>
-        <span id="yop-delta-energia" class="yop-delta"></span>
+    <!-- ── NIVEL 90 COMPLETO ──────────────────────────── -->
+    <div id="nd-state-complete" hidden>
+      <div class="nd-topbar">
+        <button class="game-close-btn nd-close" onclick="ndVolverHome()">✕</button>
       </div>
-      <div class="yop-meter-row">
-        <span class="yop-meter-lbl">🏛 Capital Político</span>
-        <div class="yop-meter-track"><div class="yop-meter-fill ym-capital" id="yop-m-capital" style="width:70%"></div></div>
-        <span id="yop-delta-capital" class="yop-delta"></span>
+      <div id="nd-complete-title">NERDOCRASY</div>
+      <div id="nd-complete-90">90</div>
+      <div id="nd-complete-stages">
+        <div class="nd-complete-stage-row">KNOW ✓</div>
+        <div class="nd-complete-stage-row">THINK ✓</div>
+        <div class="nd-complete-stage-row">TRAP ✓</div>
       </div>
-      <div class="yop-meter-row">
-        <span class="yop-meter-lbl">🧠 Salud Mental</span>
-        <div class="yop-meter-track"><div class="yop-meter-fill ym-salud" id="yop-m-salud" style="width:70%"></div></div>
-        <span id="yop-delta-salud" class="yop-delta"></span>
-      </div>
-    </div>
-
-    <!-- Loading -->
-    <div id="yop-state-loading" class="game-loading-screen">
-      <div class="game-spinner-ring yop-spinner"></div>
-      <p>Preparando la crisis del día…</p>
-    </div>
-
-    <!-- Scenario -->
-    <div id="yop-state-scenario" hidden>
-      <div id="yop-crisis-card">
-        <div id="yop-crisis-badge">⚠ CRISIS</div>
-        <p id="yop-crisis-text"></p>
-      </div>
-      <div id="yop-options-list"></div>
-    </div>
-
-    <!-- Consequence -->
-    <div id="yop-state-consequence" hidden>
-      <div id="yop-consequence-card">
-        <div id="yop-consequence-badge">📰 RESULTADO</div>
-        <p id="yop-consequence-text"></p>
-      </div>
-      <button id="yop-next-btn" class="game-primary-btn"></button>
-    </div>
-
-    <!-- Game Over -->
-    <div id="yop-state-gameover" hidden>
-      <div id="yop-go-icon">⚰️</div>
-      <div id="yop-go-title">TU MANDATO HA TERMINADO</div>
-      <div id="yop-go-days">Sobreviviste <strong id="yop-survived-days">0</strong> días</div>
-      <button class="game-primary-btn" onclick="_yopReset()">🔁 Nuevo mandato</button>
+      <button class="nd-back-btn" style="margin-top:2rem" onclick="ndVolverHome()">← Volver</button>
     </div>
 
   </div>
