@@ -1086,6 +1086,14 @@ window.addEventListener('mousemove', e => {
   if (!document.getElementById('congress').classList.contains('active')) return
   if (isZooming) return
   if (document.getElementById('cal-overlay')?.classList.contains('open')) return
+  // Suprimir hover de butacas cuando cualquier panel/popup esté activo
+  const _activePanels = [
+    'debate-panel', 'modal-bd', 'propuesta-overlay', 'info-modal-overlay',
+    'notif-modal', 'mi-perfil-overlay', 'user-profile-modal', 'social-modal',
+    'sf-center-modal', 'citizens-panel', 'hemi-config-panel', 'preguntas-panel',
+    'sim-overlay', 'cert-overlay', 'consent-overlay', 'vav-sha-overlay', 'vav-urna-overlay'
+  ]
+  if (_activePanels.some(id => document.getElementById(id)?.classList.contains('open'))) return
 
   // Block cards when hovering the footer controls
   const ctrls = document.getElementById('map-controls')
