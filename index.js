@@ -9373,12 +9373,12 @@ async function renderOtrasPropuestas() {
   if (!el) return
   el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
 
-  // Mostrar propuestas en campaña de otros usuarios (pendientes + aprobadas) ordenadas por apoyos
+  // Mostrar propuestas en campaña de otros usuarios (pendientes + aprobadas)
+  // Las "en campaña" (pending) siempre primero; dentro de cada grupo, ordenar por apoyos
   const query = sb.from('proposals')
     .select('*')
     .in('status', ['pending', 'approved'])
-    .order('likes', { ascending: false })
-    .limit(60)
+    .limit(100)
   if (MY_SEAT > 0) query.neq('seat_number', MY_SEAT)
 
   const { data, error } = await query
@@ -9387,6 +9387,15 @@ async function renderOtrasPropuestas() {
     el.innerHTML = '<p class="sf-empty">No hay propuestas de la comunidad aún.</p>'
     return
   }
+
+  // Ordenar: pending primero, approved después; dentro de cada grupo por likes desc
+  data.sort((a, b) => {
+    const statusOrder = { pending: 0, approved: 1 }
+    const sa = statusOrder[a.status] ?? 2
+    const sb2 = statusOrder[b.status] ?? 2
+    if (sa !== sb2) return sa - sb2
+    return b.likes - a.likes
+  })
 
   const GOAL = 10
   const statusClass = { pending: 'camp', approved: 'approved', rejected: 'rejected' }
