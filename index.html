@@ -598,45 +598,63 @@
 </div>
 
 <!-- ══════════════ DEBATE PANEL ══════════════ -->
+<!-- Scrim (desktop backdrop — click fuera cierra) -->
+<div id="dp-scrim" onclick="cerrarDebate()"></div>
+
 <div id="debate-panel">
-  <!-- Hero header -->
-  <div class="dp-header" id="dp-header">
-    <div class="dp-header-meta">
-      <span class="dp-cat-pill" id="dp-cat-pill" style="display:none"></span>
+  <!-- Top bar: live badge, categoría, timer, cerrar -->
+  <div class="dp-top-bar" id="dp-header">
+    <div class="dp-top-left">
       <div class="dp-live-badge" id="dp-live-badge">
         <span class="debate-dot" style="background:var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>En vivo
       </div>
-      <button class="dp-close" onclick="cerrarDebate()">×</button>
+      <span class="dp-cat-pill" id="dp-cat-pill" style="display:none"></span>
     </div>
-    <p class="dp-question-text" id="dp-subtitle"></p>
-    <div class="dp-header-footer">
-      <div class="dp-cd-block">
-        <span class="dp-cd-lbl" id="dp-cd-lbl">Tiempo restante</span>
-        <span class="dp-cd-val" id="dp-cd-val">—</span>
-      </div>
+    <div class="dp-cd-block">
+      <span class="dp-cd-lbl" id="dp-cd-lbl">⏱</span>
+      <span class="dp-cd-val" id="dp-cd-val">—</span>
     </div>
+    <button class="dp-close" onclick="cerrarDebate()">×</button>
   </div>
-  <!-- Messages -->
+
+  <!-- Tira de pregunta (colapsable a 1 línea) -->
+  <div class="dp-q-strip" id="dp-q-strip" onclick="_dpToggleQ()">
+    <p class="dp-question-text" id="dp-subtitle">Cargando pregunta…</p>
+    <button class="dp-q-chevron" id="dp-q-chevron" aria-label="Expandir pregunta" tabindex="-1">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>
+
+  <!-- Mensajes del debate -->
   <div class="dp-messages" id="dp-messages">
     <div class="dp-loading">Cargando mensajes…</div>
   </div>
-  <!-- Moderación: mano + estado -->
-  <div class="dp-mod-bar" id="dp-mod-bar">
-    <button class="dp-hand-btn" id="dp-hand-btn" onclick="_dpToggleHand()" title="Levantar mano para hablar">✋</button>
-    <span class="dp-mod-status" id="dp-mod-status">Levantá la mano para hablar</span>
-  </div>
+
+  <!-- Cola de manos levantadas (chips) -->
+  <div class="dp-queue-bar" id="dp-queue-bar"></div>
+
   <!-- Barra de cooldown -->
   <div class="dp-cooldown-track" id="dp-cooldown-track" style="display:none">
     <div class="dp-cooldown-fill" id="dp-cooldown-fill" style="width:100%"></div>
   </div>
-  <!-- Input -->
+
+  <!-- Barra de turno: mano + estado -->
+  <div class="dp-turn-bar" id="dp-mod-bar">
+    <button class="dp-hand-btn" id="dp-hand-btn" onclick="_dpToggleHand()" title="Levantar mano para hablar">✋</button>
+    <div class="dp-turn-status">
+      <span class="dp-mod-status" id="dp-mod-status">Levantá la mano para hablar</span>
+    </div>
+  </div>
+
+  <!-- Input (visible solo cuando es tu turno) -->
   <div class="dp-input-row" id="dp-input-row">
     <input class="dp-input" id="dp-input" placeholder="Escribí tu argumento..." maxlength="280" onkeydown="if(event.key==='Enter')dpEnviar()" disabled>
     <button class="dp-send" id="dp-send-btn" onclick="dpEnviar()" title="Enviar" disabled>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
-  <!-- Closed bar -->
+
+  <!-- Debate cerrado -->
   <div class="dp-closed-note" id="dp-closed-note">
     Debate cerrado — la pregunta ha finalizado
   </div>
