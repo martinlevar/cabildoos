@@ -7620,14 +7620,14 @@ function _dpRenderHand() {
   if (_dpHandState === 'ready') {
     btn.className = 'dp-hand-btn ready'
     btn.title = 'Podés hablar — click para bajar la mano'
-    if (status) { status.className = 'dp-mod-status green'; status.innerHTML = '<b>Podés hablar</b> — enviá tu argumento' }
+    if (status) { status.className = 'dp-mod-status green'; status.innerHTML = '✅ <b>Tu turno</b> — enviá tu argumento' }
     if (inp) inp.disabled = false
     if (snd) snd.disabled = false
 
   } else if (_dpHandState === 'queued') {
     btn.className = 'dp-hand-btn waiting'
-    btn.title = 'Esperando turno'
-    if (status) status.innerHTML = myPos >= 0 ? `Esperando turno — posición <b>${myPos + 1}</b> en cola` : 'En cola…'
+    btn.title = 'Esperando turno — click para bajar la mano'
+    if (status) status.innerHTML = myPos >= 0 ? `⏳ Posición <b>${myPos + 1}</b> en cola — esperá tu turno` : '⏳ En cola…'
     if (inp) inp.disabled = true
     if (snd) snd.disabled = true
 
@@ -7635,18 +7635,40 @@ function _dpRenderHand() {
     btn.className = 'dp-hand-btn cooldown'
     btn.title = 'Cooldown activo'
     const rem = Math.max(0, Math.ceil((_dpCooldownEnd - Date.now()) / 1000))
-    if (status) { status.className = 'dp-mod-status red'; status.innerHTML = `Esperá <b>${rem}s</b> antes de volver a hablar` }
+    if (status) { status.className = 'dp-mod-status red'; status.innerHTML = `⏱ Esperá <b>${rem}s</b> antes de volver a hablar` }
     if (inp) inp.disabled = true
     if (snd) snd.disabled = true
-    if (track) { track.style.display = 'block' }
+    if (track) track.style.display = 'block'
 
   } else {
     // idle
     btn.title = 'Levantar mano para hablar'
-    if (status) status.innerHTML = 'Levantá la mano para hablar'
+    if (status) status.innerHTML = '✋ Levantá la mano para hablar'
     if (inp) inp.disabled = true
     if (snd) snd.disabled = true
   }
+
+  _dpRenderQueue()
+}
+
+// Renders the queue chips bar
+function _dpRenderQueue() {
+  const bar = document.getElementById('dp-queue-bar')
+  if (!bar) return
+  if (!_dpQueue.length) { bar.innerHTML = ''; return }
+  bar.innerHTML = _dpQueue.slice(0, 10).map((e, i) => {
+    const isMe = e.seat === MY_SEAT
+    const isSpeaker = i < DP_QUEUE_DIRECT
+    const cls = isMe ? 'me' : (isSpeaker ? 'speaker' : '')
+    const icon = isSpeaker ? '🎙' : '✋'
+    return `<span class="dp-queue-chip${cls ? ' ' + cls : ''}">${icon} #${e.seat}</span>`
+  }).join('')
+}
+
+// Colapsa/expande la tira de pregunta
+function _dpToggleQ() {
+  const strip = document.getElementById('dp-q-strip')
+  if (strip) strip.classList.toggle('expanded')
 }
 
 // Recalcula si yo debo pasar de 'queued' → 'ready'
@@ -7727,6 +7749,8 @@ function _dpResetMod() {
   _dpCooldownEnd = 0
   const track = document.getElementById('dp-cooldown-track')
   if (track) track.style.display = 'none'
+  const bar = document.getElementById('dp-queue-bar')
+  if (bar) bar.innerHTML = ''
   _dpRenderHand()
 }
 
@@ -7895,14 +7919,40 @@ function toggleDebate() {
   debateOpen ? cerrarDebate() : abrirDebate()
 }
 
+// ── iOS visual viewport fix: panel se ajusta cuando sube el teclado ──
+function _dpHandleViewport() {
+  const panel = document.getElementById('debate-panel')
+  if (!panel || !debateOpen || window.innerWidth >= 600) return
+  const vv = window.visualViewport
+  if (!vv) return
+  // Ajustar altura y offset para que el panel se meta dentro del area visible
+  panel.style.height  = vv.height + 'px'
+  panel.style.top     = vv.offsetTop + 'px'
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', _dpHandleViewport)
+  window.visualViewport.addEventListener('scroll', _dpHandleViewport)
+}
+
 function abrirDebate() {
-  document.getElementById('debate-panel').classList.add('open')
+  const panel = document.getElementById('debate-panel')
+  panel.classList.add('open')
+  panel.style.height = ''   // reset override — CSS inset:0 arranca bien
+  panel.style.top    = ''
+  const scrim = document.getElementById('dp-scrim')
+  if (scrim) scrim.classList.add('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.add('live')
   debateOpen = true
 }
 
 function cerrarDebate() {
-  document.getElementById('debate-panel').classList.remove('open')
+  const panel = document.getElementById('debate-panel')
+  panel.classList.remove('open')
+  panel.style.height = ''
+  panel.style.top    = ''
+  const scrim = document.getElementById('dp-scrim')
+  if (scrim) scrim.classList.remove('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.remove('live')
   debateOpen = false
   if (_debateChannel) { sb.removeChannel(_debateChannel); _debateChannel = null }

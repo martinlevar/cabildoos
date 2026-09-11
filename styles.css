@@ -282,11 +282,18 @@ html, body {
   background:var(--surface);
 }
 
-/* Mobile: pantalla completa */
+/* Mobile: pantalla completa — no usar inset:0 con bottom porque iOS keyboard lo rompe */
 #debate-panel.open {
   display:flex;
-  inset:0;
+  top:0; left:0; right:0;
+  bottom:0;         /* fallback; JS sobreescribe con visualViewport.height en iOS */
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
 }
+/* Evita que el contenido desborde horizontalmente en mobile */
+#debate-panel * { box-sizing:border-box; max-width:100%; }
+.dp-input { min-width:0; max-width:none; }
 
 /* Desktop (≥ 600 px): modal centrado con scrim */
 @media (min-width:600px) {
