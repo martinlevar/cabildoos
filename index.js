@@ -7130,9 +7130,29 @@ async function enviarPropuesta() {
   if (!text || text.length < 10) return
   if (!MY_SEAT || MY_SEAT <= 0) { showToast('Necesitás una butaca verificada para proponer'); return }
 
+  // Verificar que el usuario no tenga ya una propuesta activa en campaña
+  const { data: activeCheck } = await sb.from('proposals')
+    .select('id')
+    .eq('seat_number', MY_SEAT)
+    .eq('status', 'pending')
+    .limit(1)
+  if (activeCheck?.length > 0) {
+    showToast('⚠️ Ya tenés una propuesta en campaña. Esperá a que venza antes de lanzar otra.')
+    cerrarPropuesta()
+    return
+  }
+
   const btn = document.getElementById('pp-submit')
   btn.disabled = true
   btn.textContent = 'Enviando…'
+
+  // Calcular expires_at: leer duración de system_config (fallback 48h)
+  let durationHours = 48
+  try {
+    const { data: cfg } = await sb.from('system_config').select('value').eq('key','campaign_duration_hours').single()
+    if (cfg?.value) durationHours = parseInt(cfg.value) || 48
+  } catch (_) {}
+  const expiresAt = new Date(Date.now() + durationHours * 3600 * 1000).toISOString()
 
   const { error } = await sb.from('proposals').insert({
     seat_number: MY_SEAT,
@@ -7142,7 +7162,8 @@ async function enviarPropuesta() {
     links: links.length > 0 ? links : [],
     video_url,
     likes: 0,
-    status: 'pending'
+    status: 'pending',
+    expires_at: expiresAt
   })
 
   if (error) {
@@ -9397,9 +9418,15 @@ async function renderOtrasPropuestas() {
     return b.likes - a.likes
   })
 
-  const GOAL = 10
-  const statusClass = { pending: 'camp', approved: 'approved', rejected: 'rejected' }
-  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', rejected: 'No aprobada' }
+  // Leer meta configurable
+  let GOAL = 30
+  try {
+    const { data: cfgGoal } = await sb.from('system_config').select('value').eq('key','campaign_goal').single()
+    if (cfgGoal?.value) GOAL = parseInt(cfgGoal.value) || 30
+  } catch (_) {}
+
+  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada' }
 
   el.innerHTML = data.map(p => {
     const ci    = p.seat_number % AVATAR_COLORS_CONVO.length
@@ -9442,6 +9469,17 @@ async function renderOtrasPropuestas() {
   }).join('')
 }
 
+// Formatea tiempo restante en "Xh Ym" o "Vencida"
+function _formatCountdown(expiresAt) {
+  if (!expiresAt) return ''
+  const diff = new Date(expiresAt) - Date.now()
+  if (diff <= 0) return '<span style="color:#ef4444;font-size:11px">⏰ Vencida</span>'
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  const color = diff < 3600000 ? '#ef4444' : diff < 10800000 ? '#eab308' : '#22c55e'
+  return `<span style="color:${color};font-size:11px;font-weight:600">⏱ ${h}h ${m}m restantes</span>`
+}
+
 async function renderPropuestas() {
   const el = document.getElementById('sf-propuestas-list')
   el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
@@ -9451,10 +9489,27 @@ async function renderPropuestas() {
     return
   }
 
+  // Leer meta configurable de system_config
+  let GOAL = 30
+  try {
+    const { data: cfgGoal } = await sb.from('system_config').select('value').eq('key','campaign_goal').single()
+    if (cfgGoal?.value) GOAL = parseInt(cfgGoal.value) || 30
+  } catch (_) {}
+
   const { data, error } = await sb.from('proposals')
     .select('*')
     .eq('seat_number', MY_SEAT)
     .order('created_at', { ascending: false })
+
+  // Controlar botón "Proponer al hemiciclo" — deshabilitado si hay una activa
+  const hasActive = data?.some(p => p.status === 'pending')
+  const propCtaBtn = document.getElementById('prop-cta-btn')
+  if (propCtaBtn) {
+    propCtaBtn.disabled = !!hasActive
+    propCtaBtn.title = hasActive ? 'Ya tenés una propuesta en campaña. Esperá a que venza.' : ''
+    propCtaBtn.style.opacity = hasActive ? '0.5' : ''
+    propCtaBtn.style.cursor  = hasActive ? 'not-allowed' : ''
+  }
 
   if (error || !data?.length) {
     el.innerHTML = `<div class="sf-empty" style="padding:32px 0">
@@ -9464,13 +9519,12 @@ async function renderPropuestas() {
     return
   }
 
-  const GOAL = 10
-  const statusClass = { pending: 'camp', approved: 'approved', rejected: 'rejected' }
-  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', rejected: 'No aprobada' }
+  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada' }
 
   // Actualizar stats strip
   const nCamp  = data.filter(p => p.status === 'pending').length
-  const nAprov = data.filter(p => p.status === 'approved').length
+  const nAprov = data.filter(p => p.status === 'approved' || p.status === 'accepted').length
   const nRej   = data.filter(p => p.status === 'rejected').length
   const pspCamp  = document.getElementById('psp-camp')
   const pspAprov = document.getElementById('psp-aprov')
@@ -9484,8 +9538,9 @@ async function renderPropuestas() {
     const sClass = statusClass[p.status] || 'camp'
     const sLabel = statusLabel[p.status] || 'En campaña'
     const isPend = p.status === 'pending'
-    const isAppr = p.status === 'approved'
+    const isAppr = p.status === 'approved' || p.status === 'accepted'
     const pct    = Math.min(100, Math.round((p.likes / GOAL) * 100))
+    const countdown = isPend ? _formatCountdown(p.expires_at) : ''
     const progressHTML = isPend ? `
       <div class="prop-progress-wrap">
         <div class="prop-progress-label">
@@ -9493,6 +9548,7 @@ async function renderPropuestas() {
           <strong>meta: ${GOAL}</strong>
         </div>
         <div class="prop-progress-bar"><div class="prop-progress-fill" style="width:${pct}%"></div></div>
+        ${countdown ? `<div style="margin-top:4px">${countdown}</div>` : ''}
       </div>` : ''
     const approvedHTML = isAppr ? `
       <div class="prop-approved-msg">
