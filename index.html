@@ -2412,7 +2412,57 @@
 <!-- ══ PLAYROOM ══ -->
 <div id="playroom-overlay">
 
-  <!-- MONITOR: CRT 80s -->
+  <!-- Ghost canvas: butacas del hemiciclo visibles de fondo -->
+  <canvas id="pr-ghost-canvas"></canvas>
+
+  <button id="pr-close" onclick="cerrarPlayroom()" aria-label="Cerrar Playroom">✕</button>
+
+  <!-- LOBBY -->
+  <div id="pr-lobby">
+
+    <div id="pr-greeting"></div>
+
+    <div id="pr-game-card">
+
+      <div id="pr-cover">
+        <img src="/nerdocracy-cover.jpg" alt="Nerdocracy" id="pr-cover-img">
+        <div id="pr-cover-badge">▶ JUGAR ◀</div>
+      </div>
+
+      <div id="pr-info">
+        <div id="pr-info-title">NERDOCRACY</div>
+        <div id="pr-info-tagline">¿Cuánto sabés de democracia?</div>
+        <div id="pr-info-desc">
+          Un trivia político para ciudadanos verificados. Cada pregunta tiene una respuesta: <strong>IN</strong> o <strong>OUT</strong>. Avanzás por niveles mientras más acertás — o caés eliminado si errás.
+        </div>
+        <div class="pr-rules">
+          <div class="pr-rule">
+            <span class="pr-rule-tag">MECÁNICA</span>
+            Cada ronda presenta una afirmación. Votás IN (verdad) u OUT (falso) con los botones ○ / ✕ o las teclas ← →
+          </div>
+          <div class="pr-rule">
+            <span class="pr-rule-tag">NIVELES</span>
+            Superás etapas acumulando aciertos. Las preguntas se vuelven más difíciles a medida que avanzás.
+          </div>
+          <div class="pr-rule">
+            <span class="pr-rule-tag">RANKING</span>
+            Tu butaca compite contra el Cabildo. El nivel más alto que alcancés queda registrado para siempre.
+          </div>
+          <div class="pr-rule">
+            <span class="pr-rule-tag">TIEMPO</span>
+            Cada pregunta tiene límite de tiempo. Si se acaba el reloj, quedás eliminado.
+          </div>
+        </div>
+        <button id="pr-play-btn" onclick="ndEnterGame()">▶ JUGAR AHORA</button>
+      </div>
+
+    </div>
+
+    <div id="pr-more-hint">MÁS JUEGOS · PRÓXIMAMENTE</div>
+
+  </div><!-- /#pr-lobby -->
+
+  <!-- MONITOR: CRT 80s — visible al entrar al juego -->
   <div id="nd-monitor" hidden>
     <div id="nd-monitor-crt">
       <div id="nd-screen-bezel">

@@ -11069,21 +11069,94 @@ function _updatePlayroomBtn(val) {
   }
 }
 
+// Draw schematic seat arcs on the ghost canvas
+function _drawGhostHemiciclo() {
+  const canvas = document.getElementById('pr-ghost-canvas')
+  if (!canvas) return
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  const ctx = canvas.getContext('2d')
+  const W = canvas.width, H = canvas.height
+  const cx = W / 2, cy = H * 0.82 + 120
+
+  for (let row = 0; row < 8; row++) {
+    const r = 200 + row * 68
+    const startA = Math.PI * 1.1, endA = Math.PI * 1.9
+    const numSeats = 16 + row * 6
+    const step = (endA - startA) / numSeats
+
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, startA, endA)
+    ctx.strokeStyle = `rgba(255,255,255,${0.04 - row * 0.003})`
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+
+    for (let i = 0; i <= numSeats; i++) {
+      const a = startA + i * step
+      const x = cx + r * Math.cos(a)
+      const y = cy + r * Math.sin(a)
+      if (y > H) continue
+      ctx.fillStyle = `rgba(255,255,255,${0.055 - row * 0.004})`
+      ctx.fillRect(x - 3.5, y - 5, 7, 9)
+    }
+  }
+}
+
 function abrirPlayroom() {
   if (!_playroomActive) return
   const overlay = document.getElementById('playroom-overlay')
   if (!overlay) return
 
-  // Mostrar monitor directo, resetear estado
+  // Show lobby, hide monitor
+  const lobby = document.getElementById('pr-lobby')
   const monitor = document.getElementById('nd-monitor')
-  if (monitor) monitor.hidden = false
+  if (lobby) lobby.hidden = false
+  if (monitor) monitor.hidden = true
 
+  // Set greeting
+  const greeting = document.getElementById('pr-greeting')
+  if (greeting) {
+    const seatNum = typeof MY_SEAT !== 'undefined' && MY_SEAT ? MY_SEAT : '?'
+    greeting.innerHTML = `BIENVENIDO BUTACA #${seatNum}<br>AL PLAYROOM DEL CONGRESO<span>Elegí tu juego para comenzar</span>`
+  }
+
+  // Draw ghost hemiciclo
+  _drawGhostHemiciclo()
+
+  // Dim page + open overlay
+  document.body.classList.add('pr-dimming')
   overlay.classList.add('open')
 
-  // Ir a home state del juego
-  _ndState('home')
-  _ndRenderHome()
-  _ndLoadProfile()
+}
+
+// Enter game from lobby — fade lobby out, show monitor
+function ndEnterGame() {
+  const lobby = document.getElementById('pr-lobby')
+  const monitor = document.getElementById('nd-monitor')
+  if (lobby) {
+    lobby.style.transition = 'opacity .3s ease'
+    lobby.style.opacity = '0'
+    setTimeout(() => {
+      lobby.hidden = true
+      lobby.style.opacity = ''
+      lobby.style.transition = ''
+      if (monitor) {
+        monitor.hidden = false
+        // Re-trigger monitor entrance animation
+        monitor.style.animation = 'none'
+        monitor.offsetHeight // reflow
+        monitor.style.animation = ''
+      }
+      _ndState('home')
+      _ndRenderHome()
+      _ndLoadProfile()
+    }, 300)
+  } else {
+    if (monitor) monitor.hidden = false
+    _ndState('home')
+    _ndRenderHome()
+    _ndLoadProfile()
+  }
 }
 
 function cerrarPlayroom() {
@@ -11094,6 +11167,15 @@ function cerrarPlayroom() {
   }
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
+
+  // Restore page brightness
+  document.body.classList.remove('pr-dimming')
+
+  // Reset lobby for next open
+  const lobby = document.getElementById('pr-lobby')
+  const monitor = document.getElementById('nd-monitor')
+  if (lobby) { lobby.hidden = false; lobby.style.opacity = ''; lobby.style.transition = ''; }
+  if (monitor) monitor.hidden = true
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
