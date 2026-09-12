@@ -11072,35 +11072,51 @@ function _updatePlayroomBtn(val) {
 async function abrirPlayroom() {
   if (!_playroomActive) return
   const overlay = document.getElementById('playroom-overlay')
-  if (overlay) overlay.classList.add('open')
-  await _ndLoadProfile()
-  _ndState('home')
+  if (!overlay) return
+  // Reset: show cover, hide monitor
+  const cover   = document.getElementById('nd-cover')
+  const monitor = document.getElementById('nd-monitor')
+  if (cover)   { cover.hidden = false; cover.style.opacity = '1'; cover.style.transition = ''; }
+  if (monitor) monitor.hidden = true
+  overlay.classList.add('open')
+  // Pre-load profile silently so home screen is ready
+  _ndLoadProfile()
 }
 
 function cerrarPlayroom() {
   _ndCancelTimer()
+  if (_nd.attemptId) {
+    sb.rpc('nerdocrasy_abandon', { p_attempt_id: _nd.attemptId }).catch(() => {})
+    _nd.attemptId = null
+  }
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// NERDOCRASY — GAME ENGINE
-// ══════════════════════════════════════════════════════════════════════════════
-
-async function _getAuthToken() {
-  const { data } = await sb.auth.getSession()
-  return data.session?.access_token || ''
+// ── Enter from cover (click on the game tapa) ─────────────────────────────────
+function ndEnterFromCover() {
+  const cover   = document.getElementById('nd-cover')
+  const monitor = document.getElementById('nd-monitor')
+  if (!cover || !monitor) return
+  cover.style.transition = 'opacity .35s'
+  cover.style.opacity    = '0'
+  setTimeout(() => {
+    cover.hidden   = true
+    monitor.hidden = false
+    _ndState('home')
+    _ndRenderHome()
+  }, 360)
 }
 
-const _API = () => (window.__ENV && window.__ENV.API_ENDPOINT) || 'https://api.cabildodevenezuela.com'
+// ══════════════════════════════════════════════════════════════════════════════
+// NERDOCRASY — GAME ENGINE  (Supabase RPC)
+// ══════════════════════════════════════════════════════════════════════════════
 
 const _nd = {
   attemptId:    null,
   currentLevel: 1,
   stage:        'KNOW',
   questionId:   null,
-  deadlineUtc:  null,
-  timer:        null,
   intervalId:   null,
   answering:    false,
   profile: { bestLevel: 0, bestStage: null, totalAttempts: 0, globalRank: null },
@@ -11125,16 +11141,19 @@ function _ndState(s) {
 // ── Profile loading ────────────────────────────────────────────────────────────
 async function _ndLoadProfile() {
   try {
-    const token = await _getAuthToken()
-    const r = await fetch(_API() + '/api/nerdocrasy/profile', {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-    if (!r.ok) return
-    const data = await r.json()
-    _nd.profile.bestLevel    = data.best_level    || 0
-    _nd.profile.bestStage    = data.best_stage    || null
-    _nd.profile.totalAttempts = data.total_attempts || 0
-    _nd.profile.globalRank   = data.global_rank   || null
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return
+    const { data, error } = await sb.from('nerdocrasy_profiles')
+      .select('best_level, best_stage, total_attempts, global_rank_cache')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (error) throw error
+    if (data) {
+      _nd.profile.bestLevel     = data.best_level        || 0
+      _nd.profile.bestStage     = data.best_stage        || null
+      _nd.profile.totalAttempts = data.total_attempts    || 0
+      _nd.profile.globalRank    = data.global_rank_cache || null
+    }
     _ndRenderHome()
   } catch(e) { console.warn('_ndLoadProfile:', e) }
 }
@@ -11178,21 +11197,17 @@ async function _ndLoadRanking() {
   if (!el) return
   el.innerHTML = '<div class="nd-rank-loading">Cargando…</div>'
   try {
-    const token = await _getAuthToken()
-    const r = await fetch(_API() + '/api/nerdocrasy/ranking?limit=20', {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-    if (!r.ok) throw new Error(r.status)
-    const { ranking } = await r.json()
-    if (!ranking || !ranking.length) {
+    const { data, error } = await sb.rpc('get_nerdocrasy_ranking', { limit_n: 20 })
+    if (error) throw error
+    if (!data || !data.length) {
       el.innerHTML = '<div class="nd-rank-empty">Aún nadie en el ranking.<br>¡Sé el primero!</div>'
       return
     }
     const stageIcons = { KNOW: '📖', THINK: '🧠', TRAP: '⚠️' }
     const medals = ['🥇','🥈','🥉']
-    el.innerHTML = ranking.map((row, i) => `
+    el.innerHTML = data.map((row, i) => `
       <div class="nd-rank-row${i < 3 ? ' nd-rank-top' : ''}${row.seat_id === MY_SEAT ? ' nd-rank-me' : ''}">
-        <span class="nd-rank-pos">${i < 3 ? medals[i] : '#' + row.rank}</span>
+        <span class="nd-rank-pos">${i < 3 ? medals[i] : '#' + row.rank_position}</span>
         <span class="nd-rank-butaca">Butaca #${row.seat_id || '?'}</span>
         <span class="nd-rank-level">
           ${stageIcons[row.best_stage] || ''} <b>${row.best_level}</b>
@@ -11211,62 +11226,52 @@ function ndVolverHome() {
   _ndLoadProfile()
 }
 
-// ── START ATTEMPT ──────────────────────────────────────────────────────────────
+// ── START ATTEMPT — calls nerdocrasy_start() RPC ──────────────────────────────
 async function ndJugar() {
   _ndCancelTimer()
   _nd.attemptId   = null
   _nd.answering   = false
   _nd.questionId  = null
-  _nd.deadlineUtc = null
 
   _ndState('loading')
   document.getElementById('nd-loading-txt').textContent = 'Iniciando intento…'
 
-  const token = await _getAuthToken()
   try {
-    const r = await fetch(_API() + '/api/nerdocrasy/attempts', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token }
-    })
-    if (!r.ok) throw new Error(await r.text())
-    const d = await r.json()
-    _nd.attemptId    = d.attempt_id
-    _nd.currentLevel = d.current_level || 1
-    _nd.stage        = d.stage || 'KNOW'
-    await _ndFetchQuestion()
+    const { data, error } = await sb.rpc('nerdocrasy_start')
+    if (error) {
+      const msg = error.message || ''
+      if (msg.includes('no_verified_seat')) {
+        _ndShowLoadingError('Necesitás una butaca verificada para jugar.')
+      } else if (msg.includes('not_authenticated')) {
+        _ndShowLoadingError('Iniciá sesión para jugar.')
+      } else {
+        _ndShowLoadingError('Error iniciando. Intentá de nuevo.')
+        console.error('ndJugar rpc error:', error)
+      }
+      return
+    }
+
+    _nd.attemptId    = data.attempt_id
+    _nd.currentLevel = data.question.level
+    _nd.stage        = data.question.stage
+    _nd.questionId   = data.question.question_id
+    _nd.answering    = false
+
+    if (data.profile) {
+      _nd.profile.bestLevel     = data.profile.best_level     || 0
+      _nd.profile.bestStage     = data.profile.best_stage     || null
+      _nd.profile.totalAttempts = data.profile.total_attempts || 0
+      _nd.profile.globalRank    = data.profile.global_rank    || null
+    }
+
+    const q = data.question
+    const remaining = Math.max(500, q.deadline_ms - Date.now())
+    if (q.question_type !== 'TEXT') await _ndPreloadVisuals(q)
+    _ndShowQuestion(q, remaining)
+
   } catch(e) {
     console.error('ndJugar:', e)
     _ndShowLoadingError('Error iniciando. Intentá de nuevo.')
-  }
-}
-
-// ── FETCH QUESTION ─────────────────────────────────────────────────────────────
-async function _ndFetchQuestion() {
-  _ndState('loading')
-  document.getElementById('nd-loading-txt').textContent = 'Cargando pregunta…'
-
-  const token = await _getAuthToken()
-  try {
-    const r = await fetch(`${_API()}/api/nerdocrasy/attempts/${_nd.attemptId}/question`, {
-      headers: { Authorization: 'Bearer ' + token }
-    })
-    if (!r.ok) throw new Error(await r.text())
-    const data = await r.json()
-
-    _nd.currentLevel = data.level
-    _nd.stage        = data.stage
-    _nd.questionId   = data.question.id
-    _nd.deadlineUtc  = data.deadline_utc
-    _nd.answering    = false
-
-    if (data.question.question_type !== 'TEXT') {
-      await _ndPreloadVisuals(data.question)
-    }
-
-    _ndShowQuestion(data.question, data.remaining_ms || 8000)
-  } catch(e) {
-    console.error('_ndFetchQuestion:', e)
-    _ndShowLoadingError('Error cargando pregunta. Intentá de nuevo.')
   }
 }
 
@@ -11361,62 +11366,115 @@ function _ndUpdateTimerUI(remaining, total) {
   if (wrap) wrap.classList.toggle('nd-timer-danger', t <= 2)
 }
 
-// ── SUBMIT ANSWER ──────────────────────────────────────────────────────────────
+// ── SUBMIT ANSWER — calls nerdocrasy_submit_answer() / nerdocrasy_timeout() ──
 async function ndAnswer(selected) {
   if (_nd.answering) return
   if (!_nd.attemptId || !_nd.questionId) return
 
-  const payload = selected === 'TIMEOUT' ? 'OUT' : selected
-
   _nd.answering = true
   _ndCancelTimer()
 
-  if (selected !== 'TIMEOUT') {
+  const isTimeout = selected === 'TIMEOUT'
+
+  if (!isTimeout) {
     const btn = document.getElementById(selected === 'OUT' ? 'nd-btn-out' : 'nd-btn-in')
     if (btn) btn.classList.add('nd-btn-selected')
   }
   document.getElementById('nd-btn-out').disabled = true
   document.getElementById('nd-btn-in').disabled  = true
 
-  const token = await _getAuthToken()
   try {
-    const r = await fetch(`${_API()}/api/nerdocrasy/attempts/${_nd.attemptId}/answer`, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question_id: _nd.questionId, selected_answer: payload })
-    })
-    const d = await r.json()
-
-    if (d.correct) {
-      if (d.nerdocrasiaComplete) {
-        _ndState('complete')
-        await _ndLoadProfile()
-        return
+    // ── TIMEOUT path ──
+    if (isTimeout) {
+      const { data, error } = await sb.rpc('nerdocrasy_timeout', { p_attempt_id: _nd.attemptId })
+      const eliminated = {
+        highestLevelCompleted: _nd.currentLevel - 1,
+        failureReason: 'timeout',
+        correctAnswer: data?.correct_answer || '',
+        explanation:   data?.explanation    || '',
+        isNewRecord:   false,
+        historicalBest: _nd.profile.bestLevel
       }
+      _nd.attemptId = null
+      _ndShowEliminated(eliminated)
+      return
+    }
 
-      if (d.isStageTransition) {
-        _ndShowStageTransition(d.completedLevel, d.stage)
+    // ── Normal answer path ──
+    const { data, error } = await sb.rpc('nerdocrasy_submit_answer', {
+      p_attempt_id:  _nd.attemptId,
+      p_question_id: _nd.questionId,
+      p_answer:      selected
+    })
+    if (error) throw error
+
+    if (data.status === 'timeout') {
+      _nd.attemptId = null
+      _ndShowEliminated({
+        highestLevelCompleted: _nd.currentLevel - 1,
+        failureReason: 'timeout',
+        correctAnswer: '', explanation: '',
+        isNewRecord: false, historicalBest: _nd.profile.bestLevel
+      })
+      return
+    }
+
+    if (data.status === 'complete') {
+      _nd.attemptId = null
+      _nd.profile.bestLevel = 90
+      _nd.profile.bestStage = 'TRAP'
+      _ndState('complete')
+      return
+    }
+
+    if (data.status === 'eliminated') {
+      await new Promise(res => setTimeout(res, 400))
+      _nd.attemptId = null
+      _ndShowEliminated({
+        highestLevelCompleted: _nd.currentLevel - 1,
+        failureReason: 'wrong_answer',
+        correctAnswer: data.correct_answer || '',
+        explanation:   data.explanation    || '',
+        isNewRecord:   data.is_record      || false,
+        historicalBest: _nd.profile.bestLevel
+      })
+      return
+    }
+
+    if (data.status === 'next') {
+      const nextQ = data.question
+      _nd.questionId = nextQ.question_id
+
+      if (data.stage_transition) {
+        _ndShowStageTransition(_nd.currentLevel, data.stage)
         setTimeout(async () => {
-          _nd.currentLevel = d.nextLevel
-          _nd.stage        = d.stage
-          await _ndFetchQuestion()
+          _nd.currentLevel = data.reached_level
+          _nd.stage        = data.stage
+          _nd.answering    = false
+          const remaining = Math.max(500, nextQ.deadline_ms - Date.now())
+          if (nextQ.question_type !== 'TEXT') await _ndPreloadVisuals(nextQ)
+          _ndShowQuestion(nextQ, remaining)
         }, 2500)
       } else {
         await _ndFlashCorrect()
-        _nd.currentLevel = d.nextLevel
-        _nd.stage        = d.stage
-        await _ndFetchQuestion()
+        _nd.currentLevel = data.reached_level
+        _nd.stage        = data.stage
+        _nd.answering    = false
+        const remaining = Math.max(500, nextQ.deadline_ms - Date.now())
+        if (nextQ.question_type !== 'TEXT') await _ndPreloadVisuals(nextQ)
+        _ndShowQuestion(nextQ, remaining)
       }
-
-    } else {
-      await new Promise(res => setTimeout(res, selected === 'TIMEOUT' ? 0 : 400))
-      _ndShowEliminated(d)
     }
+
   } catch(e) {
     console.error('ndAnswer:', e)
-    _ndShowEliminated({ correct: false, attemptFinished: true, failureReason: 'wrong_answer',
-                        correctAnswer: '?', explanation: '', highestLevelCompleted: _nd.currentLevel - 1,
-                        historicalBest: _nd.profile.bestLevel, isNewRecord: false })
+    _nd.attemptId = null
+    _ndShowEliminated({
+      highestLevelCompleted: _nd.currentLevel - 1,
+      failureReason: 'wrong_answer',
+      correctAnswer: '', explanation: '',
+      isNewRecord: false, historicalBest: _nd.profile.bestLevel
+    })
   }
 }
 
@@ -11501,6 +11559,10 @@ function _ndLevelToStage(level) {
 
 function ndAbandonar() {
   _ndCancelTimer()
+  if (_nd.attemptId) {
+    sb.rpc('nerdocrasy_abandon', { p_attempt_id: _nd.attemptId }).catch(() => {})
+    _nd.attemptId = null
+  }
   ndVolverHome()
 }
 

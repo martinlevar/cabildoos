@@ -6413,31 +6413,142 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   --nd-out:       #ef4444;
 }
 
-/* Overlay */
+/* Overlay — dark theater atmosphere */
 #playroom-overlay {
   position: fixed; inset: 0; z-index: 900;
-  background: rgba(0,0,0,.65);
-  backdrop-filter: blur(6px);
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: 24px 16px;
+  background: radial-gradient(ellipse at center, #1e140a 0%, #0a0804 100%);
+  display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
-  transition: opacity .25s;
-  overflow-y: auto;
+  transition: opacity .3s;
+  overflow: hidden;
 }
-#playroom-overlay.open {
-  opacity: 1; pointer-events: all;
+#playroom-overlay.open { opacity: 1; pointer-events: all; }
+
+/* ── COVER (tapa del juego) ── */
+#nd-cover {
+  position: absolute; inset: 0;
+  cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding-bottom: 10vh;
+  z-index: 2;
+}
+#nd-cover-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+#nd-cover-start {
+  position: relative; z-index: 3;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(10px, 2vw, 15px);
+  color: #fff;
+  text-shadow: 0 0 14px rgba(255,255,180,.9), 0 0 30px rgba(255,255,100,.4);
+  animation: nd-blink 1s step-end infinite;
+  margin: 0; letter-spacing: .05em;
+}
+@keyframes nd-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── MONITOR wrapper ── */
+#nd-monitor {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center;
+  animation: nd-monitor-in .4s cubic-bezier(.22,.8,.4,1) both;
+}
+@keyframes nd-monitor-in {
+  from { opacity:0; transform:scale(.93) translateY(20px); }
+  to   { opacity:1; transform:scale(1)   translateY(0); }
 }
 
-/* Panel */
-#nd-panel {
-  background: var(--nd-panel);
-  border: 1px solid var(--nd-border);
-  border-radius: 16px;
-  width: 100%; max-width: 420px;
-  padding: 24px 20px 32px;
-  display: flex; flex-direction: column; gap: 16px;
-  min-height: 300px;
+/* CRT plastic casing */
+#nd-monitor-crt {
+  background: linear-gradient(155deg, #ede4d8 0%, #cfc5b4 45%, #bdb3a0 100%);
+  border-radius: 20px 20px 10px 10px;
+  padding: 18px 22px 10px;
+  box-shadow:
+    0 0 0 2px #a89880,
+    5px 7px 0 2px #9c907c,
+    0 24px 70px rgba(0,0,0,.75),
+    inset 0 3px 5px rgba(255,255,255,.55),
+    inset 0 -2px 5px rgba(0,0,0,.18);
+  width: min(460px, 86vw);
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+}
+
+/* CRT screen bezel */
+#nd-screen-bezel {
+  background: #080c0f;
+  border-radius: 10px;
+  padding: 2px;
+  box-shadow:
+    inset 0 3px 10px rgba(0,0,0,.95),
+    inset 0 0 30px rgba(0,0,0,.6),
+    0 0 20px rgba(70,190,130,.07);
   position: relative;
+  overflow: hidden;
+  flex: 1;
+}
+/* Scanlines */
+#nd-screen-bezel::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 10;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px, transparent 3px,
+    rgba(0,0,0,.15) 3px, rgba(0,0,0,.15) 4px
+  );
+  pointer-events: none; border-radius: 10px;
+}
+/* Phosphor glow */
+#nd-screen-bezel::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 11;
+  background: radial-gradient(ellipse at 50% 38%, rgba(70,200,140,.06) 0%, transparent 68%);
+  pointer-events: none; border-radius: 10px;
+}
+
+/* Panel — transparent inside the screen */
+#nd-panel {
+  background: transparent;
+  border: none; border-radius: 8px;
+  width: 100%;
+  padding: 18px 16px 24px;
+  display: flex; flex-direction: column; gap: 14px;
+  min-height: 280px;
+  position: relative; z-index: 12;
+  overflow-y: auto;
+}
+
+/* Monitor controls bar */
+#nd-monitor-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px 4px;
+}
+.nd-knob {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #7a6e60, #3e3630);
+  box-shadow: 0 1px 3px rgba(0,0,0,.55), inset 0 1px 1px rgba(255,255,255,.18);
+}
+#nd-monitor-brand {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px; letter-spacing: .09em;
+  color: #8a7e6e;
+  text-shadow: 0 1px 0 rgba(255,255,255,.25);
+}
+
+/* Monitor stand */
+#nd-monitor-stand { display: flex; flex-direction: column; align-items: center; }
+#nd-monitor-neck {
+  width: 56px; height: 24px;
+  background: linear-gradient(to bottom, #cac1b2, #b8b0a0);
+  clip-path: polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
+}
+#nd-monitor-foot {
+  width: 130px; height: 13px;
+  background: linear-gradient(to bottom, #c2baaa, #aaa090);
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.55);
 }
 
 /* Topbar */
@@ -6655,9 +6766,9 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   display: flex; gap: 10px; margin-top: 2px;
 }
 .nd-answer-btn {
-  flex: 1; padding: 16px;
+  flex: 1; padding: 14px;
   border: none; border-radius: 10px;
-  font-size: 15px; font-weight: 900; letter-spacing: .1em;
+  font-size: 26px; font-weight: 900; line-height: 1;
   cursor: pointer; transition: opacity .12s, transform .1s;
 }
 .nd-btn-out {

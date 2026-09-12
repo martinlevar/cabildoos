@@ -40,7 +40,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
@@ -2410,8 +2410,19 @@
 </div>
 
 <!-- ══ NERDOCRASY ══ -->
-<div id="playroom-overlay" onclick="if(event.target===this)cerrarPlayroom()">
-  <div id="nd-panel">
+<div id="playroom-overlay">
+
+  <!-- COVER: tapa del juego — click para entrar -->
+  <div id="nd-cover" onclick="ndEnterFromCover()">
+    <img id="nd-cover-img" src="/nerdocracy-cover.jpg" alt="Nerdocracy">
+    <p id="nd-cover-start">▶ PRESS START ◀</p>
+  </div>
+
+  <!-- MONITOR: CRT 80s — visible tras hacer clic en la tapa -->
+  <div id="nd-monitor" hidden>
+    <div id="nd-monitor-crt">
+      <div id="nd-screen-bezel">
+        <div id="nd-panel">
 
     <!-- ── HOME ──────────────────────────────────────── -->
     <div id="nd-state-home">
@@ -2516,14 +2527,14 @@
         <span id="nd-timer-num" class="nd-timer-num">8</span>
       </div>
 
-      <!-- IN / OUT -->
+      <!-- ✕ / ○ -->
       <div id="nd-answer-btns">
         <button id="nd-btn-out" class="nd-answer-btn nd-btn-out" onclick="ndAnswer('OUT')"
-                aria-label="OUT — Rechazar / Incorrecto">OUT</button>
+                aria-label="OUT — Rechazar">✕</button>
         <button id="nd-btn-in" class="nd-answer-btn nd-btn-in" onclick="ndAnswer('IN')"
-                aria-label="IN — Aceptar / Correcto">IN</button>
+                aria-label="IN — Aceptar">○</button>
       </div>
-      <p class="nd-keyboard-hint">← OUT &nbsp;&nbsp; IN →</p>
+      <p class="nd-keyboard-hint">← ✕ &nbsp;&nbsp; ○ →</p>
     </div>
 
     <!-- ── STAGE TRANSITION ──────────────────────────── -->
@@ -2581,8 +2592,21 @@
       <button class="nd-back-btn" style="margin-top:2rem" onclick="ndVolverHome()">← Volver</button>
     </div>
 
-  </div>
-</div>
+        </div><!-- #nd-panel -->
+      </div><!-- #nd-screen-bezel -->
+      <div id="nd-monitor-controls">
+        <div class="nd-knob"></div>
+        <span id="nd-monitor-brand">NERDOCRACY</span>
+        <div class="nd-knob"></div>
+      </div>
+    </div><!-- #nd-monitor-crt -->
+    <div id="nd-monitor-stand">
+      <div id="nd-monitor-neck"></div>
+      <div id="nd-monitor-foot"></div>
+    </div>
+  </div><!-- #nd-monitor -->
+
+</div><!-- #playroom-overlay -->
 
 <script src="index.js"></script>
 
