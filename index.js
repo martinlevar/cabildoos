@@ -7391,11 +7391,6 @@ function renderQCards() {
 
   // Update mini bar chips after re-render
   renderQMiniChips()
-  // If expanded, release the wrapper height so it can auto-size
-  if (!_qStripCollapsed) {
-    const wrapper = document.getElementById('q-strip-wrapper')
-    if (wrapper) wrapper.style.height = ''
-  }
 }
 
 // ── Strip collapse ────────────────────────────────────────────────────────────
@@ -7404,24 +7399,9 @@ let _qStripCollapsed = false
 function toggleQStrip() {
   const wrapper = document.getElementById('q-strip-wrapper')
   if (!wrapper) return
-  if (_qStripCollapsed) {
-    // Expand: animate to stored full height then release to auto
-    const fullH = parseInt(wrapper.dataset.fullH) || wrapper.scrollHeight
-    wrapper.style.height = fullH + 'px'
-    wrapper.classList.remove('collapsed')
-    _qStripCollapsed = false
-    setTimeout(() => { wrapper.style.height = '' }, 400)
-  } else {
-    // Collapse: snapshot current height, then animate to 46px
-    const h = wrapper.offsetHeight
-    wrapper.dataset.fullH = h
-    wrapper.style.height = h + 'px'
-    requestAnimationFrame(() => {
-      wrapper.classList.add('collapsed')
-      wrapper.style.height = '46px'
-    })
-    _qStripCollapsed = true
-  }
+  _qStripCollapsed = !_qStripCollapsed
+  wrapper.classList.toggle('collapsed', _qStripCollapsed)
+  // No height change — hemicycle stays the same size
 }
 
 function renderQMiniChips() {

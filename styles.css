@@ -7066,9 +7066,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 #q-strip-wrapper {
   flex-shrink: 0;
   position: relative;
-  overflow: hidden;
-  /* height is auto by default; set inline by JS during transition */
-  transition: height .38s cubic-bezier(.4,0,.2,1);
+  /* No height animation — wrapper keeps its natural size so the hemicycle never resizes */
 }
 
 /* Toggle bar — sits at bottom of the expanded card list */
@@ -7087,12 +7085,25 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   font-size: 9px; font-weight: 800;
   letter-spacing: .09em; text-transform: uppercase;
   color: var(--mid);
-  transition: background .15s, color .15s;
+  transition: background .15s, color .15s, opacity .28s;
   flex-shrink: 0;
 }
 #q-strip-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
+#q-strip-wrapper.collapsed #q-strip-toggle {
+  opacity: 0; pointer-events: none;
+}
 
-/* Mini bar — shown when collapsed */
+/* Cards fade+slide up when collapsed */
+#q-strip-wrapper.collapsed #q-cards-strip {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+#q-cards-strip {
+  transition: opacity .28s ease, transform .28s ease;
+}
+
+/* Mini bar — shown when collapsed, sits on top via z-index */
 #q-strip-mini {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -7103,14 +7114,13 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   gap: 8px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity .18s .14s;
+  transition: opacity .22s .1s;
   background: var(--surface);
   border-bottom: 1px solid rgba(0,0,0,.07);
   box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  z-index: 20;
 }
-#q-strip-wrapper.collapsed #q-strip-mini   { opacity: 1; pointer-events: auto; }
-#q-strip-wrapper.collapsed #q-cards-strip,
-#q-strip-wrapper.collapsed #q-strip-toggle { pointer-events: none; }
+#q-strip-wrapper.collapsed #q-strip-mini { opacity: 1; pointer-events: auto; }
 
 /* Animated live dot */
 .q-mini-dot {
