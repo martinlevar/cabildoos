@@ -7413,7 +7413,7 @@ function renderQMiniChips() {
     return rem > 0 && !isArchivada(q.id)
   })
   if (active.length === 0) {
-    container.innerHTML = '<span class="q-mini-label" style="opacity:.45;font-weight:600;text-transform:none;letter-spacing:0;font-size:11px">Sin preguntas activas</span>'
+    container.innerHTML = '<span class="q-mini-label" style="opacity:.45;font-weight:600;text-transform:none;letter-spacing:0;font-size:11px">Sin sesiones abiertas</span>'
     return
   }
   container.innerHTML = active.map((q, idx) => {
