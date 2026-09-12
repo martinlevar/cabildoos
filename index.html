@@ -575,7 +575,16 @@
   </div>
 
   <div class="body" style="flex:1;min-height:0">
-    <div id="q-cards-strip"></div>
+    <div id="q-strip-wrapper">
+      <div id="q-cards-strip"></div>
+      <button id="q-strip-toggle" onclick="toggleQStrip()">▲ Ocultar preguntas</button>
+      <div id="q-strip-mini">
+        <span class="q-mini-dot"></span>
+        <span class="q-mini-label">Activas</span>
+        <div id="q-mini-chips"></div>
+        <button id="q-mini-expand" onclick="toggleQStrip()">▼ Ver preguntas</button>
+      </div>
+    </div>
     <div class="canvas-area" id="canvas-area">
       <canvas id="hemiciclo"></canvas>
       <div class="zoom-hint" id="zoom-hint">

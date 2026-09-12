@@ -7241,23 +7241,44 @@ function fmtTime(s) {
 setInterval(() => {
   if (!document.getElementById('congress').classList.contains('active')) return
   PREGUNTAS_DATA.forEach((qdata, i) => {
-    const timerEl = document.getElementById(`q-timer-${i}`)
-    if (!timerEl) return
     const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
-    if (remaining > 0) {
-      timerEl.textContent = fmtTime(remaining)
-      timerEl.className = 'q-card-timer-val'
-    } else {
-      timerEl.textContent = 'Finalizada'
-      timerEl.className = 'q-card-timer-val ended'
-      // Cuando recién termina, re-renderizar para que el badge cambie a "Revelación"
-      if (!_revealTriggered[qdata.id]) {
-        _revealTriggered[qdata.id] = true
-        renderQCards()
-        requestAnimationFrame(resizeCanvas)
-        // If this question is open in debate panel, close input
-        if (_debateQId === qdata.id) _dpSetEndedUI(true)
+
+    // Card countdown
+    const timerEl = document.getElementById(`q-timer-${i}`)
+    if (timerEl) {
+      if (remaining > 0) {
+        timerEl.textContent = fmtTime(remaining)
+        timerEl.className = 'q-card-timer-val'
+      } else {
+        timerEl.textContent = 'Finalizada'
+        timerEl.className = 'q-card-timer-val ended'
       }
+    }
+
+    // Mini chip countdown
+    const miniEl = document.getElementById(`q-mini-timer-${i}`)
+    if (miniEl) {
+      if (remaining > 0) {
+        miniEl.textContent = fmtTime(remaining)
+        miniEl.className = 'q-mini-time' + (remaining < 90 ? ' urgent' : '')
+      } else {
+        // Question just ended — remove its chip
+        const chip = miniEl.closest('.q-mini-chip')
+        if (chip) {
+          const prev = chip.previousElementSibling
+          if (prev && prev.classList.contains('q-mini-sep')) prev.remove()
+          chip.remove()
+        }
+      }
+    }
+
+    // Cuando recién termina, re-renderizar para que el badge cambie a "Revelación"
+    if (remaining <= 0 && !_revealTriggered[qdata.id]) {
+      _revealTriggered[qdata.id] = true
+      renderQCards()
+      requestAnimationFrame(resizeCanvas)
+      // If this question is open in debate panel, close input
+      if (_debateQId === qdata.id) _dpSetEndedUI(true)
     }
   })
 }, 1000)
@@ -7367,6 +7388,64 @@ function renderQCards() {
       </div>`
     strip.appendChild(card)
   })
+
+  // Update mini bar chips after re-render
+  renderQMiniChips()
+  // If expanded, release the wrapper height so it can auto-size
+  if (!_qStripCollapsed) {
+    const wrapper = document.getElementById('q-strip-wrapper')
+    if (wrapper) wrapper.style.height = ''
+  }
+}
+
+// ── Strip collapse ────────────────────────────────────────────────────────────
+let _qStripCollapsed = false
+
+function toggleQStrip() {
+  const wrapper = document.getElementById('q-strip-wrapper')
+  if (!wrapper) return
+  if (_qStripCollapsed) {
+    // Expand: animate to stored full height then release to auto
+    const fullH = parseInt(wrapper.dataset.fullH) || wrapper.scrollHeight
+    wrapper.style.height = fullH + 'px'
+    wrapper.classList.remove('collapsed')
+    _qStripCollapsed = false
+    setTimeout(() => { wrapper.style.height = '' }, 400)
+  } else {
+    // Collapse: snapshot current height, then animate to 46px
+    const h = wrapper.offsetHeight
+    wrapper.dataset.fullH = h
+    wrapper.style.height = h + 'px'
+    requestAnimationFrame(() => {
+      wrapper.classList.add('collapsed')
+      wrapper.style.height = '46px'
+    })
+    _qStripCollapsed = true
+  }
+}
+
+function renderQMiniChips() {
+  const container = document.getElementById('q-mini-chips')
+  if (!container) return
+  const CAT_THEME = window._CAT_THEME
+  const active = PREGUNTAS_DATA.filter(q => {
+    const rem = Math.floor((new Date(q.ends_at) - Date.now()) / 1000)
+    return rem > 0 && !isArchivada(q.id)
+  })
+  if (active.length === 0) {
+    container.innerHTML = '<span class="q-mini-label" style="opacity:.45;font-weight:600;text-transform:none;letter-spacing:0;font-size:11px">Sin preguntas activas</span>'
+    return
+  }
+  container.innerHTML = active.map((q, idx) => {
+    const rem   = Math.floor((new Date(q.ends_at) - Date.now()) / 1000)
+    const theme = (CAT_THEME && CAT_THEME[q.category]) || _CAT_DEFAULT
+    const dataIdx = PREGUNTAS_DATA.indexOf(q)
+    return (idx > 0 ? '<div class="q-mini-sep"></div>' : '') +
+      `<div class="q-mini-chip">` +
+        `<span class="q-mini-cat" style="background:${theme.pill};color:${theme.txt}">${escapeHtml(q.category || 'GENERAL')}</span>` +
+        `<span class="q-mini-time${rem < 90 ? ' urgent' : ''}" id="q-mini-timer-${dataIdx}">${fmtTime(rem)}</span>` +
+      `</div>`
+  }).join('')
 }
 
 function abrirVotoForQ(i) {

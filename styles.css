@@ -3506,7 +3506,7 @@ body.on-congress #social-footer.visible { display:flex; }
 body.on-verify-onboard .map-controls       { display:none !important; pointer-events:none !important; }
 body.on-verify-onboard #social-footer      { display:none !important; pointer-events:none !important; }
 body.on-verify-onboard #citizens-panel     { display:none !important; pointer-events:none !important; }
-body.on-verify-onboard #q-cards-strip      { display:none !important; pointer-events:none !important; }
+body.on-verify-onboard #q-strip-wrapper    { display:none !important; pointer-events:none !important; }
 
 /* ══ MODO OBSERVADOR — solo dots + preguntas (ver) + botón crear butaca ══
    Se activa con body.observer-mode cuando MY_SEAT=0 y no hay sesión.
@@ -7058,4 +7058,133 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   --nd-text:   #0f0f1a;
   --nd-muted:  #6060a0;
   --nd-track:  rgba(0,0,0,.1);
+}
+
+/* ══════════════════════════════════════════════
+   Q-STRIP COLLAPSE
+   ══════════════════════════════════════════════ */
+#q-strip-wrapper {
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  /* height is auto by default; set inline by JS during transition */
+  transition: height .38s cubic-bezier(.4,0,.2,1);
+}
+
+/* Toggle bar — sits at bottom of the expanded card list */
+#q-strip-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(0,0,0,.07);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--mid);
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
+}
+#q-strip-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
+
+/* Mini bar — shown when collapsed */
+#q-strip-mini {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s .14s;
+  background: var(--surface);
+  border-bottom: 1px solid rgba(0,0,0,.07);
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+#q-strip-wrapper.collapsed #q-strip-mini   { opacity: 1; pointer-events: auto; }
+#q-strip-wrapper.collapsed #q-cards-strip,
+#q-strip-wrapper.collapsed #q-strip-toggle { pointer-events: none; }
+
+/* Animated live dot */
+.q-mini-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #EF4444; flex-shrink: 0;
+  animation: qDotPulse 1.4s ease-in-out infinite;
+}
+@keyframes qDotPulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.45; transform:scale(.65); }
+}
+
+/* "Activas" label */
+.q-mini-label {
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--mid); white-space: nowrap;
+}
+
+/* Chips container */
+#q-mini-chips {
+  display: flex; gap: 6px; flex: 1; overflow: hidden;
+}
+
+/* Individual chip */
+.q-mini-chip {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--bg);
+  border: 1px solid rgba(0,0,0,.09);
+  border-radius: 10px; padding: 5px 11px;
+  flex-shrink: 0;
+}
+.q-mini-cat {
+  font-size: 8px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 20px;
+}
+.q-mini-time {
+  font-size: 13px; font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.q-mini-time.urgent { color: #EF4444; }
+
+/* Vertical separator between chips */
+.q-mini-sep {
+  width: 1px; height: 22px;
+  background: rgba(0,0,0,.1); flex-shrink: 0;
+}
+
+/* "Ver preguntas" expand button */
+#q-mini-expand {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 5px;
+  background: none;
+  border: 1.5px solid rgba(0,0,0,.14);
+  border-radius: 8px; padding: 5px 11px;
+  cursor: pointer; font-family: inherit;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--mid); flex-shrink: 0;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
+}
+#q-mini-expand:hover { background: rgba(0,0,0,.04); color: var(--text); }
+
+/* Dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  #q-strip-toggle { border-top-color: rgba(255,255,255,.07); }
+  #q-strip-toggle:hover { background: rgba(255,255,255,.04); }
+  #q-strip-mini { border-bottom-color: rgba(255,255,255,.07); }
+  .q-mini-chip { border-color: rgba(255,255,255,.1); }
+  .q-mini-sep  { background: rgba(255,255,255,.1); }
+  #q-mini-expand { border-color: rgba(255,255,255,.14); }
+  #q-mini-expand:hover { background: rgba(255,255,255,.06); }
 }
