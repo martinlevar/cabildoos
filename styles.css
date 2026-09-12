@@ -6426,18 +6426,17 @@ body.pr-dimming > *:not(#playroom-overlay) {
   position: fixed; inset: 0; z-index: 900;
   background: #050308;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  opacity: 0; pointer-events: none;
-  transition: opacity .35s ease;
+  visibility: hidden; pointer-events: none;
   overflow: hidden;
 }
-#playroom-overlay.open { opacity: 1; pointer-events: all; }
+#playroom-overlay.open { visibility: visible; pointer-events: all; }
 
 /* Ghost canvas — schematic seat arcs */
 #pr-ghost-canvas {
   position: absolute; inset: 0;
   pointer-events: none;
   opacity: 0;
-  transition: opacity .9s ease .3s;
+  transition: opacity 1.2s ease .1s;
 }
 #playroom-overlay.open #pr-ghost-canvas { opacity: 1; }
 

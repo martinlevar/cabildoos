@@ -11060,12 +11060,12 @@ function _updatePlayroomBtn(val) {
   btn.style.display = ''
   if (_playroomActive) {
     btn.classList.remove('pr-btn-closed')
-    btn.title = 'Nerdocrasy'
-    if (lbl) lbl.textContent = 'Nerdocrasy'
+    btn.title = 'Playroom'
+    if (lbl) lbl.textContent = 'Playroom'
   } else {
     btn.classList.add('pr-btn-closed')
-    btn.title = 'Nerdocrasy — cerrado'
-    if (lbl) lbl.textContent = 'Nerdocrasy'
+    btn.title = 'Playroom — cerrado'
+    if (lbl) lbl.textContent = 'Playroom'
   }
 }
 
