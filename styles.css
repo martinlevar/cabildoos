@@ -288,12 +288,11 @@ html, body {
   background:var(--surface);
 }
 
-/* Mobile: pantalla completa — height dvh se ajusta sola cuando sube el teclado */
+/* Mobile: pantalla completa — JS sobreescribe height con visualViewport.height cuando aparece teclado */
 #debate-panel.open {
   display:flex;
   top:0; left:0; right:0;
-  height: 100vh;    /* fallback navegadores viejos */
-  height: 100dvh;   /* dynamic viewport height — se encoge cuando aparece teclado */
+  bottom:0;          /* JS lo overridea con height inline cuando sube el teclado */
   width:100%;
   max-width:100%;
   box-sizing:border-box;

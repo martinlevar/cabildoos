@@ -7946,13 +7946,12 @@ function _dpHandleViewport() {
   if (!panel || !debateOpen || window.innerWidth >= 600) return
   const vv = window.visualViewport
   if (!vv) return
-  // Limpiar bottom para que no compita con height
-  panel.style.bottom  = 'auto'
+  // Usar height inline (gana sobre bottom:0 del CSS) para recortar al viewport visible
   panel.style.height  = vv.height + 'px'
   panel.style.top     = vv.offsetTop + 'px'
   // Hacer scroll al último mensaje para que el input quede visible
-  const list = document.getElementById('dp-list')
-  if (list) list.scrollTop = list.scrollHeight
+  const msgs = document.getElementById('dp-messages')
+  if (msgs) msgs.scrollTop = msgs.scrollHeight
 }
 
 if (window.visualViewport) {
@@ -7963,23 +7962,14 @@ if (window.visualViewport) {
 function abrirDebate() {
   const panel = document.getElementById('debate-panel')
   panel.classList.add('open')
+  // Limpiar overrides inline para que el panel arranque con el CSS base (bottom:0)
   panel.style.height = ''
   panel.style.top    = ''
-  panel.style.bottom = ''
   const scrim = document.getElementById('dp-scrim')
   if (scrim) scrim.classList.add('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.add('live')
   debateOpen = true
-  // Cuando el usuario toca el input el teclado sube → ajustar viewport
-  const inp = document.getElementById('dp-input')
-  if (inp) {
-    inp.addEventListener('focus', () => setTimeout(_dpHandleViewport, 300), { once: false })
-    inp.addEventListener('blur',  () => {
-      // Al cerrar el teclado, restaurar altura completa
-      const p = document.getElementById('debate-panel')
-      if (p) { p.style.height = ''; p.style.top = ''; p.style.bottom = '' }
-    }, { once: false })
-  }
+  // visualViewport.resize ya escucha el teclado — no hacen falta focus/blur listeners
 }
 
 function cerrarDebate() {
