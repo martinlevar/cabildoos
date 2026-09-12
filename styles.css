@@ -7237,6 +7237,34 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 .mu-compose-btn:hover  { background: #2528AA; }
 .mu-compose-btn:active { transform: scale(.9); }
 
+/* Compose card — first card in the feed */
+.mu-compose-card {
+  background: var(--blue) !important;
+  border-color: transparent !important;
+  flex-shrink: 0;
+  width: 110px !important;
+  display: flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background .15s, transform .12s, box-shadow .15s !important;
+}
+.mu-compose-card:hover  { background: #2528AA !important; box-shadow: 0 4px 16px rgba(29,31,140,.35) !important; }
+.mu-compose-card:active { transform: scale(.96); }
+.mu-compose-card-plus {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,.2);
+  color: #fff; font-size: 32px; font-weight: 200;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.mu-compose-card-label {
+  font-size: 11px; font-weight: 700; color: #fff;
+  text-align: center; line-height: 1.4; letter-spacing: .03em;
+}
+
 #mu-feed {
   flex: 1; overflow-x: auto; overflow-y: hidden;
   display: flex; gap: 8px; padding: 0 16px 8px; align-items: stretch;

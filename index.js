@@ -7545,6 +7545,14 @@ function muRenderFeed() {
       </div>`
     feed.prepend(el)
   })
+  // Compose card — always the leftmost card in the feed
+  const composeCard = document.createElement('div')
+  composeCard.className = 'mu-post mu-compose-card'
+  composeCard.onclick = muOpenCompose
+  composeCard.innerHTML = `
+    <div class="mu-compose-card-plus">+</div>
+    <div class="mu-compose-card-label">Publicar<br>opinión</div>`
+  feed.prepend(composeCard)
 }
 
 function muToggleLike(id, btn) {
