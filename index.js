@@ -11051,6 +11051,7 @@ function _initSystemConfigRealtime() {
 //  NERDOCRASY
 // ══════════════════════════════════════════════════════════════
 let _playroomActive = false
+let _ndEnterTimeout = null
 
 function _updatePlayroomBtn(val) {
   _playroomActive = val === true || val === 'true'
@@ -11107,10 +11108,12 @@ function abrirPlayroom() {
   const overlay = document.getElementById('playroom-overlay')
   if (!overlay) return
 
-  // Show lobby, hide monitor
+  // Cancel any pending ndEnterGame transition
+  if (_ndEnterTimeout) { clearTimeout(_ndEnterTimeout); _ndEnterTimeout = null }
+
+  // Hide monitor, prepare lobby
   const lobby = document.getElementById('pr-lobby')
   const monitor = document.getElementById('nd-monitor')
-  if (lobby) lobby.hidden = false
   if (monitor) monitor.hidden = true
 
   // Set greeting
@@ -11120,13 +11123,17 @@ function abrirPlayroom() {
     greeting.innerHTML = `BIENVENIDO BUTACA #${seatNum}<br>AL PLAYROOM DEL CONGRESO<span>Elegí tu juego para comenzar</span>`
   }
 
-  // Draw ghost hemiciclo
+  // Draw ghost hemiciclo dots
   _drawGhostHemiciclo()
 
-  // Dim page + open overlay
-  document.body.classList.add('pr-dimming')
+  // Open overlay (opacity fade creates "lights off" effect over dashboard)
   overlay.classList.add('open')
 
+  // Show lobby after overlay starts fading in — animation re-fires on each unhide
+  if (lobby) {
+    lobby.hidden = true   // ensure hidden first so animation re-triggers
+    requestAnimationFrame(() => { lobby.hidden = false })
+  }
 }
 
 // Enter game from lobby — fade lobby out, show monitor
@@ -11136,15 +11143,15 @@ function ndEnterGame() {
   if (lobby) {
     lobby.style.transition = 'opacity .3s ease'
     lobby.style.opacity = '0'
-    setTimeout(() => {
+    _ndEnterTimeout = setTimeout(() => {
+      _ndEnterTimeout = null
       lobby.hidden = true
       lobby.style.opacity = ''
       lobby.style.transition = ''
       if (monitor) {
         monitor.hidden = false
-        // Re-trigger monitor entrance animation
         monitor.style.animation = 'none'
-        monitor.offsetHeight // reflow
+        monitor.offsetHeight
         monitor.style.animation = ''
       }
       _ndState('home')
@@ -11160,21 +11167,22 @@ function ndEnterGame() {
 }
 
 function cerrarPlayroom() {
+  // Cancel any pending enter-game transition
+  if (_ndEnterTimeout) { clearTimeout(_ndEnterTimeout); _ndEnterTimeout = null }
+
   _ndCancelTimer()
   if (_nd.attemptId) {
     sb.rpc('nerdocrasy_abandon', { p_attempt_id: _nd.attemptId }).catch(() => {})
     _nd.attemptId = null
   }
+
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
 
-  // Restore page brightness
-  document.body.classList.remove('pr-dimming')
-
-  // Reset lobby for next open
+  // Hide both — lobby will re-animate on next open
   const lobby = document.getElementById('pr-lobby')
   const monitor = document.getElementById('nd-monitor')
-  if (lobby) { lobby.hidden = false; lobby.style.opacity = ''; lobby.style.transition = ''; }
+  if (lobby) { lobby.hidden = true; lobby.style.opacity = ''; lobby.style.transition = ''; }
   if (monitor) monitor.hidden = true
 }
 

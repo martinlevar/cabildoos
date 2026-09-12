@@ -6416,20 +6416,17 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* ══ PLAYROOM OVERLAY ══ */
 
-/* Body dimming — page content bleeds through semi-transparent overlay */
-body.pr-dimming > *:not(#playroom-overlay) {
-  filter: brightness(0.08) grayscale(1);
-  transition: filter .6s ease;
-}
+/* No body dimming needed — overlay opacity fade creates the lights-off effect */
 
 #playroom-overlay {
   position: fixed; inset: 0; z-index: 900;
   background: #050308;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  visibility: hidden; pointer-events: none;
+  opacity: 0; pointer-events: none;
+  transition: opacity .55s ease;
   overflow: hidden;
 }
-#playroom-overlay.open { visibility: visible; pointer-events: all; }
+#playroom-overlay.open { opacity: 1; pointer-events: all; }
 
 /* Ghost canvas — schematic seat arcs */
 #pr-ghost-canvas {
@@ -6456,11 +6453,11 @@ body.pr-dimming > *:not(#playroom-overlay) {
   position: relative; z-index: 2;
   display: flex; flex-direction: column; align-items: center;
   gap: 28px; width: 100%; max-width: 760px; padding: 0 20px;
-  opacity: 0; transform: translateY(22px);
-  transition: opacity .55s ease .45s, transform .55s ease .45s;
+  animation: pr-lobby-in .6s ease .35s both;
 }
-#playroom-overlay.open #pr-lobby {
-  opacity: 1; transform: translateY(0);
+@keyframes pr-lobby-in {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Greeting */
