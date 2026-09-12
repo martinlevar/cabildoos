@@ -584,6 +584,64 @@
         <div id="q-mini-chips"></div>
         <button id="q-mini-expand" onclick="toggleQStrip()">▼ Ver sesiones</button>
       </div>
+
+      <!-- ── Muro del Día — visible cuando el strip está colapsado ── -->
+      <div id="mu-muro">
+        <div id="mu-head">
+          <span class="mu-icon">🗣️</span>
+          <div>
+            <div class="mu-title">Muro del Día</div>
+            <div class="mu-date" id="mu-date-lbl"></div>
+          </div>
+          <div style="flex:1"></div>
+          <span class="mu-count" id="mu-count">0 voces</span>
+        </div>
+        <div id="mu-feed"></div>
+        <div id="mu-input-row">
+          <div class="mu-my-av" id="mu-my-av">?</div>
+          <div class="mu-input-wrap">
+            <input class="mu-input" id="mu-input" placeholder="¿Qué pensás hoy?" maxlength="280">
+            <button class="mu-send-btn" onclick="muPublicar()">
+              <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Muro Modal ── -->
+    <div id="mu-modal-overlay" onclick="muCloseModal(event)">
+      <div id="mu-modal">
+        <div class="mu-modal-handle"></div>
+        <div id="mu-modal-head">
+          <div id="mu-modal-post-top">
+            <div id="mu-modal-av"></div>
+            <div>
+              <div id="mu-modal-alias"></div>
+              <div id="mu-modal-seat-lbl"></div>
+            </div>
+            <button id="mu-modal-close" onclick="muCloseModal()">✕</button>
+          </div>
+          <p id="mu-modal-text"></p>
+          <div id="mu-modal-meta">
+            <span id="mu-modal-time"></span>
+            <button id="mu-modal-like-btn" onclick="muModalLike()">
+              <span id="mu-modal-like-icon">🤍</span>
+              <span id="mu-modal-like-count"></span>
+            </button>
+          </div>
+        </div>
+        <div id="mu-modal-thread"></div>
+        <div id="mu-modal-reply-row">
+          <div id="mu-reply-av-me">?</div>
+          <div class="mu-reply-input-wrap">
+            <input id="mu-reply-input" placeholder="Respondé a esta opinión…" maxlength="280">
+            <button class="mu-reply-send" onclick="muSendReply()">
+              <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="canvas-area" id="canvas-area">
       <canvas id="hemiciclo"></canvas>

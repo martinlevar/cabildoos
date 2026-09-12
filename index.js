@@ -7402,6 +7402,7 @@ function toggleQStrip() {
   _qStripCollapsed = !_qStripCollapsed
   wrapper.classList.toggle('collapsed', _qStripCollapsed)
   // No height change — hemicycle stays the same size
+  if (_qStripCollapsed) muInitMuro()
 }
 
 function renderQMiniChips() {
@@ -7426,6 +7427,232 @@ function renderQMiniChips() {
         `<span class="q-mini-time${rem < 90 ? ' urgent' : ''}" id="q-mini-timer-${dataIdx}">${fmtTime(rem)}</span>` +
       `</div>`
   }).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MURO DEL DÍA
+// ══════════════════════════════════════════════════════════════════════════════
+const MU_COLORS = ['#1D1F8C','#7C3AED','#0891B2','#059669','#B45309','#DC2626','#DB2777','#0F766E']
+let MU_POSTS = [
+  { id: 1, alias: 'Simón C.', seat: 47, color: '#1D1F8C',
+    text: 'Venezuela necesita instituciones fuertes antes que elecciones. Sin reglas claras, cualquier resultado puede ser desconocido.',
+    time: 'hace 2 min', likes: 14, liked: false,
+    replies: [
+      { alias: 'Carla M.', seat: 88, color: '#7C3AED', text: 'Totalmente de acuerdo. La institucionalidad es el cimiento. Sin eso, cualquier gobierno es frágil.', time: 'hace 1 min', likes: 5, liked: false },
+      { alias: 'Jorge P.', seat: 201, color: '#059669', text: '¿Y cómo proponés construir esas instituciones si los que están en el poder las destruyen activamente?', time: 'hace 30 s', likes: 2, liked: false },
+    ]
+  },
+  { id: 2, alias: 'Valentina R.', seat: 112, color: '#7C3AED',
+    text: 'La diáspora somos parte del Cabildo también. Votamos, opinamos y seguimos soñando con volver a nuestro país.',
+    time: 'hace 8 min', likes: 31, liked: false,
+    replies: [
+      { alias: 'Butaca #2', seat: 2, color: '#FF6B35', text: '💯 La diáspora es la Venezuela que el régimen expulsó. Su voz importa tanto como la del que se quedó.', time: 'hace 6 min', likes: 18, liked: true },
+    ]
+  },
+  { id: 3, alias: 'Pedro A.', seat: 8, color: '#059669',
+    text: 'El precio de la gasolina sigue siendo un tema pendiente. Subsidio mal distribuido = distorsión total de la economía.',
+    time: 'hace 15 min', likes: 7, liked: false, replies: []
+  },
+  { id: 4, alias: 'María L.', seat: 299, color: '#B45309',
+    text: 'Propongo que el Cabildo adopte votaciones temáticas semanales. Una por educación, una por salud, una por economía.',
+    time: 'hace 23 min', likes: 22, liked: false,
+    replies: [
+      { alias: 'Tomás V.', seat: 55, color: '#0891B2', text: 'Excelente idea. También se podría rotar entre regiones para representación temática.', time: 'hace 20 min', likes: 9, liked: false },
+      { alias: 'Laura G.', seat: 178, color: '#DB2777', text: '¿Y quién define los temas de la semana? Eso debería ser transparente y abierto a propuestas.', time: 'hace 18 min', likes: 4, liked: false },
+    ]
+  },
+]
+let _muOpenId  = null
+let _muInited  = false
+
+function muInitMuro() {
+  if (_muInited) return
+  _muInited = true
+
+  // Date label
+  const lbl = document.getElementById('mu-date-lbl')
+  if (lbl) {
+    const now = new Date()
+    const days   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
+    const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+    lbl.textContent = `${days[now.getDay()]} ${now.getDate()} de ${months[now.getMonth()]} · Generación Independencia 2026`
+  }
+
+  muUpdateMyAvatar()
+
+  // Keyboard shortcuts
+  const mi = document.getElementById('mu-input')
+  if (mi) mi.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); muPublicar() } })
+  const ri = document.getElementById('mu-reply-input')
+  if (ri) ri.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); muSendReply() } })
+
+  muRenderFeed()
+}
+
+function muUpdateMyAvatar() {
+  const alias    = _authProfile?.alias || (MY_SEAT ? `#${MY_SEAT}` : '?')
+  const initials = alias.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const av = document.getElementById('mu-my-av')
+  if (av) av.textContent = initials
+  const avR = document.getElementById('mu-reply-av-me')
+  if (avR) avR.textContent = initials
+}
+
+function muInitials(name) {
+  return String(name).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function muRenderFeed() {
+  const feed = document.getElementById('mu-feed')
+  if (!feed) return
+  feed.innerHTML = ''
+  const countEl = document.getElementById('mu-count')
+  if (countEl) countEl.textContent = MU_POSTS.length + (MU_POSTS.length === 1 ? ' voz' : ' voces')
+  MU_POSTS.forEach((p, i) => {
+    const el = document.createElement('div')
+    el.className = 'mu-post'
+    el.style.animationDelay = (i * 50) + 'ms'
+    el.onclick = () => muOpenModal(p.id)
+    const rCount = p.replies?.length || 0
+    el.innerHTML = `
+      <div class="mu-post-top">
+        <div class="mu-av" style="background:${p.color}">${muInitials(p.alias)}</div>
+        <div style="min-width:0">
+          <div class="mu-post-alias">${escapeHtml(p.alias)}</div>
+          <div class="mu-post-seat">Butaca #${p.seat}</div>
+        </div>
+      </div>
+      <p class="mu-post-text">${escapeHtml(p.text)}</p>
+      <div class="mu-post-bottom">
+        <span class="mu-post-time">${p.time}</span>
+        <div style="flex:1"></div>
+        ${rCount > 0 ? `<span class="mu-post-badge">💬 ${rCount}</span>` : ''}
+        <button class="mu-post-like${p.liked ? ' liked' : ''}" onclick="event.stopPropagation();muToggleLike(${p.id},this)">
+          <span>${p.liked ? '❤️' : '🤍'}</span><span>${p.likes}</span>
+        </button>
+      </div>`
+    feed.prepend(el)
+  })
+}
+
+function muToggleLike(id, btn) {
+  const p = MU_POSTS.find(x => x.id === id)
+  if (!p) return
+  p.liked = !p.liked
+  p.likes += p.liked ? 1 : -1
+  btn.classList.toggle('liked', p.liked)
+  const spans = btn.querySelectorAll('span')
+  spans[0].textContent = p.liked ? '❤️' : '🤍'
+  spans[1].textContent = p.likes
+}
+
+function muPublicar() {
+  const inp = document.getElementById('mu-input')
+  const txt = inp ? inp.value.trim() : ''
+  if (!txt) return
+  const alias = _authProfile?.alias || (MY_SEAT ? `Butaca #${MY_SEAT}` : 'Ciudadano')
+  const color = MU_COLORS[Math.floor(Math.random() * MU_COLORS.length)]
+  MU_POSTS.unshift({
+    id: Date.now(), alias, seat: MY_SEAT || 0, color,
+    text: txt, time: 'ahora', likes: 0, liked: false, replies: []
+  })
+  if (inp) inp.value = ''
+  muRenderFeed()
+  const feed = document.getElementById('mu-feed')
+  if (feed) feed.scrollLeft = 0
+}
+
+/* ── Modal ── */
+function muOpenModal(id) {
+  _muOpenId = id
+  const p = MU_POSTS.find(x => x.id === id)
+  if (!p) return
+  document.getElementById('mu-modal-av').style.background = p.color
+  document.getElementById('mu-modal-av').textContent = muInitials(p.alias)
+  document.getElementById('mu-modal-alias').textContent = p.alias
+  document.getElementById('mu-modal-seat-lbl').textContent = 'Butaca #' + p.seat
+  document.getElementById('mu-modal-text').textContent = p.text
+  document.getElementById('mu-modal-time').textContent = p.time
+  document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+  document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+  document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+  muRenderThread(p)
+  document.getElementById('mu-modal-overlay').classList.add('open')
+  setTimeout(() => { const ri = document.getElementById('mu-reply-input'); if (ri) ri.focus() }, 350)
+}
+
+function muCloseModal(e) {
+  if (e && e.target !== document.getElementById('mu-modal-overlay')) return
+  document.getElementById('mu-modal-overlay').classList.remove('open')
+  _muOpenId = null
+}
+
+function muModalLike() {
+  const p = MU_POSTS.find(x => x.id === _muOpenId)
+  if (!p) return
+  p.liked = !p.liked
+  p.likes += p.liked ? 1 : -1
+  document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+  document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+  document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+  muRenderFeed()
+}
+
+function muRenderThread(p) {
+  const thread = document.getElementById('mu-modal-thread')
+  if (!thread) return
+  if (!p.replies || p.replies.length === 0) {
+    thread.innerHTML = '<p class="mu-thread-empty">Sé el primero en responder 👇</p>'
+    return
+  }
+  thread.innerHTML = p.replies.map((r, i) => `
+    <div class="mu-reply">
+      <div class="mu-reply-line-wrap">
+        <div class="mu-reply-av" style="background:${r.color}">${muInitials(r.alias)}</div>
+        ${i < p.replies.length - 1 ? '<div class="mu-reply-line"></div>' : ''}
+      </div>
+      <div class="mu-reply-body">
+        <div class="mu-reply-top">
+          <span class="mu-reply-alias">${escapeHtml(r.alias)}</span>
+          <span class="mu-reply-seat">· #${r.seat}</span>
+          <span class="mu-reply-time">${r.time}</span>
+        </div>
+        <p class="mu-reply-text">${escapeHtml(r.text)}</p>
+        <div class="mu-reply-actions">
+          <button class="mu-reply-like${r.liked ? ' liked' : ''}" onclick="muReplyLike(${i},this)">
+            ${r.liked ? '❤️' : '🤍'} ${r.likes}
+          </button>
+        </div>
+      </div>
+    </div>`).join('')
+  thread.scrollTop = thread.scrollHeight
+}
+
+function muReplyLike(idx, btn) {
+  const p = MU_POSTS.find(x => x.id === _muOpenId)
+  if (!p || !p.replies[idx]) return
+  p.replies[idx].liked = !p.replies[idx].liked
+  p.replies[idx].likes += p.replies[idx].liked ? 1 : -1
+  btn.classList.toggle('liked', p.replies[idx].liked)
+  btn.innerHTML = (p.replies[idx].liked ? '❤️' : '🤍') + ' ' + p.replies[idx].likes
+}
+
+function muSendReply() {
+  const inp = document.getElementById('mu-reply-input')
+  const txt = inp ? inp.value.trim() : ''
+  if (!txt || _muOpenId === null) return
+  const p = MU_POSTS.find(x => x.id === _muOpenId)
+  if (!p) return
+  if (!p.replies) p.replies = []
+  const alias = _authProfile?.alias || (MY_SEAT ? `Butaca #${MY_SEAT}` : 'Ciudadano')
+  p.replies.push({ alias, seat: MY_SEAT || 0, color: '#FF6B35', text: txt, time: 'ahora', likes: 0, liked: false })
+  if (inp) inp.value = ''
+  muRenderThread(p)
+  muRenderFeed()
+  setTimeout(() => {
+    const thread = document.getElementById('mu-modal-thread')
+    if (thread) thread.scrollTop = thread.scrollHeight
+  }, 50)
 }
 
 function abrirVotoForQ(i) {
