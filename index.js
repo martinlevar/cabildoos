@@ -11136,7 +11136,7 @@ function abrirPlayroom() {
   }
 }
 
-// Enter game from lobby — fade lobby out, show monitor
+// Enter game from lobby — fade lobby out, show monitor and start immediately
 function ndEnterGame() {
   const lobby = document.getElementById('pr-lobby')
   const monitor = document.getElementById('nd-monitor')
@@ -11154,15 +11154,12 @@ function ndEnterGame() {
         monitor.offsetHeight
         monitor.style.animation = ''
       }
-      _ndState('home')
-      _ndRenderHome()
-      _ndLoadProfile()
+      // Skip home screen — go directly into the game
+      ndJugar()
     }, 300)
   } else {
     if (monitor) monitor.hidden = false
-    _ndState('home')
-    _ndRenderHome()
-    _ndLoadProfile()
+    ndJugar()
   }
 }
 
