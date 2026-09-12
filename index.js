@@ -11073,13 +11073,22 @@ async function abrirPlayroom() {
   if (!_playroomActive) return
   const overlay = document.getElementById('playroom-overlay')
   if (!overlay) return
-  // Reset: show cover, hide monitor
+  // Reset to lobby state
+  const lobby   = document.getElementById('playroom-lobby')
   const cover   = document.getElementById('nd-cover')
   const monitor = document.getElementById('nd-monitor')
-  if (cover)   { cover.hidden = false; cover.style.opacity = '1'; cover.style.transition = ''; }
+  if (lobby)   { lobby.hidden = false; lobby.style.opacity = '1'; lobby.style.transition = ''; }
+  if (cover)   { cover.hidden = true; cover.style.opacity = '1'; cover.style.transition = ''; }
   if (monitor) monitor.hidden = true
+  // Set greeting
+  const greeting = document.getElementById('playroom-greeting')
+  if (greeting) {
+    greeting.textContent = MY_SEAT
+      ? `Hola Butaca #${MY_SEAT} 👋`
+      : 'Bienvenido al Playroom'
+  }
   overlay.classList.add('open')
-  // Pre-load profile silently so home screen is ready
+  // Pre-load profile silently so game home screen is ready when they enter
   _ndLoadProfile()
 }
 
@@ -11091,6 +11100,24 @@ function cerrarPlayroom() {
   }
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
+}
+
+// ── Open game from lobby (click on game card) ──────────────────────────────────
+function ndOpenFromLobby() {
+  const lobby   = document.getElementById('playroom-lobby')
+  const cover   = document.getElementById('nd-cover')
+  if (!lobby || !cover) return
+  lobby.style.transition = 'opacity .3s'
+  lobby.style.opacity    = '0'
+  setTimeout(() => {
+    lobby.hidden       = true
+    cover.hidden       = false
+    cover.style.opacity     = '0'
+    cover.style.transition  = 'opacity .35s'
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { cover.style.opacity = '1' })
+    })
+  }, 300)
 }
 
 // ── Enter from cover (click on the game tapa) ─────────────────────────────────

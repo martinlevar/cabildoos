@@ -2409,11 +2409,25 @@
   </div>
 </div>
 
-<!-- ══ NERDOCRASY ══ -->
+<!-- ══ PLAYROOM ══ -->
 <div id="playroom-overlay">
 
+  <!-- LOBBY: pantalla de selección de juegos -->
+  <div id="playroom-lobby">
+    <div id="playroom-lobby-header">
+      <div id="playroom-greeting">Bienvenido al Playroom</div>
+      <button id="playroom-close-btn" onclick="cerrarPlayroom()" aria-label="Cerrar Playroom">✕</button>
+    </div>
+    <div id="playroom-games-grid">
+      <div class="playroom-game-card" onclick="ndOpenFromLobby()">
+        <img src="/nerdocracy-cover.jpg" alt="Nerdocracy" class="playroom-card-img">
+        <div class="playroom-card-label">Nerdocracy</div>
+      </div>
+    </div>
+  </div>
+
   <!-- COVER: tapa del juego — click para entrar -->
-  <div id="nd-cover" onclick="ndEnterFromCover()">
+  <div id="nd-cover" hidden onclick="ndEnterFromCover()">
     <img id="nd-cover-img" src="/nerdocracy-cover.jpg" alt="Nerdocracy">
     <p id="nd-cover-start">▶ PRESS START ◀</p>
   </div>
