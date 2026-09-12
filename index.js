@@ -7469,20 +7469,32 @@ function muInitMuro() {
   if (_muInited) return
   _muInited = true
 
-  // Date label
+  // Date label (single line, short)
   const lbl = document.getElementById('mu-date-lbl')
   if (lbl) {
     const now = new Date()
     const days   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
     const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
-    lbl.textContent = `${days[now.getDay()]} ${now.getDate()} de ${months[now.getMonth()]} · Generación Independencia 2026`
+    lbl.textContent = `· ${days[now.getDay()]} ${now.getDate()} de ${months[now.getMonth()]}`
   }
 
   muUpdateMyAvatar()
 
-  // Keyboard shortcuts
-  const mi = document.getElementById('mu-input')
-  if (mi) mi.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); muPublicar() } })
+  // Compose modal keyboard
+  const ct = document.getElementById('mu-compose-text')
+  if (ct) {
+    ct.addEventListener('input', () => {
+      const rem = 280 - ct.value.length
+      const ch  = document.getElementById('mu-compose-chars')
+      if (ch) {
+        ch.textContent = rem
+        ch.className = rem <= 0 ? 'zero' : rem <= 40 ? 'low' : ''
+      }
+    })
+    ct.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); muSubmitCompose() }
+    })
+  }
   const ri = document.getElementById('mu-reply-input')
   if (ri) ri.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); muSendReply() } })
 
@@ -7492,7 +7504,7 @@ function muInitMuro() {
 function muUpdateMyAvatar() {
   const alias    = _authProfile?.alias || (MY_SEAT ? `#${MY_SEAT}` : '?')
   const initials = alias.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const av = document.getElementById('mu-my-av')
+  const av = document.getElementById('mu-compose-av')
   if (av) av.textContent = initials
   const avR = document.getElementById('mu-reply-av-me')
   if (avR) avR.textContent = initials
@@ -7546,9 +7558,26 @@ function muToggleLike(id, btn) {
   spans[1].textContent = p.likes
 }
 
-function muPublicar() {
-  const inp = document.getElementById('mu-input')
-  const txt = inp ? inp.value.trim() : ''
+function muOpenCompose() {
+  document.getElementById('mu-compose-overlay').classList.add('open')
+  setTimeout(() => {
+    const ct = document.getElementById('mu-compose-text')
+    if (ct) ct.focus()
+  }, 350)
+}
+
+function muCloseCompose(e) {
+  if (e && e.target !== document.getElementById('mu-compose-overlay')) return
+  document.getElementById('mu-compose-overlay').classList.remove('open')
+  const ct = document.getElementById('mu-compose-text')
+  if (ct) ct.value = ''
+  const ch = document.getElementById('mu-compose-chars')
+  if (ch) { ch.textContent = '280'; ch.className = '' }
+}
+
+function muSubmitCompose() {
+  const ct  = document.getElementById('mu-compose-text')
+  const txt = ct ? ct.value.trim() : ''
   if (!txt) return
   const alias = _authProfile?.alias || (MY_SEAT ? `Butaca #${MY_SEAT}` : 'Ciudadano')
   const color = MU_COLORS[Math.floor(Math.random() * MU_COLORS.length)]
@@ -7556,7 +7585,7 @@ function muPublicar() {
     id: Date.now(), alias, seat: MY_SEAT || 0, color,
     text: txt, time: 'ahora', likes: 0, liked: false, replies: []
   })
-  if (inp) inp.value = ''
+  muCloseCompose()
   muRenderFeed()
   const feed = document.getElementById('mu-feed')
   if (feed) feed.scrollLeft = 0

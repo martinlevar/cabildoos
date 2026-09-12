@@ -589,21 +589,25 @@
       <div id="mu-muro">
         <div id="mu-head">
           <span class="mu-icon">🗣️</span>
-          <div>
-            <div class="mu-title">Muro del Día</div>
-            <div class="mu-date" id="mu-date-lbl"></div>
-          </div>
+          <span class="mu-title-line">Muro del Día <span id="mu-date-lbl" class="mu-date-inline"></span></span>
           <div style="flex:1"></div>
           <span class="mu-count" id="mu-count">0 voces</span>
+          <button class="mu-compose-btn" onclick="muOpenCompose()" title="Publicar opinión">+</button>
         </div>
         <div id="mu-feed"></div>
-        <div id="mu-input-row">
-          <div class="mu-my-av" id="mu-my-av">?</div>
-          <div class="mu-input-wrap">
-            <input class="mu-input" id="mu-input" placeholder="¿Qué pensás hoy?" maxlength="280">
-            <button class="mu-send-btn" onclick="muPublicar()">
-              <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-            </button>
+      </div>
+
+      <!-- ── Compose modal ── -->
+      <div id="mu-compose-overlay" onclick="muCloseCompose(event)">
+        <div id="mu-compose">
+          <div class="mu-modal-handle"></div>
+          <div id="mu-compose-body">
+            <div id="mu-compose-av" class="mu-my-av">?</div>
+            <textarea id="mu-compose-text" placeholder="¿Qué pensás hoy?" maxlength="280" rows="4"></textarea>
+          </div>
+          <div id="mu-compose-footer">
+            <span id="mu-compose-chars">280</span>
+            <button id="mu-compose-send" onclick="muSubmitCompose()">Publicar</button>
           </div>
         </div>
       </div>
