@@ -7436,18 +7436,24 @@ function renderQMiniChips() {
 // ══════════════════════════════════════════════════════════════════════════════
 const MU_COLORS = ['#1D1F8C','#7C3AED','#0891B2','#059669','#B45309','#DC2626','#DB2777','#0F766E']
 
-// Derive a very soft pastel from any hex color (85% white + 15% color)
+// Named-color → hex accent (same palette as the profile card system)
+const MU_CARD_ACCENT = {
+  white: '#d1d5db', orange: '#f76a1e', yellow: '#f59e0b',
+  green: '#34d399', cyan: '#22d3ee', black: '#6b7280',
+  red: '#f87171', pink: '#f472b6',
+}
+
+// Derive a very soft pastel from any hex color (82% white + 18% color)
 function muColorToPastel(hex) {
   if (!hex || hex.length < 7) return '#F4F4FF'
   const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
   return `rgb(${Math.round(255*.82+r*.18)},${Math.round(255*.82+g*.18)},${Math.round(255*.82+b*.18)})`
 }
 
-// Consistent color for the current user based on seat (deterministic, not random)
+// Consistent color for the current user — reads from profile card_color
 function muGetMyColor() {
-  // If profile has a color field, use it; otherwise pick by seat
-  if (_authProfile?.color && typeof _authProfile.color === 'string' && _authProfile.color.startsWith('#')) return _authProfile.color
-  return MU_COLORS[(MY_SEAT || 0) % MU_COLORS.length]
+  const named = _authProfile?.card_color || _profilesCache?.[MY_SEAT]?.cardColor || 'orange'
+  return MU_CARD_ACCENT[named] ?? MU_CARD_ACCENT.orange
 }
 let MU_POSTS = [
   { id: 1, alias: 'Simón C.', seat: 47, color: '#1D1F8C',
