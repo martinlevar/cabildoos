@@ -2412,27 +2412,38 @@
 <!-- ══ PLAYROOM ══ -->
 <div id="playroom-overlay">
 
-  <!-- LOBBY: pantalla de selección de juegos -->
+  <!-- LOBBY: arcade hall — greeting + ranking + cartucho -->
   <div id="playroom-lobby">
-    <div id="playroom-lobby-header">
-      <div id="playroom-greeting">Bienvenido al Playroom</div>
-      <button id="playroom-close-btn" onclick="cerrarPlayroom()" aria-label="Cerrar Playroom">✕</button>
-    </div>
-    <div id="playroom-games-grid">
-      <div class="playroom-game-card" onclick="ndOpenFromLobby()">
-        <img src="/nerdocracy-cover.jpg" alt="Nerdocracy" class="playroom-card-img">
-        <div class="playroom-card-label">Nerdocracy</div>
+    <button id="playroom-close-btn" onclick="cerrarPlayroom()" aria-label="Cerrar">✕</button>
+
+    <p id="playroom-greeting"></p>
+
+    <div id="playroom-main">
+
+      <!-- Ranking -->
+      <div id="playroom-ranking-panel">
+        <div class="pr-rank-title">— HALL OF FAME —</div>
+        <ol id="pr-ranking-list"><li class="pr-rank-loading">Cargando…</li></ol>
       </div>
+
+      <!-- Cartucho -->
+      <div id="playroom-cartridge-wrap" onclick="ndEnterGame()" title="Jugar Nerdocracy">
+        <div id="playroom-cartridge">
+          <div class="cart-top">
+            <div class="cart-grip"></div><div class="cart-grip"></div><div class="cart-grip"></div>
+          </div>
+          <div class="cart-body">
+            <img src="/nerdocracy-cover.jpg" alt="Nerdocracy" class="cart-cover-img">
+          </div>
+          <div class="cart-connector"></div>
+        </div>
+        <p class="cart-cta">▶ PRESS START ◀</p>
+      </div>
+
     </div>
   </div>
 
-  <!-- COVER: tapa del juego — click para entrar -->
-  <div id="nd-cover" hidden onclick="ndEnterFromCover()">
-    <img id="nd-cover-img" src="/nerdocracy-cover.jpg" alt="Nerdocracy">
-    <p id="nd-cover-start">▶ PRESS START ◀</p>
-  </div>
-
-  <!-- MONITOR: CRT 80s — visible tras hacer clic en la tapa -->
+  <!-- MONITOR: CRT 80s — visible al ingresar al juego -->
   <div id="nd-monitor" hidden>
     <div id="nd-monitor-crt">
       <div id="nd-screen-bezel">

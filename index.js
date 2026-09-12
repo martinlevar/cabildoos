@@ -11073,22 +11073,27 @@ async function abrirPlayroom() {
   if (!_playroomActive) return
   const overlay = document.getElementById('playroom-overlay')
   if (!overlay) return
-  // Reset to lobby state
+
+  // Reset to lobby, hide monitor
   const lobby   = document.getElementById('playroom-lobby')
-  const cover   = document.getElementById('nd-cover')
   const monitor = document.getElementById('nd-monitor')
-  if (lobby)   { lobby.hidden = false; lobby.style.opacity = '1'; lobby.style.transition = ''; }
-  if (cover)   { cover.hidden = true; cover.style.opacity = '1'; cover.style.transition = ''; }
+  if (lobby)   { lobby.hidden = false; lobby.style.opacity = ''; lobby.style.animation = ''; }
   if (monitor) monitor.hidden = true
-  // Set greeting
+
+  // Greeting
   const greeting = document.getElementById('playroom-greeting')
   if (greeting) {
-    greeting.textContent = MY_SEAT
-      ? `Hola Butaca #${MY_SEAT} 👋`
-      : 'Bienvenido al Playroom'
+    if (MY_SEAT) {
+      greeting.innerHTML = `BIENVENIDO<br>BUTACA #${MY_SEAT}`
+    } else {
+      greeting.textContent = 'BIENVENIDO AL PLAYROOM'
+    }
   }
+
   overlay.classList.add('open')
-  // Pre-load profile silently so game home screen is ready when they enter
+
+  // Load ranking and profile in parallel
+  _ndLoadLobbyRanking()
   _ndLoadProfile()
 }
 
@@ -11102,37 +11107,45 @@ function cerrarPlayroom() {
   if (overlay) overlay.classList.remove('open')
 }
 
-// ── Open game from lobby (click on game card) ──────────────────────────────────
-function ndOpenFromLobby() {
+// ── Load ranking into lobby scoreboard ────────────────────────────────────────
+async function _ndLoadLobbyRanking() {
+  const list = document.getElementById('pr-ranking-list')
+  if (!list) return
+  try {
+    const { data } = await sb.rpc('get_nerdocrasy_ranking', { limit_n: 10 })
+    if (!data || !data.length) {
+      list.innerHTML = '<li class="pr-rank-loading">Sin datos aún</li>'
+      return
+    }
+    const { data: { user } } = await sb.auth.getUser()
+    list.innerHTML = data.map((r, i) => {
+      const isMe = user && r.user_id === user.id
+      return `<li class="${isMe ? 'pr-rank-me' : ''}">
+        <span class="pr-rank-pos">${i + 1}.</span>
+        <span class="pr-rank-name">Butaca #${r.butaca_numero ?? '?'}</span>
+        <span class="pr-rank-score">Nv${r.best_level ?? 0}</span>
+      </li>`
+    }).join('')
+  } catch {
+    list.innerHTML = '<li class="pr-rank-loading">—</li>'
+  }
+}
+
+// ── Enter game — click cartucho → monitor CRT ─────────────────────────────────
+function ndEnterGame() {
   const lobby   = document.getElementById('playroom-lobby')
-  const cover   = document.getElementById('nd-cover')
-  if (!lobby || !cover) return
+  const monitor = document.getElementById('nd-monitor')
+  if (!lobby || !monitor) return
+  // Fade out lobby
   lobby.style.transition = 'opacity .3s'
   lobby.style.opacity    = '0'
   setTimeout(() => {
-    lobby.hidden       = true
-    cover.hidden       = false
-    cover.style.opacity     = '0'
-    cover.style.transition  = 'opacity .35s'
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => { cover.style.opacity = '1' })
-    })
-  }, 300)
-}
-
-// ── Enter from cover (click on the game tapa) ─────────────────────────────────
-function ndEnterFromCover() {
-  const cover   = document.getElementById('nd-cover')
-  const monitor = document.getElementById('nd-monitor')
-  if (!cover || !monitor) return
-  cover.style.transition = 'opacity .35s'
-  cover.style.opacity    = '0'
-  setTimeout(() => {
-    cover.hidden   = true
+    lobby.hidden   = true
+    lobby.style.transition = ''
     monitor.hidden = false
     _ndState('home')
     _ndRenderHome()
-  }, 360)
+  }, 300)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
