@@ -569,7 +569,7 @@ async function consultarEstado(requestId) {
 const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'cabildoos.pages.dev']
 const IS_DEMO      = new URLSearchParams(location.search).has('demo')
                   && DEMO_ALLOWED_HOSTS.some(h => location.hostname === h || location.hostname.endsWith('.' + h))
-const SEAT_CAPACITY = IS_DEMO ? 2847 : 300  // asientos totales del hemiciclo (fijos)
+const SEAT_CAPACITY = IS_DEMO ? 2847 : 500  // asientos totales del hemiciclo (fijos)
 let TOTAL_SEATS    = IS_DEMO ? 2847 : 0     // asientos ocupados (usuarios verificados)
 let MY_SEAT        = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
 
@@ -1086,6 +1086,14 @@ window.addEventListener('mousemove', e => {
   if (!document.getElementById('congress').classList.contains('active')) return
   if (isZooming) return
   if (document.getElementById('cal-overlay')?.classList.contains('open')) return
+  // Suprimir hover de butacas cuando cualquier panel/popup esté activo
+  const _activePanels = [
+    'debate-panel', 'modal-bd', 'propuesta-overlay', 'info-modal-overlay',
+    'notif-modal', 'mi-perfil-overlay', 'user-profile-modal', 'social-modal',
+    'sf-center-modal', 'citizens-panel', 'hemi-config-panel', 'preguntas-panel',
+    'sim-overlay', 'cert-overlay', 'consent-overlay', 'vav-sha-overlay', 'vav-urna-overlay'
+  ]
+  if (_activePanels.some(id => document.getElementById(id)?.classList.contains('open'))) return
 
   // Block cards when hovering the footer controls
   const ctrls = document.getElementById('map-controls')
@@ -1199,7 +1207,7 @@ canvas.addEventListener('touchend', e => {
     const hitR = Math.max(DOT_R, DOT_R * cam.scale * 2.8) + 12
     let closest = null, minD = hitR
     SEATS.forEach(s => {
-      if (s.num > TOTAL_SEATS && s.num !== MY_SEAT) return
+      if (s.num > SEAT_CAPACITY && s.num !== MY_SEAT) return
       const { x: ssx, y: ssy } = toScreen(s.x, s.y, W, H)
       const d = Math.hypot(sx - ssx, sy - ssy)
       if (d < minD) { minD = d; closest = s }
@@ -7122,9 +7130,29 @@ async function enviarPropuesta() {
   if (!text || text.length < 10) return
   if (!MY_SEAT || MY_SEAT <= 0) { showToast('Necesitás una butaca verificada para proponer'); return }
 
+  // Verificar que el usuario no tenga ya una propuesta activa en campaña
+  const { data: activeCheck } = await sb.from('proposals')
+    .select('id')
+    .eq('seat_number', MY_SEAT)
+    .eq('status', 'pending')
+    .limit(1)
+  if (activeCheck?.length > 0) {
+    showToast('⚠️ Ya tenés una propuesta en campaña. Esperá a que venza antes de lanzar otra.')
+    cerrarPropuesta()
+    return
+  }
+
   const btn = document.getElementById('pp-submit')
   btn.disabled = true
   btn.textContent = 'Enviando…'
+
+  // Calcular expires_at: leer duración de system_config (fallback 48h)
+  let durationHours = 48
+  try {
+    const { data: cfg } = await sb.from('system_config').select('value').eq('key','campaign_duration_hours').single()
+    if (cfg?.value) durationHours = parseInt(cfg.value) || 48
+  } catch (_) {}
+  const expiresAt = new Date(Date.now() + durationHours * 3600 * 1000).toISOString()
 
   const { error } = await sb.from('proposals').insert({
     seat_number: MY_SEAT,
@@ -7134,7 +7162,8 @@ async function enviarPropuesta() {
     links: links.length > 0 ? links : [],
     video_url,
     likes: 0,
-    status: 'pending'
+    status: 'pending',
+    expires_at: expiresAt
   })
 
   if (error) {
@@ -7612,14 +7641,14 @@ function _dpRenderHand() {
   if (_dpHandState === 'ready') {
     btn.className = 'dp-hand-btn ready'
     btn.title = 'Podés hablar — click para bajar la mano'
-    if (status) { status.className = 'dp-mod-status green'; status.innerHTML = '<b>Podés hablar</b> — enviá tu argumento' }
+    if (status) { status.className = 'dp-mod-status green'; status.innerHTML = '✅ <b>Tu turno</b> — enviá tu argumento' }
     if (inp) inp.disabled = false
     if (snd) snd.disabled = false
 
   } else if (_dpHandState === 'queued') {
     btn.className = 'dp-hand-btn waiting'
-    btn.title = 'Esperando turno'
-    if (status) status.innerHTML = myPos >= 0 ? `Esperando turno — posición <b>${myPos + 1}</b> en cola` : 'En cola…'
+    btn.title = 'Esperando turno — click para bajar la mano'
+    if (status) status.innerHTML = myPos >= 0 ? `⏳ Posición <b>${myPos + 1}</b> en cola — esperá tu turno` : '⏳ En cola…'
     if (inp) inp.disabled = true
     if (snd) snd.disabled = true
 
@@ -7627,18 +7656,40 @@ function _dpRenderHand() {
     btn.className = 'dp-hand-btn cooldown'
     btn.title = 'Cooldown activo'
     const rem = Math.max(0, Math.ceil((_dpCooldownEnd - Date.now()) / 1000))
-    if (status) { status.className = 'dp-mod-status red'; status.innerHTML = `Esperá <b>${rem}s</b> antes de volver a hablar` }
+    if (status) { status.className = 'dp-mod-status red'; status.innerHTML = `⏱ Esperá <b>${rem}s</b> antes de volver a hablar` }
     if (inp) inp.disabled = true
     if (snd) snd.disabled = true
-    if (track) { track.style.display = 'block' }
+    if (track) track.style.display = 'block'
 
   } else {
     // idle
     btn.title = 'Levantar mano para hablar'
-    if (status) status.innerHTML = 'Levantá la mano para hablar'
+    if (status) status.innerHTML = '✋ Levantá la mano para hablar'
     if (inp) inp.disabled = true
     if (snd) snd.disabled = true
   }
+
+  _dpRenderQueue()
+}
+
+// Renders the queue chips bar
+function _dpRenderQueue() {
+  const bar = document.getElementById('dp-queue-bar')
+  if (!bar) return
+  if (!_dpQueue.length) { bar.innerHTML = ''; return }
+  bar.innerHTML = _dpQueue.slice(0, 10).map((e, i) => {
+    const isMe = e.seat === MY_SEAT
+    const isSpeaker = i < DP_QUEUE_DIRECT
+    const cls = isMe ? 'me' : (isSpeaker ? 'speaker' : '')
+    const icon = isSpeaker ? '🎙' : '✋'
+    return `<span class="dp-queue-chip${cls ? ' ' + cls : ''}">${icon} #${e.seat}</span>`
+  }).join('')
+}
+
+// Colapsa/expande la tira de pregunta
+function _dpToggleQ() {
+  const strip = document.getElementById('dp-q-strip')
+  if (strip) strip.classList.toggle('expanded')
 }
 
 // Recalcula si yo debo pasar de 'queued' → 'ready'
@@ -7719,6 +7770,8 @@ function _dpResetMod() {
   _dpCooldownEnd = 0
   const track = document.getElementById('dp-cooldown-track')
   if (track) track.style.display = 'none'
+  const bar = document.getElementById('dp-queue-bar')
+  if (bar) bar.innerHTML = ''
   _dpRenderHand()
 }
 
@@ -7887,14 +7940,48 @@ function toggleDebate() {
   debateOpen ? cerrarDebate() : abrirDebate()
 }
 
+// ── iOS visual viewport fix: panel se ajusta cuando sube el teclado ──
+function _dpHandleViewport() {
+  const panel = document.getElementById('debate-panel')
+  if (!panel || !debateOpen || window.innerWidth >= 600) return
+  const vv = window.visualViewport
+  if (!vv) return
+  // Cancelar CSS bottom:0 explícitamente — sin esto compite con height y top en iOS
+  panel.style.bottom  = 'auto'
+  panel.style.height  = vv.height + 'px'
+  panel.style.top     = vv.offsetTop + 'px'
+  // Hacer scroll al último mensaje para que el input quede visible
+  const msgs = document.getElementById('dp-messages')
+  if (msgs) msgs.scrollTop = msgs.scrollHeight
+}
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', _dpHandleViewport)
+  window.visualViewport.addEventListener('scroll', _dpHandleViewport)
+}
+
 function abrirDebate() {
-  document.getElementById('debate-panel').classList.add('open')
+  const panel = document.getElementById('debate-panel')
+  panel.classList.add('open')
+  // Limpiar overrides inline para que el panel arranque con el CSS base (top:0 bottom:0)
+  panel.style.height = ''
+  panel.style.top    = ''
+  panel.style.bottom = ''
+  const scrim = document.getElementById('dp-scrim')
+  if (scrim) scrim.classList.add('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.add('live')
   debateOpen = true
+  // visualViewport.resize ya escucha el teclado — no hacen falta focus/blur listeners
 }
 
 function cerrarDebate() {
-  document.getElementById('debate-panel').classList.remove('open')
+  const panel = document.getElementById('debate-panel')
+  panel.classList.remove('open')
+  panel.style.height = ''
+  panel.style.top    = ''
+  panel.style.bottom = ''
+  const scrim = document.getElementById('dp-scrim')
+  if (scrim) scrim.classList.remove('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.remove('live')
   debateOpen = false
   if (_debateChannel) { sb.removeChannel(_debateChannel); _debateChannel = null }
@@ -9315,12 +9402,12 @@ async function renderOtrasPropuestas() {
   if (!el) return
   el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
 
-  // Mostrar propuestas en campaña de otros usuarios (pendientes + aprobadas) ordenadas por apoyos
+  // Mostrar propuestas en campaña de otros usuarios (pendientes + aprobadas)
+  // Las "en campaña" (pending) siempre primero; dentro de cada grupo, ordenar por apoyos
   const query = sb.from('proposals')
     .select('*')
     .in('status', ['pending', 'approved'])
-    .order('likes', { ascending: false })
-    .limit(60)
+    .limit(100)
   if (MY_SEAT > 0) query.neq('seat_number', MY_SEAT)
 
   const { data, error } = await query
@@ -9330,9 +9417,24 @@ async function renderOtrasPropuestas() {
     return
   }
 
-  const GOAL = 10
-  const statusClass = { pending: 'camp', approved: 'approved', rejected: 'rejected' }
-  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', rejected: 'No aprobada' }
+  // Ordenar: pending primero, approved después; dentro de cada grupo por likes desc
+  data.sort((a, b) => {
+    const statusOrder = { pending: 0, approved: 1 }
+    const sa = statusOrder[a.status] ?? 2
+    const sb2 = statusOrder[b.status] ?? 2
+    if (sa !== sb2) return sa - sb2
+    return b.likes - a.likes
+  })
+
+  // Leer meta configurable
+  let GOAL = 30
+  try {
+    const { data: cfgGoal } = await sb.from('system_config').select('value').eq('key','campaign_goal').single()
+    if (cfgGoal?.value) GOAL = parseInt(cfgGoal.value) || 30
+  } catch (_) {}
+
+  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada' }
 
   el.innerHTML = data.map(p => {
     const ci    = p.seat_number % AVATAR_COLORS_CONVO.length
@@ -9375,6 +9477,17 @@ async function renderOtrasPropuestas() {
   }).join('')
 }
 
+// Formatea tiempo restante en "Xh Ym" o "Vencida"
+function _formatCountdown(expiresAt) {
+  if (!expiresAt) return ''
+  const diff = new Date(expiresAt) - Date.now()
+  if (diff <= 0) return '<span style="color:#ef4444;font-size:11px">⏰ Vencida</span>'
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  const color = diff < 3600000 ? '#ef4444' : diff < 10800000 ? '#eab308' : '#22c55e'
+  return `<span style="color:${color};font-size:11px;font-weight:600">⏱ ${h}h ${m}m restantes</span>`
+}
+
 async function renderPropuestas() {
   const el = document.getElementById('sf-propuestas-list')
   el.innerHTML = '<p class="sf-empty" style="opacity:.5">Cargando…</p>'
@@ -9384,10 +9497,27 @@ async function renderPropuestas() {
     return
   }
 
+  // Leer meta configurable de system_config
+  let GOAL = 30
+  try {
+    const { data: cfgGoal } = await sb.from('system_config').select('value').eq('key','campaign_goal').single()
+    if (cfgGoal?.value) GOAL = parseInt(cfgGoal.value) || 30
+  } catch (_) {}
+
   const { data, error } = await sb.from('proposals')
     .select('*')
     .eq('seat_number', MY_SEAT)
     .order('created_at', { ascending: false })
+
+  // Controlar botón "Proponer al hemiciclo" — deshabilitado si hay una activa
+  const hasActive = data?.some(p => p.status === 'pending')
+  const propCtaBtn = document.getElementById('prop-cta-btn')
+  if (propCtaBtn) {
+    propCtaBtn.disabled = !!hasActive
+    propCtaBtn.title = hasActive ? 'Ya tenés una propuesta en campaña. Esperá a que venza.' : ''
+    propCtaBtn.style.opacity = hasActive ? '0.5' : ''
+    propCtaBtn.style.cursor  = hasActive ? 'not-allowed' : ''
+  }
 
   if (error || !data?.length) {
     el.innerHTML = `<div class="sf-empty" style="padding:32px 0">
@@ -9397,13 +9527,12 @@ async function renderPropuestas() {
     return
   }
 
-  const GOAL = 10
-  const statusClass = { pending: 'camp', approved: 'approved', rejected: 'rejected' }
-  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', rejected: 'No aprobada' }
+  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada' }
 
   // Actualizar stats strip
   const nCamp  = data.filter(p => p.status === 'pending').length
-  const nAprov = data.filter(p => p.status === 'approved').length
+  const nAprov = data.filter(p => p.status === 'approved' || p.status === 'accepted').length
   const nRej   = data.filter(p => p.status === 'rejected').length
   const pspCamp  = document.getElementById('psp-camp')
   const pspAprov = document.getElementById('psp-aprov')
@@ -9417,8 +9546,9 @@ async function renderPropuestas() {
     const sClass = statusClass[p.status] || 'camp'
     const sLabel = statusLabel[p.status] || 'En campaña'
     const isPend = p.status === 'pending'
-    const isAppr = p.status === 'approved'
+    const isAppr = p.status === 'approved' || p.status === 'accepted'
     const pct    = Math.min(100, Math.round((p.likes / GOAL) * 100))
+    const countdown = isPend ? _formatCountdown(p.expires_at) : ''
     const progressHTML = isPend ? `
       <div class="prop-progress-wrap">
         <div class="prop-progress-label">
@@ -9426,6 +9556,7 @@ async function renderPropuestas() {
           <strong>meta: ${GOAL}</strong>
         </div>
         <div class="prop-progress-bar"><div class="prop-progress-fill" style="width:${pct}%"></div></div>
+        ${countdown ? `<div style="margin-top:4px">${countdown}</div>` : ''}
       </div>` : ''
     const approvedHTML = isAppr ? `
       <div class="prop-approved-msg">
@@ -10925,16 +11056,16 @@ function _initSystemConfigRealtime() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  PLAYROOM
+//  NERDOCRASY
 // ══════════════════════════════════════════════════════════════
 let _playroomActive = false
+let _ndEnterTimeout = null
 
 function _updatePlayroomBtn(val) {
   _playroomActive = val === true || val === 'true'
   const btn = document.getElementById('nav-btn-playroom')
   const lbl = document.querySelector('.nav-playroom-lbl')
   if (!btn) return
-  // Always show the button once user is logged in (visibility controlled by nav-social-btns)
   btn.style.display = ''
   if (_playroomActive) {
     btn.classList.remove('pr-btn-closed')
@@ -10942,430 +11073,586 @@ function _updatePlayroomBtn(val) {
     if (lbl) lbl.textContent = 'Playroom'
   } else {
     btn.classList.add('pr-btn-closed')
-    btn.title = 'Playroom cerrado'
-    if (lbl) lbl.textContent = 'Playroom cerrado'
+    btn.title = 'Playroom — cerrado'
+    if (lbl) lbl.textContent = 'Playroom'
   }
 }
 
-async function abrirPlayroom() {
-  if (!_playroomActive) return   // no-op when closed; button is visually disabled
+// Draw schematic seat arcs on the ghost canvas
+function _drawGhostHemiciclo() {
+  const canvas = document.getElementById('pr-ghost-canvas')
+  if (!canvas) return
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  const ctx = canvas.getContext('2d')
+  const W = canvas.width, H = canvas.height
+  const cx = W / 2, cy = H * 0.82 + 120
+
+  for (let row = 0; row < 8; row++) {
+    const r = 200 + row * 68
+    const startA = Math.PI * 1.1, endA = Math.PI * 1.9
+    const numSeats = 16 + row * 6
+    const step = (endA - startA) / numSeats
+
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, startA, endA)
+    ctx.strokeStyle = `rgba(255,255,255,${0.04 - row * 0.003})`
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+
+    for (let i = 0; i <= numSeats; i++) {
+      const a = startA + i * step
+      const x = cx + r * Math.cos(a)
+      const y = cy + r * Math.sin(a)
+      if (y > H) continue
+      ctx.fillStyle = `rgba(255,255,255,${0.055 - row * 0.004})`
+      ctx.fillRect(x - 3.5, y - 5, 7, 9)
+    }
+  }
+}
+
+function abrirPlayroom() {
+  if (!_playroomActive) return
   const overlay = document.getElementById('playroom-overlay')
-  if (overlay) overlay.classList.add('open')
-  _prLoadState()
-  _prLoadRankings()
+  if (!overlay) return
+
+  // Cancel any pending ndEnterGame transition
+  if (_ndEnterTimeout) { clearTimeout(_ndEnterTimeout); _ndEnterTimeout = null }
+
+  // Hide monitor, prepare lobby
+  const lobby = document.getElementById('pr-lobby')
+  const monitor = document.getElementById('nd-monitor')
+  if (monitor) monitor.hidden = true
+
+  // Set greeting
+  const greeting = document.getElementById('pr-greeting')
+  if (greeting) {
+    const seatNum = typeof MY_SEAT !== 'undefined' && MY_SEAT ? MY_SEAT : '?'
+    greeting.innerHTML = `BIENVENIDO BUTACA #${seatNum}<br>AL PLAYROOM DEL CONGRESO<span>Elegí tu juego para comenzar</span>`
+  }
+
+  // Draw ghost hemiciclo dots
+  _drawGhostHemiciclo()
+
+  // Open overlay (opacity fade creates "lights off" effect over dashboard)
+  overlay.classList.add('open')
+
+  // Show lobby after overlay starts fading in — animation re-fires on each unhide
+  if (lobby) {
+    lobby.hidden = true   // ensure hidden first so animation re-triggers
+    requestAnimationFrame(() => { lobby.hidden = false })
+  }
+}
+
+// Enter game from lobby — fade lobby out, show monitor and start immediately
+function ndEnterGame() {
+  const lobby = document.getElementById('pr-lobby')
+  const monitor = document.getElementById('nd-monitor')
+  if (lobby) {
+    lobby.style.transition = 'opacity .3s ease'
+    lobby.style.opacity = '0'
+    _ndEnterTimeout = setTimeout(() => {
+      _ndEnterTimeout = null
+      lobby.hidden = true
+      lobby.style.opacity = ''
+      lobby.style.transition = ''
+      if (monitor) {
+        monitor.hidden = false
+        monitor.style.animation = 'none'
+        monitor.offsetHeight
+        monitor.style.animation = ''
+      }
+      // Skip home screen — go directly into the game
+      ndJugar()
+    }, 300)
+  } else {
+    if (monitor) monitor.hidden = false
+    ndJugar()
+  }
 }
 
 function cerrarPlayroom() {
+  // Cancel any pending enter-game transition
+  if (_ndEnterTimeout) { clearTimeout(_ndEnterTimeout); _ndEnterTimeout = null }
+
+  _ndCancelTimer()
+  if (_nd.attemptId) {
+    sb.rpc('nerdocrasy_abandon', { p_attempt_id: _nd.attemptId }).catch(() => {})
+    _nd.attemptId = null
+  }
+
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
+
+  // Hide both — lobby will re-animate on next open
+  const lobby = document.getElementById('pr-lobby')
+  const monitor = document.getElementById('nd-monitor')
+  if (lobby) { lobby.hidden = true; lobby.style.opacity = ''; lobby.style.transition = ''; }
+  if (monitor) monitor.hidden = true
 }
 
-async function _prLoadState() {
-  // Load user's YoPresidente state to show meters
+// ══════════════════════════════════════════════════════════════════════════════
+// NERDOCRASY — GAME ENGINE  (Supabase RPC)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const _nd = {
+  attemptId:    null,
+  currentLevel: 1,
+  stage:        'KNOW',
+  questionId:   null,
+  intervalId:   null,
+  answering:    false,
+  profile: { bestLevel: 0, bestStage: null, totalAttempts: 0, globalRank: null },
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('nd-state-question')?.hidden !== false) return
+  if (_nd.answering) return
+  if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') { e.preventDefault(); ndAnswer('OUT') }
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { e.preventDefault(); ndAnswer('IN') }
+})
+
+// ── UI State machine ───────────────────────────────────────────────────────────
+function _ndState(s) {
+  ;['home','loading','question','transition','eliminated','complete'].forEach(name => {
+    const el = document.getElementById('nd-state-' + name)
+    if (el) el.hidden = (name !== s)
+  })
+}
+
+// ── Profile loading ────────────────────────────────────────────────────────────
+async function _ndLoadProfile() {
   try {
     const { data: { user } } = await sb.auth.getUser()
     if (!user) return
-    const { data } = await sb.from('yopresidente_state').select('energia,capital_politico,salud_mental').eq('user_id', user.id).maybeSingle()
+    const { data, error } = await sb.from('nerdocrasy_profiles')
+      .select('best_level, best_stage, total_attempts, global_rank_cache')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (error) throw error
     if (data) {
-      const setW = (id, v) => { const el = document.getElementById(id); if (el) el.style.width = Math.max(0, Math.min(100, v)) + '%' }
-      setW('pr-m-energia',  data.energia)
-      setW('pr-m-capital',  data.capital_politico)
-      setW('pr-m-salud',    data.salud_mental)
+      _nd.profile.bestLevel     = data.best_level        || 0
+      _nd.profile.bestStage     = data.best_stage        || null
+      _nd.profile.totalAttempts = data.total_attempts    || 0
+      _nd.profile.globalRank    = data.global_rank_cache || null
     }
-  } catch(e) { console.warn('_prLoadState:', e) }
+    _ndRenderHome()
+  } catch(e) { console.warn('_ndLoadProfile:', e) }
 }
 
-async function _prLoadRankings() {
-  try {
-    const [{ data: nerd }, { data: yop }] = await Promise.all([
-      sb.rpc('get_nerdmocracy_ranking', { limit_n: 10 }),
-      sb.rpc('get_yopresidente_ranking', { limit_n: 10 })
-    ])
-    _renderRanking('pr-rank-nerd-list', nerd, r => `<b>${r.score} pts</b>`)
-    _renderRanking('pr-rank-yop-list',  yop,  r => `<b>Día ${r.day}</b>${r.game_over ? ' <span class="pr-rank-go">game over</span>' : ''}`)
-  } catch(e) { console.warn('_prLoadRankings:', e) }
+function _ndRenderHome() {
+  const p = _nd.profile
+  const lvl = p.bestLevel
+
+  const lvlEl = document.getElementById('nd-home-level-big')
+  if (lvlEl) lvlEl.textContent = lvl > 0 ? lvl : '—'
+
+  const stageLbl = document.getElementById('nd-home-stage-lbl')
+  if (stageLbl) stageLbl.textContent = p.bestStage || (lvl === 0 ? '' : _ndLevelToStage(lvl))
+
+  const rankEl = document.getElementById('nd-home-rank')
+  if (rankEl) rankEl.textContent = p.globalRank ? '#' + p.globalRank : '#—'
+
+  const butEl = document.getElementById('nd-home-butaca')
+  if (butEl) butEl.textContent = MY_SEAT > 0 ? '#' + MY_SEAT : '#—'
+
+  document.getElementById('nd-check-know').textContent  = lvl >= 30 ? '✓' : (lvl >= 1  ? '↑' : '')
+  document.getElementById('nd-check-think').textContent = lvl >= 60 ? '✓' : (lvl >= 31 ? '↑' : '')
+  document.getElementById('nd-check-trap').textContent  = lvl >= 90 ? '✓' : (lvl >= 61 ? '↑' : '')
+
+  const attEl = document.getElementById('nd-total-attempts')
+  if (attEl) attEl.textContent = p.totalAttempts > 0 ? `${p.totalAttempts} intento${p.totalAttempts === 1 ? '' : 's'}` : ''
 }
 
-function _renderRanking(containerId, rows, detailFn) {
-  const el = document.getElementById(containerId)
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function ndTabSwitch(tab) {
+  ;['perfil','ranking'].forEach(t => {
+    document.getElementById('nd-tab-' + t).hidden = (t !== tab)
+    const btn = document.getElementById('nd-tab-btn-' + t)
+    if (btn) btn.classList.toggle('nd-tab-active', t === tab)
+  })
+  if (tab === 'ranking') _ndLoadRanking()
+}
+
+async function _ndLoadRanking() {
+  const el = document.getElementById('nd-ranking-list')
   if (!el) return
-  if (!rows || !rows.length) { el.innerHTML = '<div class="pr-rank-empty">Sin datos todavía</div>'; return }
-  el.innerHTML = rows.map((r, i) => `
-    <div class="pr-rank-row${i < 3 ? ' pr-rank-top' : ''}">
-      <span class="pr-rank-pos">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + r.rank}</span>
-      <span class="pr-rank-name">${r.display_name}</span>
-      <span class="pr-rank-detail">${detailFn(r)}</span>
-    </div>`).join('')
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// PLAYROOM — GAME LOGIC
-// ══════════════════════════════════════════════════════════════════════════════
-
-async function _getAuthToken() {
-  const { data } = await sb.auth.getSession()
-  return data.session?.access_token || ''
-}
-
-const _API = () => (window.__ENV && window.__ENV.API_ENDPOINT) || 'https://api.cabildodevenezuela.com'
-
-// ── NERDMOCRACY ───────────────────────────────────────────────────────────────
-
-const _nerd = { sessionId: null, score: 0, timer: null, timeLeft: 5, questionId: null, answering: false, nextQ: null, prefetching: false }
-
-function abrirNerdmocracy() {
-  document.getElementById('nerd-overlay').classList.add('open')
-  _nerdInit()
-}
-
-function cerrarNerdmocracy() {
-  clearInterval(_nerd.timer)
-  document.getElementById('nerd-overlay').classList.remove('open')
-}
-
-async function _nerdInit() {
-  _nerd.score = 0; _nerd.answering = false; _nerd.sessionId = null; _nerd.nextQ = null; _nerd.prefetching = false
-  clearInterval(_nerd.timer)
-  _nerdSetScore(0)
-  _nerdState('loading')
-  document.getElementById('nerd-loading-txt').textContent = 'Iniciando sesión…'
-  const token = await _getAuthToken()
+  el.innerHTML = '<div class="nd-rank-loading">Cargando…</div>'
   try {
-    const r = await fetch(_API() + '/api/playroom/nerdmocracy/session/start', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token }
-    })
-    if (!r.ok) throw new Error(await r.text())
-    const d = await r.json()
-    _nerd.sessionId = d.session_id
-    await _nerdNextQuestion()
+    const { data, error } = await sb.rpc('get_nerdocrasy_ranking', { limit_n: 20 })
+    if (error) throw error
+    if (!data || !data.length) {
+      el.innerHTML = '<div class="nd-rank-empty">Aún nadie en el ranking.<br>¡Sé el primero!</div>'
+      return
+    }
+    const stageIcons = { KNOW: '📖', THINK: '🧠', TRAP: '⚠️' }
+    const medals = ['🥇','🥈','🥉']
+    el.innerHTML = data.map((row, i) => `
+      <div class="nd-rank-row${i < 3 ? ' nd-rank-top' : ''}${row.seat_id === MY_SEAT ? ' nd-rank-me' : ''}">
+        <span class="nd-rank-pos">${i < 3 ? medals[i] : '#' + row.rank_position}</span>
+        <span class="nd-rank-butaca">Butaca #${row.seat_id || '?'}</span>
+        <span class="nd-rank-level">
+          ${stageIcons[row.best_stage] || ''} <b>${row.best_level}</b>
+          <span class="nd-rank-stage">${row.best_stage || ''}</span>
+        </span>
+      </div>`).join('')
   } catch(e) {
-    console.error('_nerdInit:', e)
-    _nerdShowError('Error iniciando sesión. Intenta de nuevo.')
+    el.innerHTML = '<div class="nd-rank-empty">Error cargando ranking.</div>'
   }
 }
 
-async function _nerdRetry() { await _nerdInit() }
+// ── HOME helpers ──────────────────────────────────────────────────────────────
+function ndVolverHome() {
+  _ndCancelTimer()
+  _ndState('home')
+  _ndLoadProfile()
+}
 
-async function _nerdNextQuestion() {
-  // Si ya tenemos una pregunta pre-cargada, úsala instantáneamente
-  if (_nerd.nextQ) {
-    const q = _nerd.nextQ
-    _nerd.nextQ = null
-    _nerd.questionId = q.question_id
-    _nerd.answering = false
-    _nerdShowQuestion(q)
-    _nerdStartTimer()
-    _nerdPrefetch()   // pre-cargar la siguiente en background
-    return
-  }
-  _nerdState('loading')
-  document.getElementById('nerd-loading-txt').textContent = 'Generando pregunta…'
-  const token = await _getAuthToken()
+// ── START ATTEMPT — calls nerdocrasy_start() RPC ──────────────────────────────
+async function ndJugar() {
+  _ndCancelTimer()
+  _nd.attemptId   = null
+  _nd.answering   = false
+  _nd.questionId  = null
+
+  _ndState('loading')
+  document.getElementById('nd-loading-txt').textContent = 'Iniciando intento…'
+
   try {
-    const r = await fetch(_API() + '/api/playroom/nerdmocracy/question', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token }
-    })
-    if (!r.ok) throw new Error(await r.text())
-    const q = await r.json()
-    _nerd.questionId = q.question_id
-    _nerd.answering = false
-    _nerdShowQuestion(q)
-    _nerdStartTimer()
-    _nerdPrefetch()   // pre-cargar la siguiente en background
+    const { data, error } = await sb.rpc('nerdocrasy_start')
+    if (error) {
+      const msg = error.message || ''
+      if (msg.includes('no_verified_seat')) {
+        _ndShowLoadingError('Necesitás una butaca verificada para jugar.')
+      } else if (msg.includes('not_authenticated')) {
+        _ndShowLoadingError('Iniciá sesión para jugar.')
+      } else {
+        _ndShowLoadingError('Error iniciando. Intentá de nuevo.')
+        console.error('ndJugar rpc error:', error)
+      }
+      return
+    }
+
+    _nd.attemptId    = data.attempt_id
+    _nd.currentLevel = data.question.level
+    _nd.stage        = data.question.stage
+    _nd.questionId   = data.question.question_id
+    _nd.answering    = false
+
+    if (data.profile) {
+      _nd.profile.bestLevel     = data.profile.best_level     || 0
+      _nd.profile.bestStage     = data.profile.best_stage     || null
+      _nd.profile.totalAttempts = data.profile.total_attempts || 0
+      _nd.profile.globalRank    = data.profile.global_rank    || null
+    }
+
+    const q = data.question
+    const remaining = Math.max(500, q.deadline_ms - Date.now())
+    if (q.question_type !== 'TEXT') await _ndPreloadVisuals(q)
+    _ndShowQuestion(q, remaining)
+
   } catch(e) {
-    console.error('_nerdNextQuestion:', e)
-    _nerdShowError('Error generando pregunta. Intenta de nuevo.')
+    console.error('ndJugar:', e)
+    _ndShowLoadingError('Error iniciando. Intentá de nuevo.')
   }
 }
 
-async function _nerdPrefetch() {
-  if (_nerd.prefetching || _nerd.nextQ) return
-  _nerd.prefetching = true
-  try {
-    const token = await _getAuthToken()
-    const r = await fetch(_API() + '/api/playroom/nerdmocracy/question', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token }
-    })
-    if (r.ok) _nerd.nextQ = await r.json()
-  } catch(e) { /* silencioso — si falla, se pide en el momento */ }
-  finally { _nerd.prefetching = false }
+async function _ndPreloadVisuals(q) {
+  const urls = [q.visual_asset_url, q.visual_asset_a_url, q.visual_asset_b_url].filter(Boolean)
+  if (!urls.length) return
+  await Promise.all(urls.map(url => new Promise(res => {
+    const img = new Image(); img.onload = res; img.onerror = res; img.src = url
+  }))).catch(() => {})
 }
 
-const _NERD_KEYS = ['A','B','C','D']
-function _nerdShowQuestion(q) {
-  document.getElementById('nerd-question-text').textContent = q.question_text
-  for (let i = 0; i < 4; i++) {
-    const btn = document.getElementById('nerd-opt-' + i)
-    const txt = document.getElementById('nerd-opt-txt-' + i)
-    if (txt) txt.textContent = q.options[i]
-    if (btn) {
-      btn.disabled = false
-      btn.className = 'nerd-opt-btn'
-      btn.onclick = () => _nerdAnswer(i)
+// ── RENDER QUESTION ────────────────────────────────────────────────────────────
+function _ndShowQuestion(q, remainingMs) {
+  document.getElementById('nd-q-level-num').textContent = _nd.currentLevel
+  const chip = document.getElementById('nd-q-stage-chip')
+  chip.textContent = _nd.stage
+  chip.className = 'nd-stage-chip nd-chip-' + _nd.stage.toLowerCase()
+
+  document.getElementById('nd-question-text').textContent = q.question_text
+
+  const visualWrap = document.getElementById('nd-visual-wrap')
+  const singleImg  = document.getElementById('nd-visual-single')
+  const compareDiv = document.getElementById('nd-visual-compare')
+  const captionEl  = document.getElementById('nd-visual-caption')
+
+  visualWrap.hidden = true
+  singleImg.hidden  = true
+  compareDiv.hidden = true
+
+  if (q.question_type === 'IMAGE_COMPARE' && q.visual_asset_a_url && q.visual_asset_b_url) {
+    document.getElementById('nd-visual-a').src = q.visual_asset_a_url
+    document.getElementById('nd-visual-a').alt = q.visual_alt || 'Panel A'
+    document.getElementById('nd-visual-b').src = q.visual_asset_b_url
+    document.getElementById('nd-visual-b').alt = q.visual_alt || 'Panel B'
+    compareDiv.hidden = false
+    visualWrap.hidden = false
+  } else if (q.visual_asset_url && q.question_type !== 'TEXT') {
+    singleImg.src     = q.visual_asset_url
+    singleImg.alt     = q.visual_alt || ''
+    singleImg.hidden  = false
+    visualWrap.hidden = false
+  }
+
+  if (captionEl) captionEl.textContent = q.visual_caption || ''
+
+  const outBtn = document.getElementById('nd-btn-out')
+  const inBtn  = document.getElementById('nd-btn-in')
+  outBtn.disabled = false; outBtn.className = 'nd-answer-btn nd-btn-out'
+  inBtn.disabled  = false; inBtn.className  = 'nd-answer-btn nd-btn-in'
+
+  _ndState('question')
+  _ndStartTimer(remainingMs)
+}
+
+// ── TIMER ──────────────────────────────────────────────────────────────────────
+function _ndStartTimer(remainingMs) {
+  _ndCancelTimer()
+  const total = remainingMs / 1000
+  let remaining = total
+
+  function tick() {
+    remaining -= 0.1
+    _ndUpdateTimerUI(remaining, total)
+    if (remaining <= 0) {
+      _ndCancelTimer()
+      if (!_nd.answering) ndAnswer('TIMEOUT')
     }
   }
-  _nerdState('question')
+
+  _ndUpdateTimerUI(remaining, total)
+  _nd.intervalId = setInterval(tick, 100)
 }
 
-function _nerdStartTimer() {
-  _nerd.timeLeft = 5
-  clearInterval(_nerd.timer)
-  _nerdTimerUI(5)
-  _nerd.timer = setInterval(() => {
-    _nerd.timeLeft--
-    _nerdTimerUI(_nerd.timeLeft)
-    if (_nerd.timeLeft <= 0) { clearInterval(_nerd.timer); if (!_nerd.answering) _nerdAnswer(-1) }
-  }, 1000)
+function _ndCancelTimer() {
+  if (_nd.intervalId) { clearInterval(_nd.intervalId); _nd.intervalId = null }
 }
 
-function _nerdTimerUI(t) {
-  const num = document.getElementById('nerd-timer-num')
-  if (num) num.textContent = Math.max(0, t)
-  const arc = document.getElementById('nerd-timer-arc')
+function _ndUpdateTimerUI(remaining, total) {
+  const t = Math.max(0, remaining)
+  const numEl = document.getElementById('nd-timer-num')
+  if (numEl) numEl.textContent = Math.ceil(t)
+
+  const arc = document.getElementById('nd-timer-arc')
   if (arc) {
-    const C = 2 * Math.PI * 40  // r=40
-    arc.style.strokeDashoffset = C * (1 - Math.max(0, t) / 5)
-    arc.style.transition = t < 5 ? 'stroke-dashoffset .92s linear' : 'none'
-    arc.style.stroke = t <= 1 ? '#ef4444' : t <= 2 ? '#f59e0b' : '#6366f1'
+    const C   = 251.33
+    const pct = total > 0 ? t / total : 0
+    arc.style.strokeDashoffset = C * (1 - pct)
+    arc.style.stroke = t <= 2 ? '#ef4444' : t <= 4 ? '#f59e0b' : 'var(--nd-arc)'
   }
-  const wrap = document.getElementById('nerd-timer-wrap')
-  if (wrap) {
-    wrap.classList.toggle('nerd-timer-danger', t <= 2)
-  }
+
+  const wrap = document.getElementById('nd-timer-wrap')
+  if (wrap) wrap.classList.toggle('nd-timer-danger', t <= 2)
 }
 
-function _nerdShowFeedback(correct) {
-  const badge = document.getElementById('nerd-feedback-badge')
-  if (!badge) return
-  badge.className = 'nerd-feedback-badge ' + (correct ? 'nerd-correct' : 'nerd-wrong')
-  badge.textContent = correct ? '✓ Correcto' : '✗ Incorrecto'
-  badge.hidden = false
-  clearTimeout(badge._hideTimer)
-  badge._hideTimer = setTimeout(() => { badge.hidden = true }, 1500)
-}
+// ── SUBMIT ANSWER — calls nerdocrasy_submit_answer() / nerdocrasy_timeout() ──
+async function ndAnswer(selected) {
+  if (_nd.answering) return
+  if (!_nd.attemptId || !_nd.questionId) return
 
-async function _nerdAnswer(idx) {
-  if (_nerd.answering) return
-  _nerd.answering = true
-  clearInterval(_nerd.timer)
-  for (let i = 0; i < 4; i++) {
-    const b = document.getElementById('nerd-opt-' + i)
-    if (b) { b.disabled = true; if (i === idx) b.classList.add('nerd-opt-selected') }
+  _nd.answering = true
+  _ndCancelTimer()
+
+  const isTimeout = selected === 'TIMEOUT'
+
+  if (!isTimeout) {
+    const btn = document.getElementById(selected === 'OUT' ? 'nd-btn-out' : 'nd-btn-in')
+    if (btn) btn.classList.add('nd-btn-selected')
   }
-  const token = await _getAuthToken()
+  document.getElementById('nd-btn-out').disabled = true
+  document.getElementById('nd-btn-in').disabled  = true
+
   try {
-    const r = await fetch(_API() + '/api/playroom/nerdmocracy/answer', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_id: _nerd.sessionId,
-        question_id: _nerd.questionId,
-        answer_index: idx < 0 ? 0 : idx
-      })
-    })
-    const d = await r.json()
-    _nerdShowFeedback(d.correct)
-    if (d.correct) {
-      if (idx >= 0) { const b = document.getElementById('nerd-opt-' + idx); if(b) b.classList.add('nerd-opt-correct') }
-      _nerd.score = d.score
-      _nerdSetScore(d.score)
-      await new Promise(res => setTimeout(res, 500))
-      await _nerdNextQuestion()
-    } else {
-      if (idx >= 0) { const b = document.getElementById('nerd-opt-' + idx); if(b) b.classList.add('nerd-opt-wrong') }
-      await new Promise(res => setTimeout(res, 600))
-      _nerdGameOver(d.score)
+    // ── TIMEOUT path ──
+    if (isTimeout) {
+      const { data, error } = await sb.rpc('nerdocrasy_timeout', { p_attempt_id: _nd.attemptId })
+      const eliminated = {
+        highestLevelCompleted: _nd.currentLevel - 1,
+        failureReason: 'timeout',
+        correctAnswer: data?.correct_answer || '',
+        explanation:   data?.explanation    || '',
+        isNewRecord:   false,
+        historicalBest: _nd.profile.bestLevel
+      }
+      _nd.attemptId = null
+      _ndShowEliminated(eliminated)
+      return
     }
-  } catch(e) {
-    console.error('_nerdAnswer:', e)
-    _nerdGameOver(_nerd.score)
-  }
-}
 
-function _nerdGameOver(score) {
-  clearInterval(_nerd.timer)
-  document.getElementById('nerd-go-score').textContent = score
-  _nerdState('gameover')
-  _prLoadRankings()
-}
-
-function _nerdSetScore(n) {
-  const el = document.getElementById('nerd-score')
-  if (el) el.textContent = n
-}
-
-function _nerdState(s) {
-  ;['loading','question','gameover'].forEach(name => {
-    const el = document.getElementById('nerd-state-' + name)
-    if (el) el.hidden = (name !== s)
-  })
-}
-
-function _nerdShowError(msg) {
-  const el = document.getElementById('nerd-loading-txt')
-  if (el) el.textContent = msg
-  _nerdState('loading')
-}
-
-// ── YO, PRESIDENTE ────────────────────────────────────────────────────────────
-
-const _yop = { day: 1, scenario: null }
-
-function abrirYoPresidente() {
-  document.getElementById('yop-overlay').classList.add('open')
-  _yopLoad()
-}
-
-function cerrarYoPresidente() {
-  document.getElementById('yop-overlay').classList.remove('open')
-}
-
-async function _yopLoad() {
-  _yopState('loading')
-  const token = await _getAuthToken()
-  try {
-    const r = await fetch(_API() + '/api/playroom/yopresidente/state', {
-      headers: { Authorization: 'Bearer ' + token }
+    // ── Normal answer path ──
+    const { data, error } = await sb.rpc('nerdocrasy_submit_answer', {
+      p_attempt_id:  _nd.attemptId,
+      p_question_id: _nd.questionId,
+      p_answer:      selected
     })
-    if (!r.ok) throw new Error(await r.text())
-    const state = await r.json()
-    _yopApplyMeters(state)
-    _yop.day = state.day || 1
-    if (state.game_over) {
-      document.getElementById('yop-survived-days').textContent = Math.max(0, state.day - 1)
-      _yopState('gameover')
-    } else {
-      await _yopGetScenario()
-    }
-  } catch(e) {
-    console.error('_yopLoad:', e)
-    _yopState('loading')
-  }
-}
+    if (error) throw error
 
-function _yopApplyMeters(state) {
-  _yopMeter('yop-m-energia', state.energia ?? 70)
-  _yopMeter('yop-m-capital', state.capital_politico ?? 70)
-  _yopMeter('yop-m-salud',   state.salud_mental ?? 70)
-  const dayEl = document.getElementById('yop-day')
-  if (dayEl) dayEl.textContent = state.day || 1
-  ;['yop-delta-energia','yop-delta-capital','yop-delta-salud'].forEach(id => {
-    const el = document.getElementById(id)
-    if (el) { el.textContent = ''; el.className = 'yop-delta' }
-  })
-}
-
-function _yopMeter(id, val) {
-  const el = document.getElementById(id)
-  if (el) el.style.width = Math.max(0, Math.min(100, val)) + '%'
-}
-
-async function _yopGetScenario() {
-  _yopState('loading')
-  const token = await _getAuthToken()
-  try {
-    const r = await fetch(_API() + '/api/playroom/yopresidente/scenario', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token }
-    })
-    if (r.status === 409) { _yopState('gameover'); return }
-    if (!r.ok) throw new Error(await r.text())
-    const scenario = await r.json()
-    _yop.scenario = scenario
-    _yop.day = scenario.day
-    document.getElementById('yop-day').textContent = scenario.day
-    _yopApplyMeters({ ...scenario.current_meters, day: scenario.day })
-    _yopShowScenario(scenario)
-  } catch(e) {
-    console.error('_yopGetScenario:', e)
-  }
-}
-
-function _yopShowScenario(s) {
-  document.getElementById('yop-crisis-text').textContent = s.crisis_text
-  const list = document.getElementById('yop-options-list')
-  list.innerHTML = ''
-  const riskIcon  = { low: '🟢', medium: '🟡', high: '🔴' }
-  const riskLabel = { low: 'CONSERVADOR', medium: 'MODERADO', high: 'AUDAZ' }
-  s.options.forEach((opt, i) => {
-    const btn = document.createElement('button')
-    btn.className = 'yop-opt-btn yop-risk-' + opt.risk_level
-    btn.innerHTML =
-      '<span class="yop-opt-risk-badge">' + (riskIcon[opt.risk_level]||'⚪') + ' ' + (riskLabel[opt.risk_level]||'') + '</span>' +
-      '<span class="yop-opt-txt">' + opt.text + '</span>'
-    btn.onclick = () => _yopDecide(i, opt.text)
-    list.appendChild(btn)
-  })
-  _yopState('scenario')
-}
-
-async function _yopDecide(idx, optText) {
-  document.querySelectorAll('.yop-opt-btn').forEach(b => b.disabled = true)
-  _yopState('loading')
-  const token = await _getAuthToken()
-  try {
-    const r = await fetch(_API() + '/api/playroom/yopresidente/decision', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        decision_index: idx,
-        crisis_text: _yop.scenario.crisis_text,
-        option_text: optText
+    if (data.status === 'timeout') {
+      _nd.attemptId = null
+      _ndShowEliminated({
+        highestLevelCompleted: _nd.currentLevel - 1,
+        failureReason: 'timeout',
+        correctAnswer: '', explanation: '',
+        isNewRecord: false, historicalBest: _nd.profile.bestLevel
       })
-    })
-    if (!r.ok) throw new Error(await r.text())
-    const result = await r.json()
-    _yopShowConsequence(result)
+      return
+    }
+
+    if (data.status === 'complete') {
+      _nd.attemptId = null
+      _nd.profile.bestLevel = 90
+      _nd.profile.bestStage = 'TRAP'
+      _ndState('complete')
+      return
+    }
+
+    if (data.status === 'eliminated') {
+      await new Promise(res => setTimeout(res, 400))
+      _nd.attemptId = null
+      _ndShowEliminated({
+        highestLevelCompleted: _nd.currentLevel - 1,
+        failureReason: 'wrong_answer',
+        correctAnswer: data.correct_answer || '',
+        explanation:   data.explanation    || '',
+        isNewRecord:   data.is_record      || false,
+        historicalBest: _nd.profile.bestLevel
+      })
+      return
+    }
+
+    if (data.status === 'next') {
+      const nextQ = data.question
+      _nd.questionId = nextQ.question_id
+
+      if (data.stage_transition) {
+        _ndShowStageTransition(_nd.currentLevel, data.stage)
+        setTimeout(async () => {
+          _nd.currentLevel = data.reached_level
+          _nd.stage        = data.stage
+          _nd.answering    = false
+          const remaining = Math.max(500, nextQ.deadline_ms - Date.now())
+          if (nextQ.question_type !== 'TEXT') await _ndPreloadVisuals(nextQ)
+          _ndShowQuestion(nextQ, remaining)
+        }, 2500)
+      } else {
+        await _ndFlashCorrect()
+        _nd.currentLevel = data.reached_level
+        _nd.stage        = data.stage
+        _nd.answering    = false
+        const remaining = Math.max(500, nextQ.deadline_ms - Date.now())
+        if (nextQ.question_type !== 'TEXT') await _ndPreloadVisuals(nextQ)
+        _ndShowQuestion(nextQ, remaining)
+      }
+    }
+
   } catch(e) {
-    console.error('_yopDecide:', e)
-    await _yopGetScenario()
+    console.error('ndAnswer:', e)
+    _nd.attemptId = null
+    _ndShowEliminated({
+      highestLevelCompleted: _nd.currentLevel - 1,
+      failureReason: 'wrong_answer',
+      correctAnswer: '', explanation: '',
+      isNewRecord: false, historicalBest: _nd.profile.bestLevel
+    })
   }
 }
 
-function _yopShowConsequence(result) {
-  document.getElementById('yop-consequence-text').textContent = result.consequence_text
-  const d = result.meter_deltas
-  const s = result.new_state
-  _yopMeter('yop-m-energia', s.energia)
-  _yopMeter('yop-m-capital', s.capital_politico)
-  _yopMeter('yop-m-salud',   s.salud_mental)
-  document.getElementById('yop-day').textContent = s.day
-  function setDelta(id, val) {
-    const el = document.getElementById(id); if (!el) return
-    el.textContent = val >= 0 ? '+' + val : '' + val
-    el.className = 'yop-delta ' + (val >= 0 ? 'yop-delta-pos' : 'yop-delta-neg')
+async function _ndFlashCorrect() {
+  const outBtn = document.getElementById('nd-btn-out')
+  const inBtn  = document.getElementById('nd-btn-in')
+  if (outBtn) outBtn.classList.remove('nd-btn-selected')
+  if (inBtn)  inBtn.classList.remove('nd-btn-selected')
+  ;[outBtn, inBtn].forEach(b => { if (b) b.classList.add('nd-btn-correct-flash') })
+  await new Promise(res => setTimeout(res, 350))
+}
+
+// ── STAGE TRANSITION ───────────────────────────────────────────────────────────
+function _ndShowStageTransition(completedLevel, nextStage) {
+  const messages = { THINK: 'SABER YA NO ALCANZA.', TRAP: '¿ESTÁS SEGURO?' }
+  const nextChipEl = document.getElementById('nd-trans-next-chip')
+  nextChipEl.textContent = nextStage
+  nextChipEl.className = 'nd-stage-chip nd-chip-' + nextStage.toLowerCase()
+
+  document.getElementById('nd-trans-completed-stage').textContent = _ndLevelToStage(completedLevel) + ' ✓'
+  document.getElementById('nd-trans-message').textContent = messages[nextStage] || ''
+  _ndState('transition')
+}
+
+// ── ELIMINATED ─────────────────────────────────────────────────────────────────
+function _ndShowEliminated(d) {
+  const highest  = d.highestLevelCompleted || 0
+  const histBest = d.historicalBest || _nd.profile.bestLevel
+  const stage    = highest > 0 ? _ndLevelToStage(highest) : null
+
+  document.getElementById('nd-elim-level-num').textContent = highest > 0 ? highest : '—'
+
+  const stageChip = document.getElementById('nd-elim-stage-chip')
+  stageChip.hidden = !stage
+  if (stage) {
+    stageChip.textContent = stage
+    stageChip.className   = 'nd-stage-chip nd-chip-' + stage.toLowerCase()
   }
-  setDelta('yop-delta-energia', d.energia)
-  setDelta('yop-delta-capital', d.capital_politico)
-  setDelta('yop-delta-salud',   d.salud_mental)
-  const btn = document.getElementById('yop-next-btn')
-  if (result.game_over) {
-    document.getElementById('yop-survived-days').textContent = Math.max(0, s.day - 1)
-    btn.textContent = '⚰️ Ver resumen final'
-    btn.onclick = () => _yopState('gameover')
+
+  const expBox = document.getElementById('nd-elim-exp-box')
+  if (d.explanation && d.failureReason === 'wrong_answer') {
+    document.getElementById('nd-elim-correct-ans').textContent = d.correctAnswer || ''
+    document.getElementById('nd-elim-exp-text').textContent    = d.explanation
+    expBox.hidden = false
   } else {
-    btn.textContent = '→ Día ' + s.day
-    btn.onclick = _yopGetScenario
+    expBox.hidden = true
   }
-  _yopState('consequence')
-  _prLoadState()
+
+  const recBox  = document.getElementById('nd-elim-record-box')
+  const prevBox = document.getElementById('nd-elim-prev-best')
+
+  if (d.isNewRecord && highest > 0) {
+    const prevBest = _nd.profile.bestLevel
+    document.getElementById('nd-record-arrow').textContent = prevBest > 0
+      ? `${prevBest} → ${highest}` : `0 → ${highest}`
+    recBox.hidden  = false
+    prevBox.hidden = true
+  } else {
+    recBox.hidden  = true
+    if (histBest > 0 && histBest !== highest) {
+      prevBox.hidden = false
+      prevBox.textContent = 'TU RÉCORD: ' + histBest
+    } else {
+      prevBox.hidden = true
+    }
+  }
+
+  _ndState('eliminated')
+
+  if (d.isNewRecord) {
+    _nd.profile.bestLevel = d.highestLevelCompleted
+    _nd.profile.bestStage = stage
+  }
 }
 
-async function _yopReset() {
-  _yopState('loading')
-  const token = await _getAuthToken()
-  try {
-    await fetch(_API() + '/api/playroom/yopresidente/reset', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token }
-    })
-    await _yopGetScenario()
-  } catch(e) { console.error('_yopReset:', e) }
+// ── HELPERS ────────────────────────────────────────────────────────────────────
+function _ndLevelToStage(level) {
+  if (level <= 30) return 'KNOW'
+  if (level <= 60) return 'THINK'
+  return 'TRAP'
 }
 
-function _yopState(s) {
-  ;['loading','scenario','consequence','gameover'].forEach(name => {
-    const el = document.getElementById('yop-state-' + name)
-    if (el) el.hidden = (name !== s)
-  })
+function ndAbandonar() {
+  _ndCancelTimer()
+  if (_nd.attemptId) {
+    sb.rpc('nerdocrasy_abandon', { p_attempt_id: _nd.attemptId }).catch(() => {})
+    _nd.attemptId = null
+  }
+  ndVolverHome()
+}
+
+function _ndShowLoadingError(msg) {
+  const el = document.getElementById('nd-loading-txt')
+  if (el) el.textContent = msg
+  _ndState('loading')
 }
 
 document.addEventListener('DOMContentLoaded', checkBloqueMatch)
