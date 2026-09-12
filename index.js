@@ -11069,31 +11069,20 @@ function _updatePlayroomBtn(val) {
   }
 }
 
-async function abrirPlayroom() {
+function abrirPlayroom() {
   if (!_playroomActive) return
   const overlay = document.getElementById('playroom-overlay')
   if (!overlay) return
 
-  // Reset to lobby, hide monitor
-  const lobby   = document.getElementById('playroom-lobby')
+  // Mostrar monitor directo, resetear estado
   const monitor = document.getElementById('nd-monitor')
-  if (lobby)   { lobby.hidden = false; lobby.style.opacity = ''; lobby.style.animation = ''; }
-  if (monitor) monitor.hidden = true
-
-  // Greeting
-  const greeting = document.getElementById('playroom-greeting')
-  if (greeting) {
-    if (MY_SEAT) {
-      greeting.innerHTML = `BIENVENIDO<br>BUTACA #${MY_SEAT}`
-    } else {
-      greeting.textContent = 'BIENVENIDO AL PLAYROOM'
-    }
-  }
+  if (monitor) monitor.hidden = false
 
   overlay.classList.add('open')
 
-  // Load ranking and profile in parallel
-  _ndLoadLobbyRanking()
+  // Ir a home state del juego
+  _ndState('home')
+  _ndRenderHome()
   _ndLoadProfile()
 }
 
@@ -11105,47 +11094,6 @@ function cerrarPlayroom() {
   }
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
-}
-
-// ── Load ranking into lobby scoreboard ────────────────────────────────────────
-async function _ndLoadLobbyRanking() {
-  const list = document.getElementById('pr-ranking-list')
-  if (!list) return
-  try {
-    const { data } = await sb.rpc('get_nerdocrasy_ranking', { limit_n: 10 })
-    if (!data || !data.length) {
-      list.innerHTML = '<li class="pr-rank-loading">Sin datos aún</li>'
-      return
-    }
-    const { data: { user } } = await sb.auth.getUser()
-    list.innerHTML = data.map((r, i) => {
-      const isMe = user && r.user_id === user.id
-      return `<li class="${isMe ? 'pr-rank-me' : ''}">
-        <span class="pr-rank-pos">${i + 1}.</span>
-        <span class="pr-rank-name">Butaca #${r.butaca_numero ?? '?'}</span>
-        <span class="pr-rank-score">Nv${r.best_level ?? 0}</span>
-      </li>`
-    }).join('')
-  } catch {
-    list.innerHTML = '<li class="pr-rank-loading">—</li>'
-  }
-}
-
-// ── Enter game — click cartucho → monitor CRT ─────────────────────────────────
-function ndEnterGame() {
-  const lobby   = document.getElementById('playroom-lobby')
-  const monitor = document.getElementById('nd-monitor')
-  if (!lobby || !monitor) return
-  // Fade out lobby
-  lobby.style.transition = 'opacity .3s'
-  lobby.style.opacity    = '0'
-  setTimeout(() => {
-    lobby.hidden   = true
-    lobby.style.transition = ''
-    monitor.hidden = false
-    _ndState('home')
-    _ndRenderHome()
-  }, 300)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
