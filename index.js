@@ -7946,7 +7946,8 @@ function _dpHandleViewport() {
   if (!panel || !debateOpen || window.innerWidth >= 600) return
   const vv = window.visualViewport
   if (!vv) return
-  // Usar height inline (gana sobre bottom:0 del CSS) para recortar al viewport visible
+  // Cancelar CSS bottom:0 explícitamente — sin esto compite con height y top en iOS
+  panel.style.bottom  = 'auto'
   panel.style.height  = vv.height + 'px'
   panel.style.top     = vv.offsetTop + 'px'
   // Hacer scroll al último mensaje para que el input quede visible
@@ -7962,9 +7963,10 @@ if (window.visualViewport) {
 function abrirDebate() {
   const panel = document.getElementById('debate-panel')
   panel.classList.add('open')
-  // Limpiar overrides inline para que el panel arranque con el CSS base (bottom:0)
+  // Limpiar overrides inline para que el panel arranque con el CSS base (top:0 bottom:0)
   panel.style.height = ''
   panel.style.top    = ''
+  panel.style.bottom = ''
   const scrim = document.getElementById('dp-scrim')
   if (scrim) scrim.classList.add('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.add('live')
