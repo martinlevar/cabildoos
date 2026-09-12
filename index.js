@@ -7435,8 +7435,20 @@ function renderQMiniChips() {
 //  MURO DEL DÍA
 // ══════════════════════════════════════════════════════════════════════════════
 const MU_COLORS = ['#1D1F8C','#7C3AED','#0891B2','#059669','#B45309','#DC2626','#DB2777','#0F766E']
-// Pastel backgrounds paired to each MU_COLOR (light mode / dark mode handled via opacity in CSS)
-const MU_PASTELS = ['#E8E9FF','#F0EBFF','#E0F5FB','#DFFAEF','#FFF3E0','#FFE9E9','#FFE8F5','#E0F5F3']
+
+// Derive a very soft pastel from any hex color (85% white + 15% color)
+function muColorToPastel(hex) {
+  if (!hex || hex.length < 7) return '#F4F4FF'
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
+  return `rgb(${Math.round(255*.82+r*.18)},${Math.round(255*.82+g*.18)},${Math.round(255*.82+b*.18)})`
+}
+
+// Consistent color for the current user based on seat (deterministic, not random)
+function muGetMyColor() {
+  // If profile has a color field, use it; otherwise pick by seat
+  if (_authProfile?.color && typeof _authProfile.color === 'string' && _authProfile.color.startsWith('#')) return _authProfile.color
+  return MU_COLORS[(MY_SEAT || 0) % MU_COLORS.length]
+}
 let MU_POSTS = [
   { id: 1, alias: 'Simón C.', seat: 47, color: '#1D1F8C',
     text: 'Venezuela necesita instituciones fuertes antes que elecciones. Sin reglas claras, cualquier resultado puede ser desconocido.',
@@ -7508,10 +7520,11 @@ function muInitMuro() {
 function muUpdateMyAvatar() {
   const alias    = _authProfile?.alias || (MY_SEAT ? `#${MY_SEAT}` : '?')
   const initials = alias.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const myColor  = muGetMyColor()
   const av = document.getElementById('mu-compose-av')
-  if (av) av.textContent = initials
+  if (av) { av.textContent = initials; av.style.background = myColor }
   const avR = document.getElementById('mu-reply-av-me')
-  if (avR) avR.textContent = initials
+  if (avR) { avR.textContent = initials; avR.style.background = myColor }
 }
 
 function muInitials(name) {
@@ -7524,16 +7537,25 @@ function muRenderFeed() {
   feed.innerHTML = ''
   const countEl = document.getElementById('mu-count')
   if (countEl) countEl.textContent = MU_POSTS.length + (MU_POSTS.length === 1 ? ' voz' : ' voces')
+  // Compose card — always the leftmost card (prepended after posts are added)
+  const composeCard = document.createElement('div')
+  composeCard.className = 'mu-post mu-compose-card'
+  composeCard.onclick = muOpenCompose
+  composeCard.innerHTML = `
+    <div class="mu-compose-card-plus">+</div>
+    <div class="mu-compose-card-label">Publicar<br>opinión</div>`
+  feed.appendChild(composeCard)
+
+  // MU_POSTS[0] = newest. We want: [compose][newest][2nd newest]...[oldest]
+  // So iterate 0→N and appendChild keeps that order, then we move compose to front.
   MU_POSTS.forEach((p, i) => {
     const el = document.createElement('div')
     el.className = 'mu-post'
     el.style.animationDelay = (i * 50) + 'ms'
     el.onclick = () => muOpenModal(p.id)
-    // Pastel tint matched to avatar color
-    const colorIdx = MU_COLORS.indexOf(p.color)
-    const pastel = colorIdx >= 0 ? MU_PASTELS[colorIdx] : '#F4F4FF'
-    el.style.background = pastel
-    el.style.borderColor = p.color + '22'
+    // Pastel tint algorithmically derived from avatar color
+    el.style.background = muColorToPastel(p.color)
+    el.style.borderColor = p.color + '28'
     const rCount = p.replies?.length || 0
     el.innerHTML = `
       <div class="mu-post-top">
@@ -7552,16 +7574,10 @@ function muRenderFeed() {
           <span>${p.liked ? '❤️' : '🤍'}</span><span>${p.likes}</span>
         </button>
       </div>`
-    feed.prepend(el)
+    feed.appendChild(el)
   })
-  // Compose card — always the leftmost card in the feed
-  const composeCard = document.createElement('div')
-  composeCard.className = 'mu-post mu-compose-card'
-  composeCard.onclick = muOpenCompose
-  composeCard.innerHTML = `
-    <div class="mu-compose-card-plus">+</div>
-    <div class="mu-compose-card-label">Publicar<br>opinión</div>`
-  feed.prepend(composeCard)
+  // Move compose card to position 0 (leftmost)
+  feed.insertBefore(composeCard, feed.firstChild)
 }
 
 function muToggleLike(id, btn) {
@@ -7597,13 +7613,14 @@ function muSubmitCompose() {
   const txt = ct ? ct.value.trim() : ''
   if (!txt) return
   const alias = _authProfile?.alias || (MY_SEAT ? `Butaca #${MY_SEAT}` : 'Ciudadano')
-  const color = MU_COLORS[Math.floor(Math.random() * MU_COLORS.length)]
+  const color = muGetMyColor()   // deterministic: same color every time for this user
   MU_POSTS.unshift({
     id: Date.now(), alias, seat: MY_SEAT || 0, color,
     text: txt, time: 'ahora', likes: 0, liked: false, replies: []
   })
   muCloseCompose()
   muRenderFeed()
+  // Scroll to show new post (2nd card, right after compose card)
   const feed = document.getElementById('mu-feed')
   if (feed) feed.scrollLeft = 0
 }
