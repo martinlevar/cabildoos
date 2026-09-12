@@ -1091,7 +1091,8 @@ window.addEventListener('mousemove', e => {
     'debate-panel', 'modal-bd', 'propuesta-overlay', 'info-modal-overlay',
     'notif-modal', 'mi-perfil-overlay', 'user-profile-modal', 'social-modal',
     'sf-center-modal', 'citizens-panel', 'hemi-config-panel', 'preguntas-panel',
-    'sim-overlay', 'cert-overlay', 'consent-overlay', 'vav-sha-overlay', 'vav-urna-overlay'
+    'sim-overlay', 'cert-overlay', 'consent-overlay', 'vav-sha-overlay', 'vav-urna-overlay',
+    'mu-modal-overlay', 'mu-compose-overlay'
   ]
   if (_activePanels.some(id => document.getElementById(id)?.classList.contains('open'))) return
 
@@ -7401,7 +7402,8 @@ function toggleQStrip() {
   if (!wrapper) return
   _qStripCollapsed = !_qStripCollapsed
   wrapper.classList.toggle('collapsed', _qStripCollapsed)
-  // No height change — hemicycle stays the same size
+  const btn = document.getElementById('q-strip-toggle')
+  if (btn) btn.textContent = _qStripCollapsed ? '▼ Ver sesiones' : '▲ Muro del día'
   if (_qStripCollapsed) muInitMuro()
 }
 
@@ -7433,6 +7435,8 @@ function renderQMiniChips() {
 //  MURO DEL DÍA
 // ══════════════════════════════════════════════════════════════════════════════
 const MU_COLORS = ['#1D1F8C','#7C3AED','#0891B2','#059669','#B45309','#DC2626','#DB2777','#0F766E']
+// Pastel backgrounds paired to each MU_COLOR (light mode / dark mode handled via opacity in CSS)
+const MU_PASTELS = ['#E8E9FF','#F0EBFF','#E0F5FB','#DFFAEF','#FFF3E0','#FFE9E9','#FFE8F5','#E0F5F3']
 let MU_POSTS = [
   { id: 1, alias: 'Simón C.', seat: 47, color: '#1D1F8C',
     text: 'Venezuela necesita instituciones fuertes antes que elecciones. Sin reglas claras, cualquier resultado puede ser desconocido.',
@@ -7525,6 +7529,11 @@ function muRenderFeed() {
     el.className = 'mu-post'
     el.style.animationDelay = (i * 50) + 'ms'
     el.onclick = () => muOpenModal(p.id)
+    // Pastel tint matched to avatar color
+    const colorIdx = MU_COLORS.indexOf(p.color)
+    const pastel = colorIdx >= 0 ? MU_PASTELS[colorIdx] : '#F4F4FF'
+    el.style.background = pastel
+    el.style.borderColor = p.color + '22'
     const rCount = p.replies?.length || 0
     el.innerHTML = `
       <div class="mu-post-top">
@@ -7538,7 +7547,7 @@ function muRenderFeed() {
       <div class="mu-post-bottom">
         <span class="mu-post-time">${p.time}</span>
         <div style="flex:1"></div>
-        ${rCount > 0 ? `<span class="mu-post-badge">💬 ${rCount}</span>` : ''}
+        ${rCount > 0 ? `<span class="mu-post-badge" style="color:${p.color}">💬 ${rCount}</span>` : ''}
         <button class="mu-post-like${p.liked ? ' liked' : ''}" onclick="event.stopPropagation();muToggleLike(${p.id},this)">
           <span>${p.liked ? '❤️' : '🤍'}</span><span>${p.likes}</span>
         </button>
