@@ -7946,9 +7946,13 @@ function _dpHandleViewport() {
   if (!panel || !debateOpen || window.innerWidth >= 600) return
   const vv = window.visualViewport
   if (!vv) return
-  // Ajustar altura y offset para que el panel se meta dentro del area visible
+  // Limpiar bottom para que no compita con height
+  panel.style.bottom  = 'auto'
   panel.style.height  = vv.height + 'px'
   panel.style.top     = vv.offsetTop + 'px'
+  // Hacer scroll al último mensaje para que el input quede visible
+  const list = document.getElementById('dp-list')
+  if (list) list.scrollTop = list.scrollHeight
 }
 
 if (window.visualViewport) {
@@ -7959,12 +7963,23 @@ if (window.visualViewport) {
 function abrirDebate() {
   const panel = document.getElementById('debate-panel')
   panel.classList.add('open')
-  panel.style.height = ''   // reset override — CSS inset:0 arranca bien
+  panel.style.height = ''
   panel.style.top    = ''
+  panel.style.bottom = ''
   const scrim = document.getElementById('dp-scrim')
   if (scrim) scrim.classList.add('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.add('live')
   debateOpen = true
+  // Cuando el usuario toca el input el teclado sube → ajustar viewport
+  const inp = document.getElementById('dp-input')
+  if (inp) {
+    inp.addEventListener('focus', () => setTimeout(_dpHandleViewport, 300), { once: false })
+    inp.addEventListener('blur',  () => {
+      // Al cerrar el teclado, restaurar altura completa
+      const p = document.getElementById('debate-panel')
+      if (p) { p.style.height = ''; p.style.top = ''; p.style.bottom = '' }
+    }, { once: false })
+  }
 }
 
 function cerrarDebate() {
@@ -7972,6 +7987,7 @@ function cerrarDebate() {
   panel.classList.remove('open')
   panel.style.height = ''
   panel.style.top    = ''
+  panel.style.bottom = ''
   const scrim = document.getElementById('dp-scrim')
   if (scrim) scrim.classList.remove('open')
   if (document.getElementById('debate-btn')) document.getElementById('debate-btn').classList.remove('live')
