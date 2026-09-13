@@ -1293,6 +1293,19 @@ function showCard(seat, cx, cy) {
 
   const fbtn = document.getElementById('pc-follow-btn')
 
+  // Nerdocracy row — only for own seat when we have data
+  const nerdRow = document.getElementById('pc-nerd-row')
+  if (nerdRow) {
+    if (p.isMe && _nd.profile.bestLevel > 0) {
+      const stageMap = { KNOW: 'Know', THINK: 'Think', TRAP: 'Trap' }
+      document.getElementById('pc-nerd-level').textContent = _nd.profile.bestLevel
+      document.getElementById('pc-nerd-stage').textContent = stageMap[_nd.profile.bestStage] || ''
+      nerdRow.hidden = false
+    } else {
+      nerdRow.hidden = true
+    }
+  }
+
   if (p.isMe) {
     // Propio dot: sin botones de acción
     fbtn.style.display = 'none'
@@ -2619,6 +2632,9 @@ async function _onLogin(user) {
   }
 
   _authProfile = profile
+  // Preload nerd profile so dot hover shows best level without needing to open playroom
+  _ndLoadProfile().catch(() => {})
+
   _visibilidad.alias  = !!profile?.show_alias
   _visibilidad.phrase = !!profile?.show_phrase
   perfilPublico = _visibilidad.alias || _visibilidad.phrase
@@ -6783,6 +6799,38 @@ async function abrirMiPerfil() {
   if (elNo)  elNo.textContent  = cntNo
   if (elAbs) elAbs.textContent = cntAbs
   document.getElementById('mi-perfil-overlay').classList.add('open')
+
+  // Nerdocracy: mostrar nivel y etapa si hay datos
+  const nerdSection = document.getElementById('mp-nerd-section')
+  const nerdLvlEl   = document.getElementById('mp-nerd-level')
+  const nerdStgEl   = document.getElementById('mp-nerd-stage')
+  if (nerdSection && _authUser) {
+    // Use cached profile first; load fresh in background
+    const updateNerdUI = (lvl, stage) => {
+      const stageMap = { KNOW: 'Know', THINK: 'Think', TRAP: 'Trap' }
+      nerdLvlEl.textContent = lvl > 0 ? lvl : '0'
+      nerdStgEl.textContent = stageMap[stage] || '—'
+      nerdSection.hidden = false
+    }
+    if (_nd.profile.bestLevel > 0 || _nd.profile.totalAttempts > 0) {
+      updateNerdUI(_nd.profile.bestLevel, _nd.profile.bestStage)
+    }
+    sb.from('nerdocrasy_profiles')
+      .select('best_level, best_stage, total_attempts')
+      .eq('user_id', _authUser.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          _nd.profile.bestLevel     = data.best_level     || 0
+          _nd.profile.bestStage     = data.best_stage     || null
+          _nd.profile.totalAttempts = data.total_attempts || 0
+          updateNerdUI(_nd.profile.bestLevel, _nd.profile.bestStage)
+        } else {
+          nerdSection.hidden = false
+          nerdLvlEl.textContent = '0'
+          nerdStgEl.textContent = '—'
+        }
+      }).catch(() => {})
+  }
 
   // Ganadoras: directo desde Supabase
   const elGan = document.getElementById('mp-count-ganadora')
@@ -11694,24 +11742,34 @@ function ndEnterGame() {
   }
 }
 
-function cerrarPlayroom() {
-  // Cancel any pending enter-game transition
+const cerrarPlayroom = () => {
+  // ── STEP 1: Invalidate attempt immediately (anti-cheat) ──────────────────
+  // Null these BEFORE anything else so any in-flight ndAnswer() or ndJugar()
+  // call that returns while we're closing will find no active attempt.
+  const abandonId   = _nd.attemptId
+  _nd.attemptId     = null
+  _nd.questionId    = null
+  _nd.answering     = true   // disables answer buttons immediately
+
+  // ── STEP 2: Cancel pending enter-game timeout ─────────────────────────────
   if (_ndEnterTimeout) { clearTimeout(_ndEnterTimeout); _ndEnterTimeout = null }
 
-  _ndCancelTimer()
-  if (_nd.attemptId) {
-    sb.rpc('nerdocrasy_abandon', { p_attempt_id: _nd.attemptId }).catch(() => {})
-    _nd.attemptId = null
-  }
-
+  // ── STEP 3: Close the UI ──────────────────────────────────────────────────
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
-
-  // Hide both — lobby will re-animate on next open
-  const lobby = document.getElementById('pr-lobby')
+  const lobby   = document.getElementById('pr-lobby')
   const monitor = document.getElementById('nd-monitor')
-  if (lobby) { lobby.hidden = true; lobby.style.opacity = ''; lobby.style.transition = ''; }
+  if (lobby)   { lobby.hidden = true; lobby.style.opacity = ''; lobby.style.transition = ''; }
   if (monitor) monitor.hidden = true
+
+  // ── STEP 4: Cancel timer AFTER UI is already hidden ───────────────────────
+  // (eliminates the window where the timer is frozen but the game is still visible)
+  _ndCancelTimer()
+
+  // ── STEP 5: Abandon attempt on server (fire-and-forget) ───────────────────
+  if (abandonId) {
+    sb.rpc('nerdocrasy_abandon', { p_attempt_id: abandonId }).catch(() => {})
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -11730,10 +11788,20 @@ const _nd = {
 
 // ── Keyboard shortcuts ─────────────────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
+  // Escape always closes the playroom from any game state
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('playroom-overlay')
+    if (overlay?.classList.contains('open')) { cerrarPlayroom(); return }
+  }
   if (document.getElementById('nd-state-question')?.hidden !== false) return
   if (_nd.answering) return
   if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') { e.preventDefault(); ndAnswer('OUT') }
   if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { e.preventDefault(); ndAnswer('IN') }
+})
+
+// ── Click outside panel closes playroom ────────────────────────────────────────
+document.getElementById('playroom-overlay')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('playroom-overlay')) cerrarPlayroom()
 })
 
 // ── UI State machine ───────────────────────────────────────────────────────────
@@ -11857,6 +11925,13 @@ async function ndJugar() {
       return
     }
 
+    // Guard: if player exited while RPC was in-flight, abandon this attempt silently
+    const _ndOverlay = document.getElementById('playroom-overlay')
+    if (!_ndOverlay?.classList.contains('open')) {
+      sb.rpc('nerdocrasy_abandon', { p_attempt_id: data.attempt_id }).catch(() => {})
+      return
+    }
+
     _nd.attemptId    = data.attempt_id
     _nd.currentLevel = data.question.level
     _nd.stage        = data.question.stage
@@ -11937,8 +12012,12 @@ function _ndStartTimer(remainingMs) {
   _ndCancelTimer()
   const total = remainingMs / 1000
   let remaining = total
+  let lastTick  = Date.now()  // local — not reachable from DevTools console
 
   function tick() {
+    // Self-stop if attempt was cleared (e.g. cerrarPlayroom called from console)
+    if (!_nd.attemptId) { _ndCancelTimer(); return }
+    lastTick = Date.now()
     remaining -= 0.1
     _ndUpdateTimerUI(remaining, total)
     if (remaining <= 0) {
@@ -11949,10 +12028,24 @@ function _ndStartTimer(remainingMs) {
 
   _ndUpdateTimerUI(remaining, total)
   _nd.intervalId = setInterval(tick, 100)
+
+  // ── Watchdog: auto-TIMEOUT if main timer is killed from console ──────────────
+  // wdId is a LOCAL variable — lives in this closure, unreachable from DevTools.
+  // Even if a hacker calls clearInterval(_nd.intervalId) they cannot stop this.
+  const wdId = setInterval(() => {
+    if (!_nd.attemptId || _nd.answering) { clearInterval(wdId); return }
+    if (Date.now() - lastTick > 500) {
+      // Main timer was killed externally → force immediate timeout
+      clearInterval(wdId)
+      _ndCancelTimer()
+      ndAnswer('TIMEOUT')
+    }
+  }, 250)
 }
 
 function _ndCancelTimer() {
   if (_nd.intervalId) { clearInterval(_nd.intervalId); _nd.intervalId = null }
+  // Watchdog cleans itself up: it checks !_nd.attemptId / _nd.answering each tick
 }
 
 function _ndUpdateTimerUI(remaining, total) {
@@ -11973,9 +12066,11 @@ function _ndUpdateTimerUI(remaining, total) {
 }
 
 // ── SUBMIT ANSWER — calls nerdocrasy_submit_answer() / nerdocrasy_timeout() ──
-async function ndAnswer(selected) {
+const ndAnswer = async (selected) => {
   if (_nd.answering) return
   if (!_nd.attemptId || !_nd.questionId) return
+  // Guard: reject if overlay was closed (e.g. console injection while game was open)
+  if (!document.getElementById('playroom-overlay')?.classList.contains('open')) return
 
   _nd.answering = true
   _ndCancelTimer()
@@ -12054,6 +12149,8 @@ async function ndAnswer(selected) {
       if (data.stage_transition) {
         _ndShowStageTransition(_nd.currentLevel, data.stage)
         setTimeout(async () => {
+          const _ov1 = document.getElementById('playroom-overlay')
+          if (!_ov1?.classList.contains('open')) return
           _nd.currentLevel = data.reached_level
           _nd.stage        = data.stage
           _nd.answering    = false
@@ -12063,6 +12160,8 @@ async function ndAnswer(selected) {
         }, 2500)
       } else {
         await _ndFlashCorrect()
+        const _ov2 = document.getElementById('playroom-overlay')
+        if (!_ov2?.classList.contains('open')) return
         _nd.currentLevel = data.reached_level
         _nd.stage        = data.stage
         _nd.answering    = false
@@ -12092,6 +12191,27 @@ async function _ndFlashCorrect() {
   ;[outBtn, inBtn].forEach(b => { if (b) b.classList.add('nd-btn-correct-flash') })
   await new Promise(res => setTimeout(res, 350))
 }
+
+// ── Wire answer buttons and close buttons via event listeners ─────────────────
+// (onclick attributes removed from HTML so ndAnswer/cerrarPlayroom are not
+//  callable as window.ndAnswer / window.cerrarPlayroom from the console)
+;(function _ndWireButtons() {
+  function wire() {
+    const btnOut = document.getElementById('nd-btn-out')
+    const btnIn  = document.getElementById('nd-btn-in')
+    if (btnOut) btnOut.addEventListener('click', () => ndAnswer('OUT'))
+    if (btnIn)  btnIn.addEventListener('click',  () => ndAnswer('IN'))
+    // Close buttons (#pr-close + all .nd-close inside the game panel)
+    const prClose = document.getElementById('pr-close')
+    if (prClose) prClose.addEventListener('click', cerrarPlayroom)
+    document.querySelectorAll('.nd-close').forEach(b => b.addEventListener('click', cerrarPlayroom))
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wire)
+  } else {
+    wire()
+  }
+})()
 
 // ── STAGE TRANSITION ───────────────────────────────────────────────────────────
 function _ndShowStageTransition(completedLevel, nextStage) {
