@@ -11778,10 +11778,20 @@ const _nd = {
 
 // ── Keyboard shortcuts ─────────────────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
+  // Escape always closes the playroom from any game state
+  if (e.key === 'Escape') {
+    const overlay = document.getElementById('playroom-overlay')
+    if (overlay?.classList.contains('open')) { cerrarPlayroom(); return }
+  }
   if (document.getElementById('nd-state-question')?.hidden !== false) return
   if (_nd.answering) return
   if (e.key === 'ArrowLeft'  || e.key === 'a' || e.key === 'A') { e.preventDefault(); ndAnswer('OUT') }
   if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { e.preventDefault(); ndAnswer('IN') }
+})
+
+// ── Click outside panel closes playroom ────────────────────────────────────────
+document.getElementById('playroom-overlay')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('playroom-overlay')) cerrarPlayroom()
 })
 
 // ── UI State machine ───────────────────────────────────────────────────────────

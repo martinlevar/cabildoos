@@ -6662,11 +6662,15 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   justify-content: center; gap: 18px; flex: 1; padding: 36px 0 20px;
 }
 
-/* Topbar */
+/* Topbar — sticky so close button never scrolls off screen */
 .nd-topbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px;
   margin-bottom: 4px;
+  position: sticky; top: -28px; z-index: 10;
+  background: linear-gradient(to bottom, #080810 80%, transparent);
+  margin-inline: -30px; padding-inline: 30px;
+  padding-block: 10px 8px; margin-top: -12px;
 }
 .nd-close {
   margin-left: auto;
@@ -6674,20 +6678,20 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Close button — used in all game states */
 .game-close-btn {
-  width: 32px; height: 32px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.1);
+  height: 30px; padding: 0 10px;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
   border-radius: 8px;
-  color: rgba(255,255,255,.45);
-  font-size: 15px; line-height: 1;
-  cursor: pointer; flex-shrink: 0;
+  color: rgba(255,255,255,.5);
+  font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: .02em;
+  cursor: pointer; flex-shrink: 0; white-space: nowrap;
   transition: background .15s, border-color .15s, color .15s;
 }
 .game-close-btn:hover {
-  background: rgba(255,80,80,.15);
-  border-color: rgba(255,120,120,.28);
-  color: rgba(255,200,200,.9);
+  background: rgba(255,80,80,.18);
+  border-color: rgba(255,120,120,.35);
+  color: rgba(255,210,210,.95);
 }
 
 /* Spinner base — used with .nd-spinner which adds the colors */
