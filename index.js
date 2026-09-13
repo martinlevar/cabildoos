@@ -11742,7 +11742,7 @@ function ndEnterGame() {
   }
 }
 
-function cerrarPlayroom() {
+const cerrarPlayroom = () => {
   // ── STEP 1: Invalidate attempt immediately (anti-cheat) ──────────────────
   // Null these BEFORE anything else so any in-flight ndAnswer() or ndJugar()
   // call that returns while we're closing will find no active attempt.
@@ -12012,10 +12012,12 @@ function _ndStartTimer(remainingMs) {
   _ndCancelTimer()
   const total = remainingMs / 1000
   let remaining = total
+  let lastTick  = Date.now()  // local — not reachable from DevTools console
 
   function tick() {
     // Self-stop if attempt was cleared (e.g. cerrarPlayroom called from console)
     if (!_nd.attemptId) { _ndCancelTimer(); return }
+    lastTick = Date.now()
     remaining -= 0.1
     _ndUpdateTimerUI(remaining, total)
     if (remaining <= 0) {
@@ -12026,10 +12028,24 @@ function _ndStartTimer(remainingMs) {
 
   _ndUpdateTimerUI(remaining, total)
   _nd.intervalId = setInterval(tick, 100)
+
+  // ── Watchdog: auto-TIMEOUT if main timer is killed from console ──────────────
+  // wdId is a LOCAL variable — lives in this closure, unreachable from DevTools.
+  // Even if a hacker calls clearInterval(_nd.intervalId) they cannot stop this.
+  const wdId = setInterval(() => {
+    if (!_nd.attemptId || _nd.answering) { clearInterval(wdId); return }
+    if (Date.now() - lastTick > 500) {
+      // Main timer was killed externally → force immediate timeout
+      clearInterval(wdId)
+      _ndCancelTimer()
+      ndAnswer('TIMEOUT')
+    }
+  }, 250)
 }
 
 function _ndCancelTimer() {
   if (_nd.intervalId) { clearInterval(_nd.intervalId); _nd.intervalId = null }
+  // Watchdog cleans itself up: it checks !_nd.attemptId / _nd.answering each tick
 }
 
 function _ndUpdateTimerUI(remaining, total) {
@@ -12050,7 +12066,7 @@ function _ndUpdateTimerUI(remaining, total) {
 }
 
 // ── SUBMIT ANSWER — calls nerdocrasy_submit_answer() / nerdocrasy_timeout() ──
-async function ndAnswer(selected) {
+const ndAnswer = async (selected) => {
   if (_nd.answering) return
   if (!_nd.attemptId || !_nd.questionId) return
   // Guard: reject if overlay was closed (e.g. console injection while game was open)
@@ -12175,6 +12191,27 @@ async function _ndFlashCorrect() {
   ;[outBtn, inBtn].forEach(b => { if (b) b.classList.add('nd-btn-correct-flash') })
   await new Promise(res => setTimeout(res, 350))
 }
+
+// ── Wire answer buttons and close buttons via event listeners ─────────────────
+// (onclick attributes removed from HTML so ndAnswer/cerrarPlayroom are not
+//  callable as window.ndAnswer / window.cerrarPlayroom from the console)
+;(function _ndWireButtons() {
+  function wire() {
+    const btnOut = document.getElementById('nd-btn-out')
+    const btnIn  = document.getElementById('nd-btn-in')
+    if (btnOut) btnOut.addEventListener('click', () => ndAnswer('OUT'))
+    if (btnIn)  btnIn.addEventListener('click',  () => ndAnswer('IN'))
+    // Close buttons (#pr-close + all .nd-close inside the game panel)
+    const prClose = document.getElementById('pr-close')
+    if (prClose) prClose.addEventListener('click', cerrarPlayroom)
+    document.querySelectorAll('.nd-close').forEach(b => b.addEventListener('click', cerrarPlayroom))
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wire)
+  } else {
+    wire()
+  }
+})()
 
 // ── STAGE TRANSITION ───────────────────────────────────────────────────────────
 function _ndShowStageTransition(completedLevel, nextStage) {
