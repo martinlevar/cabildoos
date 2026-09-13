@@ -6469,9 +6469,9 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 #playroom-overlay.open #pr-ghost-canvas { opacity: 1; }
 
-/* Close button */
+/* Close button — z-index: 10 keeps it above #nd-monitor (z-index:2) so it's always clickable */
 #pr-close {
-  position: absolute; top: 20px; right: 24px;
+  position: absolute; top: 20px; right: 24px; z-index: 10;
   background: none; border: none; cursor: pointer;
   color: rgba(255,255,255,.45); font-size: 20px;
   line-height: 1; padding: 6px;
@@ -6662,15 +6662,11 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   justify-content: center; gap: 18px; flex: 1; padding: 36px 0 20px;
 }
 
-/* Topbar — sticky so close button never scrolls off screen */
+/* Topbar — simple flex row; no sticky (sticky + overflow-y:auto causes pointer-event mismatch in browsers) */
 .nd-topbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
-  position: sticky; top: -28px; z-index: 10;
-  background: linear-gradient(to bottom, #080810 80%, transparent);
-  margin-inline: -30px; padding-inline: 30px;
-  padding-block: 10px 8px; margin-top: -12px;
+  margin-bottom: 8px;
 }
 .nd-close {
   margin-left: auto;
