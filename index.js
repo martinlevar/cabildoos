@@ -1091,7 +1091,8 @@ window.addEventListener('mousemove', e => {
     'debate-panel', 'modal-bd', 'propuesta-overlay', 'info-modal-overlay',
     'notif-modal', 'mi-perfil-overlay', 'user-profile-modal', 'social-modal',
     'sf-center-modal', 'citizens-panel', 'hemi-config-panel', 'preguntas-panel',
-    'sim-overlay', 'cert-overlay', 'consent-overlay', 'vav-sha-overlay', 'vav-urna-overlay'
+    'sim-overlay', 'cert-overlay', 'consent-overlay', 'vav-sha-overlay', 'vav-urna-overlay',
+    'mu-modal-overlay', 'mu-compose-overlay'
   ]
   if (_activePanels.some(id => document.getElementById(id)?.classList.contains('open'))) return
 
@@ -7241,23 +7242,44 @@ function fmtTime(s) {
 setInterval(() => {
   if (!document.getElementById('congress').classList.contains('active')) return
   PREGUNTAS_DATA.forEach((qdata, i) => {
-    const timerEl = document.getElementById(`q-timer-${i}`)
-    if (!timerEl) return
     const remaining = Math.floor((new Date(qdata.ends_at) - Date.now()) / 1000)
-    if (remaining > 0) {
-      timerEl.textContent = fmtTime(remaining)
-      timerEl.className = 'q-card-timer-val'
-    } else {
-      timerEl.textContent = 'Finalizada'
-      timerEl.className = 'q-card-timer-val ended'
-      // Cuando recién termina, re-renderizar para que el badge cambie a "Revelación"
-      if (!_revealTriggered[qdata.id]) {
-        _revealTriggered[qdata.id] = true
-        renderQCards()
-        requestAnimationFrame(resizeCanvas)
-        // If this question is open in debate panel, close input
-        if (_debateQId === qdata.id) _dpSetEndedUI(true)
+
+    // Card countdown
+    const timerEl = document.getElementById(`q-timer-${i}`)
+    if (timerEl) {
+      if (remaining > 0) {
+        timerEl.textContent = fmtTime(remaining)
+        timerEl.className = 'q-card-timer-val'
+      } else {
+        timerEl.textContent = 'Finalizada'
+        timerEl.className = 'q-card-timer-val ended'
       }
+    }
+
+    // Mini chip countdown
+    const miniEl = document.getElementById(`q-mini-timer-${i}`)
+    if (miniEl) {
+      if (remaining > 0) {
+        miniEl.textContent = fmtTime(remaining)
+        miniEl.className = 'q-mini-time' + (remaining < 90 ? ' urgent' : '')
+      } else {
+        // Question just ended — remove its chip
+        const chip = miniEl.closest('.q-mini-chip')
+        if (chip) {
+          const prev = chip.previousElementSibling
+          if (prev && prev.classList.contains('q-mini-sep')) prev.remove()
+          chip.remove()
+        }
+      }
+    }
+
+    // Cuando recién termina, re-renderizar para que el badge cambie a "Revelación"
+    if (remaining <= 0 && !_revealTriggered[qdata.id]) {
+      _revealTriggered[qdata.id] = true
+      renderQCards()
+      requestAnimationFrame(resizeCanvas)
+      // If this question is open in debate panel, close input
+      if (_debateQId === qdata.id) _dpSetEndedUI(true)
     }
   })
 }, 1000)
@@ -7367,6 +7389,507 @@ function renderQCards() {
       </div>`
     strip.appendChild(card)
   })
+
+  // Update mini bar chips after re-render
+  renderQMiniChips()
+}
+
+// ── Strip collapse ────────────────────────────────────────────────────────────
+let _qStripCollapsed = false
+
+function toggleQStrip() {
+  const wrapper = document.getElementById('q-strip-wrapper')
+  if (!wrapper) return
+  _qStripCollapsed = !_qStripCollapsed
+  wrapper.classList.toggle('collapsed', _qStripCollapsed)
+  const btn = document.getElementById('q-strip-toggle')
+  if (btn) btn.textContent = _qStripCollapsed ? '▼ Ver sesiones' : '▲ Muro del día'
+  if (_qStripCollapsed) muInitMuro()
+}
+
+function renderQMiniChips() {
+  const container = document.getElementById('q-mini-chips')
+  if (!container) return
+  const CAT_THEME = window._CAT_THEME
+  const active = PREGUNTAS_DATA.filter(q => {
+    const rem = Math.floor((new Date(q.ends_at) - Date.now()) / 1000)
+    return rem > 0 && !isArchivada(q.id)
+  })
+  if (active.length === 0) {
+    container.innerHTML = '<span class="q-mini-label" style="opacity:.45;font-weight:600;text-transform:none;letter-spacing:0;font-size:11px">Sin sesiones abiertas</span>'
+    return
+  }
+  container.innerHTML = active.map((q, idx) => {
+    const rem   = Math.floor((new Date(q.ends_at) - Date.now()) / 1000)
+    const theme = (CAT_THEME && CAT_THEME[q.category]) || _CAT_DEFAULT
+    const dataIdx = PREGUNTAS_DATA.indexOf(q)
+    return (idx > 0 ? '<div class="q-mini-sep"></div>' : '') +
+      `<div class="q-mini-chip">` +
+        `<span class="q-mini-cat" style="background:${theme.pill};color:${theme.txt}">${escapeHtml(q.category || 'GENERAL')}</span>` +
+        `<span class="q-mini-time${rem < 90 ? ' urgent' : ''}" id="q-mini-timer-${dataIdx}">${fmtTime(rem)}</span>` +
+      `</div>`
+  }).join('')
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MURO DEL DÍA
+// ══════════════════════════════════════════════════════════════════════════════
+const MU_COLORS = ['#1D1F8C','#7C3AED','#0891B2','#059669','#B45309','#DC2626','#DB2777','#0F766E']
+
+// Named-color → hex accent (same palette as the profile card system)
+const MU_CARD_ACCENT = {
+  white: '#d1d5db', orange: '#f76a1e', yellow: '#f59e0b',
+  green: '#34d399', cyan: '#22d3ee', black: '#6b7280',
+  red: '#f87171', pink: '#f472b6',
+}
+
+// Derive a very soft pastel from any hex color (82% white + 18% color)
+function muColorToPastel(hex) {
+  if (!hex || hex.length < 7) return '#F4F4FF'
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
+  return `rgb(${Math.round(255*.82+r*.18)},${Math.round(255*.82+g*.18)},${Math.round(255*.82+b*.18)})`
+}
+
+// Consistent color for the current user — reads from profile card_color
+function muGetMyColor() {
+  const named = _authProfile?.card_color || _profilesCache?.[MY_SEAT]?.cardColor || 'orange'
+  return MU_CARD_ACCENT[named] ?? MU_CARD_ACCENT.orange
+}
+let MU_POSTS = []
+let _muHasPostedToday = false
+let _muOpenId  = null
+let _muInited  = false
+let _muLoading = false
+
+// Venezuelan day key: day resets at 3am VET (UTC-4) = 7am UTC
+function muGetDayKey() {
+  const shifted = new Date(Date.now() - 7 * 60 * 60 * 1000)
+  return shifted.toISOString().slice(0, 10)
+}
+
+// Relative time from ISO timestamp
+function muTimeAgo(ts) {
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
+  if (diff < 60)    return 'ahora'
+  if (diff < 3600)  return `hace ${Math.floor(diff / 60)} min`
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`
+  return `hace ${Math.floor(diff / 86400)} d`
+}
+
+// Resolve named color to hex accent
+function muColorHex(namedColor) {
+  return MU_CARD_ACCENT[namedColor] ?? MU_CARD_ACCENT.orange
+}
+
+// Load today's feed from Supabase
+async function muLoadFeed() {
+  if (_muLoading) return
+  _muLoading = true
+  const dayKey = muGetDayKey()
+  try {
+    const { data: posts, error } = await sb
+      .from('muro_posts')
+      .select(`id, user_id, seat_number, alias, card_color, body, created_at, likes_count,
+               muro_replies (id, user_id, seat_number, alias, card_color, body, created_at)`)
+      .eq('day_key', dayKey)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+
+    // Which posts did I like?
+    let myLikes = new Set()
+    if (_authUser && posts && posts.length) {
+      const { data: likes } = await sb
+        .from('muro_likes')
+        .select('post_id')
+        .in('post_id', posts.map(p => p.id))
+      ;(likes || []).forEach(l => myLikes.add(l.post_id))
+    }
+
+    _muHasPostedToday = !!(posts || []).find(p => p.user_id === _authUser?.id)
+
+    MU_POSTS = (posts || []).map(p => ({
+      id:      p.id,
+      user_id: p.user_id,
+      alias:   p.alias,
+      seat:    p.seat_number,
+      color:   muColorHex(p.card_color),
+      text:    p.body,
+      time:    muTimeAgo(p.created_at),
+      likes:   p.likes_count,
+      liked:   myLikes.has(p.id),
+      replies: (p.muro_replies || [])
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map(r => ({
+          id:    r.id,
+          alias: r.alias,
+          seat:  r.seat_number,
+          color: muColorHex(r.card_color),
+          text:  r.body,
+          time:  muTimeAgo(r.created_at),
+        }))
+    }))
+    muRenderFeed()
+  } catch(err) {
+    console.error('[muro] loadFeed error:', err)
+  } finally {
+    _muLoading = false
+  }
+}
+
+function muInitMuro() {
+  if (_muInited) return
+  _muInited = true
+
+  // Date label (single line, short)
+  const lbl = document.getElementById('mu-date-lbl')
+  if (lbl) {
+    const now = new Date()
+    const days   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
+    const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
+    lbl.textContent = `· ${days[now.getDay()]} ${now.getDate()} de ${months[now.getMonth()]}`
+  }
+
+  muUpdateMyAvatar()
+
+  // Compose modal keyboard
+  const ct = document.getElementById('mu-compose-text')
+  if (ct) {
+    ct.addEventListener('input', () => {
+      const rem = 280 - ct.value.length
+      const ch  = document.getElementById('mu-compose-chars')
+      if (ch) {
+        ch.textContent = rem
+        ch.className = rem <= 0 ? 'zero' : rem <= 40 ? 'low' : ''
+      }
+    })
+    ct.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); muSubmitCompose() }
+    })
+  }
+  const ri = document.getElementById('mu-reply-input')
+  if (ri) ri.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); muSendReply() } })
+
+  muLoadFeed()
+}
+
+function muUpdateMyAvatar() {
+  const alias    = _authProfile?.alias || (MY_SEAT ? `#${MY_SEAT}` : '?')
+  const initials = alias.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const myColor  = muGetMyColor()
+  const av = document.getElementById('mu-compose-av')
+  if (av) { av.textContent = initials; av.style.background = myColor }
+  const avR = document.getElementById('mu-reply-av-me')
+  if (avR) { avR.textContent = initials; avR.style.background = myColor }
+}
+
+function muInitials(name) {
+  return String(name).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function muRenderFeed() {
+  const feed = document.getElementById('mu-feed')
+  if (!feed) return
+  feed.innerHTML = ''
+  const countEl = document.getElementById('mu-count')
+  if (countEl) countEl.textContent = MU_POSTS.length + (MU_POSTS.length === 1 ? ' voz' : ' voces')
+
+  // Compose card — blue if not posted yet, grey if already posted today
+  const composeCard = document.createElement('div')
+  composeCard.className = 'mu-post mu-compose-card' + (_muHasPostedToday ? ' mu-compose-done' : '')
+  composeCard.onclick = muOpenCompose
+  composeCard.innerHTML = _muHasPostedToday
+    ? `<div class="mu-compose-card-plus">✓</div>
+       <div class="mu-compose-card-label">Ya<br>publicaste</div>`
+    : `<div class="mu-compose-card-plus">+</div>
+       <div class="mu-compose-card-label">Publicar<br>opinión</div>`
+  feed.appendChild(composeCard)
+
+  // MU_POSTS[0] = newest → append in order, then move compose to front
+  MU_POSTS.forEach((p, i) => {
+    const el = document.createElement('div')
+    el.className = 'mu-post'
+    el.style.animationDelay = (i * 50) + 'ms'
+    el.onclick = () => muOpenModal(p.id)
+    el.style.background = muColorToPastel(p.color)
+    el.style.borderColor = p.color + '28'
+    const rCount = p.replies?.length || 0
+    el.innerHTML = `
+      <div class="mu-post-top">
+        <div class="mu-av" style="background:${p.color}">${muInitials(p.alias)}</div>
+        <div style="min-width:0">
+          <div class="mu-post-alias">${escapeHtml(p.alias)}</div>
+          <div class="mu-post-seat">Butaca #${p.seat}</div>
+        </div>
+      </div>
+      <p class="mu-post-text">${escapeHtml(p.text)}</p>
+      <div class="mu-post-bottom">
+        <span class="mu-post-time">${p.time}</span>
+        <div style="flex:1"></div>
+        ${rCount > 0 ? `<span class="mu-post-badge" style="color:${p.color}">💬 ${rCount}</span>` : ''}
+        <button class="mu-post-like${p.liked ? ' liked' : ''}" onclick="event.stopPropagation();muToggleLike('${p.id}',this)">
+          <span>${p.liked ? '❤️' : '🤍'}</span><span>${p.likes}</span>
+        </button>
+      </div>`
+    feed.appendChild(el)
+  })
+  feed.insertBefore(composeCard, feed.firstChild)
+}
+
+async function muToggleLike(id, btn) {
+  if (!_authUser || !MY_SEAT) { showToast('Verificá tu identidad para dar me gusta'); return }
+  const p = MU_POSTS.find(x => x.id === id)
+  if (!p) return
+  // Optimistic update
+  p.liked = !p.liked
+  p.likes += p.liked ? 1 : -1
+  btn.classList.toggle('liked', p.liked)
+  const spans = btn.querySelectorAll('span')
+  spans[0].textContent = p.liked ? '❤️' : '🤍'
+  spans[1].textContent = p.likes
+  try {
+    const { data, error } = await sb.rpc('muro_toggle_like', { p_post_id: id })
+    if (error) throw error
+    p.liked = data.liked; p.likes = data.likes_count
+    btn.classList.toggle('liked', p.liked)
+    spans[0].textContent = p.liked ? '❤️' : '🤍'
+    spans[1].textContent = p.likes
+  } catch(err) {
+    // Revert on error
+    p.liked = !p.liked; p.likes += p.liked ? 1 : -1
+    btn.classList.toggle('liked', p.liked)
+    spans[0].textContent = p.liked ? '❤️' : '🤍'
+    spans[1].textContent = p.likes
+    console.error('[muro] like error:', err)
+  }
+}
+
+function muOpenCompose() {
+  if (!_authUser || !MY_SEAT) {
+    showToast('Verificá tu identidad para publicar en el Muro del Día')
+    return
+  }
+  if (_muHasPostedToday) {
+    showToast('Ya publicaste tu opinión de hoy · Volvé mañana ✓')
+    return
+  }
+  document.getElementById('mu-compose-overlay').classList.add('open')
+  setTimeout(() => {
+    const ct = document.getElementById('mu-compose-text')
+    if (ct) ct.focus()
+  }, 350)
+}
+
+function muCloseCompose(e) {
+  if (e && e.target !== document.getElementById('mu-compose-overlay')) return
+  document.getElementById('mu-compose-overlay').classList.remove('open')
+  const ct = document.getElementById('mu-compose-text')
+  if (ct) ct.value = ''
+  const ch = document.getElementById('mu-compose-chars')
+  if (ch) { ch.textContent = '280'; ch.className = '' }
+}
+
+async function muSubmitCompose() {
+  if (!_authUser || !MY_SEAT) return
+  const ct  = document.getElementById('mu-compose-text')
+  const txt = ct ? ct.value.trim() : ''
+  if (!txt || txt.length > 280) return
+
+  const sendBtn = document.getElementById('mu-compose-send')
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Publicando…' }
+
+  const alias     = _authProfile?.alias || `Butaca #${MY_SEAT}`
+  const cardColor = _authProfile?.card_color || _profilesCache?.[MY_SEAT]?.cardColor || 'orange'
+  const dayKey    = muGetDayKey()
+
+  try {
+    const { data, error } = await sb
+      .from('muro_posts')
+      .insert({ user_id: _authUser.id, seat_number: MY_SEAT, alias, card_color: cardColor, body: txt, day_key: dayKey })
+      .select()
+      .single()
+    if (error) throw error
+
+    const color = muColorHex(cardColor)
+    MU_POSTS.unshift({ id: data.id, user_id: _authUser.id, alias, seat: MY_SEAT, color, text: txt, time: 'ahora', likes: 0, liked: false, replies: [] })
+    _muHasPostedToday = true
+    muCloseCompose()
+    muRenderFeed()
+    const feed = document.getElementById('mu-feed')
+    if (feed) feed.scrollLeft = 0
+  } catch(err) {
+    console.error('[muro] submit error:', err)
+    if (err?.code === '23505') {
+      showToast('Ya publicaste tu opinión de hoy · Solo se permite una por día')
+      _muHasPostedToday = true; muCloseCompose(); muRenderFeed()
+    } else {
+      showToast('Error al publicar. Intentá de nuevo.')
+    }
+  } finally {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Publicar' }
+  }
+}
+
+/* ── Modal ── */
+function muOpenModal(id) {
+  _muOpenId = id
+  const p = MU_POSTS.find(x => x.id === id)
+  if (!p) return
+  document.getElementById('mu-modal-av').style.background = p.color
+  document.getElementById('mu-modal-av').textContent = muInitials(p.alias)
+  document.getElementById('mu-modal-alias').textContent = p.alias
+  document.getElementById('mu-modal-seat-lbl').textContent = 'Butaca #' + p.seat
+  document.getElementById('mu-modal-text').textContent = p.text
+  document.getElementById('mu-modal-time').textContent = p.time
+  document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+  document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+  document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+  // Show delete button only for the author
+  const delBtn = document.getElementById('mu-modal-delete-btn')
+  if (delBtn) {
+    delBtn.hidden = (p.user_id !== _authUser?.id)
+    delBtn.textContent = '🗑 Eliminar'
+    delBtn.dataset.confirmed = ''
+    clearTimeout(delBtn._confirmTimer)
+  }
+  muRenderThread(p)
+  document.getElementById('mu-modal-overlay').classList.add('open')
+  setTimeout(() => { const ri = document.getElementById('mu-reply-input'); if (ri) ri.focus() }, 350)
+}
+
+let _muDeleteTimer = null
+async function muDeletePost() {
+  if (!_authUser || !_muOpenId) return
+  const p = MU_POSTS.find(x => x.id === _muOpenId)
+  if (!p || p.user_id !== _authUser.id) return
+  const btn = document.getElementById('mu-modal-delete-btn')
+  if (!btn) return
+
+  // Double-tap confirmation
+  if (!btn.dataset.confirmed) {
+    btn.dataset.confirmed = '1'
+    btn.textContent = '¿Seguro? Toca de nuevo'
+    btn.style.color = '#ef4444'
+    clearTimeout(_muDeleteTimer)
+    _muDeleteTimer = setTimeout(() => {
+      btn.dataset.confirmed = ''
+      btn.textContent = '🗑 Eliminar'
+      btn.style.color = ''
+    }, 3000)
+    return
+  }
+
+  // Confirmed — delete
+  clearTimeout(_muDeleteTimer)
+  btn.disabled = true; btn.textContent = 'Eliminando…'
+  try {
+    const { error } = await sb.from('muro_posts').delete().eq('id', _muOpenId).eq('user_id', _authUser.id)
+    if (error) throw error
+    MU_POSTS = MU_POSTS.filter(x => x.id !== _muOpenId)
+    _muHasPostedToday = false
+    muCloseModal()
+    muRenderFeed()
+    showToast('Opinión eliminada · Ya podés publicar una nueva')
+  } catch(err) {
+    console.error('[muro] delete error:', err)
+    showToast('Error al eliminar. Intentá de nuevo.')
+    btn.disabled = false; btn.textContent = '🗑 Eliminar'; btn.dataset.confirmed = ''; btn.style.color = ''
+  }
+}
+
+function muCloseModal(e) {
+  if (e && e.target !== document.getElementById('mu-modal-overlay')) return
+  document.getElementById('mu-modal-overlay').classList.remove('open')
+  _muOpenId = null
+}
+
+async function muModalLike() {
+  if (!_authUser || !MY_SEAT) { showToast('Verificá tu identidad para dar me gusta'); return }
+  const p = MU_POSTS.find(x => x.id === _muOpenId)
+  if (!p) return
+  // Optimistic update
+  p.liked = !p.liked; p.likes += p.liked ? 1 : -1
+  document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+  document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+  document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+  muRenderFeed()
+  try {
+    const { data, error } = await sb.rpc('muro_toggle_like', { p_post_id: p.id })
+    if (error) throw error
+    p.liked = data.liked; p.likes = data.likes_count
+    document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+    document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+    document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+    muRenderFeed()
+  } catch(err) {
+    console.error('[muro] modal like error:', err)
+    p.liked = !p.liked; p.likes += p.liked ? 1 : -1
+    document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+    document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+    document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+  }
+}
+
+function muRenderThread(p) {
+  const thread = document.getElementById('mu-modal-thread')
+  if (!thread) return
+  if (!p.replies || p.replies.length === 0) {
+    thread.innerHTML = '<p class="mu-thread-empty">Sé el primero en responder 👇</p>'
+    return
+  }
+  thread.innerHTML = p.replies.map((r, i) => `
+    <div class="mu-reply">
+      <div class="mu-reply-line-wrap">
+        <div class="mu-reply-av" style="background:${r.color}">${muInitials(r.alias)}</div>
+        ${i < p.replies.length - 1 ? '<div class="mu-reply-line"></div>' : ''}
+      </div>
+      <div class="mu-reply-body">
+        <div class="mu-reply-top">
+          <span class="mu-reply-alias">${escapeHtml(r.alias)}</span>
+          <span class="mu-reply-seat">· #${r.seat}</span>
+          <span class="mu-reply-time">${r.time}</span>
+        </div>
+        <p class="mu-reply-text">${escapeHtml(r.text)}</p>
+      </div>
+    </div>`).join('')
+  thread.scrollTop = thread.scrollHeight
+}
+
+async function muSendReply() {
+  if (!_authUser || !MY_SEAT) { showToast('Verificá tu identidad para responder'); return }
+  const inp = document.getElementById('mu-reply-input')
+  const txt = inp ? inp.value.trim() : ''
+  if (!txt || _muOpenId === null) return
+  const p = MU_POSTS.find(x => x.id === _muOpenId)
+  if (!p) return
+
+  const alias     = _authProfile?.alias || `Butaca #${MY_SEAT}`
+  const cardColor = _authProfile?.card_color || _profilesCache?.[MY_SEAT]?.cardColor || 'orange'
+
+  // Optimistic
+  if (!p.replies) p.replies = []
+  const optimistic = { alias, seat: MY_SEAT, color: muColorHex(cardColor), text: txt, time: 'ahora' }
+  p.replies.push(optimistic)
+  if (inp) inp.value = ''
+  muRenderThread(p)
+  muRenderFeed()
+  setTimeout(() => { const t = document.getElementById('mu-modal-thread'); if (t) t.scrollTop = t.scrollHeight }, 50)
+
+  try {
+    const { data, error } = await sb
+      .from('muro_replies')
+      .insert({ post_id: _muOpenId, user_id: _authUser.id, seat_number: MY_SEAT, alias, card_color: cardColor, body: txt })
+      .select()
+      .single()
+    if (error) throw error
+    const idx = p.replies.indexOf(optimistic)
+    if (idx !== -1) p.replies[idx] = { id: data.id, alias: data.alias, seat: data.seat_number, color: muColorHex(data.card_color), text: data.body, time: 'ahora' }
+    muRenderFeed()
+  } catch(err) {
+    console.error('[muro] reply error:', err)
+    showToast('Error al enviar respuesta. Intentá de nuevo.')
+    p.replies.splice(p.replies.indexOf(optimistic), 1)
+    muRenderThread(p); muRenderFeed()
+  }
 }
 
 function abrirVotoForQ(i) {
