@@ -7257,6 +7257,13 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 #mu-feed .mu-compose-card:hover  { background: #2528AA !important; box-shadow: 0 4px 18px rgba(29,31,140,.45); }
 #mu-feed .mu-compose-card:active { transform: scale(.96); }
+/* Already-posted state */
+#mu-feed .mu-compose-card.mu-compose-done {
+  background: #6b7280 !important;
+  box-shadow: 0 2px 10px rgba(107,114,128,.2);
+  cursor: default;
+}
+#mu-feed .mu-compose-card.mu-compose-done:hover { background: #4b5563 !important; box-shadow: 0 2px 10px rgba(107,114,128,.25); }
 .mu-compose-card-plus {
   width: 48px; height: 48px; border-radius: 50%;
   background: rgba(255,255,255,.22);

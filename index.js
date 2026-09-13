@@ -7455,37 +7455,86 @@ function muGetMyColor() {
   const named = _authProfile?.card_color || _profilesCache?.[MY_SEAT]?.cardColor || 'orange'
   return MU_CARD_ACCENT[named] ?? MU_CARD_ACCENT.orange
 }
-let MU_POSTS = [
-  { id: 1, alias: 'Simón C.', seat: 47, color: '#1D1F8C',
-    text: 'Venezuela necesita instituciones fuertes antes que elecciones. Sin reglas claras, cualquier resultado puede ser desconocido.',
-    time: 'hace 2 min', likes: 14, liked: false,
-    replies: [
-      { alias: 'Carla M.', seat: 88, color: '#7C3AED', text: 'Totalmente de acuerdo. La institucionalidad es el cimiento. Sin eso, cualquier gobierno es frágil.', time: 'hace 1 min', likes: 5, liked: false },
-      { alias: 'Jorge P.', seat: 201, color: '#059669', text: '¿Y cómo proponés construir esas instituciones si los que están en el poder las destruyen activamente?', time: 'hace 30 s', likes: 2, liked: false },
-    ]
-  },
-  { id: 2, alias: 'Valentina R.', seat: 112, color: '#7C3AED',
-    text: 'La diáspora somos parte del Cabildo también. Votamos, opinamos y seguimos soñando con volver a nuestro país.',
-    time: 'hace 8 min', likes: 31, liked: false,
-    replies: [
-      { alias: 'Butaca #2', seat: 2, color: '#FF6B35', text: '💯 La diáspora es la Venezuela que el régimen expulsó. Su voz importa tanto como la del que se quedó.', time: 'hace 6 min', likes: 18, liked: true },
-    ]
-  },
-  { id: 3, alias: 'Pedro A.', seat: 8, color: '#059669',
-    text: 'El precio de la gasolina sigue siendo un tema pendiente. Subsidio mal distribuido = distorsión total de la economía.',
-    time: 'hace 15 min', likes: 7, liked: false, replies: []
-  },
-  { id: 4, alias: 'María L.', seat: 299, color: '#B45309',
-    text: 'Propongo que el Cabildo adopte votaciones temáticas semanales. Una por educación, una por salud, una por economía.',
-    time: 'hace 23 min', likes: 22, liked: false,
-    replies: [
-      { alias: 'Tomás V.', seat: 55, color: '#0891B2', text: 'Excelente idea. También se podría rotar entre regiones para representación temática.', time: 'hace 20 min', likes: 9, liked: false },
-      { alias: 'Laura G.', seat: 178, color: '#DB2777', text: '¿Y quién define los temas de la semana? Eso debería ser transparente y abierto a propuestas.', time: 'hace 18 min', likes: 4, liked: false },
-    ]
-  },
-]
+let MU_POSTS = []
+let _muHasPostedToday = false
 let _muOpenId  = null
 let _muInited  = false
+let _muLoading = false
+
+// Venezuelan day key: day resets at 3am VET (UTC-4) = 7am UTC
+function muGetDayKey() {
+  const shifted = new Date(Date.now() - 7 * 60 * 60 * 1000)
+  return shifted.toISOString().slice(0, 10)
+}
+
+// Relative time from ISO timestamp
+function muTimeAgo(ts) {
+  const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
+  if (diff < 60)    return 'ahora'
+  if (diff < 3600)  return `hace ${Math.floor(diff / 60)} min`
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`
+  return `hace ${Math.floor(diff / 86400)} d`
+}
+
+// Resolve named color to hex accent
+function muColorHex(namedColor) {
+  return MU_CARD_ACCENT[namedColor] ?? MU_CARD_ACCENT.orange
+}
+
+// Load today's feed from Supabase
+async function muLoadFeed() {
+  if (_muLoading) return
+  _muLoading = true
+  const dayKey = muGetDayKey()
+  try {
+    const { data: posts, error } = await sb
+      .from('muro_posts')
+      .select(`id, user_id, seat_number, alias, card_color, body, created_at, likes_count,
+               muro_replies (id, user_id, seat_number, alias, card_color, body, created_at)`)
+      .eq('day_key', dayKey)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+
+    // Which posts did I like?
+    let myLikes = new Set()
+    if (_authUser && posts && posts.length) {
+      const { data: likes } = await sb
+        .from('muro_likes')
+        .select('post_id')
+        .in('post_id', posts.map(p => p.id))
+      ;(likes || []).forEach(l => myLikes.add(l.post_id))
+    }
+
+    _muHasPostedToday = !!(posts || []).find(p => p.user_id === _authUser?.id)
+
+    MU_POSTS = (posts || []).map(p => ({
+      id:      p.id,
+      user_id: p.user_id,
+      alias:   p.alias,
+      seat:    p.seat_number,
+      color:   muColorHex(p.card_color),
+      text:    p.body,
+      time:    muTimeAgo(p.created_at),
+      likes:   p.likes_count,
+      liked:   myLikes.has(p.id),
+      replies: (p.muro_replies || [])
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        .map(r => ({
+          id:    r.id,
+          alias: r.alias,
+          seat:  r.seat_number,
+          color: muColorHex(r.card_color),
+          text:  r.body,
+          time:  muTimeAgo(r.created_at),
+        }))
+    }))
+    muRenderFeed()
+  } catch(err) {
+    console.error('[muro] loadFeed error:', err)
+  } finally {
+    _muLoading = false
+  }
+}
 
 function muInitMuro() {
   if (_muInited) return
@@ -7520,7 +7569,7 @@ function muInitMuro() {
   const ri = document.getElementById('mu-reply-input')
   if (ri) ri.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); muSendReply() } })
 
-  muRenderFeed()
+  muLoadFeed()
 }
 
 function muUpdateMyAvatar() {
@@ -7543,23 +7592,24 @@ function muRenderFeed() {
   feed.innerHTML = ''
   const countEl = document.getElementById('mu-count')
   if (countEl) countEl.textContent = MU_POSTS.length + (MU_POSTS.length === 1 ? ' voz' : ' voces')
-  // Compose card — always the leftmost card (prepended after posts are added)
+
+  // Compose card — blue if not posted yet, grey if already posted today
   const composeCard = document.createElement('div')
-  composeCard.className = 'mu-post mu-compose-card'
+  composeCard.className = 'mu-post mu-compose-card' + (_muHasPostedToday ? ' mu-compose-done' : '')
   composeCard.onclick = muOpenCompose
-  composeCard.innerHTML = `
-    <div class="mu-compose-card-plus">+</div>
-    <div class="mu-compose-card-label">Publicar<br>opinión</div>`
+  composeCard.innerHTML = _muHasPostedToday
+    ? `<div class="mu-compose-card-plus">✓</div>
+       <div class="mu-compose-card-label">Ya<br>publicaste</div>`
+    : `<div class="mu-compose-card-plus">+</div>
+       <div class="mu-compose-card-label">Publicar<br>opinión</div>`
   feed.appendChild(composeCard)
 
-  // MU_POSTS[0] = newest. We want: [compose][newest][2nd newest]...[oldest]
-  // So iterate 0→N and appendChild keeps that order, then we move compose to front.
+  // MU_POSTS[0] = newest → append in order, then move compose to front
   MU_POSTS.forEach((p, i) => {
     const el = document.createElement('div')
     el.className = 'mu-post'
     el.style.animationDelay = (i * 50) + 'ms'
     el.onclick = () => muOpenModal(p.id)
-    // Pastel tint algorithmically derived from avatar color
     el.style.background = muColorToPastel(p.color)
     el.style.borderColor = p.color + '28'
     const rCount = p.replies?.length || 0
@@ -7576,28 +7626,52 @@ function muRenderFeed() {
         <span class="mu-post-time">${p.time}</span>
         <div style="flex:1"></div>
         ${rCount > 0 ? `<span class="mu-post-badge" style="color:${p.color}">💬 ${rCount}</span>` : ''}
-        <button class="mu-post-like${p.liked ? ' liked' : ''}" onclick="event.stopPropagation();muToggleLike(${p.id},this)">
+        <button class="mu-post-like${p.liked ? ' liked' : ''}" onclick="event.stopPropagation();muToggleLike('${p.id}',this)">
           <span>${p.liked ? '❤️' : '🤍'}</span><span>${p.likes}</span>
         </button>
       </div>`
     feed.appendChild(el)
   })
-  // Move compose card to position 0 (leftmost)
   feed.insertBefore(composeCard, feed.firstChild)
 }
 
-function muToggleLike(id, btn) {
+async function muToggleLike(id, btn) {
+  if (!_authUser || !MY_SEAT) { showToast('Verificá tu identidad para dar me gusta'); return }
   const p = MU_POSTS.find(x => x.id === id)
   if (!p) return
+  // Optimistic update
   p.liked = !p.liked
   p.likes += p.liked ? 1 : -1
   btn.classList.toggle('liked', p.liked)
   const spans = btn.querySelectorAll('span')
   spans[0].textContent = p.liked ? '❤️' : '🤍'
   spans[1].textContent = p.likes
+  try {
+    const { data, error } = await sb.rpc('muro_toggle_like', { p_post_id: id })
+    if (error) throw error
+    p.liked = data.liked; p.likes = data.likes_count
+    btn.classList.toggle('liked', p.liked)
+    spans[0].textContent = p.liked ? '❤️' : '🤍'
+    spans[1].textContent = p.likes
+  } catch(err) {
+    // Revert on error
+    p.liked = !p.liked; p.likes += p.liked ? 1 : -1
+    btn.classList.toggle('liked', p.liked)
+    spans[0].textContent = p.liked ? '❤️' : '🤍'
+    spans[1].textContent = p.likes
+    console.error('[muro] like error:', err)
+  }
 }
 
 function muOpenCompose() {
+  if (!_authUser || !MY_SEAT) {
+    showToast('Verificá tu identidad para publicar en el Muro del Día')
+    return
+  }
+  if (_muHasPostedToday) {
+    showToast('Ya publicaste tu opinión de hoy · Volvé mañana ✓')
+    return
+  }
   document.getElementById('mu-compose-overlay').classList.add('open')
   setTimeout(() => {
     const ct = document.getElementById('mu-compose-text')
@@ -7614,21 +7688,45 @@ function muCloseCompose(e) {
   if (ch) { ch.textContent = '280'; ch.className = '' }
 }
 
-function muSubmitCompose() {
+async function muSubmitCompose() {
+  if (!_authUser || !MY_SEAT) return
   const ct  = document.getElementById('mu-compose-text')
   const txt = ct ? ct.value.trim() : ''
-  if (!txt) return
-  const alias = _authProfile?.alias || (MY_SEAT ? `Butaca #${MY_SEAT}` : 'Ciudadano')
-  const color = muGetMyColor()   // deterministic: same color every time for this user
-  MU_POSTS.unshift({
-    id: Date.now(), alias, seat: MY_SEAT || 0, color,
-    text: txt, time: 'ahora', likes: 0, liked: false, replies: []
-  })
-  muCloseCompose()
-  muRenderFeed()
-  // Scroll to show new post (2nd card, right after compose card)
-  const feed = document.getElementById('mu-feed')
-  if (feed) feed.scrollLeft = 0
+  if (!txt || txt.length > 280) return
+
+  const sendBtn = document.getElementById('mu-compose-send')
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Publicando…' }
+
+  const alias     = _authProfile?.alias || `Butaca #${MY_SEAT}`
+  const cardColor = _authProfile?.card_color || _profilesCache?.[MY_SEAT]?.cardColor || 'orange'
+  const dayKey    = muGetDayKey()
+
+  try {
+    const { data, error } = await sb
+      .from('muro_posts')
+      .insert({ user_id: _authUser.id, seat_number: MY_SEAT, alias, card_color: cardColor, body: txt, day_key: dayKey })
+      .select()
+      .single()
+    if (error) throw error
+
+    const color = muColorHex(cardColor)
+    MU_POSTS.unshift({ id: data.id, user_id: _authUser.id, alias, seat: MY_SEAT, color, text: txt, time: 'ahora', likes: 0, liked: false, replies: [] })
+    _muHasPostedToday = true
+    muCloseCompose()
+    muRenderFeed()
+    const feed = document.getElementById('mu-feed')
+    if (feed) feed.scrollLeft = 0
+  } catch(err) {
+    console.error('[muro] submit error:', err)
+    if (err?.code === '23505') {
+      showToast('Ya publicaste tu opinión de hoy · Solo se permite una por día')
+      _muHasPostedToday = true; muCloseCompose(); muRenderFeed()
+    } else {
+      showToast('Error al publicar. Intentá de nuevo.')
+    }
+  } finally {
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Publicar' }
+  }
 }
 
 /* ── Modal ── */
@@ -7656,15 +7754,31 @@ function muCloseModal(e) {
   _muOpenId = null
 }
 
-function muModalLike() {
+async function muModalLike() {
+  if (!_authUser || !MY_SEAT) { showToast('Verificá tu identidad para dar me gusta'); return }
   const p = MU_POSTS.find(x => x.id === _muOpenId)
   if (!p) return
-  p.liked = !p.liked
-  p.likes += p.liked ? 1 : -1
+  // Optimistic update
+  p.liked = !p.liked; p.likes += p.liked ? 1 : -1
   document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
   document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
   document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
   muRenderFeed()
+  try {
+    const { data, error } = await sb.rpc('muro_toggle_like', { p_post_id: p.id })
+    if (error) throw error
+    p.liked = data.liked; p.likes = data.likes_count
+    document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+    document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+    document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+    muRenderFeed()
+  } catch(err) {
+    console.error('[muro] modal like error:', err)
+    p.liked = !p.liked; p.likes += p.liked ? 1 : -1
+    document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
+    document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
+    document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+  }
 }
 
 function muRenderThread(p) {
@@ -7687,41 +7801,47 @@ function muRenderThread(p) {
           <span class="mu-reply-time">${r.time}</span>
         </div>
         <p class="mu-reply-text">${escapeHtml(r.text)}</p>
-        <div class="mu-reply-actions">
-          <button class="mu-reply-like${r.liked ? ' liked' : ''}" onclick="muReplyLike(${i},this)">
-            ${r.liked ? '❤️' : '🤍'} ${r.likes}
-          </button>
-        </div>
       </div>
     </div>`).join('')
   thread.scrollTop = thread.scrollHeight
 }
 
-function muReplyLike(idx, btn) {
-  const p = MU_POSTS.find(x => x.id === _muOpenId)
-  if (!p || !p.replies[idx]) return
-  p.replies[idx].liked = !p.replies[idx].liked
-  p.replies[idx].likes += p.replies[idx].liked ? 1 : -1
-  btn.classList.toggle('liked', p.replies[idx].liked)
-  btn.innerHTML = (p.replies[idx].liked ? '❤️' : '🤍') + ' ' + p.replies[idx].likes
-}
-
-function muSendReply() {
+async function muSendReply() {
+  if (!_authUser || !MY_SEAT) { showToast('Verificá tu identidad para responder'); return }
   const inp = document.getElementById('mu-reply-input')
   const txt = inp ? inp.value.trim() : ''
   if (!txt || _muOpenId === null) return
   const p = MU_POSTS.find(x => x.id === _muOpenId)
   if (!p) return
+
+  const alias     = _authProfile?.alias || `Butaca #${MY_SEAT}`
+  const cardColor = _authProfile?.card_color || _profilesCache?.[MY_SEAT]?.cardColor || 'orange'
+
+  // Optimistic
   if (!p.replies) p.replies = []
-  const alias = _authProfile?.alias || (MY_SEAT ? `Butaca #${MY_SEAT}` : 'Ciudadano')
-  p.replies.push({ alias, seat: MY_SEAT || 0, color: '#FF6B35', text: txt, time: 'ahora', likes: 0, liked: false })
+  const optimistic = { alias, seat: MY_SEAT, color: muColorHex(cardColor), text: txt, time: 'ahora' }
+  p.replies.push(optimistic)
   if (inp) inp.value = ''
   muRenderThread(p)
   muRenderFeed()
-  setTimeout(() => {
-    const thread = document.getElementById('mu-modal-thread')
-    if (thread) thread.scrollTop = thread.scrollHeight
-  }, 50)
+  setTimeout(() => { const t = document.getElementById('mu-modal-thread'); if (t) t.scrollTop = t.scrollHeight }, 50)
+
+  try {
+    const { data, error } = await sb
+      .from('muro_replies')
+      .insert({ post_id: _muOpenId, user_id: _authUser.id, seat_number: MY_SEAT, alias, card_color: cardColor, body: txt })
+      .select()
+      .single()
+    if (error) throw error
+    const idx = p.replies.indexOf(optimistic)
+    if (idx !== -1) p.replies[idx] = { id: data.id, alias: data.alias, seat: data.seat_number, color: muColorHex(data.card_color), text: data.body, time: 'ahora' }
+    muRenderFeed()
+  } catch(err) {
+    console.error('[muro] reply error:', err)
+    showToast('Error al enviar respuesta. Intentá de nuevo.')
+    p.replies.splice(p.replies.indexOf(optimistic), 1)
+    muRenderThread(p); muRenderFeed()
+  }
 }
 
 function abrirVotoForQ(i) {
