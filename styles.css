@@ -6520,7 +6520,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Cover image */
 #pr-cover {
-  flex-shrink: 0; width: 160px;
+  flex-shrink: 0; width: 210px;
   position: relative; border-radius: 10px; overflow: hidden;
 }
 #pr-cover-img {
@@ -6615,7 +6615,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 /* Mobile */
 @media (max-width: 540px) {
   #pr-game-card { flex-direction: column; align-items: center; }
-  #pr-cover { width: 120px; }
+  #pr-cover { width: 165px; }
   #pr-play-btn { align-self: center; }
 }
 
@@ -6625,6 +6625,8 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   display: flex; flex-direction: column; align-items: center;
   justify-content: center;
   animation: nd-monitor-in .35s cubic-bezier(.22,.8,.4,1) both;
+  /* Transparent background area must not block clicks to #pr-close behind it */
+  pointer-events: none;
 }
 @keyframes nd-monitor-in {
   from { opacity:0; transform: scale(.96) translateY(16px); }
@@ -6633,6 +6635,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Game panel — sleek dark glass (always dark regardless of app theme) */
 #nd-panel {
+  pointer-events: auto; /* restore interactivity for the panel */
   background: linear-gradient(155deg, #0f0f1e 0%, #080810 100%);
   border: 1px solid rgba(99,102,241,.22);
   border-radius: 22px;
@@ -6667,6 +6670,32 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 .nd-close {
   margin-left: auto;
+}
+
+/* Close button — used in all game states */
+.game-close-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  color: rgba(255,255,255,.45);
+  font-size: 15px; line-height: 1;
+  cursor: pointer; flex-shrink: 0;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.game-close-btn:hover {
+  background: rgba(255,80,80,.15);
+  border-color: rgba(255,120,120,.28);
+  color: rgba(255,200,200,.9);
+}
+
+/* Spinner base — used with .nd-spinner which adds the colors */
+.game-spinner-ring {
+  width: 44px; height: 44px;
+  border: 4px solid rgba(255,255,255,.08);
+  border-radius: 50%;
+  animation: spin .85s linear infinite;
 }
 
 /* ── HOME ── */

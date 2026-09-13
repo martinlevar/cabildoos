@@ -2632,6 +2632,9 @@ async function _onLogin(user) {
   }
 
   _authProfile = profile
+  // Preload nerd profile so dot hover shows best level without needing to open playroom
+  _ndLoadProfile().catch(() => {})
+
   _visibilidad.alias  = !!profile?.show_alias
   _visibilidad.phrase = !!profile?.show_phrase
   perfilPublico = _visibilidad.alias || _visibilidad.phrase
@@ -11902,6 +11905,13 @@ async function ndJugar() {
       return
     }
 
+    // Guard: if player exited while RPC was in-flight, abandon this attempt silently
+    const _ndOverlay = document.getElementById('playroom-overlay')
+    if (!_ndOverlay?.classList.contains('open')) {
+      sb.rpc('nerdocrasy_abandon', { p_attempt_id: data.attempt_id }).catch(() => {})
+      return
+    }
+
     _nd.attemptId    = data.attempt_id
     _nd.currentLevel = data.question.level
     _nd.stage        = data.question.stage
@@ -12099,6 +12109,8 @@ async function ndAnswer(selected) {
       if (data.stage_transition) {
         _ndShowStageTransition(_nd.currentLevel, data.stage)
         setTimeout(async () => {
+          const _ov1 = document.getElementById('playroom-overlay')
+          if (!_ov1?.classList.contains('open')) return
           _nd.currentLevel = data.reached_level
           _nd.stage        = data.stage
           _nd.answering    = false
@@ -12108,6 +12120,8 @@ async function ndAnswer(selected) {
         }, 2500)
       } else {
         await _ndFlashCorrect()
+        const _ov2 = document.getElementById('playroom-overlay')
+        if (!_ov2?.classList.contains('open')) return
         _nd.currentLevel = data.reached_level
         _nd.stage        = data.stage
         _nd.answering    = false
