@@ -7413,7 +7413,13 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.6; margin-bottom: 12px;
 }
 #mu-modal-meta { display: flex; align-items: center; gap: 12px; }
-#mu-modal-time { font-size: 10px; color: var(--mid); }
+#mu-modal-time { font-size: 10px; color: var(--mid); flex: 1; }
+#mu-modal-delete-btn {
+  background: none; border: none; cursor: pointer; padding: 4px 8px;
+  font-size: 11px; color: var(--mid); border-radius: 8px;
+  font-family: inherit; transition: color .15s, background .15s;
+}
+#mu-modal-delete-btn:hover { color: #ef4444; background: rgba(239,68,68,.08); }
 #mu-modal-like-btn {
   display: flex; align-items: center; gap: 5px;
   background: none; border: none; cursor: pointer; font-family: inherit;

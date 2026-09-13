@@ -7743,9 +7743,57 @@ function muOpenModal(id) {
   document.getElementById('mu-modal-like-icon').textContent = p.liked ? '❤️' : '🤍'
   document.getElementById('mu-modal-like-count').textContent = p.likes + ' me gusta'
   document.getElementById('mu-modal-like-btn').classList.toggle('liked', p.liked)
+  // Show delete button only for the author
+  const delBtn = document.getElementById('mu-modal-delete-btn')
+  if (delBtn) {
+    delBtn.hidden = (p.user_id !== _authUser?.id)
+    delBtn.textContent = '🗑 Eliminar'
+    delBtn.dataset.confirmed = ''
+    clearTimeout(delBtn._confirmTimer)
+  }
   muRenderThread(p)
   document.getElementById('mu-modal-overlay').classList.add('open')
   setTimeout(() => { const ri = document.getElementById('mu-reply-input'); if (ri) ri.focus() }, 350)
+}
+
+let _muDeleteTimer = null
+async function muDeletePost() {
+  if (!_authUser || !_muOpenId) return
+  const p = MU_POSTS.find(x => x.id === _muOpenId)
+  if (!p || p.user_id !== _authUser.id) return
+  const btn = document.getElementById('mu-modal-delete-btn')
+  if (!btn) return
+
+  // Double-tap confirmation
+  if (!btn.dataset.confirmed) {
+    btn.dataset.confirmed = '1'
+    btn.textContent = '¿Seguro? Toca de nuevo'
+    btn.style.color = '#ef4444'
+    clearTimeout(_muDeleteTimer)
+    _muDeleteTimer = setTimeout(() => {
+      btn.dataset.confirmed = ''
+      btn.textContent = '🗑 Eliminar'
+      btn.style.color = ''
+    }, 3000)
+    return
+  }
+
+  // Confirmed — delete
+  clearTimeout(_muDeleteTimer)
+  btn.disabled = true; btn.textContent = 'Eliminando…'
+  try {
+    const { error } = await sb.from('muro_posts').delete().eq('id', _muOpenId).eq('user_id', _authUser.id)
+    if (error) throw error
+    MU_POSTS = MU_POSTS.filter(x => x.id !== _muOpenId)
+    _muHasPostedToday = false
+    muCloseModal()
+    muRenderFeed()
+    showToast('Opinión eliminada · Ya podés publicar una nueva')
+  } catch(err) {
+    console.error('[muro] delete error:', err)
+    showToast('Error al eliminar. Intentá de nuevo.')
+    btn.disabled = false; btn.textContent = '🗑 Eliminar'; btn.dataset.confirmed = ''; btn.style.color = ''
+  }
 }
 
 function muCloseModal(e) {
