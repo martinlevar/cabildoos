@@ -11743,23 +11743,33 @@ function ndEnterGame() {
 }
 
 function cerrarPlayroom() {
-  // Cancel any pending enter-game transition
+  // ── STEP 1: Invalidate attempt immediately (anti-cheat) ──────────────────
+  // Null these BEFORE anything else so any in-flight ndAnswer() or ndJugar()
+  // call that returns while we're closing will find no active attempt.
+  const abandonId   = _nd.attemptId
+  _nd.attemptId     = null
+  _nd.questionId    = null
+  _nd.answering     = true   // disables answer buttons immediately
+
+  // ── STEP 2: Cancel pending enter-game timeout ─────────────────────────────
   if (_ndEnterTimeout) { clearTimeout(_ndEnterTimeout); _ndEnterTimeout = null }
 
-  _ndCancelTimer()
-  if (_nd.attemptId) {
-    sb.rpc('nerdocrasy_abandon', { p_attempt_id: _nd.attemptId }).catch(() => {})
-    _nd.attemptId = null
-  }
-
+  // ── STEP 3: Close the UI ──────────────────────────────────────────────────
   const overlay = document.getElementById('playroom-overlay')
   if (overlay) overlay.classList.remove('open')
-
-  // Hide both — lobby will re-animate on next open
-  const lobby = document.getElementById('pr-lobby')
+  const lobby   = document.getElementById('pr-lobby')
   const monitor = document.getElementById('nd-monitor')
-  if (lobby) { lobby.hidden = true; lobby.style.opacity = ''; lobby.style.transition = ''; }
+  if (lobby)   { lobby.hidden = true; lobby.style.opacity = ''; lobby.style.transition = ''; }
   if (monitor) monitor.hidden = true
+
+  // ── STEP 4: Cancel timer AFTER UI is already hidden ───────────────────────
+  // (eliminates the window where the timer is frozen but the game is still visible)
+  _ndCancelTimer()
+
+  // ── STEP 5: Abandon attempt on server (fire-and-forget) ───────────────────
+  if (abandonId) {
+    sb.rpc('nerdocrasy_abandon', { p_attempt_id: abandonId }).catch(() => {})
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -12004,6 +12014,8 @@ function _ndStartTimer(remainingMs) {
   let remaining = total
 
   function tick() {
+    // Self-stop if attempt was cleared (e.g. cerrarPlayroom called from console)
+    if (!_nd.attemptId) { _ndCancelTimer(); return }
     remaining -= 0.1
     _ndUpdateTimerUI(remaining, total)
     if (remaining <= 0) {
@@ -12041,6 +12053,8 @@ function _ndUpdateTimerUI(remaining, total) {
 async function ndAnswer(selected) {
   if (_nd.answering) return
   if (!_nd.attemptId || !_nd.questionId) return
+  // Guard: reject if overlay was closed (e.g. console injection while game was open)
+  if (!document.getElementById('playroom-overlay')?.classList.contains('open')) return
 
   _nd.answering = true
   _ndCancelTimer()
