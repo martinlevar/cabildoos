@@ -1293,6 +1293,19 @@ function showCard(seat, cx, cy) {
 
   const fbtn = document.getElementById('pc-follow-btn')
 
+  // Nerdocracy row — only for own seat when we have data
+  const nerdRow = document.getElementById('pc-nerd-row')
+  if (nerdRow) {
+    if (p.isMe && _nd.profile.bestLevel > 0) {
+      const stageMap = { KNOW: 'Know', THINK: 'Think', TRAP: 'Trap' }
+      document.getElementById('pc-nerd-level').textContent = _nd.profile.bestLevel
+      document.getElementById('pc-nerd-stage').textContent = stageMap[_nd.profile.bestStage] || ''
+      nerdRow.hidden = false
+    } else {
+      nerdRow.hidden = true
+    }
+  }
+
   if (p.isMe) {
     // Propio dot: sin botones de acción
     fbtn.style.display = 'none'
@@ -6783,6 +6796,38 @@ async function abrirMiPerfil() {
   if (elNo)  elNo.textContent  = cntNo
   if (elAbs) elAbs.textContent = cntAbs
   document.getElementById('mi-perfil-overlay').classList.add('open')
+
+  // Nerdocracy: mostrar nivel y etapa si hay datos
+  const nerdSection = document.getElementById('mp-nerd-section')
+  const nerdLvlEl   = document.getElementById('mp-nerd-level')
+  const nerdStgEl   = document.getElementById('mp-nerd-stage')
+  if (nerdSection && _authUser) {
+    // Use cached profile first; load fresh in background
+    const updateNerdUI = (lvl, stage) => {
+      const stageMap = { KNOW: 'Know', THINK: 'Think', TRAP: 'Trap' }
+      nerdLvlEl.textContent = lvl > 0 ? lvl : '0'
+      nerdStgEl.textContent = stageMap[stage] || '—'
+      nerdSection.hidden = false
+    }
+    if (_nd.profile.bestLevel > 0 || _nd.profile.totalAttempts > 0) {
+      updateNerdUI(_nd.profile.bestLevel, _nd.profile.bestStage)
+    }
+    sb.from('nerdocrasy_profiles')
+      .select('best_level, best_stage, total_attempts')
+      .eq('user_id', _authUser.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          _nd.profile.bestLevel     = data.best_level     || 0
+          _nd.profile.bestStage     = data.best_stage     || null
+          _nd.profile.totalAttempts = data.total_attempts || 0
+          updateNerdUI(_nd.profile.bestLevel, _nd.profile.bestStage)
+        } else {
+          nerdSection.hidden = false
+          nerdLvlEl.textContent = '0'
+          nerdStgEl.textContent = '—'
+        }
+      }).catch(() => {})
+  }
 
   // Ganadoras: directo desde Supabase
   const elGan = document.getElementById('mp-count-ganadora')
