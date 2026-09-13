@@ -575,7 +575,78 @@
   </div>
 
   <div class="body" style="flex:1;min-height:0">
-    <div id="q-cards-strip"></div>
+    <div id="q-strip-wrapper">
+      <div id="q-cards-strip"></div>
+      <button id="q-strip-toggle" onclick="toggleQStrip()">▲ Muro del día</button>
+      <div id="q-strip-mini">
+        <span class="q-mini-dot"></span>
+        <span class="q-mini-label">Abiertas</span>
+        <div id="q-mini-chips"></div>
+        <button id="q-mini-expand" onclick="toggleQStrip()">▼ Ver sesiones</button>
+      </div>
+
+      <!-- ── Muro del Día — visible cuando el strip está colapsado ── -->
+      <div id="mu-muro">
+        <div id="mu-head">
+          <span class="mu-icon">🗣️</span>
+          <span class="mu-title-line">Muro del Día <span id="mu-date-lbl" class="mu-date-inline"></span></span>
+          <div style="flex:1"></div>
+          <span class="mu-count" id="mu-count">0 voces</span>
+        </div>
+        <div id="mu-feed"></div>
+      </div>
+
+      <!-- ── Compose modal ── -->
+      <div id="mu-compose-overlay" onclick="muCloseCompose(event)">
+        <div id="mu-compose">
+          <div class="mu-modal-handle"></div>
+          <div id="mu-compose-body">
+            <div id="mu-compose-av" class="mu-my-av">?</div>
+            <textarea id="mu-compose-text" placeholder="¿Qué pensás hoy?" maxlength="280" rows="4"></textarea>
+          </div>
+          <div id="mu-compose-footer">
+            <span id="mu-compose-chars">280</span>
+            <button id="mu-compose-send" onclick="muSubmitCompose()">Publicar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Muro Modal ── -->
+    <div id="mu-modal-overlay" onclick="muCloseModal(event)">
+      <div id="mu-modal">
+        <div class="mu-modal-handle"></div>
+        <div id="mu-modal-head">
+          <div id="mu-modal-post-top">
+            <div id="mu-modal-av"></div>
+            <div>
+              <div id="mu-modal-alias"></div>
+              <div id="mu-modal-seat-lbl"></div>
+            </div>
+            <button id="mu-modal-close" onclick="muCloseModal()">✕</button>
+          </div>
+          <p id="mu-modal-text"></p>
+          <div id="mu-modal-meta">
+            <span id="mu-modal-time"></span>
+            <button id="mu-modal-delete-btn" onclick="muDeletePost()" hidden>🗑 Eliminar</button>
+            <button id="mu-modal-like-btn" onclick="muModalLike()">
+              <span id="mu-modal-like-icon">🤍</span>
+              <span id="mu-modal-like-count"></span>
+            </button>
+          </div>
+        </div>
+        <div id="mu-modal-thread"></div>
+        <div id="mu-modal-reply-row">
+          <div id="mu-reply-av-me">?</div>
+          <div class="mu-reply-input-wrap">
+            <input id="mu-reply-input" placeholder="Respondé a esta opinión…" maxlength="280">
+            <button class="mu-reply-send" onclick="muSendReply()">
+              <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="canvas-area" id="canvas-area">
       <canvas id="hemiciclo"></canvas>
       <div class="zoom-hint" id="zoom-hint">
