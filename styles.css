@@ -1643,6 +1643,23 @@ html, body {
   display:flex; align-items:center; gap:6px;
 }
 .pc-votes b { color:var(--dark); }
+.pc-nerd-row {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(99,102,241,.08); border-radius: 8px;
+  padding: 5px 10px; margin-bottom: 10px;
+}
+.pc-nerd-label {
+  font-size: 9px; font-weight: 800; letter-spacing: .1em;
+  color: #6366f1; text-transform: uppercase;
+}
+.pc-nerd-level {
+  font-size: 13px; font-weight: 900; color: var(--dark);
+  font-variant-numeric: tabular-nums;
+}
+.pc-nerd-stage {
+  font-size: 9px; font-weight: 700; color: var(--mid);
+  letter-spacing: .06em; text-transform: uppercase;
+}
 .pc-actions { display:flex; gap:8px; }
 .pc-follow {
   flex:1; padding:9px; border-radius:10px;
@@ -6452,9 +6469,9 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 #playroom-overlay.open #pr-ghost-canvas { opacity: 1; }
 
-/* Close button */
+/* Close button — z-index: 10 keeps it above #nd-monitor (z-index:2) so it's always clickable */
 #pr-close {
-  position: absolute; top: 20px; right: 24px;
+  position: absolute; top: 20px; right: 24px; z-index: 10;
   background: none; border: none; cursor: pointer;
   color: rgba(255,255,255,.45); font-size: 20px;
   line-height: 1; padding: 6px;
@@ -6503,7 +6520,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Cover image */
 #pr-cover {
-  flex-shrink: 0; width: 160px;
+  flex-shrink: 0; width: 210px;
   position: relative; border-radius: 10px; overflow: hidden;
 }
 #pr-cover-img {
@@ -6598,120 +6615,87 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 /* Mobile */
 @media (max-width: 540px) {
   #pr-game-card { flex-direction: column; align-items: center; }
-  #pr-cover { width: 120px; }
+  #pr-cover { width: 165px; }
   #pr-play-btn { align-self: center; }
 }
 
-/* ── MONITOR wrapper ── */
+/* ── GAME PANEL wrapper ── */
 #nd-monitor {
-  position: relative; z-index: 2;
+  position: absolute; inset: 0; z-index: 2;
   display: flex; flex-direction: column; align-items: center;
-  animation: nd-monitor-in .4s cubic-bezier(.22,.8,.4,1) both;
+  justify-content: center;
+  animation: nd-monitor-in .35s cubic-bezier(.22,.8,.4,1) both;
+  /* Transparent background area must not block clicks to #pr-close behind it */
+  pointer-events: none;
 }
 @keyframes nd-monitor-in {
-  from { opacity:0; transform:scale(.93) translateY(20px); }
-  to   { opacity:1; transform:scale(1)   translateY(0); }
+  from { opacity:0; transform: scale(.96) translateY(16px); }
+  to   { opacity:1; transform: scale(1)   translateY(0); }
 }
 
-/* CRT plastic casing */
-#nd-monitor-crt {
-  background: linear-gradient(155deg, #ede4d8 0%, #cfc5b4 45%, #bdb3a0 100%);
-  border-radius: 20px 20px 10px 10px;
-  padding: 18px 22px 10px;
-  box-shadow:
-    0 0 0 2px #a89880,
-    5px 7px 0 2px #9c907c,
-    0 24px 70px rgba(0,0,0,.75),
-    inset 0 3px 5px rgba(255,255,255,.55),
-    inset 0 -2px 5px rgba(0,0,0,.18);
-  width: min(460px, 86vw);
-  max-height: 80vh;
-  display: flex; flex-direction: column;
-}
-
-/* CRT screen bezel */
-#nd-screen-bezel {
-  background: #080c0f;
-  border-radius: 10px;
-  padding: 2px;
-  box-shadow:
-    inset 0 3px 10px rgba(0,0,0,.95),
-    inset 0 0 30px rgba(0,0,0,.6),
-    0 0 20px rgba(70,190,130,.07);
-  position: relative;
-  overflow: hidden;
-  flex: 1;
-}
-/* Scanlines */
-#nd-screen-bezel::before {
-  content: '';
-  position: absolute; inset: 0; z-index: 10;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0px, transparent 3px,
-    rgba(0,0,0,.15) 3px, rgba(0,0,0,.15) 4px
-  );
-  pointer-events: none; border-radius: 10px;
-}
-/* Phosphor glow */
-#nd-screen-bezel::after {
-  content: '';
-  position: absolute; inset: 0; z-index: 11;
-  background: radial-gradient(ellipse at 50% 38%, rgba(70,200,140,.06) 0%, transparent 68%);
-  pointer-events: none; border-radius: 10px;
-}
-
-/* Panel — transparent inside the screen */
+/* Game panel — sleek dark glass (always dark regardless of app theme) */
 #nd-panel {
-  background: transparent;
-  border: none; border-radius: 8px;
-  width: 100%;
-  padding: 18px 16px 24px;
-  display: flex; flex-direction: column; gap: 14px;
-  min-height: 280px;
-  position: relative; z-index: 12;
+  pointer-events: auto; /* restore interactivity for the panel */
+  background: linear-gradient(155deg, #0f0f1e 0%, #080810 100%);
+  border: 1px solid rgba(99,102,241,.22);
+  border-radius: 22px;
+  width: min(580px, 94vw);
+  max-height: 88vh;
+  padding: 28px 30px 36px;
+  display: flex; flex-direction: column; gap: 16px;
+  position: relative;
   overflow-y: auto;
+  box-shadow:
+    0 0 0 1px rgba(99,102,241,.08),
+    0 0 80px rgba(99,102,241,.1),
+    0 50px 120px rgba(0,0,0,.85);
+  /* Pin dark-mode variables so text/borders stay legible in any app theme */
+  --nd-text:   #e8e8f0;
+  --nd-muted:  #7070a0;
+  --nd-border: rgba(255,255,255,.08);
+  --nd-track:  rgba(255,255,255,.1);
 }
 
-/* Monitor controls bar */
-#nd-monitor-controls {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 12px 4px;
-}
-.nd-knob {
-  width: 15px; height: 15px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #7a6e60, #3e3630);
-  box-shadow: 0 1px 3px rgba(0,0,0,.55), inset 0 1px 1px rgba(255,255,255,.18);
-}
-#nd-monitor-brand {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 6px; letter-spacing: .09em;
-  color: #8a7e6e;
-  text-shadow: 0 1px 0 rgba(255,255,255,.25);
+/* Loading state body (centered below topbar) */
+.nd-loading-body {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 18px; flex: 1; padding: 36px 0 20px;
 }
 
-/* Monitor stand */
-#nd-monitor-stand { display: flex; flex-direction: column; align-items: center; }
-#nd-monitor-neck {
-  width: 56px; height: 24px;
-  background: linear-gradient(to bottom, #cac1b2, #b8b0a0);
-  clip-path: polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
-}
-#nd-monitor-foot {
-  width: 130px; height: 13px;
-  background: linear-gradient(to bottom, #c2baaa, #aaa090);
-  border-radius: 0 0 10px 10px;
-  box-shadow: 0 4px 14px rgba(0,0,0,.55);
-}
-
-/* Topbar */
+/* Topbar — simple flex row; no sticky (sticky + overflow-y:auto causes pointer-event mismatch in browsers) */
 .nd-topbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 .nd-close {
   margin-left: auto;
+}
+
+/* Close button — used in all game states */
+.game-close-btn {
+  height: 30px; padding: 0 10px;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  color: rgba(255,255,255,.5);
+  font-size: 12px; font-weight: 600; line-height: 1; letter-spacing: .02em;
+  cursor: pointer; flex-shrink: 0; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.game-close-btn:hover {
+  background: rgba(255,80,80,.18);
+  border-color: rgba(255,120,120,.35);
+  color: rgba(255,210,210,.95);
+}
+
+/* Spinner base — used with .nd-spinner which adds the colors */
+.game-spinner-ring {
+  width: 44px; height: 44px;
+  border: 4px solid rgba(255,255,255,.08);
+  border-radius: 50%;
+  animation: spin .85s linear infinite;
 }
 
 /* ── HOME ── */
@@ -6725,9 +6709,10 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   color: var(--nd-muted); text-transform: uppercase;
 }
 #nd-home-level-big {
-  font-size: 72px; font-weight: 900; line-height: 1;
+  font-size: 100px; font-weight: 900; line-height: 1;
   color: var(--nd-text);
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 40px rgba(99,102,241,.3);
 }
 #nd-home-stage-lbl {
   font-size: 13px; font-weight: 700; letter-spacing: .12em;
@@ -6755,13 +6740,14 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 /* Play button */
 .nd-play-btn {
   width: 100%;
-  padding: 14px;
+  padding: 16px;
   background: var(--nd-think);
-  color: #fff; border: none; border-radius: 10px;
-  font-size: 15px; font-weight: 800; letter-spacing: .12em;
-  cursor: pointer; transition: opacity .15s, transform .1s;
+  color: #fff; border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 800; letter-spacing: .12em;
+  cursor: pointer; transition: opacity .15s, transform .1s, box-shadow .2s;
+  box-shadow: 0 0 32px rgba(99,102,241,.35);
 }
-.nd-play-btn:hover { opacity: .88; }
+.nd-play-btn:hover { opacity: .88; box-shadow: 0 0 48px rgba(99,102,241,.5); }
 .nd-play-btn:active { transform: scale(.98); }
 .nd-retry-btn { background: var(--nd-think); margin-top: 4px; }
 
@@ -6835,8 +6821,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* ── LOADING ── */
 #nd-state-loading {
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 16px; min-height: 220px;
+  display: flex; flex-direction: column; min-height: 280px;
 }
 .nd-spinner {
   border-color: var(--nd-think) transparent var(--nd-think) transparent !important;
@@ -6896,9 +6881,9 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Question text */
 .nd-question-text {
-  font-size: 16px; font-weight: 600; line-height: 1.5;
+  font-size: 20px; font-weight: 600; line-height: 1.6;
   color: var(--nd-text); text-align: center;
-  margin: 0;
+  margin: 6px 0;
 }
 
 /* Timer */
@@ -6916,26 +6901,28 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Answer buttons */
 #nd-answer-btns {
-  display: flex; gap: 10px; margin-top: 2px;
+  display: flex; gap: 14px; margin-top: 4px;
 }
 .nd-answer-btn {
-  flex: 1; padding: 14px;
-  border: none; border-radius: 10px;
-  font-size: 26px; font-weight: 900; line-height: 1;
-  cursor: pointer; transition: opacity .12s, transform .1s;
+  flex: 1; padding: 22px 14px;
+  border: none; border-radius: 16px;
+  font-size: 38px; font-weight: 900; line-height: 1;
+  cursor: pointer; transition: background .15s, transform .12s, box-shadow .18s;
 }
 .nd-btn-out {
-  background: rgba(239,68,68,.15);
+  background: rgba(239,68,68,.1);
   color: var(--nd-out);
-  border: 1.5px solid rgba(239,68,68,.3);
+  border: 2px solid rgba(239,68,68,.25);
 }
 .nd-btn-in {
-  background: rgba(34,197,94,.12);
+  background: rgba(34,197,94,.08);
   color: var(--nd-in);
-  border: 1.5px solid rgba(34,197,94,.25);
+  border: 2px solid rgba(34,197,94,.22);
 }
-.nd-answer-btn:hover:not(:disabled) { opacity: .8; }
-.nd-answer-btn:active:not(:disabled) { transform: scale(.97); }
+.nd-answer-btn:hover:not(:disabled) { transform: translateY(-2px); }
+.nd-btn-out:hover:not(:disabled) { background: rgba(239,68,68,.2); box-shadow: 0 0 28px rgba(239,68,68,.25); }
+.nd-btn-in:hover:not(:disabled)  { background: rgba(34,197,94,.18); box-shadow: 0 0 28px rgba(34,197,94,.22); }
+.nd-answer-btn:active:not(:disabled) { transform: scale(.97) translateY(0); }
 .nd-answer-btn:disabled { opacity: .4; cursor: not-allowed; }
 .nd-btn-selected { opacity: 1 !important; filter: brightness(1.3); }
 .nd-btn-correct-flash {

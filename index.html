@@ -885,6 +885,16 @@
         </div>
       </div>
 
+      <!-- Nerdocracy stats -->
+      <div id="mp-nerd-section" hidden style="background:rgba(99,102,241,.06);border:1.5px solid rgba(99,102,241,.2);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px">
+        <div style="font-size:24px">🎮</div>
+        <div style="flex:1">
+          <p style="font-size:12px;font-weight:700;color:var(--dark);margin:0 0 2px">Nerdocracy</p>
+          <p style="font-size:11px;color:var(--mid);margin:0">Mejor nivel: <b id="mp-nerd-level" style="color:var(--dark)">—</b> · Etapa: <b id="mp-nerd-stage" style="color:var(--dark)">—</b></p>
+        </div>
+        <button onclick="abrirPlayroom()" style="background:rgba(99,102,241,.15);border:none;border-radius:8px;padding:6px 12px;font-size:11px;font-weight:700;color:#6366f1;cursor:pointer">Jugar →</button>
+      </div>
+
       <!-- Anonimato de votos -->
       <div style="background:rgba(0,0,0,.03);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px">
         <span style="font-size:20px;flex-shrink:0">🔒</span>
@@ -1037,6 +1047,11 @@
   </div>
   <p class="pc-phrase"  id="pc-phrase"></p>
   <p class="pc-votes">  <b id="pc-votes-n"></b>&nbsp;votaciones participadas</p>
+  <div class="pc-nerd-row" id="pc-nerd-row" hidden>
+    <span class="pc-nerd-label">NERDOCRACY</span>
+    <span class="pc-nerd-level" id="pc-nerd-level"></span>
+    <span class="pc-nerd-stage" id="pc-nerd-stage"></span>
+  </div>
   <div class="pc-actions">
     <button class="pc-follow" id="pc-follow-btn" onclick="toggleFollow()"></button>
   </div>
@@ -2494,7 +2509,7 @@
   <!-- Ghost canvas: butacas del hemiciclo visibles de fondo -->
   <canvas id="pr-ghost-canvas"></canvas>
 
-  <button id="pr-close" onclick="cerrarPlayroom()" aria-label="Cerrar Playroom">✕</button>
+  <button id="pr-close" aria-label="Cerrar Playroom">✕</button>
 
   <!-- LOBBY -->
   <div id="pr-lobby" hidden>
@@ -2541,16 +2556,14 @@
 
   </div><!-- /#pr-lobby -->
 
-  <!-- MONITOR: CRT 80s — visible al entrar al juego -->
+  <!-- GAME PANEL — visible al entrar al juego -->
   <div id="nd-monitor" hidden>
-    <div id="nd-monitor-crt">
-      <div id="nd-screen-bezel">
-        <div id="nd-panel">
+    <div id="nd-panel">
 
     <!-- ── HOME ──────────────────────────────────────── -->
     <div id="nd-state-home">
       <div class="nd-topbar">
-        <button class="game-close-btn nd-close" onclick="cerrarPlayroom()">✕</button>
+        <button class="game-close-btn nd-close">✕</button>
       </div>
 
       <div id="nd-home-identity">
@@ -2606,8 +2619,13 @@
 
     <!-- ── LOADING ──────────────────────────────────── -->
     <div id="nd-state-loading" hidden>
-      <div class="game-spinner-ring nd-spinner"></div>
-      <p id="nd-loading-txt">Iniciando…</p>
+      <div class="nd-topbar">
+        <button class="game-close-btn nd-close">← Salir</button>
+      </div>
+      <div class="nd-loading-body">
+        <div class="game-spinner-ring nd-spinner"></div>
+        <p id="nd-loading-txt">Iniciando…</p>
+      </div>
     </div>
 
     <!-- ── QUESTION ─────────────────────────────────── -->
@@ -2618,7 +2636,7 @@
           <span id="nd-q-level-num" class="nd-q-level-num">1</span>
         </div>
         <div id="nd-q-stage-chip" class="nd-stage-chip nd-chip-know">KNOW</div>
-        <button class="game-close-btn nd-close" onclick="ndAbandonar()">✕</button>
+        <button class="game-close-btn nd-close">← Salir</button>
       </div>
 
       <!-- Visual (hidden for TEXT questions) -->
@@ -2652,9 +2670,9 @@
 
       <!-- ✕ / ○ -->
       <div id="nd-answer-btns">
-        <button id="nd-btn-out" class="nd-answer-btn nd-btn-out" onclick="ndAnswer('OUT')"
+        <button id="nd-btn-out" class="nd-answer-btn nd-btn-out"
                 aria-label="OUT — Rechazar">✕</button>
-        <button id="nd-btn-in" class="nd-answer-btn nd-btn-in" onclick="ndAnswer('IN')"
+        <button id="nd-btn-in" class="nd-answer-btn nd-btn-in"
                 aria-label="IN — Aceptar">○</button>
       </div>
       <p class="nd-keyboard-hint">← ✕ &nbsp;&nbsp; ○ →</p>
@@ -2715,18 +2733,7 @@
       <button class="nd-back-btn" style="margin-top:2rem" onclick="ndVolverHome()">← Volver</button>
     </div>
 
-        </div><!-- #nd-panel -->
-      </div><!-- #nd-screen-bezel -->
-      <div id="nd-monitor-controls">
-        <div class="nd-knob"></div>
-        <span id="nd-monitor-brand">NERDOCRACY</span>
-        <div class="nd-knob"></div>
-      </div>
-    </div><!-- #nd-monitor-crt -->
-    <div id="nd-monitor-stand">
-      <div id="nd-monitor-neck"></div>
-      <div id="nd-monitor-foot"></div>
-    </div>
+    </div><!-- #nd-panel -->
   </div><!-- #nd-monitor -->
 
 </div><!-- #playroom-overlay -->
