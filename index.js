@@ -7463,9 +7463,14 @@ function renderQMiniChips() {
     const rem = Math.floor((new Date(q.ends_at) - Date.now()) / 1000)
     return rem > 0 && !isArchivada(q.id)
   })
-  // Toggle .no-sessions so CSS can hide the mini bar when there's nothing to show
+  // .no-active-sessions = sin sesiones con tiempo restante (oculta mini bar, muestra toggle)
+  // .no-sessions        = PREGUNTAS_DATA completamente vacío (muro necesita min-height para verse)
   const wrapper = document.getElementById('q-strip-wrapper')
-  if (wrapper) wrapper.classList.toggle('no-sessions', active.length === 0)
+  if (wrapper) {
+    const visibleSessions = PREGUNTAS_DATA.filter(q => !isArchivada(q.id))
+    wrapper.classList.toggle('no-active-sessions', active.length === 0)
+    wrapper.classList.toggle('no-sessions', visibleSessions.length === 0)
+  }
   if (active.length === 0) {
     container.innerHTML = ''
     return

@@ -7076,17 +7076,10 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   flex-shrink: 0;
 }
 #q-strip-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
-/* When collapsed (with sessions), hide the toggle — #mu-ver-sesiones inside the muro takes over */
+/* When collapsed, hide the wrapper toggle — #mu-ver-sesiones inside the muro takes over */
 #q-strip-wrapper.collapsed #q-strip-toggle {
   opacity: 0;
   pointer-events: none;
-}
-/* When collapsed with NO sessions, the toggle stays visible (no muro-internal button needed) */
-#q-strip-wrapper.no-sessions.collapsed #q-strip-toggle {
-  opacity: 1;
-  pointer-events: auto;
-  background: var(--surface);
-  border-top-color: var(--border);
 }
 
 /* Cards fade+slide up when collapsed */
@@ -7244,8 +7237,8 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 #mu-ver-sesiones:hover { background: rgba(0,0,0,.03); color: var(--text); }
 /* #q-mini-expand hidden — toggle button at wrapper bottom replaces it */
 #q-mini-expand { display: none; }
-/* Mini bar hidden when no active sessions (wrapper gets .no-sessions class via JS) */
-#q-strip-wrapper.no-sessions #q-strip-mini { display: none; }
+/* Mini bar hidden when no active sessions */
+#q-strip-wrapper.no-active-sessions #q-strip-mini { display: none; }
 
 #mu-head {
   display: flex; align-items: center;
