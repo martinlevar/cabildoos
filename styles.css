@@ -7206,13 +7206,15 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 #q-strip-wrapper.collapsed #mu-muro { opacity: 1; pointer-events: auto; }
 
-/* Sin sesiones: mini-bar oculta, wrapper = 26px (solo el toggle).
-   Hay que forzar un tamaño visible y subirlo en el stack para cubrir el hemiciclo. */
+/* Sin sesiones: el wrapper es muy pequeño (solo el mensaje "No hay sesiones" + toggle).
+   Le damos un min-height al wrapper para que el muro lo rellene de forma natural. */
+#q-strip-wrapper.no-sessions.collapsed {
+  min-height: 260px;
+}
 #q-strip-wrapper.no-sessions.collapsed #mu-muro {
-  top: 26px;      /* arranca justo debajo del toggle */
+  top: 26px;   /* arranca justo debajo del toggle */
   bottom: 0;
-  min-height: 55vh;
-  z-index: 15;    /* solo en este caso: necesita tapar el hemiciclo */
+  z-index: 15; /* sube sobre el hemiciclo */
 }
 
 /* "▼ Ver sesiones" button at the bottom of the muro panel — same visual weight as #q-strip-toggle */
