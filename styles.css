@@ -7076,8 +7076,15 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   flex-shrink: 0;
 }
 #q-strip-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
-/* When collapsed the button stays visible — JS swaps its text to "▼ Ver sesiones" */
+/* When collapsed (with sessions), hide the toggle — #mu-ver-sesiones inside the muro takes over */
 #q-strip-wrapper.collapsed #q-strip-toggle {
+  opacity: 0;
+  pointer-events: none;
+}
+/* When collapsed with NO sessions, the toggle stays visible (no muro-internal button needed) */
+#q-strip-wrapper.no-sessions.collapsed #q-strip-toggle {
+  opacity: 1;
+  pointer-events: auto;
   background: var(--surface);
   border-top-color: var(--border);
 }
@@ -7181,6 +7188,8 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 @media (prefers-color-scheme: dark) {
   #q-strip-toggle { border-top-color: rgba(255,255,255,.07); }
   #q-strip-toggle:hover { background: rgba(255,255,255,.04); }
+  #mu-ver-sesiones { border-top-color: rgba(255,255,255,.07); }
+  #mu-ver-sesiones:hover { background: rgba(255,255,255,.04); }
   #q-strip-mini { border-bottom-color: rgba(255,255,255,.07); }
   .q-mini-chip { border-color: rgba(255,255,255,.1); }
   .q-mini-sep  { background: rgba(255,255,255,.1); }
@@ -7193,7 +7202,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 ══════════════════════════════════════════════════════════ */
 #mu-muro {
   position: absolute;
-  top: 46px; left: 0; right: 0; bottom: 26px; /* bottom leaves room for #q-strip-toggle (26px) */
+  top: 46px; left: 0; right: 0; bottom: 0; /* #mu-ver-sesiones inside handles the bottom button */
   background: var(--surface);
   display: flex; flex-direction: column;
   overflow: hidden;
@@ -7213,7 +7222,26 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   z-index: 15;    /* solo en este caso: necesita tapar el hemiciclo */
 }
 
-#mu-ver-sesiones { display: none; } /* toggle button at bottom handles this */
+/* "▼ Ver sesiones" button at the bottom of the muro panel — same visual weight as #q-strip-toggle */
+#mu-ver-sesiones {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 26px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(0,0,0,.07);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--mid);
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
+}
+#mu-ver-sesiones:hover { background: rgba(0,0,0,.03); color: var(--text); }
 /* #q-mini-expand hidden — toggle button at wrapper bottom replaces it */
 #q-mini-expand { display: none; }
 /* Mini bar hidden when no active sessions (wrapper gets .no-sessions class via JS) */
