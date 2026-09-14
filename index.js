@@ -7339,6 +7339,7 @@ function renderQCards() {
   if (PREGUNTAS_DATA.length === 0) {
     strip.classList.add('empty')
     strip.innerHTML = '<p class="q-empty-msg">No hay sesiones activas</p>'
+    renderQMiniChips()
     return
   }
   const CAT_THEME = window._CAT_THEME
@@ -7359,6 +7360,7 @@ function renderQCards() {
   if (sorted.length === 0) {
     strip.classList.add('empty')
     strip.innerHTML = '<p class="q-empty-msg">No hay sesiones activas</p>'
+    renderQMiniChips()
     return
   }
   strip.classList.remove('empty')
