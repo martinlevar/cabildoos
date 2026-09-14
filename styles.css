@@ -7161,19 +7161,8 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* "Ver preguntas" expand button */
 #q-mini-expand {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 5px;
-  background: none;
-  border: 1.5px solid rgba(0,0,0,.14);
-  border-radius: 8px; padding: 5px 11px;
-  cursor: pointer; font-family: inherit;
-  font-size: 9px; font-weight: 800;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: var(--mid); flex-shrink: 0;
-  transition: background .15s, color .15s, border-color .15s;
-  white-space: nowrap;
+  display: none; /* hidden — #mu-ver-sesiones at the bottom of the muro handles this */
 }
-#q-mini-expand:hover { background: rgba(0,0,0,.04); color: var(--text); }
 
 /* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
@@ -7200,6 +7189,33 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   border-top: 1px solid var(--border);
 }
 #q-strip-wrapper.collapsed #mu-muro { opacity: 1; pointer-events: auto; }
+
+/* "Ver sesiones" button — anchored to the bottom of #mu-muro, same look as #q-strip-toggle */
+#mu-ver-sesiones {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 26px;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(0,0,0,.07);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .09em; text-transform: uppercase;
+  color: var(--mid);
+  transition: background .15s, color .15s;
+}
+#mu-ver-sesiones:hover { background: rgba(0,0,0,.03); color: var(--text); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #mu-ver-sesiones { border-top-color: rgba(255,255,255,.07); }
+  :root:not([data-theme="light"]) #mu-ver-sesiones:hover { background: rgba(255,255,255,.04); }
+}
+:root[data-theme="dark"] #mu-ver-sesiones { border-top-color: rgba(255,255,255,.07); }
+:root[data-theme="dark"] #mu-ver-sesiones:hover { background: rgba(255,255,255,.04); }
 
 #mu-head {
   display: flex; align-items: center;
