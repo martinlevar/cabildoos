@@ -7077,7 +7077,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 #q-strip-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
 #q-strip-wrapper.collapsed #q-strip-toggle {
-  opacity: 0; pointer-events: none;
+  /* stays visible — JS already flips the label to "▼ Ver sesiones" */
 }
 
 /* Cards fade+slide up when collapsed */
@@ -7161,19 +7161,10 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* "Ver preguntas" expand button */
 #q-mini-expand {
-  margin-left: auto;
-  display: flex; align-items: center; gap: 5px;
-  background: none;
-  border: 1.5px solid rgba(0,0,0,.14);
-  border-radius: 8px; padding: 5px 11px;
-  cursor: pointer; font-family: inherit;
-  font-size: 9px; font-weight: 800;
-  letter-spacing: .06em; text-transform: uppercase;
-  color: var(--mid); flex-shrink: 0;
-  transition: background .15s, color .15s, border-color .15s;
-  white-space: nowrap;
+  /* Hidden — the main toggle button (#q-strip-toggle) handles the "Ver sesiones" action
+     and stays in the same position. No need for a second button here. */
+  display: none;
 }
-#q-mini-expand:hover { background: rgba(0,0,0,.04); color: var(--text); }
 
 /* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
