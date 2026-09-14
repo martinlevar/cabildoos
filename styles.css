@@ -7076,8 +7076,10 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   flex-shrink: 0;
 }
 #q-strip-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
+/* When collapsed the button stays visible — JS swaps its text to "▼ Ver sesiones" */
 #q-strip-wrapper.collapsed #q-strip-toggle {
-  opacity: 0; pointer-events: none;
+  background: var(--surface);
+  border-top-color: var(--border);
 }
 
 /* Cards fade+slide up when collapsed */
@@ -7191,7 +7193,7 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 ══════════════════════════════════════════════════════════ */
 #mu-muro {
   position: absolute;
-  top: 46px; left: 0; right: 0; bottom: 0;
+  top: 46px; left: 0; right: 0; bottom: 26px; /* leaves room for #q-strip-toggle (height:26px) */
   background: var(--surface);
   display: flex; flex-direction: column;
   overflow: hidden;
@@ -7201,7 +7203,11 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 }
 #q-strip-wrapper.collapsed #mu-muro { opacity: 1; pointer-events: auto; }
 
-#mu-ver-sesiones { display: none; } /* handled by #q-mini-expand in the mini bar */
+#mu-ver-sesiones { display: none; } /* toggle button at bottom handles this */
+/* #q-mini-expand hidden — toggle button at wrapper bottom replaces it */
+#q-mini-expand { display: none; }
+/* Mini bar hidden when no active sessions (wrapper gets .no-sessions class via JS) */
+#q-strip-wrapper.no-sessions #q-strip-mini { display: none; }
 
 #mu-head {
   display: flex; align-items: center;

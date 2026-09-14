@@ -7463,8 +7463,11 @@ function renderQMiniChips() {
     const rem = Math.floor((new Date(q.ends_at) - Date.now()) / 1000)
     return rem > 0 && !isArchivada(q.id)
   })
+  // Toggle .no-sessions so CSS can hide the mini bar when there's nothing to show
+  const wrapper = document.getElementById('q-strip-wrapper')
+  if (wrapper) wrapper.classList.toggle('no-sessions', active.length === 0)
   if (active.length === 0) {
-    container.innerHTML = '<span class="q-mini-label" style="opacity:.45;font-weight:600;text-transform:none;letter-spacing:0;font-size:11px">Sin sesiones abiertas</span>'
+    container.innerHTML = ''
     return
   }
   container.innerHTML = active.map((q, idx) => {
