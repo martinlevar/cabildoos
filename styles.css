@@ -7200,16 +7200,17 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   opacity: 0; pointer-events: none;
   transition: opacity .22s .06s;
   border-top: 1px solid var(--border);
-  z-index: 15; /* above hemicycle dots, below mini-bar (z-index:20) */
+  /* no z-index — stays in normal stacking with the rest of the strip */
 }
 #q-strip-wrapper.collapsed #mu-muro { opacity: 1; pointer-events: auto; }
 
 /* Sin sesiones: mini-bar oculta, wrapper = 26px (solo el toggle).
-   El muro arranca justo debajo del toggle y se extiende sobre el hemiciclo. */
+   Hay que forzar un tamaño visible y subirlo en el stack para cubrir el hemiciclo. */
 #q-strip-wrapper.no-sessions.collapsed #mu-muro {
-  top: 26px;   /* debajo del toggle en vez del mini-bar */
+  top: 26px;      /* arranca justo debajo del toggle */
   bottom: 0;
-  min-height: 55vh; /* garantiza que sea visible aunque el wrapper sea diminuto */
+  min-height: 55vh;
+  z-index: 15;    /* solo en este caso: necesita tapar el hemiciclo */
 }
 
 #mu-ver-sesiones { display: none; } /* toggle button at bottom handles this */
