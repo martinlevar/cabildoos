@@ -7455,6 +7455,7 @@ function toggleQStrip() {
   const btn = document.getElementById('q-strip-toggle')
   if (btn) btn.textContent = _qStripCollapsed ? '▼ Ver sesiones' : '▲ Muro del día'
   if (_qStripCollapsed) muInitMuro()
+  requestAnimationFrame(resizeCanvas)
 }
 
 function renderQMiniChips() {
