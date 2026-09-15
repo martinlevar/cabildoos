@@ -7076,13 +7076,10 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   flex-shrink: 0;
 }
 #q-strip-toggle:hover { background: rgba(0,0,0,.03); color: var(--text); }
-#q-strip-wrapper.collapsed {
-  /* Garantiza espacio suficiente para el muro + el botón "Ver sesiones" cuando
-     no hay sesiones activas y los cards no aportan altura */
-  min-height: 220px;
-}
+/* When collapsed, hide the wrapper toggle — #mu-ver-sesiones inside the muro takes over */
 #q-strip-wrapper.collapsed #q-strip-toggle {
-  opacity: 0; pointer-events: none;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Cards fade+slide up when collapsed */
@@ -7166,13 +7163,26 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* "Ver preguntas" expand button */
 #q-mini-expand {
-  display: none; /* hidden — #mu-ver-sesiones at the bottom of the muro handles this */
+  margin-left: auto;
+  display: flex; align-items: center; gap: 5px;
+  background: none;
+  border: 1.5px solid rgba(0,0,0,.14);
+  border-radius: 8px; padding: 5px 11px;
+  cursor: pointer; font-family: inherit;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--mid); flex-shrink: 0;
+  transition: background .15s, color .15s, border-color .15s;
+  white-space: nowrap;
 }
+#q-mini-expand:hover { background: rgba(0,0,0,.04); color: var(--text); }
 
 /* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
   #q-strip-toggle { border-top-color: rgba(255,255,255,.07); }
   #q-strip-toggle:hover { background: rgba(255,255,255,.04); }
+  #mu-ver-sesiones { border-top-color: rgba(255,255,255,.07); }
+  #mu-ver-sesiones:hover { background: rgba(255,255,255,.04); }
   #q-strip-mini { border-bottom-color: rgba(255,255,255,.07); }
   .q-mini-chip { border-color: rgba(255,255,255,.1); }
   .q-mini-sep  { background: rgba(255,255,255,.1); }
@@ -7185,17 +7195,30 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 ══════════════════════════════════════════════════════════ */
 #mu-muro {
   position: absolute;
-  top: 46px; left: 0; right: 0; bottom: 0;
+  top: 46px; left: 0; right: 0; bottom: 0; /* #mu-ver-sesiones inside handles the bottom button */
   background: var(--surface);
   display: flex; flex-direction: column;
   overflow: hidden;
   opacity: 0; pointer-events: none;
   transition: opacity .22s .06s;
   border-top: 1px solid var(--border);
+  /* no z-index — stays in normal stacking with the rest of the strip */
 }
 #q-strip-wrapper.collapsed #mu-muro { opacity: 1; pointer-events: auto; }
 
-/* "Ver sesiones" button — anchored to the bottom of #mu-muro, same look as #q-strip-toggle */
+/* Sin sesiones activas (finalizadas o vacío): mini-bar oculta.
+   Damos al wrapper un min-height consistente y el muro arranca en top:26px
+   (no 46px — el hueco de la mini-bar desaparecida), con z-index para tapar el hemiciclo. */
+#q-strip-wrapper.no-active-sessions.collapsed {
+  min-height: 260px;
+}
+#q-strip-wrapper.no-active-sessions.collapsed #mu-muro {
+  top: 26px;   /* mini-bar oculta: el muro arranca justo bajo el toggle */
+  bottom: 0;
+  z-index: 15;
+}
+
+/* "▼ Ver sesiones" button at the bottom of the muro panel — same visual weight as #q-strip-toggle */
 #mu-ver-sesiones {
   display: flex;
   align-items: center;
@@ -7203,7 +7226,6 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   gap: 6px;
   width: 100%;
   height: 26px;
-  flex-shrink: 0;
   background: transparent;
   border: none;
   border-top: 1px solid rgba(0,0,0,.07);
@@ -7213,14 +7235,13 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   letter-spacing: .09em; text-transform: uppercase;
   color: var(--mid);
   transition: background .15s, color .15s;
+  flex-shrink: 0;
 }
 #mu-ver-sesiones:hover { background: rgba(0,0,0,.03); color: var(--text); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) #mu-ver-sesiones { border-top-color: rgba(255,255,255,.07); }
-  :root:not([data-theme="light"]) #mu-ver-sesiones:hover { background: rgba(255,255,255,.04); }
-}
-:root[data-theme="dark"] #mu-ver-sesiones { border-top-color: rgba(255,255,255,.07); }
-:root[data-theme="dark"] #mu-ver-sesiones:hover { background: rgba(255,255,255,.04); }
+/* #q-mini-expand hidden — toggle button at wrapper bottom replaces it */
+#q-mini-expand { display: none; }
+/* Mini bar hidden when no active sessions */
+#q-strip-wrapper.no-active-sessions #q-strip-mini { display: none; }
 
 #mu-head {
   display: flex; align-items: center;

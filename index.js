@@ -7339,6 +7339,7 @@ function renderQCards() {
   if (PREGUNTAS_DATA.length === 0) {
     strip.classList.add('empty')
     strip.innerHTML = '<p class="q-empty-msg">No hay sesiones activas</p>'
+    renderQMiniChips()
     return
   }
   const CAT_THEME = window._CAT_THEME
@@ -7359,6 +7360,7 @@ function renderQCards() {
   if (sorted.length === 0) {
     strip.classList.add('empty')
     strip.innerHTML = '<p class="q-empty-msg">No hay sesiones activas</p>'
+    renderQMiniChips()
     return
   }
   strip.classList.remove('empty')
@@ -7453,6 +7455,7 @@ function toggleQStrip() {
   const btn = document.getElementById('q-strip-toggle')
   if (btn) btn.textContent = _qStripCollapsed ? '▼ Ver sesiones' : '▲ Muro del día'
   if (_qStripCollapsed) muInitMuro()
+  requestAnimationFrame(resizeCanvas)
 }
 
 function renderQMiniChips() {
@@ -7463,8 +7466,16 @@ function renderQMiniChips() {
     const rem = Math.floor((new Date(q.ends_at) - Date.now()) / 1000)
     return rem > 0 && !isArchivada(q.id)
   })
+  // .no-active-sessions = sin sesiones con tiempo restante (oculta mini bar, muestra toggle)
+  // .no-sessions        = PREGUNTAS_DATA completamente vacío (muro necesita min-height para verse)
+  const wrapper = document.getElementById('q-strip-wrapper')
+  if (wrapper) {
+    const visibleSessions = PREGUNTAS_DATA.filter(q => !isArchivada(q.id))
+    wrapper.classList.toggle('no-active-sessions', active.length === 0)
+    wrapper.classList.toggle('no-sessions', visibleSessions.length === 0)
+  }
   if (active.length === 0) {
-    container.innerHTML = '<span class="q-mini-label" style="opacity:.45;font-weight:600;text-transform:none;letter-spacing:0;font-size:11px">Sin sesiones abiertas</span>'
+    container.innerHTML = ''
     return
   }
   container.innerHTML = active.map((q, idx) => {
