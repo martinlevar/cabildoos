@@ -2431,8 +2431,22 @@ let vpAnonBlob = null  // blob de la imagen anonimizada generada localmente
 // ══════════════════════════════════════════════════════════════
 
 let _authUser = null     // usuario logueado actual
-const _inviteCodeRequired = true  // código de invitación siempre requerido
+let _inviteCodeRequired = true  // se actualiza según open_registration en Supabase
 let _authProfile = null  // perfil (alias, butaca_numero, verification_id, …)
+
+// Carga el estado de registro abierto desde el servidor (accesible sin login)
+async function _loadOpenRegistration() {
+  try {
+    const { data } = await sb.rpc('public_get_open_registration')
+    _inviteCodeRequired = !data
+    _applyInviteCodeField()
+  } catch (e) {
+    // Si falla, mantenemos _inviteCodeRequired = true (más seguro)
+    console.warn('[open_reg] error:', e)
+  }
+}
+// Cargar al inicio
+_loadOpenRegistration()
 
 // ── Observer mode helpers ──────────────────────────────────────────────────────
 // El MASTER y los OBSERVADORES entran al cabildo sin butaca ni verificación.
@@ -2846,7 +2860,7 @@ function irAlCongreso() {
 function _applyInviteCodeField() {
   const wrap = document.getElementById('reg-code-wrap')
   if (!wrap) return
-  wrap.style.display = ''  // siempre visible
+  wrap.style.display = _inviteCodeRequired ? '' : 'none'
   authCheckRegistro()
 }
 
@@ -2863,7 +2877,7 @@ function cerrarAuth() {
 async function loginConGoogle() {
   const regForm = document.getElementById('auth-form-registro')
   const isRegistroTab = regForm && regForm.style.display !== 'none'
-  if (isRegistroTab) {
+  if (isRegistroTab && _inviteCodeRequired) {
     const code = (document.getElementById('reg-code')?.value || '').trim().toUpperCase()
     const msg = document.getElementById('reg-msg')
     if (code.length < 9) {
@@ -3098,7 +3112,7 @@ function authCheckRegistro() {
   }
 
   const code = document.getElementById('reg-code')?.value.trim()
-  const codeOk = code?.length >= 9
+  const codeOk = !_inviteCodeRequired || (code?.length >= 9)
   const ok = aliasOk && email.includes('@') && pass.length >= 8 && codeOk
   document.getElementById('reg-btn').disabled = !ok
 }
