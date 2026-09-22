@@ -569,7 +569,7 @@ async function consultarEstado(requestId) {
 const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'cabildoos.pages.dev']
 const IS_DEMO      = new URLSearchParams(location.search).has('demo')
                   && DEMO_ALLOWED_HOSTS.some(h => location.hostname === h || location.hostname.endsWith('.' + h))
-const SEAT_CAPACITY = IS_DEMO ? 2847 : 500  // asientos totales del hemiciclo (fijos)
+const SEAT_CAPACITY = IS_DEMO ? 2847 : 1000  // asientos totales del hemiciclo (fijos)
 let TOTAL_SEATS    = IS_DEMO ? 2847 : 0     // asientos ocupados (usuarios verificados)
 let MY_SEAT        = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
 
