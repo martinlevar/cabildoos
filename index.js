@@ -569,7 +569,7 @@ async function consultarEstado(requestId) {
 const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'cabildoos.pages.dev']
 const IS_DEMO      = new URLSearchParams(location.search).has('demo')
                   && DEMO_ALLOWED_HOSTS.some(h => location.hostname === h || location.hostname.endsWith('.' + h))
-const SEAT_CAPACITY = IS_DEMO ? 2847 : 500  // asientos totales del hemiciclo (fijos)
+const SEAT_CAPACITY = IS_DEMO ? 2847 : 1000  // asientos totales del hemiciclo (fijos)
 let TOTAL_SEATS    = IS_DEMO ? 2847 : 0     // asientos ocupados (usuarios verificados)
 let MY_SEAT        = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
 
@@ -5945,7 +5945,10 @@ async function _loadFollows() {
 }
 
 // ── Realtime: follows en tiempo real ─────────────────────────────────────────
+let _followsRealtimeInited = false
 function initFollowsRealtime() {
+  if (_followsRealtimeInited) return
+  _followsRealtimeInited = true
   try {
     sb.channel('follows-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'follows' }, payload => {
@@ -6326,8 +6329,12 @@ function _renderNotifPanel() {
 
   const items = []
 
-  // 1. Solicitudes de seguimiento (con Aceptar/Rechazar)
-  ;(_pendingRequestsToMe || []).forEach(req => {
+  // 1. Solicitudes de seguimiento (con Aceptar/Rechazar) — dedup por from_seat
+  const _seenSeats = new Set()
+  ;(_pendingRequestsToMe || []).filter(req => {
+    if (_seenSeats.has(req.from_seat)) return false
+    _seenSeats.add(req.from_seat); return true
+  }).forEach(req => {
     const alias = _profilesCache[req.from_seat]?.alias || `Butaca #${req.from_seat}`
     const ci    = req.from_seat % AVATAR_COLORS_CONVO.length
     items.push({
@@ -10583,9 +10590,14 @@ function _renderMensajes() {
   }
 
   // Sección solicitudes de seguimiento
-  const reqsHtml = totalRequests ? `
+  const _seenSeatsMsj = new Set()
+  const _dedupedReqs = (_pendingRequestsToMe || []).filter(req => {
+    if (_seenSeatsMsj.has(req.from_seat)) return false
+    _seenSeatsMsj.add(req.from_seat); return true
+  })
+  const reqsHtml = _dedupedReqs.length ? `
     <p style="font-size:10px;font-weight:700;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Solicitudes</p>
-    ${_pendingRequestsToMe.map(req => {
+    ${_dedupedReqs.map(req => {
       const p = _profilesCache[req.from_seat]
       const alias    = p?.alias || `Butaca #${req.from_seat}`
       const initials = alias.slice(0, 2).toUpperCase()
