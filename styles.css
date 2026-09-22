@@ -7577,8 +7577,13 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 
 /* Dark mode overrides */
 @media (prefers-color-scheme: dark) {
-  /* Post cards: pastels stay as inline style, just darken the text */
-  .mu-post-text { color: #e4e6f8; }
+  /* Post cards: el fondo siempre es pastel claro (inline style), el texto debe ser oscuro */
+  .mu-post-text   { color: #1a1c2e; }
+  .mu-post-alias  { color: #1a1c2e; }
+  .mu-post-seat   { color: #555; }
+  .mu-post-time   { color: #666; }
+  .mu-post-badge  { color: #555; }
+  .mu-post-like   { color: #666; }
   .mu-input-wrap, .mu-reply-input-wrap { background: #1E2040; border-color: rgba(255,255,255,.1); }
   .mu-modal-handle { background: rgba(255,255,255,.15); }
   #mu-modal-close { background: rgba(255,255,255,.08); }
