@@ -11,6 +11,142 @@ const sb = createClient(
   window.__ENV.SUPABASE_KEY
 )
 
+// ══════════════════════════════════════════════════════════════
+//  IDLE DETECTION — libera WebSocket tras inactividad
+//  8 min → aviso con cuenta regresiva
+//  10 min → desconecta Supabase Realtime + muestra pantalla pausa
+//  Usuario interactúa → recarga y reconecta
+// ══════════════════════════════════════════════════════════════
+;(function() {
+  const WARN_MS = 8 * 60 * 1000;   // 8 minutos → toast de aviso
+  const IDLE_MS = 10 * 60 * 1000;  // 10 minutos → desconectar
+
+  var warnTimer = null;
+  var idleTimer = null;
+  var countdownInterval = null;
+  var paused = false;
+
+  // ── Overlay "Sesión pausada" ──────────────────────────────────
+  var overlay = document.createElement('div');
+  overlay.id = 'idle-overlay';
+  overlay.style.cssText = [
+    'display:none',
+    'position:fixed',
+    'inset:0',
+    'z-index:99999',
+    'background:rgba(15,25,40,0.93)',
+    'backdrop-filter:blur(10px)',
+    '-webkit-backdrop-filter:blur(10px)',
+    'flex-direction:column',
+    'align-items:center',
+    'justify-content:center',
+    'gap:18px',
+    'cursor:pointer',
+    'font-family:"Helvetica Neue",Helvetica,Arial,sans-serif',
+  ].join(';');
+  overlay.innerHTML = [
+    '<div style="font-size:48px;line-height:1">⏸</div>',
+    '<div style="color:#fff;font-size:20px;font-weight:800;letter-spacing:-.01em">Sesión pausada</div>',
+    '<div style="color:#8899BB;font-size:14px;text-align:center;max-width:300px;line-height:1.6">',
+      'Te desconectamos para liberar espacio.',
+      '<br>Tocá para volver al Cabildo.',
+    '</div>',
+    '<button id="idle-reconnect-btn" style="',
+      'margin-top:6px;padding:15px 36px;border-radius:12px;border:none;',
+      'background:#C9A227;color:#1B2A4A;font-size:15px;font-weight:800;',
+      'font-family:inherit;cursor:pointer;letter-spacing:.01em;',
+    '">↺ Reconectar</button>',
+  ].join('');
+
+  // ── Toast de advertencia ──────────────────────────────────────
+  var toast = document.createElement('div');
+  toast.id = 'idle-toast';
+  toast.style.cssText = [
+    'display:none',
+    'position:fixed',
+    'bottom:28px',
+    'left:50%',
+    'transform:translateX(-50%)',
+    'z-index:9998',
+    'background:#1B2A4A',
+    'color:#fff',
+    'border-radius:12px',
+    'padding:13px 22px',
+    'font-size:13px',
+    'font-family:"Helvetica Neue",Helvetica,Arial,sans-serif',
+    'line-height:1.4',
+    'box-shadow:0 6px 24px rgba(0,0,0,0.45)',
+    'text-align:center',
+    'white-space:nowrap',
+    'border:1px solid rgba(255,255,255,0.08)',
+  ].join(';');
+  toast.innerHTML = '⏰ ¿Seguís ahí? En <span id="idle-cd" style="font-weight:700;color:#C9A227">2:00</span> pausamos tu sesión.';
+
+  function mountElements() {
+    if (!document.getElementById('idle-overlay')) document.body.appendChild(overlay);
+    if (!document.getElementById('idle-toast'))   document.body.appendChild(toast);
+    var btn = document.getElementById('idle-reconnect-btn');
+    if (btn) btn.addEventListener('click', function(e) { e.stopPropagation(); reconnect(); });
+    overlay.addEventListener('click', reconnect);
+  }
+
+  function reconnect() {
+    location.reload();
+  }
+
+  function showOverlay() {
+    paused = true;
+    clearInterval(countdownInterval);
+    toast.style.display = 'none';
+    overlay.style.display = 'flex';
+    // Libera todos los canales WebSocket de Supabase
+    try { sb.removeAllChannels(); } catch(e) { console.warn('idle: removeAllChannels', e); }
+  }
+
+  function showWarning() {
+    toast.style.display = 'block';
+    var secsLeft = 120;
+    tick(secsLeft);
+    clearInterval(countdownInterval);
+    countdownInterval = setInterval(function() {
+      secsLeft--;
+      tick(secsLeft);
+      if (secsLeft <= 0) clearInterval(countdownInterval);
+    }, 1000);
+  }
+
+  function tick(secs) {
+    var el = document.getElementById('idle-cd');
+    if (!el) return;
+    var m = Math.floor(secs / 60);
+    var s = secs % 60;
+    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function resetTimers() {
+    if (paused) return;
+    clearTimeout(warnTimer);
+    clearTimeout(idleTimer);
+    clearInterval(countdownInterval);
+    toast.style.display = 'none';
+    warnTimer = setTimeout(showWarning, WARN_MS);
+    idleTimer = setTimeout(showOverlay, IDLE_MS);
+  }
+
+  // Escuchar cualquier señal de actividad
+  ['mousemove','mousedown','keydown','touchstart','scroll','click','pointerdown'].forEach(function(ev) {
+    document.addEventListener(ev, resetTimers, { passive: true, capture: true });
+  });
+
+  // Arrancar cuando el DOM esté listo
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { mountElements(); resetTimers(); });
+  } else {
+    mountElements();
+    resetTimers();
+  }
+})();
+
 function generateUUID() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
