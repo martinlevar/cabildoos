@@ -3082,27 +3082,38 @@ async function guardarAliasGoogle() {
     return
   }
 
-  // Canjear el pase server-side (valida + consume el código de invitación)
+  // ¿Hace falta código? Solo si el registro está cerrado Y el usuario nunca canjeó uno.
+  // Consultamos el estado actual (no dependemos de que _loadOpenRegistration ya haya terminado).
+  let codeRequired = _inviteCodeRequired
+  try {
+    const { data: openReg } = await sb.rpc('public_get_open_registration')
+    codeRequired = !openReg
+  } catch (e) { /* si falla, mantenemos el valor cargado */ }
+  const alreadyInvited = !!_googleAliasUser.user_metadata?.invitation_code
   const pendingToken = sessionStorage.getItem('_pendingOauthToken')
-  if (!pendingToken) {
-    msg.textContent = 'Necesitás un código de invitación para registrarte. Volvé a intentarlo.'
-    msg.className = 'auth-msg err'
-    btn.disabled = false; btn.textContent = 'Confirmar alias →'
-    // Eliminar la sesión OAuth huérfana
-    await sb.auth.signOut()
-    return
-  }
-  const { data: redeemed, error: redeemErr } = await sb.rpc('redeem_oauth_pass', {
-    p_token: pendingToken,
-    p_user_id: _googleAliasUser.id,
-    p_email: _googleAliasUser.email
-  })
-  if (redeemErr || !redeemed) {
-    msg.textContent = 'Código de invitación inválido, expirado o ya utilizado.'
-    msg.className = 'auth-msg err'
-    btn.disabled = false; btn.textContent = 'Confirmar alias →'
-    await sb.auth.signOut()
-    return
+
+  if (codeRequired && !alreadyInvited) {
+    // Canjear el pase server-side (valida + consume el código de invitación)
+    if (!pendingToken) {
+      msg.textContent = 'Necesitás un código de invitación para registrarte. Volvé a intentarlo.'
+      msg.className = 'auth-msg err'
+      btn.disabled = false; btn.textContent = 'Confirmar alias →'
+      // Eliminar la sesión OAuth huérfana
+      await sb.auth.signOut()
+      return
+    }
+    const { data: redeemed, error: redeemErr } = await sb.rpc('redeem_oauth_pass', {
+      p_token: pendingToken,
+      p_user_id: _googleAliasUser.id,
+      p_email: _googleAliasUser.email
+    })
+    if (redeemErr || !redeemed) {
+      msg.textContent = 'Código de invitación inválido, expirado o ya utilizado.'
+      msg.className = 'auth-msg err'
+      btn.disabled = false; btn.textContent = 'Confirmar alias →'
+      await sb.auth.signOut()
+      return
+    }
   }
   sessionStorage.removeItem('_pendingOauthToken')
 
