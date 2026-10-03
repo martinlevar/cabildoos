@@ -2670,7 +2670,7 @@ _applyInviteCodeField()
 
 async function _onLogin(user) {
   _authUser = user
-  window._MY_ROLE = user?.user_metadata?.role || ''
+  window._MY_ROLE = user?.app_metadata?.role || ''
   document.body.classList.remove('observer-mode')
 
   localStorage.removeItem('cabildoos_butaca')
