@@ -3120,7 +3120,7 @@ async function guardarAliasGoogle() {
   // Upsert perfil con alias elegido (butaca se asigna luego en verificación)
   const { error } = await sb.from('profiles').upsert({
     id: _googleAliasUser.id,
-    email: _googleAliasUser.email,
+    // PRIVACIDAD: el email vive solo en auth.users (no se copia a profiles)
     status: 'sin_verificar',
     alias: alias
   }, { onConflict: 'id' })
@@ -3737,10 +3737,10 @@ async function vpDocCapturarFrame(_unused) {
         numero_declarado:     numDoc,
         pais_declarado:       pais,
         fecha_nac_declarada:  fechaNac,
-        // Incluir user_id y email para que assign_butaca pueda linkear el profile
-        // aunque claim_seat falle por error de red
+        // Incluir user_id para que assign_butaca pueda linkear el profile
+        // aunque claim_seat falle por error de red.
+        // PRIVACIDAD: el email NO se envía (no se guarda copia junto a la verificación).
         user_id:       _authUser?.id || null,
-        contact_email: _authUser?.email || null,
       }),
     })
     clearTimeout(docTimeout)
@@ -5858,7 +5858,6 @@ async function vpEnviarVerificacion() {
           return vpGeminiResult.nombre_coincide && vpGeminiResult.numero_coincide && vpGeminiResult.fecha_coincide && _paisOk
         })(),
         user_id:       _authUser?.id || null,
-        contact_email: _authUser?.email || null,
       }),
     })
     clearTimeout(timeout)
