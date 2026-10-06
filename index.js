@@ -705,7 +705,10 @@ async function consultarEstado(requestId) {
 const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'cabildoos.pages.dev']
 const IS_DEMO      = new URLSearchParams(location.search).has('demo')
                   && DEMO_ALLOWED_HOSTS.some(h => location.hostname === h || location.hostname.endsWith('.' + h))
-const SEAT_CAPACITY = IS_DEMO ? 2847 : 1000  // asientos totales del hemiciclo (fijos)
+// Asientos dibujados en el hemiciclo. En modo real NO hay tope: se ajusta en cargarConteoReal()
+// a la cantidad real de butacas (sin espacios vacíos). El valor inicial es solo para el primer
+// dibujo, antes de que llegue el conteo (se recuerda el último conocido).
+let SEAT_CAPACITY = IS_DEMO ? 2847 : (parseInt(localStorage.getItem('cabildoos_capacidad')) || 1000)
 let TOTAL_SEATS    = IS_DEMO ? 2847 : 0     // asientos ocupados (usuarios verificados)
 let MY_SEAT        = IS_DEMO ? 7 : (parseInt(localStorage.getItem('cabildoos_butaca')) || 0)
 
@@ -6032,12 +6035,19 @@ async function cargarConteoReal() {
   if (IS_DEMO) return // en modo demo, el conteo viene de TOTAL_SEATS estático
   try {
     const count = await sb.rpc('get_butaca_count')
+    if (count.error) throw count.error   // no achicar el hemiciclo por un error de red
     const n = count.data ?? 0
     // NO modificar MY_SEAT aquí — es responsabilidad exclusiva de _onLogin/_onLogout
     // para evitar race conditions con la limpieza de localStorage
-    TOTAL_SEATS = Math.min(Math.max(n, MY_SEAT), SEAT_CAPACITY) // nunca superar la capacidad
     await cargarPerfilesPublicos()     // cargar perfiles reales antes de redibujar
+    // Hemiciclo sin tope: tantos asientos como butacas existan (incluye números altos
+    // si quedó algún hueco por un usuario eliminado). Sin espacios vacíos.
+    const maxNum = Object.keys(_profilesCache).reduce((m, k) => Math.max(m, parseInt(k) || 0), 0)
+    SEAT_CAPACITY = Math.max(n, MY_SEAT, maxNum, 1)
+    try { localStorage.setItem('cabildoos_capacidad', String(SEAT_CAPACITY)) } catch (e) {}
+    TOTAL_SEATS = Math.min(Math.max(n, MY_SEAT), SEAT_CAPACITY)
     buildSeats()
+    calcMinScale()   // el hemiciclo puede haber crecido: recalcular zoom-out máximo
     const fmt = n.toLocaleString('es-VE').replace(',', '.')
     const el = document.getElementById('citizen-num')
     if (el) el.textContent = fmt
