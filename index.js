@@ -7420,8 +7420,16 @@ let _profilesCache = {}
 async function cargarPerfilesPublicos() {
   try {
     // Una sola query atómica: TODOS los asientos + votos reales (privados sin alias/phrase)
-    const { data: rows, error } = await sb.rpc('get_profiles_with_vote_counts')
-    if (error) throw error
+    // Supabase devuelve máx. 1000 filas por pedido: pedir en tandas hasta traer todas las butacas
+    // (la función devuelve ordenado por número de butaca, así las tandas no se pisan)
+    const rows = []
+    const TANDA = 1000
+    for (let desde = 0; ; desde += TANDA) {
+      const { data: parte, error } = await sb.rpc('get_profiles_with_vote_counts').range(desde, desde + TANDA - 1)
+      if (error) throw error
+      if (parte?.length) rows.push(...parte)
+      if (!parte || parte.length < TANDA) break
+    }
     if (rows) {
       _profilesCache = {}
       rows.forEach(r => {
