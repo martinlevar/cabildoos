@@ -36,7 +36,7 @@ const SECCIONES = [
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
-    <li><a href="#${id}" data-sec="${id}">
+    <li><a href="#${id}" data-sec="${id}" title="${label}">
       <svg viewBox="0 0 24 24">${ICONOS[id]}</svg><span>${label}</span>
       ${id === 'inicio' ? '' : '<span class="soon-tag">pronto</span>'}
     </a></li>`).join('')
@@ -216,7 +216,8 @@ async function cargarVotacion() {
   try {
     const { data, error } = await sb.from('questions')
       .select('id, text, category, ends_at, status')
-      .eq('status', 'activa').order('ends_at', { ascending: true }).limit(1)
+      .eq('status', 'activa').gt('ends_at', new Date().toISOString())
+      .order('ends_at', { ascending: true }).limit(1)
     if (error) throw error
     pregunta = data?.[0] || null
   } catch (e) { console.warn('cargarVotacion:', e); pregunta = null }
@@ -398,7 +399,14 @@ function enlazar() {
     const u = e.target.closest('[data-unirme]'); if (u) return unirme(u.dataset.unirme)
     const g = e.target.closest('[data-tab-go]'); if (g) irATab(g.dataset.tabGo)
   })
-  let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(dibujarHemiciclo, 120) })
+  // Redibujar el hemiciclo cuando cambia el tamaño de su caja (ventana o columnas plegadas)
+  let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(dibujarHemiciclo, 60) }).observe($('.hemi-wrap'))
+  $('#side-toggle').addEventListener('click', () => plegar('side'))
+  $('#panel-toggle').addEventListener('click', () => plegar('panel'))
+  $('#panel-open').addEventListener('click', () => plegar('panel'))
+  for (const k of ['side', 'panel']) {
+    try { if (localStorage.getItem('ux2_plegado_' + k) === '1') $('.app').classList.add(k + '-plegado') } catch (e) {}
+  }
 }
 
 // Recargar SOLO si cambia el usuario (login/logout en otra pestaña), y nunca más de una vez por minuto.
@@ -416,6 +424,15 @@ function vigilarSesion() {
     } catch (e) { return }
     location.reload()
   })
+}
+
+// Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
+function plegar(k) {
+  const on = $('.app').classList.toggle(k + '-plegado')
+  try { localStorage.setItem('ux2_plegado_' + k, on ? '1' : '0') } catch (e) {}
+  const btn = k === 'side' ? $('#side-toggle') : $('#panel-toggle')
+  const txt = k === 'side' ? (on ? 'Desplegar menú' : 'Plegar menú') : 'Plegar bloques'
+  btn.title = txt; btn.setAttribute('aria-label', txt)
 }
 
 function irATab(tab) {

@@ -55,6 +55,9 @@
 
   <!-- ═══ BARRA LATERAL ═══ -->
   <nav class="sidebar" id="sidebar" aria-label="Secciones">
+    <button class="fold-btn" id="side-toggle" title="Plegar menú" aria-label="Plegar menú">
+      <svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>
+    </button>
     <ul class="nav" id="nav"></ul>
     <figure class="quote">
       <blockquote>“Ideas hoy.<br>Libertad mañana.”</blockquote>
@@ -87,7 +90,7 @@
         <article class="card hemi-card">
           <header class="hemi-head">
             <div class="stat"><b id="st-butacas">—</b><small>Ciudadanos<br>con butaca</small></div>
-            <div class="stat"><b id="st-votos">—</b><small><i class="live-dot"></i>Votos en la sesión</small></div>
+            <div class="stat"><b id="st-votos">—</b><small><i class="live-dot"></i>Votos en<br>la sesión</small></div>
             <a class="pill-live" id="pill-live" href="/" hidden><i></i>Sesión en vivo<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
           </header>
           <div class="hemi-wrap">
@@ -166,8 +169,16 @@
 
   <!-- ═══ PANEL DE BLOQUES ═══ -->
   <aside class="panel" id="panel-bloques" aria-label="Bloques">
+    <button class="panel-rail" id="panel-open" title="Mostrar bloques" aria-label="Mostrar bloques">
+      <svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg>
+      <span>Bloques</span>
+    </button>
     <header class="panel-head">
       <div><h2>Bloques</h2><p>Organización ciudadana para un mejor futuro</p></div>
+      <button class="fold-btn" id="panel-toggle" title="Plegar bloques" aria-label="Plegar bloques">
+        <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
     </header>
     <div class="tabs" role="tablist">
       <button class="tab active" data-tab="destacados" role="tab">Destacados</button>
