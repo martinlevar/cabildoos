@@ -399,10 +399,22 @@ function enlazar() {
     const g = e.target.closest('[data-tab-go]'); if (g) irATab(g.dataset.tabGo)
   })
   let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(dibujarHemiciclo, 120) })
-  // Si la sesión cambia de usuario (login/logout en otra pestaña), recargar
+}
+
+// Recargar SOLO si cambia el usuario (login/logout en otra pestaña), y nunca más de una vez por minuto.
+// Se activa recién después de saber quién es el usuario, para no confundir el aviso inicial de Supabase.
+function vigilarSesion() {
+  const idInicial = estado.user?.id || null
   sb.auth.onAuthStateChange((ev, session) => {
-    if (ev === 'INITIAL_SESSION' || ev === 'TOKEN_REFRESHED') return
-    if ((session?.user?.id || null) !== (estado.user?.id || null)) location.reload()
+    if (ev !== 'SIGNED_IN' && ev !== 'SIGNED_OUT') return
+    const idNuevo = session?.user?.id || null
+    if (idNuevo === idInicial) return
+    try {
+      const ultima = Number(sessionStorage.getItem('ux2_recarga') || 0)
+      if (Date.now() - ultima < 60_000) return
+      sessionStorage.setItem('ux2_recarga', String(Date.now()))
+    } catch (e) { return }
+    location.reload()
   })
 }
 
@@ -416,6 +428,7 @@ async function iniciar() {
   pintarNav(); enlazar(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion() }, 1000)
   await cargarUsuario()
+  vigilarSesion()
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques()])
   setInterval(cargarVotacion, 60_000)   // refresca votos y estado de la sesión
 }
