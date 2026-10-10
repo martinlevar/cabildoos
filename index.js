@@ -702,7 +702,7 @@ async function consultarEstado(requestId) {
 //  DATA & PROFILES
 // ══════════════════════════════════════════════════════════════
 // SEC-015: demo mode solo permitido en localhost y dev.cabildodevenezuela.com
-const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'cabildoos.pages.dev']
+const DEMO_ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'dev.cabildodevenezuela.com', 'v2.cabildodevenezuela.com', 'cabildoos.pages.dev']
 const IS_DEMO      = new URLSearchParams(location.search).has('demo')
                   && DEMO_ALLOWED_HOSTS.some(h => location.hostname === h || location.hostname.endsWith('.' + h))
 // Asientos dibujados en el hemiciclo. En modo real NO hay tope: se ajusta en cargarConteoReal()
@@ -11790,7 +11790,7 @@ function _showMaintenance(val) {
   const msg     = document.getElementById('maint-msg')
   if (!overlay) return
   // En dev no se aplica mantenimiento — permite seguir trabajando
-  if (location.hostname === 'dev.cabildodevenezuela.com') return
+  if (location.hostname === 'dev.cabildodevenezuela.com' || location.hostname === 'v2.cabildodevenezuela.com') return
   if (val?.active) {
     if (msg && val.message) msg.textContent = val.message
     overlay.classList.add('active')

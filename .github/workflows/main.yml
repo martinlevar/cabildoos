@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - v2
   pull_request:
     types: [closed]
     branches:
@@ -17,6 +18,7 @@ on:
         type: choice
         options:
           - dev
+          - v2
           - stage
           - prod
 
@@ -34,6 +36,18 @@ jobs:
     with:
       deployment_environment: dev
       checkout_ref: dev
+    secrets: inherit
+
+  # Nueva UX en construcción: cada push a v2 se publica en v2.cabildodevenezuela.com
+  deploy-v2:
+    name: "V2 (nueva UX)"
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/v2')
+      || (github.event_name == 'workflow_dispatch' && inputs.environment == 'v2')
+    uses: ./.github/workflows/deployment.yml
+    with:
+      deployment_environment: v2
+      checkout_ref: v2
     secrets: inherit
 
   deploy-stage:
