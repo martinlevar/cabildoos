@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cabildo de Venezuela</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ux2/ux2.css">
+<script>
+  // Tema antes de pintar (evita parpadeo). Solo preferencia visual de este navegador.
+  try { const t = localStorage.getItem('ux2_tema'); if (t) document.documentElement.dataset.theme = t } catch (e) {}
+</script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ BARRA SUPERIOR ═══ -->
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menu-btn" aria-label="Abrir menú">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a class="brand" href="/ux2/">
+      <img src="/logo-cabildo.jpg" alt="" class="brand-logo">
+      <span class="brand-text"><b>Cabildo de<br>Venezuela</b><small>Generación Independencia 2026</small></span>
+    </a>
+    <label class="search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" placeholder="Buscar propuestas, temas o ciudadanos…" disabled title="Próximamente">
+    </label>
+    <div class="topbar-right">
+      <div class="clock" aria-label="Hora de Venezuela">
+        <span class="flag" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><b id="clock-time">--:--:--</b><small id="clock-date">VET</small></span>
+      </div>
+      <a class="icon-btn" href="/" title="Notificaciones (versión actual)" id="btn-notif">
+        <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+        <span class="dot" id="notif-dot" hidden></span>
+      </a>
+      <a class="icon-btn hide-sm" href="/" title="Mensajes (versión actual)">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/><path d="M9 9h6M9 12h4"/></svg>
+      </a>
+      <a class="user-chip" id="user-chip" href="/">
+        <span class="avatar" id="user-avatar">?</span>
+        <span class="user-name" id="user-name">Iniciar sesión</span>
+      </a>
+      <button class="icon-btn" id="theme-btn" aria-label="Cambiar tema">
+        <svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ BARRA LATERAL ═══ -->
+  <nav class="sidebar" id="sidebar" aria-label="Secciones">
+    <ul class="nav" id="nav"></ul>
+    <figure class="quote">
+      <blockquote>“Ideas hoy.<br>Libertad mañana.”</blockquote>
+      <figcaption>El futuro<br>también se vota.</figcaption>
+    </figure>
+  </nav>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ═══ CONTENIDO ═══ -->
+  <main class="main" id="main">
+
+    <!-- INICIO -->
+    <section class="view" data-view="inicio">
+      <div class="hero">
+        <div>
+          <h1>El futuro de <br>Venezuela <span>se debate aquí.</span></h1>
+          <p>Ciudadanos. Ideas. Votaciones. Un país posible.</p>
+        </div>
+        <div class="hero-card">
+          <p>Más ciudadanos.<br>Más ideas.<br>Más Venezuela.</p>
+          <span class="hero-play" title="Próximamente">
+            <svg viewBox="0 0 24 24"><path d="M9 7v10l8-5z"/></svg>
+            <small>Ver video</small>
+          </span>
+        </div>
+      </div>
+
+      <div class="home-grid">
+        <!-- Hemiciclo -->
+        <article class="card hemi-card">
+          <header class="hemi-head">
+            <div class="stat"><b id="st-butacas">—</b><small>Ciudadanos<br>con butaca</small></div>
+            <div class="stat"><b id="st-votos">—</b><small><i class="live-dot"></i>Votos en la sesión</small></div>
+            <a class="pill-live" id="pill-live" href="/" hidden><i></i>Sesión en vivo<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+          </header>
+          <div class="hemi-wrap">
+            <canvas id="hemi" aria-label="Hemiciclo con las butacas del Cabildo"></canvas>
+            <a class="my-seat-tip" id="my-seat-tip" href="/" hidden>
+              <span><small>Tu butaca</small><b id="my-seat-num"></b></span>
+              <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+            </a>
+            <div class="hemi-label">
+              <b>CABILDO</b><span>DE VENEZUELA</span><small>GENERACIÓN<br>INDEPENDENCIA 2026</small>
+            </div>
+          </div>
+        </article>
+
+        <!-- Votación activa + Muro -->
+        <div class="col-side">
+          <article class="card q-card" id="q-card">
+            <div class="q-head">
+              <span class="tag" id="q-cat">—</span>
+              <b class="q-timer" id="q-timer">--:--:--</b>
+              <small id="q-state">Cargando…</small>
+            </div>
+            <p class="q-text" id="q-text">Buscando votaciones activas…</p>
+            <div class="q-actions">
+              <a class="btn btn-soft" href="/" id="q-debate">
+                <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>
+              <a class="btn btn-dark" href="/" id="q-votar">
+                <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Votar</a>
+            </div>
+          </article>
+
+          <article class="card muro">
+            <header class="card-head">
+              <h2>Muro del Día</h2>
+              <a href="/" class="link-more">Ver todo<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+            </header>
+            <ul class="muro-list" id="muro-list"><li class="muted">Cargando…</li></ul>
+          </article>
+        </div>
+
+        <!-- Accesos rápidos -->
+        <div class="quick">
+          <a class="quick-item quick-dark" href="/" id="quick-butaca">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><path d="M7 10V6a5 5 0 0 1 10 0v4M5 10h14v5H5zM7 15v4M17 15v4"/></svg></span>
+            <span><b>Mi Butaca</b><small id="quick-butaca-num">—</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+          <a class="quick-item" href="/">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></span>
+            <span><b>Proponer</b><small>Una nueva idea</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+          <a class="quick-item quick-outline" href="/">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></span>
+            <span><b>Explorar</b><small>Temas y sesiones</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+          <a class="quick-item" href="/">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg></span>
+            <span><b>Ciudadanos</b><small>Conocé la comunidad</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIONES EN CONSTRUCCIÓN -->
+    <section class="view" data-view="pronto" hidden>
+      <div class="card soon">
+        <h1 id="soon-title">Sección</h1>
+        <p>Esta sección todavía se está rediseñando para la nueva versión del Cabildo.</p>
+        <a class="btn btn-dark" href="/">Abrir en la versión actual</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══ PANEL DE BLOQUES ═══ -->
+  <aside class="panel" id="panel-bloques" aria-label="Bloques">
+    <header class="panel-head">
+      <div><h2>Bloques</h2><p>Organización ciudadana para un mejor futuro</p></div>
+    </header>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="destacados" role="tab">Destacados</button>
+      <button class="tab" data-tab="todos" role="tab">Todos los bloques</button>
+      <button class="tab" data-tab="crear" role="tab">Crear bloque</button>
+    </div>
+    <label class="search search-sm">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="bloque-buscar" placeholder="Buscar bloques o ideas…">
+    </label>
+    <div id="bloques-body" class="bloques-body"><p class="muted">Cargando…</p></div>
+  </aside>
+
+  <!-- ═══ PIE ═══ -->
+  <footer class="footer">
+    <span class="foot-brand">cabildoOS <em>v2</em></span>
+    <nav>
+      <a href="/privacidad.html">Privacidad</a><a href="/terminos.html">Términos</a>
+      <a href="/paper.html">Whitepaper</a><a href="/faq.html">Ayuda</a>
+    </nav>
+    <span class="foot-tag">De ciudadanos, para Venezuela. <i class="ve-line"></i></span>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/ux2/ux2.js"></script>
+</body>
+</html>
