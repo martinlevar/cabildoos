@@ -95,6 +95,13 @@
           </header>
           <div class="hemi-wrap">
             <canvas id="hemi" aria-label="Hemiciclo con las butacas del Cabildo"></canvas>
+            <div class="seat-card" id="seat-card" hidden></div>
+            <div class="hemi-zoom" aria-label="Zoom del hemiciclo">
+              <button id="hz-mas" title="Acercar" aria-label="Acercar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+              <button id="hz-menos" title="Alejar" aria-label="Alejar"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+              <button id="hz-todo" title="Ver todo el hemiciclo" aria-label="Ver todo"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+              <button id="hz-mia" title="Ir a mi butaca" aria-label="Ir a mi butaca"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></button>
+            </div>
             <a class="my-seat-tip" id="my-seat-tip" href="/" hidden>
               <span><small>Tu butaca</small><b id="my-seat-num"></b></span>
               <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>

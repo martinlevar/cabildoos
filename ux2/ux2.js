@@ -125,9 +125,17 @@ async function cargarNotificaciones() {
 
 // ── Hemiciclo ───────────────────────────────────────────────────
 // Misma geometría que la versión actual: filas en arco, se llenan del centro hacia los costados.
+// Interactivo: pasar el mouse muestra la tarjeta de cada butaca, arrastrar recorre, rueda/pellizco hace zoom.
+// Con las columnas desplegadas se enfoca en tu butaca; con las dos plegadas se ve completo.
 const H = { DOT: 14, GAP: 14 * 3.1, A0: 24 * Math.PI / 180, A1: 156 * Math.PI / 180, R_IN: 320, R_STEP: 50 }
 let totalButacas = 0
 let asientos = []
+const perfiles = new Map()                 // butaca → { alias, phrase, vote_count, show_*, card_color }
+const cam = { x: 0, y: 0, s: 1 }, objetivo = { x: 0, y: 0, s: 1 }
+let encuadre = { x: 0, y: 0, s: 1 }        // "ver todo"
+let modoCam = 'auto'                       // 'auto' sigue la regla de enfoque; 'manual' tras zoom/arrastre
+let hover = 0, animando = false
+let limites = null
 
 function ordenCentro(n) {
   if (n <= 1) return [0]
@@ -149,54 +157,264 @@ function calcularAsientos(n) {
     for (let i = 0; i < cant; i++) {
       const t = capacidad > 1 ? orden[i] / (capacidad - 1) : .5
       const a = H.A0 + t * span
-      res.push({ x: r * Math.cos(a), y: r * Math.sin(a) })
+      res.push({ x: r * Math.cos(a), y: r * Math.sin(a), num: res.length + 1 })
     }
     row++
   }
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+  for (const s of res) { x0 = Math.min(x0, s.x); x1 = Math.max(x1, s.x); y0 = Math.min(y0, s.y); y1 = Math.max(y1, s.y) }
+  limites = { x0, x1, y0, y1 }
   return res
 }
 
-function dibujarHemiciclo() {
+function tamCanvas() {
+  const cv = $('#hemi'); return { W: cv.clientWidth, H: cv.clientHeight }
+}
+
+// Encuadre "ver todo": deja lugar arriba para el cartel y abajo para el rótulo
+function calcularEncuadre() {
+  const { W, H: Hh } = tamCanvas()
+  if (!limites || !W || !Hh) return
+  const padTop = 70, padBottom = 96, padX = 12
+  const s = Math.min((W - padX * 2) / (limites.x1 - limites.x0 + H.DOT * 2),
+                     (Hh - padTop - padBottom) / (limites.y1 - limites.y0 + H.DOT * 2))
+  encuadre = { s, x: (limites.x0 + limites.x1) / 2, y: (limites.y0 + limites.y1) / 2 + (padBottom - padTop) / 2 / s }
+}
+
+function columnasDesplegadas() {
+  const app = $('.app')
+  return !(app.classList.contains('side-plegado') && app.classList.contains('panel-plegado'))
+}
+
+function objetivoAuto() {
+  const mia = estado.butaca && asientos[estado.butaca - 1]
+  if (mia && columnasDesplegadas()) return { x: mia.x, y: mia.y + 60 / (encuadre.s * 1.7), s: encuadre.s * 1.7 }
+  return { ...encuadre }
+}
+
+function irA(o, instantaneo = false) {
+  Object.assign(objetivo, o)
+  if (instantaneo) Object.assign(cam, o)
+  animar()
+}
+
+function animar() {
+  if (animando) return
+  animando = true
+  const paso = () => {
+    const k = .2
+    cam.x += (objetivo.x - cam.x) * k; cam.y += (objetivo.y - cam.y) * k; cam.s += (objetivo.s - cam.s) * k
+    const listo = Math.abs(objetivo.x - cam.x) < .05 && Math.abs(objetivo.y - cam.y) < .05 && Math.abs(objetivo.s - cam.s) < objetivo.s * .001
+    if (listo) Object.assign(cam, objetivo)
+    pintar()
+    if (listo) { animando = false; return }
+    requestAnimationFrame(paso)
+  }
+  requestAnimationFrame(paso)
+}
+
+const aPantalla = (wx, wy, W, Hh) => ({ x: W / 2 + (wx - cam.x) * cam.s, y: Hh / 2 + (wy - cam.y) * cam.s })
+const aMundo    = (sx, sy, W, Hh) => ({ x: (sx - W / 2) / cam.s + cam.x, y: (sy - Hh / 2) / cam.s + cam.y })
+
+function pintar() {
   const cv = $('#hemi'); if (!cv || !cv.offsetParent) return
-  const wrap = cv.parentElement
-  const W = wrap.clientWidth, Hh = wrap.clientHeight
+  const { W, H: Hh } = tamCanvas()
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  cv.width = W * dpr; cv.height = Hh * dpr
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(Hh * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(Hh * dpr) }
   const ctx = cv.getContext('2d')
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, W, Hh)
   if (!asientos.length) return
 
-  // Encajar: dejar lugar abajo para el rótulo y arriba para el cartel de "tu butaca"
-  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
-  for (const s of asientos) { x0 = Math.min(x0, s.x); x1 = Math.max(x1, s.x); y0 = Math.min(y0, s.y); y1 = Math.max(y1, s.y) }
-  const padTop = 70, padBottom = 96, padX = 12
-  const sc = Math.min((W - padX * 2) / (x1 - x0 + H.DOT * 2), (Hh - padTop - padBottom) / (y1 - y0 + H.DOT * 2))
-  const ox = W / 2 - ((x0 + x1) / 2) * sc
-  const oy = padTop + H.DOT * sc - y0 * sc
-  const r = Math.max(1.3, H.DOT * sc * .8)
   const css = getComputedStyle(document.documentElement)
   const cSeat = css.getPropertyValue('--seat').trim() || '#1a1f3c'
   const cMine = css.getPropertyValue('--orange').trim() || '#f76a1e'
+  const cAcc  = css.getPropertyValue('--accent').trim() || '#4f46e5'
+  const r = Math.max(1.3, H.DOT * cam.s * .8)
+  const m = r + 4
 
   ctx.fillStyle = cSeat
-  asientos.forEach((s, i) => {
-    if (i + 1 === estado.butaca) return
+  for (let i = 0; i < asientos.length; i++) {
+    const a = asientos[i]
+    if (a.num === estado.butaca) continue
+    const p = aPantalla(a.x, a.y, W, Hh)
+    if (p.x < -m || p.x > W + m || p.y < -m || p.y > Hh + m) continue
     ctx.globalAlpha = i % 7 === 3 ? .55 : 1           // leve variación de tono, como en el diseño
-    ctx.beginPath(); ctx.arc(ox + s.x * sc, oy + s.y * sc, r, 0, Math.PI * 2); ctx.fill()
-  })
+    ctx.beginPath(); ctx.arc(p.x, p.y, a.num === hover ? r * 1.35 : r, 0, Math.PI * 2); ctx.fill()
+  }
   ctx.globalAlpha = 1
+
+  if (hover && hover !== estado.butaca && asientos[hover - 1]) {
+    const p = aPantalla(asientos[hover - 1].x, asientos[hover - 1].y, W, Hh)
+    ctx.strokeStyle = cAcc; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.35 + 3, 0, Math.PI * 2); ctx.stroke()
+  }
 
   const tip = $('#my-seat-tip')
   const mia = estado.butaca && asientos[estado.butaca - 1]
   if (mia) {
-    const mx = ox + mia.x * sc, my = oy + mia.y * sc
+    const p = aPantalla(mia.x, mia.y, W, Hh)
     ctx.shadowColor = 'rgba(247,106,30,.6)'; ctx.shadowBlur = 12
     ctx.fillStyle = cMine
-    ctx.beginPath(); ctx.arc(mx, my, r * 1.25, 0, Math.PI * 2); ctx.fill()
+    ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.25, 0, Math.PI * 2); ctx.fill()
     ctx.shadowBlur = 0
-    tip.style.left = mx + 'px'; tip.style.top = my + 'px'; tip.hidden = false
+    const visible = p.x > 60 && p.x < W - 60 && p.y > 90 && p.y < Hh
+    tip.style.left = p.x + 'px'; tip.style.top = p.y + 'px'; tip.hidden = !visible
   } else tip.hidden = true
+
+  // El rótulo de abajo se desvanece al acercarse, para no tapar butacas
+  $('.hemi-label').style.opacity = cam.s > encuadre.s * 1.25 ? '0' : '1'
+}
+
+// Compatibilidad: otras partes llaman a dibujarHemiciclo() cuando cambia el tamaño o el tema
+function dibujarHemiciclo() {
+  calcularEncuadre()
+  if (modoCam === 'auto') irA(objetivoAuto(), !cam.s || cam.s === 1)
+  else { objetivo.s = Math.max(objetivo.s, encuadre.s * .8); pintar() }
+}
+
+// ── Interacción ──
+function posLocal(e) {
+  const cv = $('#hemi'), rect = cv.getBoundingClientRect()
+  const f = rect.width / cv.clientWidth || 1            // compensa la escala general de la página
+  return { x: (e.clientX - rect.left) / f, y: (e.clientY - rect.top) / f }
+}
+
+function butacaEn(sx, sy) {
+  const { W, H: Hh } = tamCanvas()
+  const w = aMundo(sx, sy, W, Hh)
+  const radio = Math.max(H.DOT * 1.1, 10 / cam.s)
+  let mejor = 0, dMin = radio * radio
+  for (const a of asientos) {
+    const d = (a.x - w.x) ** 2 + (a.y - w.y) ** 2
+    if (d < dMin) { dMin = d; mejor = a.num }
+  }
+  return mejor
+}
+
+function zoomEn(sx, sy, factor) {
+  const { W, H: Hh } = tamCanvas()
+  const antes = aMundo(sx, sy, W, Hh)
+  const s = Math.min(Math.max(objetivo.s * factor, encuadre.s * .8), encuadre.s * 14)
+  // mantener fijo el punto bajo el cursor
+  objetivo.x = antes.x - (sx - W / 2) / s
+  objetivo.y = antes.y - (sy - Hh / 2) / s
+  objetivo.s = s
+  modoCam = 'manual'
+  animar()
+}
+
+function tarjetaButaca(num, sx, sy) {
+  const card = $('#seat-card')
+  if (!num) { card.hidden = true; return }
+  const p = perfiles.get(num)
+  const esMia = num === estado.butaca
+  const alias = p?.show_alias && p.alias ? p.alias : null
+  const nombre = esMia ? 'Tu butaca' : (alias || 'Ciudadano anónimo')
+  const publico = !!alias                                      // igual que la versión actual: público = muestra su alias
+  card.innerHTML = `
+    <div class="sc-head">
+      <span class="sc-av" style="background:${esMia ? 'var(--orange)' : colorDe(p?.card_color, num)}">${alias ? esc(alias.charAt(0).toUpperCase())
+        : '<svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>'}</span>
+      <div><b>${esc(nombre)}</b><small>Butaca #${num}</small></div>
+      <span class="sc-badge ${publico ? 'pub' : ''}">${publico ? 'Público' : 'Anónimo'}</span>
+    </div>
+    ${p?.show_phrase && p.phrase ? `<p class="sc-phrase">“${esc(p.phrase)}”</p>` : ''}
+    ${p?.show_votes ? `<div class="sc-votes"><b>${fmtNum(p.vote_count)}</b> votaciones</div>` : ''}`
+  card.hidden = false
+  const { W, H: Hh } = tamCanvas()
+  const cw = card.offsetWidth, ch = card.offsetHeight
+  let x = sx + 16, y = sy + 16
+  if (x + cw > W - 8) x = sx - cw - 16
+  if (y + ch > Hh - 8) y = sy - ch - 16
+  card.style.left = Math.max(8, x) + 'px'; card.style.top = Math.max(8, y) + 'px'
+}
+
+function enlazarHemiciclo() {
+  const cv = $('#hemi')
+  const punteros = new Map()
+  let arrastre = null, pellizco = null
+
+  cv.addEventListener('wheel', e => {
+    e.preventDefault()
+    const p = posLocal(e)
+    zoomEn(p.x, p.y, Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0018)))
+  }, { passive: false })
+
+  cv.addEventListener('pointerdown', e => {
+    cv.setPointerCapture(e.pointerId)
+    punteros.set(e.pointerId, posLocal(e))
+    if (punteros.size === 1) arrastre = { ...posLocal(e), cx: objetivo.x, cy: objetivo.y, movio: false }
+    if (punteros.size === 2) {
+      const [a, b] = [...punteros.values()]
+      pellizco = { d: Math.hypot(a.x - b.x, a.y - b.y), s: objetivo.s }
+      arrastre = null
+    }
+  })
+
+  cv.addEventListener('pointermove', e => {
+    const p = posLocal(e)
+    if (punteros.has(e.pointerId)) punteros.set(e.pointerId, p)
+    if (pellizco && punteros.size === 2) {
+      const [a, b] = [...punteros.values()]
+      const d = Math.hypot(a.x - b.x, a.y - b.y)
+      zoomEn((a.x + b.x) / 2, (a.y + b.y) / 2, (pellizco.s * d / pellizco.d) / objetivo.s)
+      return
+    }
+    if (arrastre) {
+      const dx = p.x - arrastre.x, dy = p.y - arrastre.y
+      if (Math.abs(dx) + Math.abs(dy) > 4) arrastre.movio = true
+      if (arrastre.movio) {
+        objetivo.x = arrastre.cx - dx / objetivo.s; objetivo.y = arrastre.cy - dy / objetivo.s
+        Object.assign(cam, objetivo); modoCam = 'manual'
+        cv.style.cursor = 'grabbing'; $('#seat-card').hidden = true; hover = 0
+        pintar(); return
+      }
+    }
+    if (e.pointerType === 'mouse') {
+      const n = butacaEn(p.x, p.y)
+      if (n !== hover) { hover = n; pintar() }
+      cv.style.cursor = n ? 'pointer' : 'grab'
+      tarjetaButaca(n, p.x, p.y)
+    }
+  })
+
+  const soltar = e => {
+    const tap = arrastre && !arrastre.movio
+    punteros.delete(e.pointerId)
+    if (punteros.size < 2) pellizco = null
+    if (tap && e.pointerType !== 'mouse') {          // en pantallas táctiles, tocar muestra la tarjeta
+      const p = posLocal(e), n = butacaEn(p.x, p.y)
+      hover = n; pintar(); tarjetaButaca(n, p.x, p.y)
+    }
+    arrastre = null
+    cv.style.cursor = hover ? 'pointer' : 'grab'
+  }
+  cv.addEventListener('pointerup', soltar)
+  cv.addEventListener('pointercancel', soltar)
+  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { hover = 0; pintar(); $('#seat-card').hidden = true } })
+  cv.addEventListener('dblclick', e => { const p = posLocal(e); zoomEn(p.x, p.y, 2) })
+
+  // Controles
+  $('#hz-mas').addEventListener('click', () => { const { W, H: Hh } = tamCanvas(); zoomEn(W / 2, Hh / 2, 1.5) })
+  $('#hz-menos').addEventListener('click', () => { const { W, H: Hh } = tamCanvas(); zoomEn(W / 2, Hh / 2, 1 / 1.5) })
+  $('#hz-todo').addEventListener('click', () => { modoCam = 'manual'; irA({ ...encuadre }) })
+  $('#hz-mia').addEventListener('click', () => {
+    const mia = estado.butaca && asientos[estado.butaca - 1]
+    if (!mia) { aviso('Todavía no tenés butaca asignada.'); return }
+    modoCam = 'manual'; irA({ x: mia.x, y: mia.y, s: encuadre.s * 4 })
+  })
+}
+
+async function cargarPerfiles() {
+  try {
+    for (let desde = 0; ; desde += 1000) {     // Supabase devuelve máx. 1000 filas por pedido
+      const { data, error } = await sb.rpc('get_profiles_with_vote_counts').range(desde, desde + 999)
+      if (error) throw error
+      ;(data || []).forEach(r => perfiles.set(r.seat_number, r))
+      if (!data || data.length < 1000) break
+    }
+  } catch (e) { console.warn('cargarPerfiles:', e) }
 }
 
 async function cargarHemiciclo() {
@@ -207,6 +425,7 @@ async function cargarHemiciclo() {
     $('#st-butacas').textContent = fmtNum(totalButacas)
     asientos = calcularAsientos(Math.max(totalButacas, estado.butaca))
     dibujarHemiciclo()
+    cargarPerfiles()
   } catch (e) { console.warn('cargarHemiciclo:', e) }
 }
 
@@ -401,6 +620,7 @@ function enlazar() {
   })
   // Redibujar el hemiciclo cuando cambia el tamaño de su caja (ventana o columnas plegadas)
   let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(dibujarHemiciclo, 60) }).observe($('.hemi-wrap'))
+  enlazarHemiciclo()
   $('#side-toggle').addEventListener('click', () => plegar('side'))
   $('#panel-toggle').addEventListener('click', () => plegar('panel'))
   $('#panel-open').addEventListener('click', () => plegar('panel'))
@@ -429,6 +649,7 @@ function vigilarSesion() {
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
 function plegar(k) {
   const on = $('.app').classList.toggle(k + '-plegado')
+  modoCam = 'auto'
   try { localStorage.setItem('ux2_plegado_' + k, on ? '1' : '0') } catch (e) {}
   const btn = k === 'side' ? $('#side-toggle') : $('#panel-toggle')
   const txt = k === 'side' ? (on ? 'Desplegar menú' : 'Plegar menú') : 'Plegar bloques'

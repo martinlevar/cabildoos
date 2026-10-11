@@ -172,7 +172,34 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .pill-live svg { width: 16px; height: 16px; }
 @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
 .hemi-wrap { position: relative; flex: 1; width: 100%; aspect-ratio: 16 / 9; min-height: 380px; max-height: 600px; }
-#hemi { position: absolute; inset: 0; width: 100%; height: 100%; }
+#hemi { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.hemi-label { transition: opacity .25s; }
+.my-seat-tip { z-index: 2; }
+
+/* Tarjeta de butaca al pasar el mouse */
+.seat-card {
+  position: absolute; z-index: 5; width: 240px; padding: 12px 14px; pointer-events: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(18,22,46,.18);
+}
+.sc-head { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; }
+.sc-head b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-head small { display: block; font-size: 12px; color: var(--muted); }
+.sc-av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
+.sc-badge { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+.sc-badge.pub { background: var(--green-bg); color: var(--green); }
+.sc-phrase { margin: 10px 0 0; font-size: 13px; font-style: italic; color: var(--ink-2); }
+.sc-votes { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.sc-votes b { color: var(--ink); font-size: 14px; }
+
+/* Controles de zoom */
+.hemi-zoom {
+  position: absolute; right: 0; bottom: 0; z-index: 3; display: grid; gap: 2px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+}
+.hemi-zoom button { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; color: var(--ink-2); }
+.hemi-zoom button:hover { background: var(--surface-2); color: var(--ink); }
+.hemi-zoom svg { width: 18px; height: 18px; }
 .my-seat-tip {
   position: absolute; transform: translate(-50%, calc(-100% - 44px)); display: flex; align-items: center; gap: 12px;
   background: var(--navy); color: #fff; border-radius: 10px; padding: 9px 12px 9px 16px; box-shadow: 0 10px 24px rgba(20,26,60,.3);
