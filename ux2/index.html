@@ -176,6 +176,40 @@
       <div class="vlist" id="vlist"><p class="muted">Cargando…</p></div>
     </section>
 
+    <!-- PROPUESTAS -->
+    <section class="view" data-view="propuestas" hidden id="pr-vista">
+      <header class="view-head pr-head">
+        <div><h1>Propuestas</h1><p>Cada propuesta tiene 48 horas para encender 20 butacas. Si lo logra, pasa a revisión para entrar al Hemiciclo.</p></div>
+        <button class="btn btn-dark pr-lanzar" id="pr-lanzar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Lanzar propuesta</button>
+      </header>
+
+      <section class="pista" id="pr-pista" aria-label="Propuestas en carrera">
+        <div class="pista-cab">
+          <div class="pista-dato"><b id="pr-n-vivas">–</b><span>en carrera</span></div>
+          <div class="pista-dato"><b id="pr-n-hora">–</b><span>butacas encendidas en la última hora</span></div>
+          <div class="pista-dato pista-prox"><span>La próxima se apaga en</span><span id="pr-prox"><b>–</b></span></div>
+        </div>
+        <div class="pista-meta-linea"><span>Salida</span><span>Hemiciclo</span></div>
+        <div class="carriles" id="pr-carriles"></div>
+        <p class="pista-eco" id="pr-eco" aria-live="polite"></p>
+      </section>
+
+      <div class="pr-barra">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-prfiltro="carrera">En carrera <span></span></button>
+          <button class="seg-btn" data-prfiltro="meta">Lograron la meta <span></span></button>
+          <button class="seg-btn" data-prfiltro="hemiciclo">En el Hemiciclo <span></span></button>
+          <button class="seg-btn" data-prfiltro="mias">Mías <span></span></button>
+        </div>
+        <div class="pr-ordenes" id="pr-ordenes">
+          <button data-prorden="cerca" class="active">Más cerca de la meta</button>
+          <button data-prorden="apagar">Por apagarse</button>
+          <button data-prorden="nuevas">Nuevas</button>
+        </div>
+      </div>
+      <div class="pr-grid" id="pr-grid"><p class="muted">Cargando…</p></div>
+    </section>
+
     <!-- DEBATES -->
     <section class="view" data-view="debates" hidden id="db-vista">
       <header class="view-head">
@@ -249,6 +283,56 @@
     <h2 id="mv-pregunta"></h2>
     <p class="mv-desc" id="mv-desc"></p>
     <div id="mv-cuerpo"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-prop" hidden role="dialog" aria-modal="true">
+  <div class="modal-box modal-prop">
+    <button class="modal-x" id="mp-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div id="mp-cuerpo"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-lanzar" hidden role="dialog" aria-modal="true" aria-labelledby="ml-titulo">
+  <div class="modal-box modal-lanzar">
+    <button class="modal-x" id="ml-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <form id="ml-form" class="ml-grid">
+      <div class="ml-campos">
+        <h2 id="ml-titulo">Lanzar una propuesta</h2>
+        <p class="muted" id="ml-meta-txt"></p>
+        <label class="ml-l">Tu propuesta <em id="ml-cont">0/280</em>
+          <textarea id="ml-texto" maxlength="280" rows="4" required placeholder="Escribila como una pregunta o acción concreta. Ej: ¿Debe el Cabildo exigir auditoría pública del registro electoral?"></textarea></label>
+        <div class="ml-l">Tema<div class="ml-cats" id="ml-cats"></div></div>
+        <details class="ml-mas">
+          <summary>Agregar contexto y fuentes</summary>
+          <label class="ml-l">Contexto<textarea id="ml-contexto" maxlength="1500" rows="3" placeholder="Por qué importa, qué cambiaría"></textarea></label>
+          <label class="ml-l">Enlaces a fuentes
+            <input class="ml-link" type="url" placeholder="https://"><input class="ml-link" type="url" placeholder="https://"><input class="ml-link" type="url" placeholder="https://"></label>
+          <label class="ml-l">Video<input id="ml-video" type="url" placeholder="https://"></label>
+        </details>
+        <button class="btn btn-dark ml-enviar" id="ml-enviar" type="submit" disabled>Lanzar propuesta</button>
+      </div>
+      <div class="ml-vista">
+        <span class="muted ml-vista-l">Vista previa</span>
+        <div class="card pr-card ml-prev" id="ml-prev"></div>
+      </div>
+    </form>
+    <div class="ml-listo" id="ml-listo" hidden>
+      <div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
+      <h2>Tu propuesta está en carrera</h2>
+      <p>El reloj ya corre. Las primeras horas son las que más pesan: compartila ahora con quienes la apoyarían.</p>
+      <div class="mv-acciones"><button class="btn btn-ghost" id="ml-cerrar-listo" type="button">Ver la pista</button><button class="btn btn-dark" id="ml-compartir" data-compartir="" type="button">Compartir enlace</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-meta" hidden role="dialog" aria-modal="true" aria-labelledby="mm-titulo">
+  <div class="modal-box modal-meta">
+    <button class="modal-x" id="mm-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div id="mm-arco"></div>
+    <h2 id="mm-titulo">¡Tu butaca completó el Hemiciclo de esta propuesta!</h2>
+    <p id="mm-texto"></p>
+    <p class="muted">Llegó a la meta y pasa a revisión del moderador para entrar a votación.</p>
   </div>
 </div>
 

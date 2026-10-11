@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -56,6 +56,7 @@ function ruta() {
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
   if (valida === 'votaciones') cargarVotaciones()
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
+  if (valida === 'propuestas') { if (!pr.d) cargarPropuestas(arg); else { refrescarPropuestas(); if (arg) abrirPropuesta(arg) } }
   if (valida === 'debates') {
     if (!dbt.lista.length) cargarDebates(arg)
     else if (arg) { if (arg !== dbt.q?.id) abrirHilo(arg) }
@@ -1319,6 +1320,375 @@ function enlazarDebates() {
   setInterval(() => { $$('#db-msgs time').forEach((t, i) => { const m = dbt.msgs[i]; if (m) t.textContent = haceCuanto(m.created_at) }) }, 30_000)
 }
 
+// ── Propuestas ──────────────────────────────────────────────────
+// Cada propuesta tiene un plazo (48 h) para encender N butacas (20). Si lo logra pasa a revisión
+// y de ahí al Hemiciclo. El servidor aplica todas las reglas; esto es la interfaz.
+const pr = { d: null, filtro: 'carrera', orden: 'cerca', desfase: 0, canal: null, cats: [], abierta: null, poll: null }
+const CAT_COLOR = { 'Política': '#4338CA', 'Economía': '#047857', 'Derechos': '#C2410C', 'Social': '#7C3AED', 'Internacional': '#0369A1', 'Justicia': '#BE123C', 'Electoral': '#B45309', 'General': '#475569' }
+const ahoraSrv = () => Date.now() + pr.desfase
+const restaMs = p => new Date(p.expires_at).getTime() - ahoraSrv()
+const viva = p => p.status === 'pending' && restaMs(p) > 0
+const fmtResta = ms => {
+  if (ms <= 0) return 'Terminó'
+  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`
+}
+const calor = p => {                          // 0 = recién lanzada … 1 = por apagarse
+  const total = (pr.d?.horas || 48) * 3600e3
+  return Math.min(1, Math.max(0, 1 - restaMs(p) / total))
+}
+const autorDe = p => {
+  if (p.es_mia) return 'Tu propuesta'
+  const perf = perfiles.get(p.seat_number)
+  return perf?.show_alias && perf.alias ? perf.alias : `Butaca #${p.seat_number}`
+}
+
+// Mini hemiciclo: N butacas en dos filas de arco que se encienden de izquierda a derecha
+function arcoButacas(encendidas, meta, clase = '') {
+  const filas = [[Math.round(meta * 0.4), 24], [meta - Math.round(meta * 0.4), 38]]
+  const seats = []
+  filas.forEach(([n, r]) => {
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI - (i + 0.5) * Math.PI / n
+      seats.push({ a, x: 50 + r * Math.cos(a), y: 46 - r * Math.sin(a) })
+    }
+  })
+  seats.sort((s1, s2) => s2.a - s1.a)
+  return `<svg class="arco ${clase}" viewBox="0 0 100 50" aria-hidden="true">${seats.map((s, i) =>
+    `<circle cx="${s.x.toFixed(2)}" cy="${s.y.toFixed(2)}" r="3.6" class="${i < encendidas ? 'on' : ''}" data-i="${i}"/>`).join('')}</svg>`
+}
+
+async function cargarPropuestas(id) {
+  try {
+    const [{ data, error }, cats] = await Promise.all([
+      sb.rpc('v2_propuestas'),
+      pr.cats.length ? Promise.resolve({ data: pr.cats }) : sb.from('categories').select('name, color').order('sort_order'),
+    ])
+    if (error) throw error
+    pr.d = data
+    pr.desfase = new Date(data.ahora).getTime() - Date.now()
+    if (cats?.data?.length) { pr.cats = cats.data; cats.data.forEach(c => { CAT_COLOR[c.name] = c.color }) }
+  } catch (e) { console.warn('cargarPropuestas:', e) }
+  pintarPropuestas()
+  if (id) abrirPropuesta(id)
+  if (!pr.canal) escucharPropuestas()
+  if (!pr.poll) pr.poll = setInterval(() => { if (vistaActual() === 'propuestas') refrescarPropuestas() }, 60_000)
+}
+
+async function refrescarPropuestas() {
+  try {
+    const { data } = await sb.rpc('v2_propuestas')
+    if (!data) return
+    pr.d = data; pr.desfase = new Date(data.ahora).getTime() - Date.now()
+    pintarPropuestas()
+  } catch (e) {}
+}
+
+// En vivo: cuando cambia el conteo de una propuesta, se enciende la butaca en pantalla (sin saber quién fue)
+function escucharPropuestas() {
+  pr.canal = sb.channel('v2-propuestas')
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'proposals' }, ({ new: n }) => {
+      const p = pr.d?.propuestas?.find(x => x.id === n.id)
+      if (!p) { if (n.status === 'pending') refrescarPropuestas(); return }
+      const antes = p.likes
+      Object.assign(p, { likes: n.likes, status: n.status })
+      if (n.likes > antes) { p.apoyos_hora = (p.apoyos_hora || 0) + (n.likes - antes); pr.d.apoyos_hora += n.likes - antes; latido(p, n.likes - antes) }
+      else pintarPropuestas()
+    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'proposals' }, () => refrescarPropuestas())
+    .subscribe()
+}
+
+function latido(p, cuantos) {
+  const meta = pr.d.meta
+  $$(`[data-prop="${p.id}"]`).forEach(card => {
+    const arco = card.querySelector('.arco')
+    if (arco) for (let i = 0; i < Math.min(p.likes, meta); i++) {
+      const c = arco.querySelector(`[data-i="${i}"]`)
+      if (c && !c.classList.contains('on')) { c.classList.add('on', 'nueva'); setTimeout(() => c.classList.remove('nueva'), 900) }
+    }
+    const n = card.querySelector('[data-n]'); if (n) n.textContent = Math.min(p.likes, 9999)
+    const f = card.querySelector('[data-faltan]'); if (f) f.innerHTML = faltanTxt(p)
+    card.classList.remove('pulso'); void card.offsetWidth; card.classList.add('pulso')
+  })
+  pintarPista()
+  const t = $('#pr-eco')
+  if (t) { t.innerHTML = `<i></i>Ahora mismo: +${cuantos} a “${esc(p.text.slice(0, 60))}${p.text.length > 60 ? '…' : ''}”`; t.classList.remove('ver'); void t.offsetWidth; t.classList.add('ver') }
+  if (p.status === 'accepted') pintarPropuestas()
+}
+
+const faltanTxt = p => {
+  const meta = pr.d.meta, f = Math.max(0, meta - p.likes)
+  if (p.status !== 'pending') return 'Meta lograda'
+  if (f === 0) return 'Meta lograda'
+  if (f <= 3) return `<b>¡Faltan ${f}!</b>`
+  return `Faltan ${f}`
+}
+
+function pintarPropuestas() {
+  const d = pr.d, v = $('#pr-vista'); if (!v) return
+  if (!d) { $('#pr-grid').innerHTML = '<p class="muted">No se pudieron cargar las propuestas.</p>'; return }
+  const props = d.propuestas || []
+  const vivas = props.filter(viva)
+  const c = { carrera: vivas.length, meta: props.filter(p => p.status === 'accepted').length, hemiciclo: props.filter(p => p.status === 'approved').length, mias: props.filter(p => p.es_mia).length }
+  $$('[data-prfiltro]').forEach(b => { b.classList.toggle('active', b.dataset.prfiltro === pr.filtro); const s = b.querySelector('span'); if (s) s.textContent = c[b.dataset.prfiltro] || '' })
+  $('#pr-ordenes').hidden = pr.filtro !== 'carrera'
+  $$('[data-prorden]').forEach(b => b.classList.toggle('active', b.dataset.prorden === pr.orden))
+  const btn = $('#pr-lanzar')
+  btn.disabled = !!(estado.user && estado.butaca && !d.puedo_lanzar)
+  btn.title = btn.disabled ? 'Ya tenés una propuesta en campaña' : ''
+  pintarPista()
+
+  let lista
+  if (pr.filtro === 'carrera') {
+    lista = vivas.slice().sort(pr.orden === 'apagar' ? (a, b) => restaMs(a) - restaMs(b)
+      : pr.orden === 'nuevas' ? (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      : (a, b) => (b.likes - a.likes) || (restaMs(a) - restaMs(b)))
+  } else if (pr.filtro === 'meta') lista = props.filter(p => p.status === 'accepted')
+  else if (pr.filtro === 'hemiciclo') lista = props.filter(p => p.status === 'approved')
+  else lista = props.filter(p => p.es_mia).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+  const vacio = {
+    carrera: ['Ninguna propuesta en carrera', 'Sé quien abra la próxima: lanzá una propuesta y empezá a encender butacas.'],
+    meta: ['Todavía no hay propuestas en revisión', 'Cuando una propuesta enciende todas sus butacas, aparece acá mientras el moderador la revisa.'],
+    hemiciclo: ['Todavía no hay propuestas en el Hemiciclo', 'Las propuestas aprobadas por el moderador pasan a votación del Cabildo.'],
+    mias: ['No lanzaste propuestas todavía', 'Tenés una idea para Venezuela: lanzala y conseguí apoyos.'],
+  }[pr.filtro]
+  $('#pr-grid').innerHTML = lista.length ? lista.map(tarjetaPropuesta).join('')
+    : `<div class="card soon pr-vacio"><h3>${vacio[0]}</h3><p class="muted">${vacio[1]}</p></div>`
+}
+
+function pintarPista() {
+  const d = pr.d, pista = $('#pr-pista'); if (!d || !pista) return
+  const meta = d.meta
+  const vivas = (d.propuestas || []).filter(viva).sort((a, b) => b.likes - a.likes).slice(0, 7)
+  const prox = (d.propuestas || []).filter(viva).sort((a, b) => restaMs(a) - restaMs(b))[0]
+  $('#pr-n-vivas').textContent = fmtNum((d.propuestas || []).filter(viva).length)
+  $('#pr-n-hora').textContent = fmtNum(d.apoyos_hora)
+  $('#pr-prox').innerHTML = prox ? `<b data-fin="${esc(prox.expires_at)}">${fmtResta(restaMs(prox))}</b>` : '<b>—</b>'
+  $('#pr-carriles').innerHTML = vivas.length ? vivas.map(p => {
+    const x = Math.min(1, p.likes / meta), cal = calor(p)
+    return `<button class="carril" data-abrir="${p.id}" title="${esc(p.text)}">
+      <span class="carril-txt">${esc(p.text)}</span>
+      <span class="carril-linea"><i class="carril-estela" style="width:${(x * 100).toFixed(1)}%"></i>
+        <span class="corredor ${cal > .9 ? 'urge' : ''}" style="left:${(x * 100).toFixed(1)}%;--cal:${cal.toFixed(2)}"><em>${p.likes}</em></span></span>
+    </button>`
+  }).join('') : '<p class="carril-vacio">La pista está vacía. La próxima propuesta que se lance arranca acá.</p>'
+}
+
+function tarjetaPropuesta(p) {
+  const meta = pr.d.meta, vive = viva(p)
+  const col = CAT_COLOR[p.cat] || CAT_COLOR.General
+  const cal = calor(p), pct = vive ? Math.max(0, restaMs(p) / ((pr.d.horas || 48) * 3600e3)) : 0
+  const estado_ = p.status === 'accepted' ? '<span class="pr-sello meta">Meta lograda · en revisión</span>'
+    : p.status === 'approved' ? '<span class="pr-sello hemi">En el Hemiciclo</span>'
+    : p.status === 'expired' ? '<span class="pr-sello fin">No llegó a la meta</span>'
+    : p.status === 'rejected' ? '<span class="pr-sello fin">No aprobada</span>'
+    : p.status === 'pending' && !vive ? '<span class="pr-sello fin">Terminó</span>' : ''
+  return `<article class="card pr-card ${p.es_mia ? 'mia' : ''} ${vive && cal > .9 ? 'urge' : ''}" data-prop="${p.id}" style="--cat:${col}">
+    <header class="pr-top">
+      <span class="pr-cat">${esc(p.cat || 'General')}</span>
+      <span class="pr-autor">${esc(autorDe(p))}</span>
+      ${vive && p.apoyos_hora > 0 ? `<span class="pr-fuego" title="Apoyos en la última hora">+${p.apoyos_hora} en la última hora</span>` : ''}
+    </header>
+    <button class="pr-texto" data-abrir="${p.id}">${esc(p.text)}</button>
+    <div class="pr-medio">
+      ${arcoButacas(Math.min(p.likes, meta), meta)}
+      <div class="pr-cuenta"><b data-n>${p.likes}</b><small>de ${meta} butacas</small><span data-faltan>${faltanTxt(p)}</span></div>
+    </div>
+    ${vive ? `<div class="mecha" style="--resto:${pct.toFixed(4)};--cal:${cal.toFixed(2)}"><i></i></div>
+      <div class="pr-plazo"><span>Se apaga en</span><b data-fin="${esc(p.expires_at)}">${fmtResta(restaMs(p))}</b></div>` : estado_}
+    <footer class="pr-pie">
+      ${vive ? botonApoyo(p) : ''}
+      <button class="pr-mini" data-abrir="${p.id}" aria-label="Ver comentarios"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>${p.comentarios || 0}</button>
+      <button class="pr-mini" data-compartir="${p.id}" aria-label="Copiar enlace"><svg viewBox="0 0 24 24"><path d="M8 12h8M14 6l6 6-6 6"/></svg>Compartir</button>
+    </footer>
+  </article>`
+}
+
+const botonApoyo = p => p.es_mia
+  ? `<span class="pr-tuya">Compartila para sumar apoyos</span>`
+  : `<button class="btn pr-apoyar ${p.yo_apoye ? 'on' : ''}" data-apoyar="${p.id}">${p.yo_apoye ? 'Apoyando' : 'Encender una butaca'}</button>`
+
+async function apoyar(id, btn) {
+  const p = pr.d.propuestas.find(x => x.id === id); if (!p) return
+  if (!estado.user) { aviso('Iniciá sesión para apoyar propuestas.'); return }
+  if (!estado.butaca) { aviso('Necesitás tu butaca verificada para apoyar.', 'error'); return }
+  const quiero = !p.yo_apoye
+  if (!quiero && !await confirmar('¿Quitar tu apoyo?', 'Tu butaca se apaga en esta propuesta. Podés volver a apoyarla mientras siga en carrera.', 'Quitar apoyo')) return
+  $$(`[data-apoyar="${id}"]`).forEach(b => { b.disabled = true })
+  const { data, error } = await sb.rpc('v2_apoyar', { p_id: id, p_apoyar: quiero })
+  if (error || !data?.ok) { aviso(data?.error || 'No se pudo registrar tu apoyo.', 'error'); $$(`[data-apoyar="${id}"]`).forEach(b => { b.disabled = false }); return }
+  const antes = p.likes
+  Object.assign(p, { likes: data.likes, status: data.status, yo_apoye: quiero })
+  if (quiero) {
+    p.apoyos_hora = (p.apoyos_hora || 0) + 1; pr.d.apoyos_hora++
+    $$(`[data-apoyar="${id}"]`).forEach(b => { b.outerHTML = botonApoyo(p) })
+    latido(p, Math.max(1, data.likes - antes))
+    if (data.status === 'accepted') return momentoMeta(p)
+    aviso(Math.max(0, data.meta - data.likes) ? `Encendiste tu butaca. Faltan ${data.meta - data.likes}.` : 'Encendiste tu butaca.')
+  } else { pintarPropuestas(); if (pr.abierta === id) abrirPropuesta(id) }
+}
+
+function momentoMeta(p) {
+  const m = $('#modal-meta')
+  $('#mm-arco').innerHTML = arcoButacas(pr.d.meta, pr.d.meta, 'grande completo')
+  $('#mm-texto').textContent = p.text
+  m.hidden = false
+  pintarPropuestas()
+}
+
+async function compartir(id) {
+  const p = pr.d?.propuestas?.find(x => x.id === id)
+  const url = `${location.origin}/ux2/#propuestas/${id}`
+  const texto = p ? `Apoyá esta propuesta en el Cabildo de Venezuela: “${p.text}”` : 'Propuesta en el Cabildo de Venezuela'
+  try {
+    if (navigator.share) await navigator.share({ title: 'Cabildo de Venezuela', text: texto, url })
+    else { await navigator.clipboard.writeText(`${texto} ${url}`); aviso('Enlace copiado. Pegalo donde quieras.') }
+  } catch (e) {}
+}
+
+// ── Detalle con comentarios ──
+async function abrirPropuesta(id) {
+  const p = pr.d?.propuestas?.find(x => x.id === id)
+  if (!p) return
+  pr.abierta = id
+  const m = $('#modal-prop'), b = $('#mp-cuerpo')
+  const meta = pr.d.meta, vive = viva(p)
+  const links = (Array.isArray(p.links) ? p.links : []).filter(l => typeof l === 'string' && /^https?:\/\//.test(l))
+  b.innerHTML = `
+    <div class="pr-top"><span class="pr-cat" style="--cat:${CAT_COLOR[p.cat] || CAT_COLOR.General}">${esc(p.cat || 'General')}</span><span class="pr-autor">${esc(autorDe(p))}</span></div>
+    <h2 class="mp-titulo">${esc(p.text)}</h2>
+    ${p.context ? `<p class="mp-contexto">${esc(p.context)}</p>` : ''}
+    ${links.length || p.video_url ? `<div class="v-links">${p.video_url && /^https?:\/\//.test(p.video_url) ? `<a href="${esc(p.video_url)}" target="_blank" rel="noopener noreferrer">Ver video</a>` : ''}${links.map(l => `<a href="${esc(l)}" target="_blank" rel="noopener noreferrer">${esc(l.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>`).join('')}</div>` : ''}
+    <div class="mp-carrera" data-prop="${p.id}" style="--cat:${CAT_COLOR[p.cat] || CAT_COLOR.General}">
+      ${arcoButacas(Math.min(p.likes, meta), meta, 'grande')}
+      <div class="pr-cuenta"><b data-n>${p.likes}</b><small>de ${meta} butacas</small><span data-faltan>${faltanTxt(p)}</span></div>
+      ${vive ? `<div class="mecha" style="--resto:${Math.max(0, restaMs(p) / ((pr.d.horas || 48) * 3600e3)).toFixed(4)};--cal:${calor(p).toFixed(2)}"><i></i></div>
+        <div class="pr-plazo"><span>Se apaga en</span><b data-fin="${esc(p.expires_at)}">${fmtResta(restaMs(p))}</b></div>` : ''}
+      <div class="pr-pie">${vive ? botonApoyo(p) : ''}<button class="pr-mini" data-compartir="${p.id}"><svg viewBox="0 0 24 24"><path d="M8 12h8M14 6l6 6-6 6"/></svg>Compartir</button></div>
+    </div>
+    <h3 class="mp-sub">Conversación</h3>
+    <div class="mp-coments" id="mp-coments"><p class="muted">Cargando…</p></div>
+    ${estado.butaca ? `<div class="mp-comentar"><textarea id="mp-coment" maxlength="500" rows="2" placeholder="Sumá un argumento a favor, en contra o una mejora"></textarea><button class="btn btn-dark" id="mp-coment-env">Comentar</button></div>`
+      : `<p class="muted mp-nota-c">Para comentar necesitás tu butaca verificada.</p>`}`
+  m.hidden = false
+  if (location.hash !== '#propuestas/' + id) history.replaceState(null, '', '#propuestas/' + id)
+  const { data } = await sb.from('proposal_comments').select('id, from_seat, text, created_at').eq('proposal_id', id).order('created_at', { ascending: true }).limit(200)
+  if (pr.abierta !== id) return
+  const box = $('#mp-coments')
+  box.innerHTML = (data || []).length ? data.map(c => {
+    const perf = perfiles.get(c.from_seat), al = perf?.show_alias && perf.alias ? perf.alias : null
+    return `<div class="mp-c"><b>${c.from_seat === estado.butaca ? 'Vos' : esc(al || 'Ciudadano anónimo')} <span>#${c.from_seat} · ${haceCuanto(c.created_at)}</span></b><p>${esc(c.text)}</p></div>`
+  }).join('') : '<p class="muted">Nadie comentó todavía.</p>'
+}
+
+function cerrarPropuestaModal() {
+  $('#modal-prop').hidden = true; pr.abierta = null
+  if (location.hash.startsWith('#propuestas/')) history.replaceState(null, '', '#propuestas')
+}
+
+async function comentar() {
+  const el = $('#mp-coment'), id = pr.abierta; if (!el || !id) return
+  const txt = limpiar(el.value).slice(0, 500); if (!txt) return
+  $('#mp-coment-env').disabled = true
+  const { error } = await sb.from('proposal_comments').insert({ proposal_id: id, from_seat: estado.butaca, text: txt })
+  $('#mp-coment-env').disabled = false
+  if (error) { aviso(error.message?.includes('caracteres') ? error.message : 'No se pudo publicar el comentario.', 'error'); return }
+  const p = pr.d.propuestas.find(x => x.id === id); if (p) p.comentarios = (p.comentarios || 0) + 1
+  abrirPropuesta(id); pintarPropuestas()
+}
+
+// ── Lanzar una propuesta ──
+function abrirLanzar() {
+  if (!estado.user) { aviso('Iniciá sesión para lanzar una propuesta.'); return }
+  if (!estado.butaca) { aviso('Necesitás tu butaca verificada para proponer.', 'error'); return }
+  if (pr.d && !pr.d.puedo_lanzar) { aviso('Ya tenés una propuesta en carrera. Cuando termine vas a poder lanzar otra.', 'error'); return }
+  const cats = (pr.cats.length ? pr.cats.map(c => c.name) : Object.keys(CAT_COLOR)).filter((c, i, a) => a.indexOf(c) === i)
+  $('#ml-cats').innerHTML = cats.map((c, i) => `<button type="button" class="ml-cat ${i === 0 ? 'on' : ''}" data-cat="${esc(c)}" style="--cat:${CAT_COLOR[c] || CAT_COLOR.General}">${esc(c)}</button>`).join('')
+  $('#ml-meta-txt').textContent = `Tenés ${pr.d?.horas || 48} horas para encender ${pr.d?.meta || 20} butacas. Si lo lográs, el moderador la revisa para llevarla a votación del Hemiciclo.`
+  $('#ml-form').reset(); $('#ml-form').hidden = false; $('#ml-listo').hidden = true
+  previsualizar()
+  $('#modal-lanzar').hidden = false
+  setTimeout(() => $('#ml-texto').focus(), 50)
+}
+
+function previsualizar() {
+  const t = $('#ml-texto').value, cat = $('.ml-cat.on')?.dataset.cat || 'General'
+  $('#ml-cont').textContent = `${t.length}/280`
+  $('#ml-cont').classList.toggle('mal', t.trim().length > 0 && t.trim().length < 10)
+  $('#ml-prev').innerHTML = `
+    <div class="pr-top"><span class="pr-cat" style="--cat:${CAT_COLOR[cat] || CAT_COLOR.General}">${esc(cat)}</span><span class="pr-autor">Tu propuesta</span></div>
+    <p class="ml-prev-txt ${t.trim() ? '' : 'vacio'}">${esc(t.trim() || 'Así se va a ver tu propuesta en la pista.')}</p>
+    <div class="pr-medio">${arcoButacas(0, pr.d?.meta || 20)}<div class="pr-cuenta"><b>0</b><small>de ${pr.d?.meta || 20} butacas</small></div></div>
+    <div class="mecha" style="--resto:1;--cal:0"><i></i></div>
+    <div class="pr-plazo"><span>Se apaga en</span><b>${String(pr.d?.horas || 48).padStart(2, '0')}:00:00</b></div>`
+  $('#ml-enviar').disabled = t.trim().length < 10
+}
+
+async function lanzar(e) {
+  e.preventDefault()
+  const text = limpiar($('#ml-texto').value)
+  if (text.length < 10) return
+  const btn = $('#ml-enviar'); btn.disabled = true; btn.textContent = 'Lanzando…'
+  const links = $$('.ml-link').map(i => i.value.trim()).filter(v => /^https?:\/\/\S+$/i.test(v)).slice(0, 3)
+  const video = $('#ml-video').value.trim()
+  const { error } = await sb.from('proposals').insert({
+    seat_number: estado.butaca, text, cat: $('.ml-cat.on')?.dataset.cat || 'General',
+    context: limpiar($('#ml-contexto').value) || null, links, video_url: /^https?:\/\/\S+$/i.test(video) ? video : null,
+  })
+  btn.textContent = 'Lanzar propuesta'
+  if (error) { btn.disabled = false; aviso(/campaña|caracteres|butaca/i.test(error.message || '') ? error.message : 'No se pudo lanzar la propuesta.', 'error'); return }
+  $('#ml-form').hidden = true; $('#ml-listo').hidden = false
+  await refrescarPropuestas()
+  const mia = pr.d?.propuestas?.find(p => p.es_mia && viva(p))
+  $('#ml-compartir').dataset.compartir = mia?.id || ''
+  pr.filtro = 'carrera'; pintarPropuestas()
+}
+
+function tickPropuestas() {
+  if (vistaActual() !== 'propuestas' && $('#modal-prop')?.hidden !== false) return
+  $$('[data-fin]').forEach(el => {
+    const ms = new Date(el.dataset.fin).getTime() - ahoraSrv()
+    el.textContent = fmtResta(ms)
+    const card = el.closest('[data-prop]'); const m = card?.querySelector('.mecha')
+    if (m) { m.style.setProperty('--resto', Math.max(0, ms / ((pr.d?.horas || 48) * 3600e3)).toFixed(4)) }
+    if (ms <= 0 && pr.d && !el.dataset.vencio) { el.dataset.vencio = '1'; setTimeout(refrescarPropuestas, 1500) }
+  })
+}
+
+function enlazarPropuestas() {
+  const v = $('#pr-vista'); if (!v) return
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-apoyar],[data-abrir],[data-compartir],[data-prfiltro],[data-prorden]')
+    if (!t) return
+    if (t.dataset.apoyar) return apoyar(t.dataset.apoyar, t)
+    if (t.dataset.compartir !== undefined && t.dataset.compartir) return compartir(t.dataset.compartir)
+    if (t.dataset.abrir) return abrirPropuesta(t.dataset.abrir)
+    if (t.dataset.prfiltro) { pr.filtro = t.dataset.prfiltro; return pintarPropuestas() }
+    if (t.dataset.prorden) { pr.orden = t.dataset.prorden; return pintarPropuestas() }
+  })
+  $('#pr-lanzar').addEventListener('click', abrirLanzar)
+  $('#mp-x').addEventListener('click', cerrarPropuestaModal)
+  $('#modal-prop').addEventListener('click', e => { if (e.target.id === 'modal-prop') cerrarPropuestaModal(); if (e.target.id === 'mp-coment-env') comentar() })
+  $('#ml-x').addEventListener('click', () => { $('#modal-lanzar').hidden = true })
+  $('#modal-lanzar').addEventListener('click', e => {
+    if (e.target.id === 'modal-lanzar') $('#modal-lanzar').hidden = true
+    const c = e.target.closest('.ml-cat'); if (c) { $$('.ml-cat').forEach(x => x.classList.toggle('on', x === c)); previsualizar() }
+    if (e.target.id === 'ml-cerrar-listo') $('#modal-lanzar').hidden = true
+  })
+  $('#ml-form').addEventListener('input', previsualizar)
+  $('#ml-form').addEventListener('submit', lanzar)
+  $('#mm-x').addEventListener('click', () => { $('#modal-meta').hidden = true })
+  $('#modal-meta').addEventListener('click', e => { if (e.target.id === 'modal-meta') $('#modal-meta').hidden = true })
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return
+    if (!$('#modal-meta').hidden) $('#modal-meta').hidden = true
+    else if (!$('#modal-lanzar').hidden) $('#modal-lanzar').hidden = true
+    else if (!$('#modal-prop').hidden) cerrarPropuestaModal()
+  })
+}
+
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
 function plegar(k) {
   const on = $('.app').classList.toggle(k + '-plegado')
@@ -1336,13 +1706,15 @@ function irATab(tab) {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); ruta()
-  tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas() }, 1000)
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); ruta()
+  tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
+  if (vistaActual() === 'propuestas' && pr.d) refrescarPropuestas()
   if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques()])
   if (vistaActual() === 'butaca') cargarMiButaca()
+  if (vistaActual() === 'propuestas' && pr.d) pintarPropuestas()   // ya con alias públicos cargados
   setInterval(cargarVotacion, 60_000)   // refresca votos y estado de la sesión
 }
 iniciar()
