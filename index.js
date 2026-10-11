@@ -2404,13 +2404,13 @@ function clRow(num, isMe) {
   const followDis = num === MY_SEAT ? 'style="opacity:.35;pointer-events:none"' : ''
   return `
   <div class="cl-item ${isMe ? 'cl-me' : ''}" id="cl-row-${num}">
-    <div class="cl-av" style="background:${p.color}">${p.initials}</div>
+    <div class="cl-av" style="background:${p.color}">${escapeHtml(p.initials)}</div>
     <div class="cl-info">
       <div class="cl-name">
-        ${p.displayName}
+        ${escapeHtml(p.displayName)}
         <span class="cl-badge-sm ${badgeCls}">${badgeTxt}</span>
       </div>
-      <div class="cl-phrase">${p.phrase}</div>
+      <div class="cl-phrase">${escapeHtml(p.phrase)}</div>
       ${p.votes > 0 ? `<div class="cl-meta">${p.votes} votaciones</div>` : ''}
     </div>
     <div class="cl-num">#${num}</div>
@@ -6293,7 +6293,7 @@ async function _loadAndRenderConversaciones() {
         const preview = c.lastText.length > 45 ? c.lastText.slice(0,45)+'…' : c.lastText
         return `<div class="sf-convo-row" onclick="abrirUserProfile(${c.seat},'mensajes-inbox');cerrarSocialPanel()">
           <div class="sf-convo-av" style="background:${AVATAR_COLORS_CONVO[ci]}">
-            ${initials}
+            ${escapeHtml(initials)}
             ${c.unread > 0 ? '<span class="unread-dot"></span>' : ''}
           </div>
           <div class="sf-convo-info">
@@ -7087,7 +7087,7 @@ function _renderStatsPanel(rows) {
 
     return `<div class="sp-q-card">
       <div class="sp-q-top">
-        <p class="sp-q-text">${r.text}</p>
+        <p class="sp-q-text">${escapeHtml(r.text)}</p>
         ${catPill}
       </div>
       ${barsHtml}
@@ -9186,7 +9186,7 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
           <span class="cal-q-cat" style="background:${cat.bg};color:${cat.color}">${q.category||'—'}</span>
           <span class="cal-q-time">${timeStr}</span>
         </div>
-        <div class="cal-q-text">${q.text}</div>
+        <div class="cal-q-text">${escapeHtml(q.text)}</div>
         ${barHtml}
         ${debateSection}
       </div>`
@@ -10175,8 +10175,8 @@ async function renderOtrasPropuestas() {
     if (cfgGoal?.value) GOAL = parseInt(cfgGoal.value) || 30
   } catch (_) {}
 
-  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected' }
-  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada' }
+  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected', expired: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada', expired: 'No llegó a la meta' }
 
   el.innerHTML = data.map(p => {
     const ci    = p.seat_number % AVATAR_COLORS_CONVO.length
@@ -10269,8 +10269,8 @@ async function renderPropuestas() {
     return
   }
 
-  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected' }
-  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada' }
+  const statusClass = { pending: 'camp', approved: 'approved', accepted: 'approved', rejected: 'rejected', expired: 'rejected' }
+  const statusLabel = { pending: 'En campaña', approved: '✓ En el hemiciclo', accepted: '✓ Aceptada', rejected: 'No aprobada', expired: 'No llegó a la meta' }
 
   // Actualizar stats strip
   const nCamp  = data.filter(p => p.status === 'pending').length
@@ -10368,7 +10368,7 @@ function slmShowTab(tab) {
     const cIdx    = seatNum % AVATAR_COLORS.length
     const color   = AVATAR_COLORS[cIdx]
     return `<div class="slm-user-card">
-      <div class="slm-uav" style="background:${color}">${initials}</div>
+      <div class="slm-uav" style="background:${color}">${escapeHtml(initials)}</div>
       <div class="slm-uinfo">
         <div class="slm-uname">${escapeHtml(alias)}</div>
         ${phrase ? `<div class="slm-uphrase">"${escapeHtml(phrase)}"</div>` : ''}
@@ -10516,7 +10516,7 @@ async function upmLoadProposals() {
   const cmtMap = {}
   ;(cmtCounts || []).forEach(c => { cmtMap[c.proposal_id] = (cmtMap[c.proposal_id] || 0) + 1 })
 
-  const statusLabel = { pending: 'En revisión', approved: '✓ Aprobada', rejected: 'Rechazada' }
+  const statusLabel = { pending: 'En campaña', accepted: '✓ Meta lograda', approved: '✓ Aprobada', rejected: 'Rechazada', expired: 'No llegó a la meta' }
   el.innerHTML = props.map((p, i) => {
     const liked   = _upmLikes.has(p.id)
     const cmtN    = cmtMap[p.id] || 0
@@ -10689,7 +10689,7 @@ function upmRenderMessages(msgs) {
     const isMine = m.from_seat === MY_SEAT
     const t = new Date(m.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
     return `<div style="display:flex;flex-direction:column;align-items:${isMine?'flex-end':'flex-start'}">
-      <div class="upm-msg-bubble ${isMine?'mine':'theirs'}">${m.text}</div>
+      <div class="upm-msg-bubble ${isMine?'mine':'theirs'}">${escapeHtml(m.text)}</div>
       <div class="upm-msg-time">${t}</div>
     </div>`
   }).join('') + '</div>'
@@ -10743,7 +10743,7 @@ function _renderMensajes() {
       const cIdx     = req.from_seat % AVATAR_COLORS.length
       return `<div class="sf-req-card" id="sf-req-${req.id}">
         <div class="sf-req-top">
-          <div class="sf-req-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
+          <div class="sf-req-av" style="background:${AVATAR_COLORS[cIdx]}">${escapeHtml(initials)}</div>
           <div class="sf-req-info">
             <div class="sf-req-name">${escapeHtml(alias)}</div>
             <div class="sf-req-sub">quiere seguirte</div>
@@ -10768,7 +10768,7 @@ function _renderMensajes() {
       const preview  = conv.lastText.length > 45 ? conv.lastText.slice(0,45)+'…' : conv.lastText
       const t        = new Date(conv.lastTime).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
       return `<div class="sf-msg-row unread" onclick="abrirUserProfile(${seat},'mensajes-inbox');sfSelectTab('');cerrarSocialPanel()" style="cursor:pointer">
-        <div class="sf-msg-av" style="background:${AVATAR_COLORS[cIdx]}">${initials}</div>
+        <div class="sf-msg-av" style="background:${AVATAR_COLORS[cIdx]}">${escapeHtml(initials)}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
             <span style="font-size:12px;font-weight:700;color:var(--dark)">${escapeHtml(alias)}</span>
@@ -10847,10 +10847,10 @@ function renderSocial(type) {
     const ci = s.seat % AVATAR_COLORS_CONVO.length
     const phrase = escapeHtml(s.phrase ? s.phrase.slice(0, 55) + (s.phrase.length > 55 ? '…' : '') : `Butaca #${s.seat}`)
     return `<div class="sf-social-row">
-      <div class="sf-soc-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${initials}</div>
+      <div class="sf-soc-av" style="background:${AVATAR_COLORS_CONVO[ci]}">${escapeHtml(initials)}</div>
       <div class="sf-soc-info">
         <p class="sf-soc-name">${escapeHtml(s.alias)}</p>
-        <p class="sf-soc-sub">${phrase}</p>
+        <p class="sf-soc-sub">${escapeHtml(phrase)}</p>
       </div>
       <button class="sf-soc-btn" onclick="abrirUserProfile(${s.seat});cerrarSocialPanel()">Ver</button>
     </div>`
