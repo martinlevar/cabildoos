@@ -486,7 +486,7 @@ function tickVotacion() {
 // ── Votaciones ──────────────────────────────────────────────────
 // Mismo mecanismo de voto secreto que la versión actual: se sella con un código al azar (nonce) y su hash.
 // El voto se guarda con un token anónimo calculado en el servidor; nunca viaja la identidad.
-let vPreguntas = [], vResultados = new Map(), vMisVotos = new Map(), vFiltro = 'abiertas'
+let vPreguntas = [], vResultados = new Map(), vMisVotos = new Set(), vFiltro = 'abiertas'
 const OPC = { si: ['Sí', '✓'], no: ['No', '✕'], abs: ['Abstención', '—'] }
 const abierta = q => q.status === 'activa' && new Date(q.ends_at) > new Date()
 
@@ -509,8 +509,9 @@ async function cargarVotaciones() {
     vResultados = new Map((res || []).map(r => [r.id, r]))
     if (estado.user) {
       const abiertas = vPreguntas.filter(abierta)
-      const mios = await Promise.all(abiertas.map(q => sb.rpc('get_my_vote', { p_question_id: q.id })))
-      abiertas.forEach((q, i) => { const v = mios[i]?.data?.[0]?.vote_plain; if (v) vMisVotos.set(q.id, v) })
+      // Solo si participé, nunca qué voté
+      const { data: part } = await sb.rpc('v2_mis_participaciones')
+      ;(part || []).forEach(id => vMisVotos.add(id))
     }
   } catch (e) { console.warn('cargarVotaciones:', e) }
   pintarVotaciones()
@@ -552,7 +553,7 @@ function pintarVotaciones() {
     return
   }
   lista.innerHTML = qs.map(q => {
-    const mio = vMisVotos.get(q.id)
+    const mio = vMisVotos.has(q.id)
     const pie = vFiltro === 'abiertas'
       ? (mio
           ? `<span class="v-mio"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>Ya votaste</span>`
@@ -602,8 +603,8 @@ async function pasoVoto() {
   }
   if (!abierta(q)) { c.innerHTML = '<div class="mv-nota">Esta votación ya cerró.</div>'; return }
   if (!vMisVotos.has(q.id)) {
-    const { data } = await sb.rpc('get_my_vote', { p_question_id: q.id })
-    if (data?.[0]?.vote_plain) vMisVotos.set(q.id, data[0].vote_plain)
+    const { data } = await sb.rpc('v2_mis_participaciones')
+    ;(data || []).forEach(id => vMisVotos.add(id))
   }
   if (vMisVotos.has(q.id)) {
     c.innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
@@ -645,7 +646,7 @@ async function confirmarVoto() {
     guardados[q.id] = { voto, nonce, hash, ts: Date.now() }
     localStorage.setItem('cabildoos_votos', JSON.stringify(guardados))
   } catch (e) {}
-  vMisVotos.set(q.id, voto)
+  vMisVotos.add(q.id)
   $('#mv-cuerpo').innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
     <h3>¡Voto sellado!</h3><p>Votaste <b>${OPC[voto][0]}</b>. Los resultados se publican al cerrar la votación.</p>
     <code title="Comprobante">Comprobante: ${hash}</code>
@@ -848,7 +849,7 @@ const PALETA = [
   ['red', 'Rojo', '#f87171'], ['pink', 'Rosa', '#f472b6'], ['white', 'Blanco', '#d1d5db'], ['black', 'Negro', '#6b7280'],
 ]
 const LIM = { alias: 40, phrase: 200 }
-const mb = { cargando: false, stats: { si: 0, no: 0, abs: 0 }, cerradas: 0 }
+const mb = { cargando: false, total: 0, cerradas: 0 }
 const vistaActual = () => $$('.view').find(v => !v.hidden)?.dataset.view
 
 const limpiar = s => String(s ?? '').replace(/<[^>]*>/g, '').replace(/javascript\s*:/gi, '')
@@ -875,13 +876,14 @@ async function cargarMiButaca() {
   try {
     const [{ data: ident }, { data: st }, { data: cer }] = await Promise.all([
       sb.rpc('get_my_seat_identity'),
-      sb.rpc('get_my_vote_stats', { p_seat_number: estado.butaca }),
-      sb.rpc('get_my_winning_decisions', { p_seat_number: estado.butaca }),
+      sb.rpc('v2_mis_participaciones'),
+      sb.from('questions').select('id').eq('status', 'cerrada'),
     ])
     estado.ident = (Array.isArray(ident) ? ident[0] : ident) || {}
-    mb.stats = { si: 0, no: 0, abs: 0 }
-    ;(st || []).forEach(r => { if (r.vote_plain in mb.stats) mb.stats[r.vote_plain] = Number(r.cnt) || 0 })
-    mb.cerradas = Number(cer) || 0
+    // Solo participación: en qué votaciones estuve, nunca qué voté
+    const cerradas = new Set((cer || []).map(q => q.id))
+    mb.total = (st || []).length
+    mb.cerradas = (st || []).filter(id => cerradas.has(id)).length
   } catch (e) { console.warn('cargarMiButaca:', e) }
   mb.cargando = false
   pintarMiButaca()
@@ -913,8 +915,7 @@ function pintarMiButaca() {
   const color = PALETA.find(p => p[0] === id.card_color) || PALETA[0]
   const muestraAlias = !!(id.show_alias && id.alias)
   const publico = muestraAlias
-  const s = mb.stats, total = s.si + s.no + s.abs
-  const barra = (k, n, col) => `<div class="res-row"><b>${OPC[k][0]}</b><div class="res-bar"><i style="width:${total ? Math.round(n / total * 100) : 0}%;background:${col}"></i></div><span>${fmtNum(n)}</span></div>`
+  const total = mb.total
 
   // Bloque
   const me = estado.miBloque || {}
@@ -954,9 +955,8 @@ function pintarMiButaca() {
     </article>
     <article class="card mb-sec mb-o4">
       <h3>Mi actividad</h3>
-      <p class="muted mb-nota">Solo vos ves este detalle.</p>
-      <div class="mb-kpis"><div><b>${fmtNum(total)}</b><small>Votaciones</small></div><div><b>${fmtNum(mb.cerradas)}</b><small>En decisiones cerradas</small></div></div>
-      <div class="res">${barra('si', s.si, '#16a34a')}${barra('no', s.no, '#e11d48')}${barra('abs', s.abs, '#64748b')}</div>
+      <p class="muted mb-nota">Solo contamos en cuántas votaciones participaste. Qué votaste no lo guarda nadie.</p>
+      <div class="mb-kpis"><div><b>${fmtNum(total)}</b><small>Votaciones en las que participé</small></div><div><b>${fmtNum(mb.cerradas)}</b><small>En decisiones cerradas</small></div></div>
     </article>
     <article class="card mb-sec mb-o6">
       <h3>Cuenta</h3>
