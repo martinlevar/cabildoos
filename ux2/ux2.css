@@ -270,6 +270,68 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .quick-dark .qi-icon { background: rgba(255,255,255,.12); color: #fff; }
 .quick-outline { border: 1.5px solid var(--accent-2); }
 
+/* ── Votaciones ─────────────────────────────────────── */
+.view-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.view-head h1 { margin: 0 0 4px; font-size: 34px; letter-spacing: -.03em; }
+.view-head p { margin: 0; color: var(--ink-2); }
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+.seg-btn { padding: 8px 16px; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.seg-btn.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.seg-btn span { color: var(--accent); }
+.vlist { display: grid; gap: 14px; }
+.vcard { padding: 20px 22px; display: grid; gap: 12px; }
+.vcard-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vcard-top small { color: var(--muted); font-size: 13px; }
+.vcard h3 { margin: 0; font-size: 18px; line-height: 1.35; letter-spacing: -.01em; }
+.vcard .v-desc { margin: 0; color: var(--ink-2); font-size: 14px; white-space: pre-line; }
+.vcard-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.vcard-foot .btn { min-width: 150px; }
+.v-mio { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--green); background: var(--green-bg); padding: 8px 14px; border-radius: 10px; }
+.v-mio svg { width: 18px; height: 18px; }
+.v-links { display: flex; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.v-links a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.vcard-res { display: grid; gap: 10px; max-width: 640px; }
+.res { display: grid; gap: 8px; }
+.res-gana { margin: 0; }
+.res-row { display: grid; grid-template-columns: 96px 1fr 104px; gap: 10px; align-items: center; font-size: 13px; }
+.res-row b { font-weight: 600; }
+.res-bar { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.res-bar i { display: block; height: 100%; border-radius: 99px; }
+.res-row span { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.res-gana { font-size: 13px; color: var(--muted); }
+.res-gana b { color: var(--ink); }
+
+/* ── Modal de voto ──────────────────────────────────── */
+.modal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: rgba(10,12,30,.55); backdrop-filter: blur(3px); }
+.modal-box { position: relative; width: min(560px, 100%); max-height: calc(100vh / var(--zoom) - 40px); overflow-y: auto;
+  background: var(--surface); border-radius: 22px; padding: 26px; box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+.modal-x { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+.modal-x:hover { background: var(--surface-2); color: var(--ink); }
+.mv-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.modal-box h2 { margin: 0 0 8px; font-size: 21px; line-height: 1.35; letter-spacing: -.01em; padding-right: 30px; }
+.mv-desc { margin: 0 0 18px; color: var(--ink-2); font-size: 14px; white-space: pre-line; }
+.mv-desc:empty { display: none; }
+.opciones { display: grid; gap: 10px; margin-bottom: 16px; }
+.opcion {
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 2px solid var(--line); border-radius: 14px;
+  font-size: 17px; font-weight: 700; text-align: left; transition: border-color .15s, background .15s;
+}
+.opcion:hover { border-color: var(--accent-2); }
+.opcion .o-ico { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 16px; flex: none; }
+.opcion.si  .o-ico { background: var(--green); }
+.opcion.no  .o-ico { background: var(--red); }
+.opcion.abs .o-ico { background: #64748b; }
+.opcion.elegida { border-color: var(--accent); background: var(--accent-bg); }
+.mv-nota { display: flex; gap: 10px; font-size: 13px; color: var(--muted); background: var(--surface-2); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+.mv-nota svg { width: 18px; height: 18px; color: var(--accent); }
+.mv-acciones { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.mv-ok { text-align: center; padding: 10px 0 4px; }
+.mv-ok .sello { width: 76px; height: 76px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; background: var(--green-bg); color: var(--green); }
+.mv-ok .sello svg { width: 38px; height: 38px; }
+.mv-ok h3 { margin: 0 0 6px; font-size: 20px; }
+.mv-ok p { margin: 0 0 18px; color: var(--ink-2); }
+.mv-ok code { display: block; font-size: 11px; color: var(--muted); word-break: break-all; margin-bottom: 18px; }
+
 /* Sección en construcción */
 .soon { padding: 40px; max-width: 560px; }
 .soon h1 { margin: 0 0 8px; letter-spacing: -.02em; }

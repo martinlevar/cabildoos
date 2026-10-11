@@ -164,6 +164,18 @@
       </div>
     </section>
 
+    <!-- VOTACIONES -->
+    <section class="view" data-view="votaciones" hidden>
+      <header class="view-head">
+        <div><h1>Votaciones</h1><p>Tu voto es secreto: nadie puede ver qué votaste, ni siquiera el equipo del Cabildo.</p></div>
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-vfiltro="abiertas">Abiertas <span id="vc-abiertas"></span></button>
+          <button class="seg-btn" data-vfiltro="cerradas">Resultados</button>
+        </div>
+      </header>
+      <div class="vlist" id="vlist"><p class="muted">Cargando…</p></div>
+    </section>
+
     <!-- SECCIONES EN CONSTRUCCIÓN -->
     <section class="view" data-view="pronto" hidden>
       <div class="card soon">
@@ -208,6 +220,17 @@
     </nav>
     <span class="foot-tag">De ciudadanos, para Venezuela. <i class="ve-line"></i></span>
   </footer>
+</div>
+
+<!-- ═══ MODAL DE VOTO ═══ -->
+<div class="modal" id="modal-voto" hidden role="dialog" aria-modal="true" aria-labelledby="mv-pregunta">
+  <div class="modal-box">
+    <button class="modal-x" id="mv-cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="mv-top"><span class="tag" id="mv-cat"></span><b class="q-timer" id="mv-timer"></b></div>
+    <h2 id="mv-pregunta"></h2>
+    <p class="mv-desc" id="mv-desc"></p>
+    <div id="mv-cuerpo"></div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>

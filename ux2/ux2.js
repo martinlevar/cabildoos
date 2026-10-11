@@ -34,11 +34,13 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
+const LISTAS = new Set(['inicio', 'votaciones'])   // secciones ya rediseñadas
+
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
     <li><a href="#${id}" data-sec="${id}" title="${label}">
       <svg viewBox="0 0 24 24">${ICONOS[id]}</svg><span>${label}</span>
-      ${id === 'inicio' ? '' : '<span class="soon-tag">pronto</span>'}
+      ${LISTAS.has(id) ? '' : '<span class="soon-tag">pronto</span>'}
     </a></li>`).join('')
 }
 
@@ -46,10 +48,13 @@ function ruta() {
   const sec = (location.hash || '#inicio').slice(1)
   const valida = SECCIONES.some(([id]) => id === sec) ? sec : 'inicio'
   $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === valida))
-  $$('.view').forEach(v => { v.hidden = v.dataset.view !== (valida === 'inicio' ? 'inicio' : 'pronto') })
-  if (valida !== 'inicio') $('#soon-title').textContent = SECCIONES.find(([id]) => id === valida)[1]
+  const vista = LISTAS.has(valida) ? valida : 'pronto'
+  $$('.view').forEach(v => { v.hidden = v.dataset.view !== vista })
+  if (vista === 'pronto') $('#soon-title').textContent = SECCIONES.find(([id]) => id === valida)[1]
   cerrarMenu()
+  window.scrollTo(0, 0)
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
+  if (valida === 'votaciones') cargarVotaciones()
 }
 
 function abrirMenu()  { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show') }
@@ -434,7 +439,7 @@ let pregunta = null
 async function cargarVotacion() {
   try {
     const { data, error } = await sb.from('questions')
-      .select('id, text, category, ends_at, status')
+      .select('id, text, category, description, ends_at, status')
       .eq('status', 'activa').gt('ends_at', new Date().toISOString())
       .order('ends_at', { ascending: true }).limit(1)
     if (error) throw error
@@ -473,6 +478,178 @@ function tickVotacion() {
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60
   $('#q-timer').textContent = [h, m, ss].map(v => String(v).padStart(2, '0')).join(':')
   $('#q-state').textContent = 'En curso'
+}
+
+// ── Votaciones ──────────────────────────────────────────────────
+// Mismo mecanismo de voto secreto que la versión actual: se sella con un código al azar (nonce) y su hash.
+// El voto se guarda con un token anónimo calculado en el servidor; nunca viaja la identidad.
+let vPreguntas = [], vResultados = new Map(), vMisVotos = new Map(), vFiltro = 'abiertas'
+const OPC = { si: ['Sí', '✓'], no: ['No', '✕'], abs: ['Abstención', '—'] }
+const abierta = q => q.status === 'activa' && new Date(q.ends_at) > new Date()
+
+function cuentaRegresiva(ends) {
+  const s = Math.floor((new Date(ends) - Date.now()) / 1000)
+  if (s <= 0) return 'Finalizada'
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60
+  return [h, m, ss].map(v => String(v).padStart(2, '0')).join(':')
+}
+
+async function cargarVotaciones() {
+  try {
+    const [{ data: qs, error }, { data: res }] = await Promise.all([
+      sb.from('questions').select('id, text, category, description, ends_at, status, video_url, links')
+        .in('status', ['activa', 'cerrada']).order('ends_at', { ascending: false }).limit(40),
+      sb.rpc('get_all_question_results'),
+    ])
+    if (error) throw error
+    vPreguntas = qs || []
+    vResultados = new Map((res || []).map(r => [r.id, r]))
+    if (estado.user) {
+      const abiertas = vPreguntas.filter(abierta)
+      const mios = await Promise.all(abiertas.map(q => sb.rpc('get_my_vote', { p_question_id: q.id })))
+      abiertas.forEach((q, i) => { const v = mios[i]?.data?.[0]?.vote_plain; if (v) vMisVotos.set(q.id, v) })
+    }
+  } catch (e) { console.warn('cargarVotaciones:', e) }
+  pintarVotaciones()
+}
+
+function enlacesDe(q) {
+  const links = Array.isArray(q.links) ? q.links : []
+  const items = []
+  if (q.video_url && /^https?:\/\//.test(q.video_url)) items.push(`<a href="${esc(q.video_url)}" target="_blank" rel="noopener noreferrer">▶ Ver video</a>`)
+  links.forEach(l => {
+    const url = typeof l === 'string' ? l : l?.url
+    const txt = typeof l === 'string' ? 'Enlace' : (l?.label || l?.title || 'Enlace')
+    if (url && /^https?:\/\//.test(url)) items.push(`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(txt)}</a>`)
+  })
+  return items.length ? `<div class="v-links">${items.join('')}</div>` : ''
+}
+
+function resultadosDe(q) {
+  const r = vResultados.get(q.id)
+  const total = Number(r?.total || 0)
+  if (!total) return '<p class="muted">Sin votos registrados.</p>'
+  const filas = [['si', '#16a34a'], ['no', '#e11d48'], ['abs', '#64748b']].map(([k, c]) => {
+    const n = Number(r['cnt_' + k] || 0), pct = Math.round(n / total * 100)
+    return `<div class="res-row"><b>${OPC[k][0]}</b><div class="res-bar"><i style="width:${pct}%;background:${c}"></i></div><span>${pct}% · ${fmtNum(n)}</span></div>`
+  }).join('')
+  const gana = ['si', 'no', 'abs'].reduce((a, k) => Number(r['cnt_' + k]) > Number(r['cnt_' + a]) ? k : a, 'si')
+  return `<div class="res">${filas}</div><p class="res-gana">Decisión del Cabildo: <b>${OPC[gana][0]}</b> · ${fmtNum(total)} votos</p>`
+}
+
+function pintarVotaciones() {
+  const lista = $('#vlist')
+  const abiertas = vPreguntas.filter(abierta).sort((a, b) => new Date(a.ends_at) - new Date(b.ends_at))
+  const cerradas = vPreguntas.filter(q => !abierta(q))
+  $('#vc-abiertas').textContent = abiertas.length ? `(${abiertas.length})` : ''
+  const qs = vFiltro === 'abiertas' ? abiertas : cerradas
+  if (!qs.length) {
+    lista.innerHTML = `<div class="card soon"><h3 style="margin:0 0 6px">${vFiltro === 'abiertas' ? 'No hay votaciones abiertas' : 'Todavía no hay resultados'}</h3>
+      <p class="muted" style="margin:0">${vFiltro === 'abiertas' ? 'Cuando se abra una nueva sesión la vas a ver acá.' : ''}</p></div>`
+    return
+  }
+  lista.innerHTML = qs.map(q => {
+    const mio = vMisVotos.get(q.id)
+    const pie = vFiltro === 'abiertas'
+      ? (mio
+          ? `<span class="v-mio"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>Ya votaste</span>`
+          : `<button class="btn btn-dark" data-votar="${q.id}"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Votar</button>`)
+        + `<a class="btn btn-soft" href="${APP_ACTUAL}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>`
+      : resultadosDe(q)
+    return `<article class="card vcard">
+      <div class="vcard-top"><span class="tag">${esc(q.category || 'General')}</span>
+        ${vFiltro === 'abiertas'
+          ? `<b class="q-timer" data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b><small>para votar</small>`
+          : `<small>Cerró el ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</small>`}
+      </div>
+      <h3>${esc(q.text)}</h3>
+      ${q.description ? `<p class="v-desc">${esc(q.description)}</p>` : ''}
+      ${enlacesDe(q)}
+      ${vFiltro === 'abiertas' ? `<div class="vcard-foot">${pie}</div>` : `<div class="vcard-res">${pie}</div>`}
+    </article>`
+  }).join('')
+}
+
+function tickCuentas() {
+  $$('[data-cuenta]').forEach(el => { el.textContent = cuentaRegresiva(el.dataset.cuenta) })
+  if (!$('#modal-voto').hidden && mvPregunta) $('#mv-timer').textContent = cuentaRegresiva(mvPregunta.ends_at)
+}
+
+// ── Modal de voto ──
+let mvPregunta = null, mvEleccion = null
+function abrirVoto(q) {
+  mvPregunta = q; mvEleccion = null
+  $('#mv-cat').textContent = q.category || 'General'
+  $('#mv-timer').textContent = cuentaRegresiva(q.ends_at)
+  $('#mv-pregunta').textContent = q.text
+  $('#mv-desc').textContent = q.description || ''
+  $('#modal-voto').hidden = false
+  document.body.style.overflow = 'hidden'
+  pasoVoto()
+}
+function cerrarVoto() { $('#modal-voto').hidden = true; document.body.style.overflow = '' }
+
+async function pasoVoto() {
+  const c = $('#mv-cuerpo'), q = mvPregunta
+  if (!estado.user) {
+    c.innerHTML = `<div class="mv-nota">Para votar tenés que iniciar sesión.</div><a class="btn btn-dark" style="width:100%" href="${APP_ACTUAL}">Iniciar sesión</a>`; return
+  }
+  if (!estado.butaca) {
+    c.innerHTML = `<div class="mv-nota">Para votar necesitás tener butaca: completá la verificación de identidad.</div><a class="btn btn-dark" style="width:100%" href="${APP_ACTUAL}">Verificarme</a>`; return
+  }
+  if (!abierta(q)) { c.innerHTML = '<div class="mv-nota">Esta votación ya cerró.</div>'; return }
+  if (!vMisVotos.has(q.id)) {
+    const { data } = await sb.rpc('get_my_vote', { p_question_id: q.id })
+    if (data?.[0]?.vote_plain) vMisVotos.set(q.id, data[0].vote_plain)
+  }
+  if (vMisVotos.has(q.id)) {
+    c.innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
+      <h3>Ya votaste en esta sesión</h3><p>Tu voto quedó sellado. Los resultados se publican al cerrar la votación.</p>
+      <button class="btn btn-ghost" id="mv-listo">Cerrar</button></div>`
+    $('#mv-listo').onclick = cerrarVoto; return
+  }
+  c.innerHTML = `
+    <div class="opciones">${['si', 'no', 'abs'].map(k => `
+      <button class="opcion ${k}${mvEleccion === k ? ' elegida' : ''}" data-op="${k}"><span class="o-ico">${OPC[k][1]}</span>${OPC[k][0]}</button>`).join('')}
+    </div>
+    <div class="mv-nota"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <span>Tu voto es secreto y definitivo: se sella con un código único y no se puede cambiar.</span></div>
+    <div class="mv-acciones">
+      <button class="btn btn-ghost" id="mv-cancelar">Cancelar</button>
+      <button class="btn btn-dark" id="mv-confirmar" ${mvEleccion ? '' : 'aria-disabled="true"'}>${mvEleccion ? 'Confirmar: ' + OPC[mvEleccion][0] : 'Elegí una opción'}</button>
+    </div>`
+  $$('[data-op]', c).forEach(b => b.onclick = () => { mvEleccion = b.dataset.op; pasoVoto() })
+  $('#mv-cancelar').onclick = cerrarVoto
+  $('#mv-confirmar').onclick = confirmarVoto
+}
+
+async function confirmarVoto() {
+  const q = mvPregunta, voto = mvEleccion
+  if (!q || !voto) return
+  if (!abierta(q)) { aviso('La votación ya cerró.', 'error'); pasoVoto(); return }
+  const btn = $('#mv-confirmar'); btn.setAttribute('aria-disabled', 'true'); btn.textContent = 'Sellando…'
+  // Sello: nonce aleatorio + SHA-256(voto:nonce), igual que la versión actual
+  const arr = new Uint8Array(32); crypto.getRandomValues(arr)
+  const nonce = [...arr].map(b => b.toString(16).padStart(2, '0')).join('')
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${voto}:${nonce}`))
+  const hash = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
+  const { data, error } = await sb.rpc('cast_vote', { p_question_id: q.id, p_vote_hash: hash, p_vote_plain: voto, p_nonce: nonce })
+  const err = error?.message || (data && data.ok === false ? data.error : null)
+  if (err) { aviso(err, 'error'); pasoVoto(); return }
+  // Igual que la versión actual: el comprobante queda solo en este navegador
+  try {
+    const guardados = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
+    guardados[q.id] = { voto, nonce, hash, ts: Date.now() }
+    localStorage.setItem('cabildoos_votos', JSON.stringify(guardados))
+  } catch (e) {}
+  vMisVotos.set(q.id, voto)
+  $('#mv-cuerpo').innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
+    <h3>¡Voto sellado!</h3><p>Votaste <b>${OPC[voto][0]}</b>. Los resultados se publican al cerrar la votación.</p>
+    <code title="Comprobante">Comprobante: ${hash}</code>
+    <button class="btn btn-dark" id="mv-listo">Listo</button></div>`
+  $('#mv-listo').onclick = cerrarVoto
+  cargarVotacion()
+  if (location.hash === '#votaciones') pintarVotaciones()
 }
 
 // ── Muro del día ────────────────────────────────────────────────
@@ -613,6 +790,20 @@ function enlazar() {
   $('#scrim').addEventListener('click', cerrarMenu)
   $('#theme-btn').addEventListener('click', alternarTema)
   $('#bloque-buscar').addEventListener('input', pintarBloques)
+  $('#q-votar').addEventListener('click', e => { e.preventDefault(); if (pregunta) abrirVoto(pregunta) })
+  $('#pill-live').addEventListener('click', e => { e.preventDefault(); location.hash = '#votaciones' })
+  $('#mv-cerrar').addEventListener('click', cerrarVoto)
+  $('#modal-voto').addEventListener('click', e => { if (e.target.id === 'modal-voto') cerrarVoto() })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal-voto').hidden) cerrarVoto() })
+  $$('[data-vfiltro]').forEach(b => b.addEventListener('click', () => {
+    vFiltro = b.dataset.vfiltro
+    $$('[data-vfiltro]').forEach(x => x.classList.toggle('active', x === b))
+    pintarVotaciones()
+  }))
+  $('#vlist').addEventListener('click', e => {
+    const b = e.target.closest('[data-votar]'); if (!b) return
+    const q = vPreguntas.find(x => x.id === b.dataset.votar); if (q) abrirVoto(q)
+  })
   $$('.tab').forEach(t => t.addEventListener('click', () => irATab(t.dataset.tab)))
   $('#bloques-body').addEventListener('click', e => {
     const u = e.target.closest('[data-unirme]'); if (u) return unirme(u.dataset.unirme)
@@ -664,7 +855,7 @@ function irATab(tab) {
 
 async function iniciar() {
   pintarNav(); enlazar(); ruta()
-  tickReloj(); setInterval(() => { tickReloj(); tickVotacion() }, 1000)
+  tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques()])
