@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -45,7 +45,7 @@ function pintarNav() {
 }
 
 function ruta() {
-  const sec = (location.hash || '#inicio').slice(1)
+  const [sec, arg] = (location.hash || '#inicio').slice(1).split('/')
   const valida = SECCIONES.some(([id]) => id === sec) ? sec : 'inicio'
   $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === valida))
   const vista = LISTAS.has(valida) ? valida : 'pronto'
@@ -56,6 +56,12 @@ function ruta() {
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
   if (valida === 'votaciones') cargarVotaciones()
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
+  if (valida === 'debates') {
+    if (!dbt.lista.length) cargarDebates(arg)
+    else if (arg) { if (arg !== dbt.q?.id) abrirHilo(arg) }
+    else if (window.innerWidth <= 860 && dbt.q) { salirDelCanal(); dbt.q = null; $('.db-wrap')?.classList.remove('con-hilo'); pintarListaDebates() }
+  }
+  else if (dbt.canal) salirDelCanal()
 }
 
 function abrirMenu()  { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show') }
@@ -461,6 +467,7 @@ async function cargarVotacion() {
   }
   $('#q-cat').textContent = pregunta.category || 'General'
   $('#q-text').textContent = pregunta.text
+  $('#q-debate').href = '#debates/' + pregunta.id
   $('#q-votar').removeAttribute('aria-disabled')
   tickVotacion()
   try {
@@ -558,7 +565,7 @@ function pintarVotaciones() {
       ? (mio
           ? `<span class="v-mio"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>Ya votaste</span>`
           : `<button class="btn btn-dark" data-votar="${q.id}"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Votar</button>`)
-        + `<a class="btn btn-soft" href="${APP_ACTUAL}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>`
+        + `<a class="btn btn-soft" href="#debates/${q.id}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>`
       : resultadosDe(q)
     return `<article class="card vcard">
       <div class="vcard-top"><span class="tag">${esc(q.category || 'General')}</span>
@@ -955,7 +962,7 @@ function pintarMiButaca() {
     </article>
     <article class="card mb-sec mb-o4">
       <h3>Mi actividad</h3>
-      <p class="muted mb-nota">Solo contamos en cuántas votaciones participaste. Qué votaste no lo guarda nadie.</p>
+      <p class="muted mb-nota">Solo contamos en cuántas votaciones participaste. Qué votaste no se muestra en ningún lado.</p>
       <div class="mb-kpis"><div><b>${fmtNum(total)}</b><small>Votaciones en las que participé</small></div><div><b>${fmtNum(mb.cerradas)}</b><small>En decisiones cerradas</small></div></div>
     </article>
     <article class="card mb-sec mb-o6">
@@ -1094,6 +1101,224 @@ function enlazarMiButaca() {
   })
 }
 
+// ── Debates ─────────────────────────────────────────────────────
+// Mismo canal en vivo que la versión actual (debate:<id>): mensajes y cola de manos compartidos.
+// El servidor valida butaca propia, debate abierto, largo y turno; esto es solo la interfaz.
+const DB_COOLDOWN = 60        // segundos entre mensajes (igual que la versión actual)
+const DB_DIRECTO  = 3         // con ≤3 manos levantadas se habla directo
+const dbt = { lista: [], q: null, msgs: [], canal: null, mano: 'idle', cola: [], finCd: 0, tick: null }
+
+const dbAbierto = q => q && q.status === 'activa' && new Date(q.ends_at) > new Date()
+
+async function cargarDebates(id) {
+  try {
+    const { data, error } = await sb.from('questions').select('id, text, category, ends_at, status')
+      .in('status', ['activa', 'cerrada']).order('ends_at', { ascending: false }).limit(30)
+    if (error) throw error
+    dbt.lista = (data || []).sort((a, b) => (dbAbierto(b) - dbAbierto(a)) || (new Date(b.ends_at) - new Date(a.ends_at)))
+  } catch (e) { console.warn('cargarDebates:', e) }
+  pintarListaDebates()
+  const elegido = id || (window.innerWidth > 860 ? dbt.lista.find(dbAbierto)?.id || dbt.lista[0]?.id : null)
+  if (elegido) abrirHilo(elegido); else pintarHilo()
+}
+
+function pintarListaDebates() {
+  const l = $('#db-lista'); if (!l) return
+  if (!dbt.lista.length) { l.innerHTML = '<p class="muted" style="padding:16px">Todavía no hay debates.</p>'; return }
+  l.innerHTML = dbt.lista.map(q => `
+    <button class="db-item ${dbt.q?.id === q.id ? 'active' : ''}" data-debate="${q.id}">
+      <span class="db-item-top"><span class="tag">${esc(q.category || 'General')}</span>
+        ${dbAbierto(q) ? '<span class="db-vivo"><i></i>En vivo</span>' : `<small>Cerró ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</small>`}</span>
+      <b>${esc(q.text)}</b>
+    </button>`).join('')
+}
+
+async function abrirHilo(id) {
+  const q = dbt.lista.find(x => x.id === id)
+  if (!q) return
+  salirDelCanal()
+  dbt.q = q; dbt.msgs = []
+  $('.db-wrap')?.classList.add('con-hilo')
+  pintarListaDebates(); pintarHilo(true)
+  try {
+    const { data, error } = await sb.from('debate_messages').select('id, seat_number, text, created_at')
+      .eq('question_id', id).order('created_at', { ascending: true }).limit(500)
+    if (error) throw error
+    if (dbt.q?.id !== id) return
+    dbt.msgs = data || []
+  } catch (e) { console.warn('abrirHilo:', e) }
+  pintarHilo()
+  if (dbAbierto(q) && estado.user) entrarAlCanal(id)
+}
+
+function entrarAlCanal(id) {
+  dbt.canal = sb.channel(`debate:${id}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'debate_messages', filter: `question_id=eq.${id}` }, ({ new: m }) => {
+      if (dbt.q?.id !== id || dbt.msgs.some(x => x.id === m.id)) return
+      dbt.msgs.push(m); agregarMensaje(m)
+    })
+    .on('broadcast', { event: 'hand' }, ({ payload: p }) => {
+      if (!p) return
+      if (p.type === 'hand_up' && !dbt.cola.find(e => e.seat === p.seat)) {
+        dbt.cola.push({ seat: p.seat, raisedAt: p.raisedAt || Date.now() }); dbt.cola.sort((a, b) => a.raisedAt - b.raisedAt)
+      } else if (p.type === 'hand_down') dbt.cola = dbt.cola.filter(e => e.seat !== p.seat)
+      evaluarCola(); pintarMano()
+    })
+    .subscribe()
+}
+
+function salirDelCanal() {
+  if (dbt.mano === 'ready' || dbt.mano === 'queued') avisarMano({ type: 'hand_down', seat: estado.butaca })
+  if (dbt.canal) { sb.removeChannel(dbt.canal); dbt.canal = null }
+  clearInterval(dbt.tick); dbt.tick = null
+  dbt.mano = 'idle'; dbt.cola = []; dbt.finCd = 0
+}
+
+const avisarMano = p => { try { dbt.canal?.send({ type: 'broadcast', event: 'hand', payload: p }) } catch (e) {} }
+
+function burbuja(m) {
+  const mia = m.seat_number === estado.butaca
+  const p = perfiles.get(m.seat_number)
+  const alias = p?.show_alias && p.alias ? p.alias : null
+  return `<div class="db-msg ${mia ? 'mia' : ''}" data-id="${m.id}">
+    <span class="db-av" style="background:${mia ? 'var(--orange)' : colorDe(p?.card_color, m.seat_number)}">${alias ? esc(alias.charAt(0).toUpperCase()) : '#'}</span>
+    <div class="db-cuerpo">
+      <div class="db-cab"><b>${mia ? 'Vos' : esc(alias || 'Ciudadano anónimo')}</b><span>#${m.seat_number}</span><time>${haceCuanto(m.created_at)}</time></div>
+      <p>${esc(m.text)}</p>
+    </div></div>`
+}
+
+function agregarMensaje(m) {
+  const box = $('#db-msgs'); if (!box) return
+  box.querySelector('.db-vacio')?.remove()
+  const cerca = box.scrollHeight - box.scrollTop - box.clientHeight < 120
+  box.insertAdjacentHTML('beforeend', burbuja(m))
+  if (cerca || m.seat_number === estado.butaca) box.scrollTop = box.scrollHeight
+  const n = $('#db-n'); if (n) n.textContent = participantes()
+}
+
+const participantes = () => { const s = new Set(dbt.msgs.map(m => m.seat_number)).size; return `${fmtNum(dbt.msgs.length)} mensajes · ${fmtNum(s)} butacas` }
+
+function pintarHilo(cargando = false) {
+  const h = $('#db-hilo'); if (!h) return
+  const q = dbt.q
+  if (!q) { h.innerHTML = '<div class="db-nada"><p class="muted">Elegí un debate para leerlo.</p></div>'; return }
+  const abierto = dbAbierto(q)
+  let pie
+  if (!abierto) pie = '<div class="db-cerrado">🔒 Este debate cerró. Podés leerlo, pero ya no se puede participar.</div>'
+  else if (!estado.user) pie = `<div class="db-cerrado">Para participar <a href="${APP_ACTUAL}">iniciá sesión</a>.</div>`
+  else if (!estado.butaca) pie = `<div class="db-cerrado">Para participar necesitás tu butaca: <a href="${APP_ACTUAL}">completá la verificación</a>.</div>`
+  else pie = `
+    <div class="db-cola" id="db-cola"></div>
+    <div class="db-compo">
+      <button class="db-mano" id="db-mano" title="Levantar la mano">✋</button>
+      <div class="db-campo">
+        <textarea id="db-txt" maxlength="280" rows="2" placeholder="Levantá la mano para pedir la palabra…" disabled></textarea>
+        <div class="db-estado"><span id="db-estado"></span><em id="db-cont">0/280</em></div>
+        <div class="db-cd" id="db-cd" hidden><i id="db-cd-fill"></i></div>
+      </div>
+      <button class="btn btn-dark" id="db-enviar" disabled>Enviar</button>
+    </div>`
+  h.innerHTML = `
+    <header class="db-head">
+      <button class="db-volver" id="db-volver" aria-label="Volver a la lista">‹ Debates</button>
+      <div class="vcard-top"><span class="tag">${esc(q.category || 'General')}</span>
+        ${abierto ? `<b class="q-timer" data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b><span class="db-vivo"><i></i>En vivo</span>` : '<small>Debate cerrado</small>'}</div>
+      <h2>${esc(q.text)}</h2>
+      <small class="muted" id="db-n">${cargando ? 'Cargando…' : participantes()}</small>
+    </header>
+    <div class="db-msgs" id="db-msgs">${cargando ? '<p class="muted db-vacio">Cargando mensajes…</p>'
+      : dbt.msgs.length ? dbt.msgs.map(burbuja).join('') : `<p class="muted db-vacio">${abierto ? 'Nadie habló todavía. Podés abrir el debate.' : 'Este debate no tuvo mensajes.'}</p>`}</div>
+    ${pie}`
+  const box = $('#db-msgs'); box.scrollTop = box.scrollHeight
+  pintarMano()
+}
+
+function pintarMano() {
+  const btn = $('#db-mano'); if (!btn) return
+  const txt = $('#db-txt'), env = $('#db-enviar'), est = $('#db-estado'), cd = $('#db-cd')
+  const pos = dbt.cola.findIndex(e => e.seat === estado.butaca)
+  btn.className = 'db-mano ' + dbt.mano
+  cd.hidden = dbt.mano !== 'cooldown'
+  const puede = dbt.mano === 'ready'
+  txt.disabled = !puede; env.disabled = !puede
+  txt.placeholder = puede ? 'Tu argumento (máx. 280 caracteres)…' : 'Levantá la mano para pedir la palabra…'
+  est.className = ''
+  if (dbt.mano === 'ready') { est.innerHTML = '<b>Tu turno</b>: enviá tu argumento'; est.className = 'ok' }
+  else if (dbt.mano === 'queued') est.innerHTML = `En cola: posición <b>${pos + 1}</b>`
+  else if (dbt.mano === 'cooldown') { est.innerHTML = `Esperá <b>${Math.max(0, Math.ceil((dbt.finCd - Date.now()) / 1000))} s</b> para volver a hablar`; est.className = 'espera' }
+  else est.textContent = 'Levantá la mano para hablar'
+  const cola = $('#db-cola')
+  if (cola) cola.innerHTML = dbt.cola.slice(0, 10).map((e, i) =>
+    `<span class="${e.seat === estado.butaca ? 'yo' : i < DB_DIRECTO ? 'habla' : ''}">${i < DB_DIRECTO ? '🎙' : '✋'} #${e.seat}</span>`).join('')
+}
+
+function evaluarCola() {
+  if (dbt.mano !== 'queued') return
+  const pos = dbt.cola.findIndex(e => e.seat === estado.butaca)
+  if (pos >= 0 && pos < DB_DIRECTO) dbt.mano = 'ready'
+}
+
+function alternarMano() {
+  if (!dbAbierto(dbt.q) || !estado.butaca || dbt.mano === 'cooldown') return
+  if (dbt.mano === 'ready' || dbt.mano === 'queued') {
+    dbt.cola = dbt.cola.filter(e => e.seat !== estado.butaca); dbt.mano = 'idle'
+    avisarMano({ type: 'hand_down', seat: estado.butaca }); return pintarMano()
+  }
+  const e = { seat: estado.butaca, raisedAt: Date.now() }
+  dbt.cola.push(e); dbt.cola.sort((a, b) => a.raisedAt - b.raisedAt)
+  avisarMano({ type: 'hand_up', seat: estado.butaca, raisedAt: e.raisedAt })
+  dbt.mano = dbt.cola.findIndex(x => x.seat === estado.butaca) < DB_DIRECTO ? 'ready' : 'queued'
+  pintarMano()
+  if (dbt.mano === 'ready') $('#db-txt')?.focus()
+}
+
+async function enviarMensaje() {
+  if (dbt.mano !== 'ready' || !dbt.q) return
+  const el = $('#db-txt'), btn = $('#db-enviar')
+  const txt = limpiar(el.value).slice(0, 280)
+  if (!txt) return
+  btn.disabled = true; el.disabled = true
+  const { data, error } = await sb.from('debate_messages')
+    .insert({ question_id: dbt.q.id, seat_number: estado.butaca, alias: '', text: txt })
+    .select('id, seat_number, text, created_at').single()
+  if (error) {
+    btn.disabled = false; el.disabled = false
+    aviso(/turno|cerr|butaca|caracteres/i.test(error.message || '') ? error.message : 'No se pudo enviar. Intentá de nuevo.', 'error')
+    return
+  }
+  el.value = ''; $('#db-cont').textContent = '0/280'
+  if (data && !dbt.msgs.some(m => m.id === data.id)) { dbt.msgs.push(data); agregarMensaje(data) }
+  dbt.cola = dbt.cola.filter(e => e.seat !== estado.butaca)
+  avisarMano({ type: 'hand_down', seat: estado.butaca })
+  dbt.mano = 'cooldown'; dbt.finCd = Date.now() + DB_COOLDOWN * 1000
+  clearInterval(dbt.tick)
+  dbt.tick = setInterval(() => {
+    const resta = dbt.finCd - Date.now()
+    const f = $('#db-cd-fill'); if (f) f.style.width = Math.max(0, resta / (DB_COOLDOWN * 10)) + '%'
+    if (resta <= 0) { clearInterval(dbt.tick); dbt.tick = null; dbt.mano = 'idle' }
+    pintarMano()
+  }, 500)
+  pintarMano()
+}
+
+function enlazarDebates() {
+  const v = $('#db-vista'); if (!v) return
+  v.addEventListener('click', e => {
+    const it = e.target.closest('[data-debate]')
+    if (it) { location.hash = '#debates/' + it.dataset.debate; return }
+    if (e.target.closest('#db-mano')) return alternarMano()
+    if (e.target.closest('#db-enviar')) return enviarMensaje()
+    if (e.target.closest('#db-volver')) location.hash = '#debates'
+  })
+  v.addEventListener('input', e => { if (e.target.id === 'db-txt') $('#db-cont').textContent = `${e.target.value.length}/280` })
+  v.addEventListener('keydown', e => {
+    if (e.target.id === 'db-txt' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMensaje() }
+  })
+  // Refrescar "hace X min" de vez en cuando
+  setInterval(() => { $$('#db-msgs time').forEach((t, i) => { const m = dbt.msgs[i]; if (m) t.textContent = haceCuanto(m.created_at) }) }, 30_000)
+}
+
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
 function plegar(k) {
   const on = $('.app').classList.toggle(k + '-plegado')
@@ -1111,10 +1336,11 @@ function irATab(tab) {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
+  if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques()])
   if (vistaActual() === 'butaca') cargarMiButaca()
   setInterval(cargarVotacion, 60_000)   // refresca votos y estado de la sesión
