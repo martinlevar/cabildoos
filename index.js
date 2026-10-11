@@ -9143,9 +9143,10 @@ document.addEventListener('DOMContentLoaded', checkBloqueMatch)
         if (data) {
           let si = 0, no = 0, abs = 0
           data.forEach(r => {
-            if (r.vote_plain === 'si')  si++
-            else if (r.vote_plain === 'no')  no++
-            else if (r.vote_plain === 'abs') abs++
+            const n = Number(r.total) || 0
+            if (r.vote_plain === 'si')  si  += n
+            else if (r.vote_plain === 'no')  no  += n
+            else if (r.vote_plain === 'abs') abs += n
           })
           _calVotes[q.id] = { si, no, abs }
         }
