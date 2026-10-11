@@ -12,7 +12,7 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)]
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const fmtNum = n => Number(n || 0).toLocaleString('es-VE')
 
-const estado = { user: null, butaca: 0, alias: null, bloques: [], miBloque: null, tab: 'destacados' }
+const estado = { user: null, butaca: 0, alias: null, ident: null, bloques: [], miBloque: null, tab: 'destacados' }
 
 // ── Navegación ──────────────────────────────────────────────────
 const ICONOS = {
@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -55,6 +55,7 @@ function ruta() {
   window.scrollTo(0, 0)
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
   if (valida === 'votaciones') cargarVotaciones()
+  if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
 }
 
 function abrirMenu()  { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show') }
@@ -99,13 +100,15 @@ function aviso(msg, tipo = 'ok') {
 async function cargarUsuario() {
   const { data: { session } } = await sb.auth.getSession()
   estado.user = session?.user || null
-  if (!estado.user) return pintarUsuario()
+  if (!estado.user) { estado.cargado = true; return pintarUsuario() }
   try {
     const [{ data: num }, { data: ident }] = await Promise.all([sb.rpc('get_my_seat'), sb.rpc('get_my_seat_identity')])
     estado.butaca = Number(num) || 0
     const fila = Array.isArray(ident) ? ident[0] : ident
     estado.alias = fila?.alias || null
+    estado.ident = fila || {}
   } catch (e) { console.warn('cargarUsuario:', e) }
+  estado.cargado = true
   pintarUsuario()
   cargarNotificaciones()
 }
@@ -653,7 +656,7 @@ async function confirmarVoto() {
 }
 
 // ── Muro del día ────────────────────────────────────────────────
-const COLORES = { orange: '#f97316', red: '#e11d48', pink: '#ec4899', purple: '#8b5cf6', blue: '#0ea5e9', indigo: '#6366f1', green: '#16a34a', teal: '#14b8a6', yellow: '#eab308', gray: '#64748b' }
+const COLORES = { white: '#9ca3af', cyan: '#22d3ee', black: '#374151', orange: '#f97316', red: '#e11d48', pink: '#ec4899', purple: '#8b5cf6', blue: '#0ea5e9', indigo: '#6366f1', green: '#16a34a', teal: '#14b8a6', yellow: '#eab308', gray: '#64748b' }
 const colorDe = (c, seed) => COLORES[c] || Object.values(COLORES)[Math.abs([...String(seed)].reduce((a, ch) => a + ch.charCodeAt(0), 0)) % 10]
 function haceCuanto(ts) {
   const d = Math.floor((Date.now() - new Date(ts)) / 1000)
@@ -837,6 +840,260 @@ function vigilarSesion() {
   })
 }
 
+// ── Mi Butaca ───────────────────────────────────────────────────
+// Perfil (alias, frase, color), privacidad, actividad propia y bloque.
+// Todo se guarda con las mismas funciones del servidor que usa la versión actual.
+const PALETA = [
+  ['orange', 'Naranja', '#f76a1e'], ['yellow', 'Amarillo', '#f59e0b'], ['green', 'Verde', '#34d399'], ['cyan', 'Cyan', '#22d3ee'],
+  ['red', 'Rojo', '#f87171'], ['pink', 'Rosa', '#f472b6'], ['white', 'Blanco', '#d1d5db'], ['black', 'Negro', '#6b7280'],
+]
+const LIM = { alias: 40, phrase: 200 }
+const mb = { cargando: false, stats: { si: 0, no: 0, abs: 0 }, cerradas: 0 }
+const vistaActual = () => $$('.view').find(v => !v.hidden)?.dataset.view
+
+const limpiar = s => String(s ?? '').replace(/<[^>]*>/g, '').replace(/javascript\s*:/gi, '')
+  .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim()
+
+function confirmar(titulo, texto, boton = 'Confirmar', peligro = false) {
+  return new Promise(res => {
+    const m = $('#modal-conf')
+    $('#mc-titulo').textContent = titulo; $('#mc-texto').textContent = texto
+    const si = $('#mc-si'); si.textContent = boton; si.classList.toggle('btn-peligro', peligro)
+    const fin = v => { m.hidden = true; document.removeEventListener('keydown', esc_); res(v) }
+    const esc_ = e => { if (e.key === 'Escape') fin(false) }
+    si.onclick = () => fin(true); $('#mc-no').onclick = () => fin(false)
+    m.onclick = e => { if (e.target === m) fin(false) }
+    document.addEventListener('keydown', esc_)
+    m.hidden = false; si.focus()
+  })
+}
+
+async function cargarMiButaca() {
+  if (!estado.user || !estado.butaca) return pintarMiButaca()
+  if (mb.cargando) return
+  mb.cargando = true
+  try {
+    const [{ data: ident }, { data: st }, { data: cer }] = await Promise.all([
+      sb.rpc('get_my_seat_identity'),
+      sb.rpc('get_my_vote_stats', { p_seat_number: estado.butaca }),
+      sb.rpc('get_my_winning_decisions', { p_seat_number: estado.butaca }),
+    ])
+    estado.ident = (Array.isArray(ident) ? ident[0] : ident) || {}
+    mb.stats = { si: 0, no: 0, abs: 0 }
+    ;(st || []).forEach(r => { if (r.vote_plain in mb.stats) mb.stats[r.vote_plain] = Number(r.cnt) || 0 })
+    mb.cerradas = Number(cer) || 0
+  } catch (e) { console.warn('cargarMiButaca:', e) }
+  mb.cargando = false
+  pintarMiButaca()
+}
+
+function interruptor(campo, on, titulo, ayuda) {
+  return `<div class="mb-fila">
+    <div><b>${titulo}</b><small>${ayuda}</small></div>
+    <button class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${on}" data-visib="${campo}" aria-label="${titulo}"><i></i></button>
+  </div>`
+}
+
+function pintarMiButaca() {
+  const c = $('#mb-cuerpo')
+  if (!c) return
+  if (!estado.cargado) { c.innerHTML = '<p class="muted">Cargando…</p>'; return }
+  if (!estado.user) {
+    c.innerHTML = `<div class="card soon"><h3 style="margin:0 0 6px">Iniciá sesión</h3>
+      <p class="muted">Para ver tu butaca tenés que entrar con tu cuenta.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`
+    return
+  }
+  if (!estado.butaca) {
+    c.innerHTML = `<div class="card soon"><h3 style="margin:0 0 6px">Todavía no tenés butaca</h3>
+      <p class="muted">Completá la verificación de identidad y se te asigna tu lugar en el hemiciclo.</p>
+      <a class="btn btn-dark" href="${APP_ACTUAL}">Verificarme</a></div>`
+    return
+  }
+  const id = estado.ident || {}
+  const color = PALETA.find(p => p[0] === id.card_color) || PALETA[0]
+  const muestraAlias = !!(id.show_alias && id.alias)
+  const publico = muestraAlias
+  const s = mb.stats, total = s.si + s.no + s.abs
+  const barra = (k, n, col) => `<div class="res-row"><b>${OPC[k][0]}</b><div class="res-bar"><i style="width:${total ? Math.round(n / total * 100) : 0}%;background:${col}"></i></div><span>${fmtNum(n)}</span></div>`
+
+  // Bloque
+  const me = estado.miBloque || {}
+  const b = me.bloque_id ? estado.bloques.find(x => x.id === me.bloque_id) : null
+  const espera = me.puedo_sumarme_desde && new Date(me.puedo_sumarme_desde) > new Date() ? new Date(me.puedo_sumarme_desde) : null
+  const bloqueHtml = me.bloque_id
+    ? `<div class="mb-bloque"><span class="mb-bl-av">${esc((b?.nombre || 'B').charAt(0))}</span>
+        <div><b>${esc(b?.nombre || 'Tu bloque')}</b><small>${me.soy_anfitrion ? 'Sos el anfitrión' : 'Sos miembro'}${b ? ` · ${fmtNum(b.miembros)} miembros` : ''}</small></div></div>
+       ${me.soy_anfitrion
+         ? '<p class="muted mb-nota">Como anfitrión, para salir tenés que cerrar el bloque.</p>'
+         : `<button class="btn btn-ghost" id="mb-salir">Salir del bloque</button>
+            <p class="muted mb-nota">Si salís, vas a poder sumarte a otro bloque recién en ${me.dias_espera || 30} días.</p>`}`
+    : espera
+      ? `<p class="muted mb-nota" style="margin:0">Saliste de un bloque hace poco. Vas a poder sumarte a otro desde el <b>${espera.toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}</b>.</p>`
+      : `<p class="muted mb-nota" style="margin:0 0 12px">Todavía no formás parte de ningún bloque.</p>
+         <button class="btn btn-ghost" id="mb-ver-bloques">Explorar bloques</button>`
+
+  c.innerHTML = `
+  <div class="mb-grid">
+   <div class="mb-col">
+    <article class="card mb-id">
+      <span class="mb-av" style="background:${color[2]}">${muestraAlias ? esc(id.alias.charAt(0).toUpperCase()) : '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>'}</span>
+      <div class="mb-id-txt">
+        <small>Butaca</small><b class="mb-num">#${estado.butaca}</b>
+        <span class="mb-nombre">${esc(id.alias || 'Sin alias')}</span>
+        <span class="sc-badge ${publico ? 'pub' : ''}">${publico ? 'Público' : 'Anónimo'}</span>
+      </div>
+      <div class="mb-preview">
+        <small>Así te ven los demás en el hemiciclo</small>
+        <div class="mb-preview-card">
+          <b>${esc(muestraAlias ? id.alias : 'Ciudadano anónimo')}</b>
+          ${id.show_phrase && id.phrase ? `<p>“${esc(id.phrase)}”</p>` : ''}
+          ${id.show_votes ? `<span>${fmtNum(total)} votaciones</span>` : ''}
+        </div>
+      </div>
+      <button class="btn btn-dark" id="mb-ver-hemi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>Ver en el hemiciclo</button>
+    </article>
+    <article class="card mb-sec mb-o4">
+      <h3>Mi actividad</h3>
+      <p class="muted mb-nota">Solo vos ves este detalle.</p>
+      <div class="mb-kpis"><div><b>${fmtNum(total)}</b><small>Votaciones</small></div><div><b>${fmtNum(mb.cerradas)}</b><small>En decisiones cerradas</small></div></div>
+      <div class="res">${barra('si', s.si, '#16a34a')}${barra('no', s.no, '#e11d48')}${barra('abs', s.abs, '#64748b')}</div>
+    </article>
+    <article class="card mb-sec mb-o6">
+      <h3>Cuenta</h3>
+      <p class="mb-email">${esc(estado.user.email || '')}</p>
+      <button class="btn btn-ghost" id="mb-salir-sesion">Cerrar sesión</button>
+    </article>
+   </div>
+   <div class="mb-col">
+    <article class="card mb-sec mb-o2">
+      <h3>Perfil</h3>
+      <label class="mb-campo"><span>Alias <em data-cont="alias"></em></span>
+        <div class="mb-input"><input id="mb-alias" maxlength="${LIM.alias}" value="${esc(id.alias || '')}" placeholder="Cómo querés que te vean" autocomplete="off">
+        <button class="btn btn-dark" data-guardar="alias">Guardar</button></div></label>
+      <label class="mb-campo"><span>Frase <em data-cont="phrase"></em></span>
+        <div class="mb-input"><textarea id="mb-phrase" maxlength="${LIM.phrase}" rows="2" placeholder="Una frase que te represente">${esc(id.phrase || '')}</textarea>
+        <button class="btn btn-dark" data-guardar="phrase">Guardar</button></div></label>
+      <div class="mb-campo"><span>Color de tu tarjeta</span>
+        <div class="mb-colores">${PALETA.map(([k, n, h]) => `<button class="mb-color ${k === color[0] ? 'active' : ''}" data-color="${k}" title="${n}" aria-label="${n}" style="background:${h}"></button>`).join('')}</div></div>
+    </article>
+    <article class="card mb-sec mb-o3">
+      <h3>Privacidad</h3>
+      <p class="muted mb-nota">Por defecto sos anónimo. <b>Qué votaste nunca se muestra</b>, a nadie.</p>
+      ${interruptor('alias', !!id.show_alias, 'Mostrar mi alias', 'Tu butaca deja de ser anónima')}
+      ${interruptor('phrase', !!id.show_phrase, 'Mostrar mi frase', 'Aparece en tu tarjeta del hemiciclo')}
+      ${interruptor('votes', !!id.show_votes, 'Mostrar en cuántas votaciones participé', 'Solo la cantidad, nunca el voto')}
+    </article>
+    <article class="card mb-sec mb-o5">
+      <h3>Mi bloque</h3>
+      ${bloqueHtml}
+    </article>
+   </div>
+  </div>`
+  contarCampos()
+}
+
+function contarCampos() {
+  ;['alias', 'phrase'].forEach(k => {
+    const el = $('#mb-' + k), cnt = $(`[data-cont="${k}"]`)
+    if (el && cnt) cnt.textContent = `${el.value.length}/${LIM[k]}`
+  })
+}
+
+// Refleja mis cambios en el hemiciclo sin recargar
+function reflejarEnHemiciclo() {
+  const id = estado.ident || {}, p = perfiles.get(estado.butaca) || { seat_number: estado.butaca }
+  Object.assign(p, { alias: id.alias, phrase: id.phrase, show_alias: !!id.show_alias, show_phrase: !!id.show_phrase, show_votes: !!id.show_votes, card_color: id.card_color })
+  perfiles.set(estado.butaca, p)
+}
+
+async function guardarCampo(campo, btn) {
+  const el = $('#mb-' + campo)
+  const val = limpiar(el.value).slice(0, LIM[campo])
+  if (campo === 'alias' && val && val.length < 2) { aviso('El alias tiene que tener al menos 2 caracteres.', 'error'); return }
+  if ((estado.ident?.[campo] || '') === val) { aviso('No hay cambios para guardar.'); return }
+  btn.disabled = true
+  const { error } = await sb.rpc('save_my_seat_field', { p_field: campo, p_value: val || null })
+  btn.disabled = false
+  if (error) {
+    aviso(error.code === '23505' ? 'Ese alias ya lo usa otra butaca. Probá con otro.' : 'No se pudo guardar. Intentá de nuevo.', 'error')
+    return
+  }
+  estado.ident[campo] = val || null
+  if (campo === 'alias') { estado.alias = val || null; pintarUsuario() }
+  reflejarEnHemiciclo(); pintarMiButaca()
+  aviso(campo === 'alias' ? '✓ Alias guardado' : '✓ Frase guardada')
+}
+
+async function guardarColor(color) {
+  if (estado.ident?.card_color === color) return
+  const { error } = await sb.rpc('save_my_seat_field', { p_field: 'card_color', p_value: color })
+  if (error) { aviso('No se pudo guardar el color.', 'error'); return }
+  estado.ident.card_color = color
+  reflejarEnHemiciclo(); pintarMiButaca()
+  aviso('✓ Color guardado')
+}
+
+async function cambiarVisibilidad(campo) {
+  const id = estado.ident || {}
+  const llave = { alias: 'show_alias', phrase: 'show_phrase', votes: 'show_votes' }[campo]
+  const nuevo = !id[llave]
+  const que = { alias: 'tu alias', phrase: 'tu frase', votes: 'en cuántas votaciones participaste' }[campo]
+  if (nuevo && campo === 'alias' && !id.alias) { aviso('Primero guardá un alias.', 'error'); return }
+  if (nuevo && campo === 'phrase' && !id.phrase) { aviso('Primero guardá una frase.', 'error'); return }
+  const ok = await confirmar(
+    nuevo ? `¿Mostrar ${que}?` : `¿Ocultar ${que}?`,
+    nuevo ? 'Va a ser visible para todos los ciudadanos del Cabildo de forma inmediata. Lo podés volver a ocultar cuando quieras.'
+          : 'Deja de ser visible para todos de forma inmediata.',
+    nuevo ? 'Sí, mostrar' : 'Sí, ocultar')
+  if (!ok) return
+  const v = { show_alias: !!id.show_alias, show_phrase: !!id.show_phrase, show_votes: !!id.show_votes, [llave]: nuevo }
+  const { error } = await sb.rpc('set_profile_visibility', { p_show_alias: v.show_alias, p_show_phrase: v.show_phrase, p_show_votes: v.show_votes })
+  if (error) { aviso('No se pudo guardar. Intentá de nuevo.', 'error'); return }
+  Object.assign(estado.ident, v)
+  reflejarEnHemiciclo(); pintarMiButaca()
+  aviso(nuevo ? '✓ Ahora es visible' : '✓ Ahora es privado')
+}
+
+async function salirDelBloque() {
+  const dias = estado.miBloque?.dias_espera || 30
+  const ok = await confirmar('¿Salir del bloque?', `Vas a dejar de ver sus ideas y debates internos, y no vas a poder sumarte a otro bloque durante ${dias} días.`, 'Sí, salir', true)
+  if (!ok) return
+  const { error } = await sb.rpc('bloque_salir')
+  if (error) { aviso(error.message || 'No se pudo salir del bloque.', 'error'); return }
+  aviso('Saliste del bloque.')
+  await cargarBloques()
+  pintarMiButaca()
+}
+
+function enlazarMiButaca() {
+  const c = $('#mb-cuerpo')
+  if (!c) return
+  c.addEventListener('input', e => { if (e.target.matches('#mb-alias, #mb-phrase')) contarCampos() })
+  c.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.id === 'mb-alias') { e.preventDefault(); guardarCampo('alias', $('[data-guardar="alias"]')) }
+  })
+  c.addEventListener('click', async e => {
+    const t = e.target.closest('button')
+    if (!t) return
+    if (t.dataset.guardar) return guardarCampo(t.dataset.guardar, t)
+    if (t.dataset.color) return guardarColor(t.dataset.color)
+    if (t.dataset.visib) return cambiarVisibilidad(t.dataset.visib)
+    if (t.id === 'mb-salir') return salirDelBloque()
+    if (t.id === 'mb-ver-bloques') {
+      if ($('.app').classList.contains('panel-plegado')) plegar('panel')
+      irATab('todos'); $('#panel-bloques').scrollIntoView({ behavior: 'smooth' }); return
+    }
+    if (t.id === 'mb-ver-hemi') {
+      location.hash = '#inicio'
+      setTimeout(() => $('#hz-mia')?.click(), 400); return
+    }
+    if (t.id === 'mb-salir-sesion') {
+      if (!await confirmar('¿Cerrar sesión?', 'Se cierra también en la versión actual del Cabildo en este navegador.', 'Cerrar sesión')) return
+      await sb.auth.signOut(); location.href = '/ux2/'
+    }
+  })
+}
+
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
 function plegar(k) {
   const on = $('.app').classList.toggle(k + '-plegado')
@@ -854,11 +1111,12 @@ function irATab(tab) {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques()])
+  if (vistaActual() === 'butaca') cargarMiButaca()
   setInterval(cargarVotacion, 60_000)   // refresca votos y estado de la sesión
 }
 iniciar()
