@@ -754,8 +754,9 @@ let _myVoteCount = null   // null = todavía no cargado desde Supabase
 async function _refreshMyVoteCount() {
   if (!MY_SEAT || MY_SEAT <= 0) return
   try {
-    const { data } = await sb.rpc('get_my_vote_stats', { p_seat_number: MY_SEAT })
-    if (data) _myVoteCount = data.reduce((sum, r) => sum + Number(r.cnt || 0), 0)
+    // Solo participación: en qué votaciones estuvo, nunca qué votó
+    const { data, error } = await sb.rpc('v2_mis_participaciones')
+    if (!error && data) _myVoteCount = data.length
   } catch(e) {}
 }
 
@@ -6946,35 +6947,8 @@ async function abrirMiPerfil() {
   const activeEl = document.getElementById('mpc-' + currentColor)
   if (activeEl) activeEl.classList.add('active')
 
-  // Stats: Supabase es la fuente de verdad; localStorage solo como fallback
-  let cntSi = 0, cntNo = 0, cntAbs = 0
-  if (MY_SEAT > 0) {
-    try {
-      const { data } = await sb.rpc('get_my_vote_stats', { p_seat_number: MY_SEAT })
-      if (data) {
-        data.forEach(row => {
-          if (row.vote_plain === 'si')  cntSi  = Number(row.cnt)
-          if (row.vote_plain === 'no')  cntNo  = Number(row.cnt)
-          if (row.vote_plain === 'abs') cntAbs = Number(row.cnt)
-        })
-      }
-    } catch(e) {
-      // Fallback a localStorage si Supabase falla
-      console.warn('get_my_vote_stats fallback a localStorage:', e)
-      const votos = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-      const vals  = Object.values(votos)
-      cntSi  = vals.filter(v => v.voto === 'si').length
-      cntNo  = vals.filter(v => v.voto === 'no').length
-      cntAbs = vals.filter(v => v.voto === 'abs').length
-    }
-  }
-
-  const elSi  = document.getElementById('mp-count-si')
-  const elNo  = document.getElementById('mp-count-no')
-  const elAbs = document.getElementById('mp-count-abs')
-  if (elSi)  elSi.textContent  = cntSi
-  if (elNo)  elNo.textContent  = cntNo
-  if (elAbs) elAbs.textContent = cntAbs
+  // Privacidad: nunca se pide al servidor qué votó el usuario (solo en cuántas participó)
+  _refreshMyVoteCount()
   document.getElementById('mi-perfil-overlay').classList.add('open')
 
   // Nerdocracy: mostrar nivel y etapa si hay datos
