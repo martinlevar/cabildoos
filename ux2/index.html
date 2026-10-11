@@ -40,8 +40,9 @@
         <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
         <span class="dot" id="notif-dot" hidden></span>
       </a>
-      <a class="icon-btn hide-sm" href="/" title="Mensajes (versión actual)">
+      <a class="icon-btn hide-sm" href="#ciudadanos/mensajes" title="Mensajes y solicitudes">
         <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/><path d="M9 9h6M9 12h4"/></svg>
+        <span class="dot" id="msg-dot" hidden></span>
       </a>
       <a class="user-chip" id="user-chip" href="/">
         <span class="avatar" id="user-avatar">?</span>
@@ -210,6 +211,28 @@
       <div class="pr-grid" id="pr-grid"><p class="muted">Cargando…</p></div>
     </section>
 
+    <!-- CIUDADANOS -->
+    <section class="view" data-view="ciudadanos" hidden id="ci-vista">
+      <header class="view-head">
+        <div><h1>Ciudadanos</h1><p>Quienes ocupan las butacas del Cabildo. Cada uno decide qué muestra de sí.</p></div>
+      </header>
+      <div class="pr-barra">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-citab="directorio">Directorio</button>
+          <button class="seg-btn" data-citab="siguiendo">Siguiendo <span></span></button>
+          <button class="seg-btn" data-citab="seguidores">Seguidores <span></span></button>
+          <button class="seg-btn" data-citab="solicitudes">Solicitudes <span class="ci-badge"></span></button>
+          <button class="seg-btn" data-citab="mensajes">Mensajes <span class="ci-badge"></span></button>
+        </div>
+      </div>
+      <div class="ci-busca" id="ci-busca">
+        <label class="search ci-q"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="ci-q" placeholder="Buscar por alias, frase o número de butaca" autocomplete="off"></label>
+        <label class="ci-check"><input type="checkbox" id="ci-publicos" checked> Solo perfiles públicos</label>
+      </div>
+      <div id="ci-lista"><p class="muted">Cargando…</p></div>
+    </section>
+
     <!-- DEBATES -->
     <section class="view" data-view="debates" hidden id="db-vista">
       <header class="view-head">
@@ -333,6 +356,15 @@
     <h2 id="mm-titulo">¡Tu butaca completó el Hemiciclo de esta propuesta!</h2>
     <p id="mm-texto"></p>
     <p class="muted">Llegó a la meta y pasa a revisión del moderador para entrar a votación.</p>
+  </div>
+</div>
+
+<div class="modal" id="modal-ciu" hidden role="dialog" aria-modal="true">
+  <div class="modal-box modal-ciu">
+    <button class="modal-x" id="cp-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="cp-cab" id="cp-cab"></div>
+    <div class="seg cp-tabs"><button class="seg-btn active" data-cptab="propuestas">Propuestas</button><button class="seg-btn" data-cptab="mensajes">Mensajes</button></div>
+    <div id="cp-cuerpo"></div>
   </div>
 </div>
 

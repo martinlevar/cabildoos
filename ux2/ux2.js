@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -56,6 +56,8 @@ function ruta() {
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
   if (valida === 'votaciones') cargarVotaciones()
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
+  if (valida === 'ciudadanos') cargarCiudadanos(arg)
+  else if ($('#modal-ciu') && !$('#modal-ciu').hidden) cerrarPerfil()
   if (valida === 'propuestas') { if (!pr.d) cargarPropuestas(arg); else { refrescarPropuestas(); if (arg) abrirPropuesta(arg) } }
   if (valida === 'debates') {
     if (!dbt.lista.length) cargarDebates(arg)
@@ -343,6 +345,12 @@ function tarjetaButaca(num, sx, sy) {
   if (x + cw > W - 8) x = sx - cw - 16
   if (y + ch > Hh - 8) y = sy - ch - 16
   card.style.left = Math.max(8, x) + 'px'; card.style.top = Math.max(8, y) + 'px'
+}
+
+function enfocarButaca(num) {
+  const b = num && asientos[num - 1]
+  if (!b) return
+  modoCam = 'manual'; irA({ x: b.x, y: b.y, s: encuadre.s * 4 })
 }
 
 function enlazarHemiciclo() {
@@ -1689,6 +1697,264 @@ function enlazarPropuestas() {
   })
 }
 
+// ── Ciudadanos ──────────────────────────────────────────────────
+// Directorio (cada uno decide qué muestra), seguir con solicitud, y mensajes privados entre butacas.
+const ciu = { tab: 'directorio', q: '', soloPublicos: true, cuantos: 48, sig: new Set(), pend: new Set(), segs: new Set(),
+  sol: [], convs: new Map(), noLeidos: 0, perfil: null, ptab: 'propuestas', chat: null, cargado: false }
+
+const nombreDe = (num, p = perfiles.get(num)) => p?.show_alias && p.alias ? p.alias : null
+const avatarDe = (num, grande = false) => {
+  const p = perfiles.get(num), n = nombreDe(num, p)
+  return `<span class="ci-av ${grande ? 'grande' : ''}" style="background:${num === estado.butaca ? 'var(--orange)' : colorDe(p?.card_color, num)}">${n ? esc(n.charAt(0).toUpperCase())
+    : '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>'}</span>`
+}
+
+async function cargarSocial() {
+  if (!estado.butaca) { ciu.cargado = true; return }
+  try {
+    const [{ data: f }, { data: m }] = await Promise.all([
+      sb.from('follows').select('id, from_seat, to_seat, status'),
+      sb.from('messages').select('id, from_seat, to_seat, text, read_at, created_at').order('created_at', { ascending: false }).limit(500),
+    ])
+    ciu.sig = new Set(); ciu.pend = new Set(); ciu.segs = new Set(); ciu.sol = []
+    ;(f || []).forEach(x => {
+      if (x.from_seat === estado.butaca) (x.status === 'accepted' ? ciu.sig : ciu.pend).add(x.to_seat)
+      else if (x.to_seat === estado.butaca) { if (x.status === 'accepted') ciu.segs.add(x.from_seat); else ciu.sol.push(x) }
+    })
+    ciu.convs = new Map(); ciu.noLeidos = 0
+    ;(m || []).forEach(x => {
+      const otro = x.from_seat === estado.butaca ? x.to_seat : x.from_seat
+      const c = ciu.convs.get(otro) || { ultimo: x, noLeidos: 0 }
+      if (x.to_seat === estado.butaca && !x.read_at) { c.noLeidos++; ciu.noLeidos++ }
+      ciu.convs.set(otro, c)
+    })
+  } catch (e) { console.warn('cargarSocial:', e) }
+  ciu.cargado = true
+  pintarAvisosSocial()
+}
+
+function pintarAvisosSocial() {
+  const total = ciu.noLeidos + ciu.sol.length
+  const d = $('#msg-dot'); if (d) d.hidden = !total
+}
+
+async function cargarCiudadanos(arg) {
+  if (!perfiles.size) await cargarPerfiles()
+  if (!ciu.cargado) await cargarSocial()
+  if (arg === 'mensajes' || arg === 'solicitudes') ciu.tab = arg
+  pintarCiudadanos()
+  const n = Number(arg); if (n > 0) abrirPerfil(n)
+}
+
+function pintarCiudadanos() {
+  const v = $('#ci-vista'); if (!v) return
+  const c = { siguiendo: ciu.sig.size, seguidores: ciu.segs.size, solicitudes: ciu.sol.length, mensajes: ciu.noLeidos }
+  $$('[data-citab]').forEach(b => { b.classList.toggle('active', b.dataset.citab === ciu.tab); const s = b.querySelector('span'); if (s) s.textContent = c[b.dataset.citab] || '' })
+  $('#ci-busca').hidden = ciu.tab !== 'directorio'
+  const caja = $('#ci-lista')
+  if (!estado.butaca && ciu.tab !== 'directorio') {
+    caja.innerHTML = `<div class="card soon"><h3>Necesitás tu butaca</h3><p class="muted">Para seguir ciudadanos y enviar mensajes completá la verificación.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Verificarme</a></div>`
+    return
+  }
+  if (ciu.tab === 'solicitudes') {
+    caja.innerHTML = ciu.sol.length ? `<div class="ci-filas">${ciu.sol.map(s => `
+      <div class="card ci-fila">${avatarDe(s.from_seat)}
+        <button class="ci-fila-txt" data-perfil="${s.from_seat}"><b>${esc(nombreDe(s.from_seat) || 'Ciudadano anónimo')}</b><small>Butaca #${s.from_seat} quiere seguirte</small></button>
+        <button class="btn btn-dark" data-aceptar="${s.id}">Aceptar</button><button class="btn btn-ghost" data-rechazar="${s.id}">Rechazar</button>
+      </div>`).join('')}</div>` : vacioCiu('No tenés solicitudes pendientes', 'Cuando alguien quiera seguirte vas a verlo acá.')
+    return
+  }
+  if (ciu.tab === 'mensajes') {
+    const convs = [...ciu.convs.entries()].sort((a, b) => new Date(b[1].ultimo.created_at) - new Date(a[1].ultimo.created_at))
+    caja.innerHTML = convs.length ? `<div class="ci-filas">${convs.map(([num, cv]) => `
+      <button class="card ci-fila ci-conv ${cv.noLeidos ? 'nuevo' : ''}" data-perfil="${num}" data-ptab="mensajes">${avatarDe(num)}
+        <span class="ci-fila-txt"><b>${esc(nombreDe(num) || 'Ciudadano anónimo')} <em>#${num}</em></b>
+        <small>${cv.ultimo.from_seat === estado.butaca ? 'Vos: ' : ''}${esc(cv.ultimo.text.slice(0, 90))}</small></span>
+        <span class="ci-conv-meta"><time>${haceCuanto(cv.ultimo.created_at)}</time>${cv.noLeidos ? `<i>${cv.noLeidos}</i>` : ''}</span>
+      </button>`).join('')}</div>` : vacioCiu('Todavía no tenés conversaciones', 'Abrí el perfil de un ciudadano y escribile.')
+    return
+  }
+  let nums
+  if (ciu.tab === 'siguiendo') nums = [...ciu.sig, ...ciu.pend]
+  else if (ciu.tab === 'seguidores') nums = [...ciu.segs]
+  else {
+    const q = ciu.q.trim().toLowerCase().replace(/^#/, '')
+    nums = [...perfiles.keys()].filter(n => {
+      const p = perfiles.get(n)
+      if (q) return String(n) === q || (nombreDe(n, p) || '').toLowerCase().includes(q) || (p?.show_phrase && (p.phrase || '').toLowerCase().includes(q))
+      return !ciu.soloPublicos || nombreDe(n, p)
+    }).sort((a, b) => (!!nombreDe(b) - !!nombreDe(a)) || (Number(perfiles.get(b)?.vote_count || 0) - Number(perfiles.get(a)?.vote_count || 0)) || a - b)
+  }
+  const total = nums.length
+  if (!total) {
+    caja.innerHTML = ciu.tab === 'directorio' ? vacioCiu('Nadie coincide con esa búsqueda', 'Probá con un alias, una palabra de su frase o el número de butaca.')
+      : ciu.tab === 'siguiendo' ? vacioCiu('Todavía no seguís a nadie', 'Buscá ciudadanos en el directorio y mandales una solicitud.')
+      : vacioCiu('Todavía no tenés seguidores', 'Hacé público tu alias en Mi Butaca para que te encuentren.')
+    return
+  }
+  caja.innerHTML = `${ciu.tab === 'directorio' ? `<p class="muted ci-total">${fmtNum(total)} ${total === 1 ? 'ciudadano' : 'ciudadanos'}${ciu.soloPublicos && !ciu.q ? ' con perfil público' : ''}</p>` : ''}
+    <div class="ci-grid">${nums.slice(0, ciu.cuantos).map(tarjetaCiudadano).join('')}</div>
+    ${total > ciu.cuantos ? `<button class="btn btn-ghost ci-mas" id="ci-mas">Mostrar más (${fmtNum(total - ciu.cuantos)})</button>` : ''}`
+}
+
+const vacioCiu = (t, s) => `<div class="card soon"><h3 style="margin:0 0 6px">${t}</h3><p class="muted" style="margin:0">${s}</p></div>`
+
+function botonSeguir(num) {
+  if (num === estado.butaca) return '<span class="ci-yo">Tu butaca</span>'
+  if (!estado.butaca) return ''
+  const s = ciu.sig.has(num) ? ['Siguiendo', 'on'] : ciu.pend.has(num) ? ['Pendiente', 'pend'] : ['Seguir', '']
+  return `<button class="btn ci-seguir ${s[1]}" data-seguir="${num}">${s[0]}</button>`
+}
+
+function tarjetaCiudadano(num) {
+  const p = perfiles.get(num), n = nombreDe(num, p)
+  return `<article class="card ci-card" data-perfil="${num}" tabindex="0">
+    ${avatarDe(num)}
+    <div class="ci-card-txt"><b>${esc(n || 'Ciudadano anónimo')}</b><small>Butaca #${num}${ciu.segs.has(num) ? ' · te sigue' : ''}</small></div>
+    ${p?.show_phrase && p.phrase ? `<p class="ci-frase">“${esc(p.phrase)}”</p>` : ''}
+    <div class="ci-card-pie">${p?.show_votes ? `<span>${fmtNum(p.vote_count)} votaciones</span>` : '<span></span>'}${botonSeguir(num)}</div>
+  </article>`
+}
+
+async function seguir(num) {
+  if (!estado.butaca) return
+  if (ciu.sig.has(num) || ciu.pend.has(num)) {
+    if (!await confirmar(ciu.sig.has(num) ? '¿Dejar de seguir?' : '¿Cancelar la solicitud?', `Butaca #${num}`, ciu.sig.has(num) ? 'Dejar de seguir' : 'Cancelar solicitud')) return
+    const { error } = await sb.from('follows').delete().eq('from_seat', estado.butaca).eq('to_seat', num)
+    if (error) { aviso('No se pudo completar.', 'error'); return }
+    ciu.sig.delete(num); ciu.pend.delete(num)
+  } else {
+    const { error } = await sb.from('follows').insert({ from_seat: estado.butaca, to_seat: num, status: 'pending' })
+    if (error) { aviso('No se pudo enviar la solicitud.', 'error'); return }
+    ciu.pend.add(num); aviso(`Solicitud enviada a la butaca #${num}`)
+  }
+  $$(`[data-seguir="${num}"]`).forEach(b => { b.outerHTML = botonSeguir(num) })
+  if (ciu.tab === 'siguiendo') pintarCiudadanos()
+}
+
+async function responderSolicitud(id, acepta) {
+  const s = ciu.sol.find(x => x.id === id); if (!s) return
+  const { error } = acepta ? await sb.from('follows').update({ status: 'accepted' }).eq('id', id) : await sb.from('follows').delete().eq('id', id)
+  if (error) { aviso('No se pudo completar.', 'error'); return }
+  ciu.sol = ciu.sol.filter(x => x.id !== id)
+  if (acepta) { ciu.segs.add(s.from_seat); aviso(`Aceptaste a la butaca #${s.from_seat}`) }
+  pintarAvisosSocial(); pintarCiudadanos()
+}
+
+// ── Perfil de un ciudadano ──
+async function abrirPerfil(num, tab = 'propuestas') {
+  if (!perfiles.size) await cargarPerfiles()
+  ciu.perfil = num; ciu.ptab = tab
+  const p = perfiles.get(num), n = nombreDe(num, p)
+  $('#cp-cab').innerHTML = `
+    ${avatarDe(num, true)}
+    <div class="cp-id"><h2>${esc(num === estado.butaca ? 'Tu butaca' : n || 'Ciudadano anónimo')}</h2>
+      <small>Butaca #${num}</small><span class="sc-badge ${n ? 'pub' : ''}">${n ? 'Público' : 'Anónimo'}</span></div>
+    ${p?.show_phrase && p.phrase ? `<p class="cp-frase">“${esc(p.phrase)}”</p>` : !n ? '<p class="cp-frase muted">Eligió mantener su identidad privada.</p>' : ''}
+    <div class="cp-datos"><span><b id="cp-segs">–</b> seguidores</span><span><b id="cp-sig">–</b> siguiendo</span>${p?.show_votes ? `<span><b>${fmtNum(p.vote_count)}</b> votaciones</span>` : ''}</div>
+    <div class="cp-acciones">${botonSeguir(num)}<button class="btn btn-ghost" id="cp-hemi">Ver en el hemiciclo</button></div>`
+  $('#modal-ciu').hidden = false
+  if (location.hash !== '#ciudadanos/' + num && vistaActual() === 'ciudadanos') history.replaceState(null, '', '#ciudadanos/' + num)
+  pintarPestanaPerfil()
+  sb.rpc('get_follow_stats', { p_seat: num }).then(({ data }) => {
+    if (ciu.perfil !== num || !data) return
+    $('#cp-segs').textContent = fmtNum(data.followers); $('#cp-sig').textContent = fmtNum(data.following)
+  })
+}
+
+async function pintarPestanaPerfil() {
+  const num = ciu.perfil, b = $('#cp-cuerpo')
+  $$('[data-cptab]').forEach(x => x.classList.toggle('active', x.dataset.cptab === ciu.ptab))
+  $('[data-cptab="mensajes"]').hidden = num === estado.butaca
+  salirDelChat()
+  if (ciu.ptab === 'propuestas') {
+    b.innerHTML = '<p class="muted">Cargando…</p>'
+    const { data } = await sb.from('proposals').select('id, text, cat, likes, status, created_at, expires_at')
+      .eq('seat_number', num).in('status', ['pending', 'accepted', 'approved', 'expired']).order('created_at', { ascending: false }).limit(20)
+    if (ciu.perfil !== num || ciu.ptab !== 'propuestas') return
+    const etq = { pending: 'En carrera', accepted: 'Meta lograda', approved: 'En el Hemiciclo', expired: 'No llegó a la meta' }
+    b.innerHTML = (data || []).length ? data.map(x => `
+      <a class="cp-prop" href="#propuestas/${x.id}" style="--cat:${CAT_COLOR[x.cat] || CAT_COLOR.General}">
+        <span class="cp-prop-top"><span class="pr-cat">${esc(x.cat || 'General')}</span><span>${etq[x.status] || ''} · ${x.likes} apoyos</span></span>
+        <b>${esc(x.text)}</b></a>`).join('') : '<p class="muted">Todavía no lanzó propuestas.</p>'
+    return
+  }
+  // Mensajes
+  if (!estado.butaca) { b.innerHTML = '<p class="muted">Necesitás tu butaca verificada para enviar mensajes.</p>'; return }
+  b.innerHTML = `<div class="cp-chat" id="cp-chat"><p class="muted">Cargando…</p></div>
+    <p class="cp-aviso">Los mensajes son privados entre las dos butacas. No compartas datos personales.</p>
+    <div class="cp-escribir"><textarea id="cp-msg" maxlength="1000" rows="2" placeholder="Escribí un mensaje"></textarea><button class="btn btn-dark" id="cp-enviar">Enviar</button></div>`
+  const { data } = await sb.from('messages').select('id, from_seat, to_seat, text, created_at')
+    .or(`and(from_seat.eq.${estado.butaca},to_seat.eq.${num}),and(from_seat.eq.${num},to_seat.eq.${estado.butaca})`)
+    .order('created_at', { ascending: true }).limit(300)
+  if (ciu.perfil !== num || ciu.ptab !== 'mensajes') return
+  const chat = $('#cp-chat')
+  chat.innerHTML = (data || []).length ? data.map(burbujaMsg).join('') : '<p class="muted cp-vacio">Empezá la conversación.</p>'
+  chat.scrollTop = chat.scrollHeight
+  // marcar leídos
+  const cv = ciu.convs.get(num)
+  if (cv?.noLeidos) {
+    sb.from('messages').update({ read_at: new Date().toISOString() }).eq('to_seat', estado.butaca).eq('from_seat', num).is('read_at', null).then(() => {})
+    ciu.noLeidos -= cv.noLeidos; cv.noLeidos = 0; pintarAvisosSocial()
+  }
+  ciu.chat = sb.channel(`v2-msgs-${estado.butaca}-${num}`)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, ({ new: m }) => {
+      const es = (m.from_seat === num && m.to_seat === estado.butaca) || (m.from_seat === estado.butaca && m.to_seat === num)
+      if (!es || ciu.perfil !== num || $(`#cp-chat [data-id="${m.id}"]`)) return
+      const c = $('#cp-chat'); c.querySelector('.cp-vacio')?.remove()
+      c.insertAdjacentHTML('beforeend', burbujaMsg(m)); c.scrollTop = c.scrollHeight
+      if (m.to_seat === estado.butaca) sb.from('messages').update({ read_at: new Date().toISOString() }).eq('id', m.id).then(() => {})
+    }).subscribe()
+}
+
+const burbujaMsg = m => `<div class="cp-m ${m.from_seat === estado.butaca ? 'mia' : ''}" data-id="${m.id}"><p>${esc(m.text)}</p><time>${new Date(m.created_at).toLocaleString('es-VE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time></div>`
+
+function salirDelChat() { if (ciu.chat) { sb.removeChannel(ciu.chat); ciu.chat = null } }
+
+async function enviarMsg() {
+  const el = $('#cp-msg'), num = ciu.perfil; if (!el || !num) return
+  const txt = limpiar(el.value).slice(0, 1000); if (!txt) return
+  const btn = $('#cp-enviar'); btn.disabled = true
+  const { data, error } = await sb.from('messages').insert({ from_seat: estado.butaca, to_seat: num, text: txt })
+    .select('id, from_seat, to_seat, text, created_at').single()
+  btn.disabled = false
+  if (error) { aviso('No se pudo enviar el mensaje.', 'error'); return }
+  el.value = ''
+  const c = $('#cp-chat'); c.querySelector('.cp-vacio')?.remove()
+  if (data && !c.querySelector(`[data-id="${data.id}"]`)) { c.insertAdjacentHTML('beforeend', burbujaMsg(data)); c.scrollTop = c.scrollHeight }
+  ciu.convs.set(num, { ultimo: data, noLeidos: 0 })
+}
+
+function cerrarPerfil() {
+  $('#modal-ciu').hidden = true; salirDelChat(); ciu.perfil = null
+  if (/^#ciudadanos\/\d+$/.test(location.hash)) history.replaceState(null, '', '#ciudadanos')
+  if (vistaActual() === 'ciudadanos') pintarCiudadanos()
+}
+
+function enlazarCiudadanos() {
+  const v = $('#ci-vista'); if (!v) return
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-seguir],[data-perfil],[data-aceptar],[data-rechazar],[data-citab],[data-cptab],#ci-mas,#cp-hemi,#cp-enviar')
+    if (!t) return
+    if (t.dataset.seguir) { e.stopPropagation(); return seguir(Number(t.dataset.seguir)) }
+    if (t.dataset.aceptar) return responderSolicitud(t.dataset.aceptar, true)
+    if (t.dataset.rechazar) return responderSolicitud(t.dataset.rechazar, false)
+    if (t.dataset.citab) { ciu.tab = t.dataset.citab; ciu.cuantos = 48; return pintarCiudadanos() }
+    if (t.dataset.cptab) { ciu.ptab = t.dataset.cptab; return pintarPestanaPerfil() }
+    if (t.id === 'ci-mas') { ciu.cuantos += 96; return pintarCiudadanos() }
+    if (t.id === 'cp-enviar') return enviarMsg()
+    if (t.id === 'cp-hemi') { const n = ciu.perfil; cerrarPerfil(); location.hash = '#inicio'; setTimeout(() => enfocarButaca(n), 400); return }
+    if (t.dataset.perfil) return abrirPerfil(Number(t.dataset.perfil), t.dataset.ptab || 'propuestas')
+  })
+  v.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.ci-card')) abrirPerfil(Number(e.target.dataset.perfil)) })
+  let t; $('#ci-q').addEventListener('input', e => { clearTimeout(t); t = setTimeout(() => { ciu.q = e.target.value; ciu.cuantos = 48; pintarCiudadanos() }, 150) })
+  $('#ci-publicos').addEventListener('change', e => { ciu.soloPublicos = e.target.checked; ciu.cuantos = 48; pintarCiudadanos() })
+  $('#cp-x').addEventListener('click', cerrarPerfil)
+  $('#modal-ciu').addEventListener('click', e => { if (e.target.id === 'modal-ciu') cerrarPerfil() })
+  $('#modal-ciu').addEventListener('keydown', e => { if (e.target.id === 'cp-msg' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarMsg() } })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal-ciu').hidden && $('#modal-conf').hidden) cerrarPerfil() })
+}
+
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
 function plegar(k) {
   const on = $('.app').classList.toggle(k + '-plegado')
@@ -1706,10 +1972,14 @@ function irATab(tab) {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
+  cargarSocial().then(() => {
+    if (vistaActual() === 'ciudadanos') pintarCiudadanos()
+    if (ciu.perfil) $$(`[data-seguir="${ciu.perfil}"]`).forEach(x => { x.outerHTML = botonSeguir(ciu.perfil) })
+  })
   if (vistaActual() === 'propuestas' && pr.d) refrescarPropuestas()
   if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques()])
