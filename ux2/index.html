@@ -244,7 +244,6 @@
         <div class="es-panel-cab"><div><h3>Cómo votó el Cabildo</h3><p class="muted">Últimas votaciones cerradas</p></div><a href="#votaciones" class="es-link" id="es-ver-res">Ver todos los resultados</a></div>
         <div class="es-part" id="es-part"></div>
       </section>
-      <div class="es-tip" id="es-tip" hidden role="tooltip"></div>
     </section>
 
     <!-- AUDITORIO -->
@@ -255,6 +254,15 @@
         <div class="au-presentes" id="au-presentes" hidden><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg><b id="au-n">0</b> en la sala</div>
       </header>
       <div id="au-cuerpo"><div class="card au-vacio"><p class="muted">Cargando…</p></div></div>
+    </section>
+
+    <!-- PLAYROOM -->
+    <section class="view" data-view="playroom" hidden id="pl-vista">
+      <header class="view-head">
+        <div><h1>Playroom</h1><p>Juegos para ciudadanos verificados. Tu butaca compite contra todo el Cabildo.</p></div>
+        <div class="pl-vivo" id="pl-vivo" hidden><i></i><b id="pl-jugando">0</b> jugando ahora</div>
+      </header>
+      <div id="pl-cuerpo"><div class="card au-vacio"><p class="muted">Cargando…</p></div></div>
     </section>
 
     <!-- CIUDADANOS -->
@@ -345,6 +353,19 @@
 </div>
 
 <!-- ═══ MODAL DE VOTO ═══ -->
+<div class="es-tip" id="es-tip" hidden role="tooltip"></div>
+
+<!-- NERDOCRASY: pantalla de juego -->
+<div class="nd" id="nd" hidden role="dialog" aria-modal="true" aria-label="Nerdocrasy">
+  <div class="nd-fondo" aria-hidden="true"></div>
+  <header class="nd-top">
+    <button class="nd-salir" id="nd-salir" aria-label="Salir del juego"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Salir</span></button>
+    <div class="nd-ruta" id="nd-ruta" aria-hidden="true"></div>
+    <div class="nd-nivel-chip" id="nd-nivel-chip"></div>
+  </header>
+  <main class="nd-escena" id="nd-escena" aria-live="polite"></main>
+</div>
+
 <div class="modal" id="modal-voto" hidden role="dialog" aria-modal="true" aria-labelledby="mv-pregunta">
   <div class="modal-box">
     <button class="modal-x" id="mv-cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>

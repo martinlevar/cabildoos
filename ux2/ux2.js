@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -58,6 +58,8 @@ function ruta() {
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
   if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
+  if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
+  else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
   if (valida === 'ciudadanos') cargarCiudadanos(arg)
   else if ($('#modal-ciu') && !$('#modal-ciu').hidden) cerrarPerfil()
@@ -452,7 +454,7 @@ async function cargarHemiciclo() {
     $('#st-butacas').textContent = fmtNum(totalButacas)
     asientos = calcularAsientos(Math.max(totalButacas, estado.butaca))
     dibujarHemiciclo()
-    cargarPerfiles()
+    estado.perfilesListos = cargarPerfiles().then(() => { if (vistaActual() === 'playroom') pintarPlayroom() })
   } catch (e) { console.warn('cargarHemiciclo:', e) }
 }
 
@@ -2667,14 +2669,364 @@ function enlazarAuditorio() {
   window.addEventListener('beforeunload', () => { if (au.mano) enviarMano(false) })
 }
 
+// ══════════════════════════════════════════════════════════════
+//  PLAYROOM · NERDOCRASY
+//  El servidor manda: elige la pregunta, controla el tiempo (12 s + 2 s de gracia) y nunca envía
+//  la respuesta correcta hasta que quedás eliminado. El navegador solo muestra y cuenta.
+// ══════════════════════════════════════════════════════════════
+const ND_SEG = 12
+const ND_ETAPAS = [
+  { id: 'KNOW',  nombre: 'Saber',  desde: 1,  hasta: 30, color: '#3b82f6', lema: 'Lo que todo ciudadano debería saber.' },
+  { id: 'THINK', nombre: 'Pensar', desde: 31, hasta: 60, color: '#a855f7', lema: 'Saber ya no alcanza.' },
+  { id: 'TRAP',  nombre: 'Dudar',  desde: 61, hasta: 90, color: '#f43f5e', lema: '¿Estás seguro?' },
+]
+const etapaDe = n => ND_ETAPAS.find(e => n <= e.hasta) || ND_ETAPAS[2]
+const nd = { est: null, rank: [], cargado: false, abierto: false, intento: null, q: null, nivel: 1, fin: 0, raf: 0,
+  respondiendo: false, recordInicio: 0, racha: 0, tInicio: 0 }
+
+async function cargarPlayroom() {
+  if (!estado.user) { nd.cargado = true; return pintarPlayroom() }
+  try {
+    const [e, r] = await Promise.all([sb.rpc('v2_nerdocrasy_estado'), sb.rpc('get_nerdocrasy_ranking', { limit_n: 20 })])
+    if (e.error) throw e.error
+    nd.est = e.data; nd.rank = r.data || []
+  } catch (err) { console.warn('playroom:', err); nd.est = nd.est || null }
+  nd.cargado = true
+  pintarPlayroom()
+}
+
+const ndNombre = seat => seat === estado.butaca ? 'Vos' : auNombre(seat)
+const chipEtapa = (id, extra = '') => { const e = ND_ETAPAS.find(x => x.id === id); return e ? `<span class="nd-chip ${extra}" style="--c:${e.color}">${e.id}</span>` : '' }
+
+// La ruta de 90 niveles: tres tramos, dónde quedó la gente (barras) y dónde estás vos
+function rutaNiveles(record, porNivel = [], { nivel = 0, compacta = false } = {}) {
+  const max = Math.max(1, ...porNivel.map(b => b.n))
+  const barras = compacta ? '' : `<div class="nr-barras">${Array.from({ length: 9 }, (_, i) => {
+    const b = porNivel.find(x => Number(x.desde) === i * 10), n = b ? b.n : 0
+    return `<span style="height:${Math.max(4, n / max * 100)}%" data-tip="${n} ${n === 1 ? 'ciudadano quedó' : 'ciudadanos quedaron'} entre ${i * 10 || 1} y ${i * 10 + 9}"></span>`
+  }).join('')}</div>`
+  const pos = v => `${Math.min(100, Math.max(0, v / 90 * 100))}%`
+  return `<div class="nr ${compacta ? 'compacta' : ''}">
+    ${barras}
+    <div class="nr-pista">
+      ${ND_ETAPAS.map(e => `<span class="nr-tramo" style="--c:${e.color}"><i style="width:${Math.min(100, Math.max(0, ((Math.max(record, nivel) - e.desde + 1) / 30) * 100))}%"></i></span>`).join('')}
+      ${record > 0 ? `<span class="nr-marca record" style="left:${pos(record)}" title="Tu récord: ${record}"><b>${compacta ? '' : 'Tu récord · '}${record}</b></span>` : ''}
+      ${nivel ? `<span class="nr-marca ahora" style="left:${pos(nivel - .5)}"></span>` : ''}
+    </div>
+    ${compacta ? '' : `<div class="nr-etapas">${ND_ETAPAS.map(e => `<span><b style="color:${e.color}">${e.id}</b> ${e.desde}–${e.hasta}</span>`).join('')}</div>`}
+  </div>`
+}
+
+function proximaMeta(est, rank) {
+  const r = est.record
+  if (r >= 90) return 'Completaste Nerdocrasy. Muy pocos llegan acá.'
+  if (!r) return 'Tu primer intento te pone en el ranking del Cabildo.'
+  const top10 = rank[9]?.best_level, top1 = rank[0]?.best_level
+  if (est.posicion && est.posicion > 10 && top10 && top10 - r <= 8) return `Te ${top10 - r + 1 === 1 ? 'falta 1 nivel' : `faltan ${top10 - r + 1} niveles`} para entrar al top 10.`
+  if (est.posicion === 1) return 'Sos el número 1 del Cabildo. Todos te están persiguiendo.'
+  const e = etapaDe(r)
+  if (e.hasta - r <= 6 && e.id !== 'TRAP') return `A ${e.hasta - r + 1} niveles de desbloquear ${ND_ETAPAS[ND_ETAPAS.indexOf(e) + 1].id}.`
+  if (top1 && est.posicion > 1) return `El #1 llegó al nivel ${top1}. ¿Hasta dónde llegás vos?`
+  return 'Cada intento empieza en el nivel 1. Un error y quedás afuera.'
+}
+
+function pintarPlayroom() {
+  const c = $('#pl-cuerpo'); if (!c) return
+  const est = nd.est
+  $('#pl-vivo').hidden = !(est?.jugando > 0)
+  if (est) $('#pl-jugando').textContent = fmtNum(est.jugando)
+  if (!nd.cargado) { c.innerHTML = '<div class="card au-vacio"><p class="muted">Cargando…</p></div>'; return }
+  if (!estado.user) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom es para ciudadanos</h3><p class="muted">Iniciá sesión para jugar.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`; return }
+  if (!est) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>No se pudo cargar el Playroom</h3><p class="muted">Probá de nuevo en un momento.</p></div>`; return }
+  if (!est.activo) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom está cerrado</h3><p class="muted">Vuelve a abrir pronto. Tu récord y tu posición quedan guardados.</p></div>`; return }
+
+  const r = est.record, e = r ? etapaDe(r) : null
+  const puede = !!estado.butaca
+  const top = nd.rank.slice(0, 10)
+  const yoEnTop = top.some(x => x.seat_id === estado.butaca)
+  const filaRank = (x, yo) => `<li class="${yo ? 'yo' : ''} ${x.rank_position <= 3 ? 'podio' : ''}">
+      <span class="pr-pos">${x.rank_position <= 3 ? ['🥇', '🥈', '🥉'][x.rank_position - 1] : x.rank_position}</span>
+      <span class="pr-quien">${esc(ndNombre(x.seat_id))}${/^Butaca #/.test(ndNombre(x.seat_id)) ? '' : `<small>#${x.seat_id}</small>`}</span>
+      <span class="pr-niv">${chipEtapa(x.best_stage)}<b>${x.best_level}</b></span></li>`
+
+  c.innerHTML = `
+  <div class="pl-grid">
+    <section class="nd-hero">
+      <div class="nd-hero-fondo" aria-hidden="true"></div>
+      <div class="nd-hero-cab">
+        <span class="nd-hero-tag">Trivia cívica · 90 niveles · 12 s por pregunta</span>
+        <h2 class="nd-marca">NERDOCRACY</h2>
+        <p class="nd-hero-lema">No se gana. Descubrís hasta dónde sabés.</p>
+      </div>
+      <div class="nd-hero-datos">
+        <div><small>Tu récord</small><b>${r || '—'}</b>${e ? chipEtapa(e.id) : '<span class="nd-sin">sin jugar</span>'}</div>
+        <div><small>Posición</small><b>${est.posicion ? '#' + fmtNum(est.posicion) : '—'}</b><span class="nd-sin">de ${fmtNum(est.jugadores)}</span></div>
+        <div><small>Superás al</small><b>${est.supero != null ? est.supero + '%' : '—'}</b><span class="nd-sin">del Cabildo</span></div>
+      </div>
+      ${rutaNiveles(r, est.por_nivel || [])}
+      <div class="nd-hero-pie">
+        <p class="nd-meta-txt">${esc(proximaMeta(est, nd.rank))}</p>
+        ${puede ? `<button class="nd-jugar" id="nd-jugar"><span>▶</span> ${r ? 'Jugar de nuevo' : 'Jugar'}</button>`
+          : `<a class="nd-jugar" href="${APP_ACTUAL}">Conseguí tu butaca para jugar</a>`}
+      </div>
+    </section>
+
+    <aside class="card pl-rank">
+      <div class="pl-rank-cab"><h3>Ranking del Cabildo</h3><small>${fmtNum(est.jugadores)} jugadores</small></div>
+      ${top.length ? `<ol>${top.map(x => filaRank(x, x.seat_id === estado.butaca)).join('')}
+        ${!yoEnTop && est.posicion ? `<li class="sep" aria-hidden="true">···</li>${filaRank({ rank_position: est.posicion, seat_id: estado.butaca, best_level: r, best_stage: est.etapa }, true)}` : ''}</ol>`
+        : '<p class="muted">Todavía nadie entró al ranking. Puede ser tu nombre.</p>'}
+    </aside>
+
+    <section class="card pl-reglas">
+      <h3>Cómo se juega</h3>
+      <ul>
+        <li><span class="pl-r-ico">○ ✕</span><div><b>Sí o No</b><p>Cada pregunta se responde con ○ Sí o ✕ No. En la compu: ← No · → Sí.</p></div></li>
+        <li><span class="pl-r-ico">12s</span><div><b>Contra el reloj</b><p>Si se acaba el tiempo, quedás afuera.</p></div></li>
+        <li><span class="pl-r-ico">✕1</span><div><b>Un error y se termina</b><p>Cada intento empieza en el nivel 1. Tu récord queda guardado.</p></div></li>
+        <li><span class="pl-r-ico">3</span><div><b>Tres etapas</b><p>KNOW (saber), THINK (pensar) y TRAP (las trampas). Cada una más difícil.</p></div></li>
+      </ul>
+    </section>
+
+    <section class="pl-proximos">
+      <div class="pl-prox"><span>🗳️</span><b>Próximo juego</b><small>Pronto en el Playroom</small></div>
+      <div class="pl-prox"><span>🏛️</span><b>Próximo juego</b><small>Pronto en el Playroom</small></div>
+    </section>
+  </div>`
+}
+const plIcono = () => `<span class="au-vacio-ico"><svg viewBox="0 0 24 24">${ICONOS.playroom}</svg></span>`
+
+// ── Juego ──
+function abrirJuego() {
+  if (nd.abierto || !estado.butaca) return
+  nd.abierto = true; nd.recordInicio = nd.est?.record || 0; nd.racha = 0
+  $('#nd').hidden = false; document.body.style.overflow = 'hidden'
+  ndJugar()
+}
+
+function cerrarJuego() {
+  const id = nd.intento
+  nd.intento = null; nd.q = null; nd.respondiendo = true; nd.abierto = false
+  cancelAnimationFrame(nd.raf); clearTimeout(nd.tTrans)
+  if (id) sb.rpc('nerdocrasy_abandon', { p_attempt_id: id }).then(() => {}, () => {})
+  $('#nd').hidden = true; document.body.style.overflow = ''
+  cargarPlayroom()
+}
+
+function ndEscena(html, clase = '') {
+  const e = $('#nd-escena'); e.className = 'nd-escena ' + clase; e.innerHTML = html
+}
+
+function ndCabecera(nivel) {
+  const et = etapaDe(nivel)
+  $('#nd').style.setProperty('--etapa', et.color)
+  $('#nd-ruta').innerHTML = nivel ? rutaNiveles(nd.recordInicio, [], { nivel, compacta: true }) : ''
+  $('#nd-nivel-chip').innerHTML = nivel ? `<small>Nivel</small><b>${nivel}</b>${chipEtapa(et.id)}` : ''
+}
+
+async function ndJugar() {
+  cancelAnimationFrame(nd.raf)
+  nd.intento = null; nd.respondiendo = false; nd.racha = 0
+  ndCabecera(0)
+  ndEscena('<div class="nd-carga"><span class="nd-anillo"></span><p>Preparando tu intento…</p></div>')
+  const { data, error } = await sb.rpc('nerdocrasy_start')
+  if (!nd.abierto) { if (data?.attempt_id) sb.rpc('nerdocrasy_abandon', { p_attempt_id: data.attempt_id }).then(() => {}, () => {}); return }
+  if (error) {
+    const m = error.message || ''
+    const txt = m.includes('no_verified_seat') ? 'Necesitás una butaca verificada para jugar.' : m.includes('not_authenticated') ? 'Iniciá sesión para jugar.' : 'No se pudo empezar. Probá de nuevo.'
+    return ndEscena(`<div class="nd-carga"><p>${txt}</p><button class="nd-btn-sec" data-nd="volver">Volver al Playroom</button></div>`)
+  }
+  nd.intento = data.attempt_id
+  ndMostrar(data.question, Number(data.question?.level) || 1)
+}
+
+function precargar(q) {
+  const urls = [q.visual_asset_url, q.visual_asset_a_url, q.visual_asset_b_url].filter(u => /^https:\/\//.test(u || ''))
+  if (!urls.length) return Promise.resolve()
+  return Promise.race([Promise.all(urls.map(u => new Promise(res => { const i = new Image(); i.onload = i.onerror = res; i.src = u }))), new Promise(r => setTimeout(r, 1500))])
+}
+
+async function ndMostrar(q, nivel) {
+  const t0 = Date.now()
+  await precargar(q)
+  if (!nd.abierto || !nd.intento) return
+  nd.q = q; nd.nivel = nivel; nd.respondiendo = false
+  ndCabecera(nivel)
+  const segura = u => /^https:\/\//.test(u || '') ? esc(u) : ''
+  let visual = ''
+  if (q.visual_asset_a_url && q.visual_asset_b_url && segura(q.visual_asset_a_url))
+    visual = `<div class="nd-visual dos"><figure><span>A</span><img src="${segura(q.visual_asset_a_url)}" alt="${esc(q.visual_alt || 'Imagen A')}"></figure><figure><span>B</span><img src="${segura(q.visual_asset_b_url)}" alt="${esc(q.visual_alt || 'Imagen B')}"></figure></div>`
+  else if (segura(q.visual_asset_url))
+    visual = `<div class="nd-visual"><img src="${segura(q.visual_asset_url)}" alt="${esc(q.visual_alt || '')}"></div>`
+  const rec = nd.recordInicio, hechos = nivel - 1
+  let aviso = ''
+  if (rec > 0 && hechos === rec) aviso = '<span class="nd-aviso fuego">🔥 Igualaste tu récord. Uno más y es nuevo.</span>'
+  else if (rec > 0 && hechos > rec) aviso = `<span class="nd-aviso fuego">🔥 Nuevo récord en curso: ${hechos}</span>`
+  else if (rec > 0 && rec - hechos <= 3) aviso = `<span class="nd-aviso">A ${rec - hechos} de tu récord</span>`
+  ndEscena(`
+    <div class="nd-pregunta">
+      ${aviso}
+      ${visual}
+      <h1 class="nd-texto">${esc(q.question_text)}</h1>
+      ${q.visual_caption ? `<p class="nd-cap">${esc(q.visual_caption)}</p>` : ''}
+    </div>
+    <div class="nd-reloj" role="timer" aria-label="Tiempo"><i id="nd-barra"></i><b id="nd-seg">${ND_SEG}</b></div>
+    <div class="nd-botones">
+      <button class="nd-resp no" data-resp="OUT" aria-label="No (OUT)"><span class="g">✕</span><b>No</b><kbd>←</kbd></button>
+      <button class="nd-resp si" data-resp="IN" aria-label="Sí (IN)"><span class="g">○</span><b>Sí</b><kbd>→</kbd></button>
+    </div>`, 'entra')
+  // Reloj local de 12 s desde que la pregunta llegó (el servidor da 2 s más de gracia por la latencia)
+  nd.fin = t0 + ND_SEG * 1000 - 200
+  const tick = () => {
+    if (!nd.abierto || nd.respondiendo || !nd.intento) return
+    const resta = Math.max(0, nd.fin - Date.now())
+    const b = $('#nd-barra'), s = $('#nd-seg')
+    if (b) { b.style.transform = `scaleX(${resta / (ND_SEG * 1000)})`; b.parentElement.classList.toggle('apurado', resta < 4000); b.parentElement.classList.toggle('critico', resta < 2000) }
+    if (s) s.textContent = Math.ceil(resta / 1000)
+    if (resta <= 0) return ndResponder('TIMEOUT')
+    nd.raf = requestAnimationFrame(tick)
+  }
+  nd.raf = requestAnimationFrame(tick)
+}
+
+async function ndResponder(sel) {
+  if (nd.respondiendo || !nd.intento || !nd.q || !nd.abierto) return
+  nd.respondiendo = true
+  cancelAnimationFrame(nd.raf)
+  const id = nd.intento, nivel = nd.nivel
+  $$('.nd-resp').forEach(b => { b.disabled = true; if (b.dataset.resp === sel) b.classList.add('elegido') })
+  try {
+    if (sel === 'TIMEOUT') {
+      const { data } = await sb.rpc('nerdocrasy_timeout', { p_attempt_id: id })
+      nd.intento = null
+      return ndFin({ motivo: 'tiempo', nivel: nivel - 1, correcta: data?.correct_answer, expl: data?.explanation, record: !!data?.is_record })
+    }
+    const { data, error } = await sb.rpc('nerdocrasy_submit_answer', { p_attempt_id: id, p_question_id: nd.q.question_id, p_answer: sel })
+    if (error) throw error
+    if (!nd.abierto) return
+    if (data.status === 'timeout') { nd.intento = null; return ndFin({ motivo: 'tiempo', nivel: nivel - 1, record: !!data.is_record }) }
+    if (data.status === 'complete') { nd.intento = null; return ndCompleto() }
+    if (data.status === 'eliminated') {
+      $(`.nd-resp[data-resp="${sel}"]`)?.classList.add('mal')
+      await new Promise(r => setTimeout(r, 650))
+      nd.intento = null
+      return ndFin({ motivo: 'error', nivel: nivel - 1, correcta: data.correct_answer, expl: data.explanation, record: !!data.is_record })
+    }
+    if (data.status === 'next') {
+      nd.racha++
+      $(`.nd-resp[data-resp="${sel}"]`)?.classList.add('bien')
+      $('#nd-escena').insertAdjacentHTML('beforeend', `<span class="nd-mas">+1</span>`)
+      await new Promise(r => setTimeout(r, 380))
+      if (!nd.abierto) return
+      if (data.stage_transition) {
+        const nueva = ND_ETAPAS.find(e => e.id === data.stage), vieja = ND_ETAPAS[ND_ETAPAS.indexOf(nueva) - 1]
+        ndCabecera(data.reached_level)
+        ndEscena(`<div class="nd-trans" style="--c:${nueva.color}">
+          <span class="nd-trans-ok">${vieja.id} ✓</span>
+          <h1>${esc(nueva.lema)}</h1>
+          <span class="nd-trans-nueva">Empieza ${chipEtapa(nueva.id, 'grande')}</span>
+          <p>Niveles ${nueva.desde}–${nueva.hasta}</p></div>`, 'trans')
+        // La pregunta siguiente ya tiene su plazo en el servidor: no se demora la transición más de lo justo
+        await new Promise(r => { nd.tTrans = setTimeout(r, 1600) })
+      }
+      return ndMostrar(data.question, data.reached_level)
+    }
+    throw new Error('respuesta inesperada')
+  } catch (e) {
+    console.warn('nerdocrasy:', e)
+    nd.intento = null
+    ndFin({ motivo: 'conexion', nivel: nivel - 1 })
+  }
+}
+
+async function ndFin(f) {
+  ndCabecera(0)
+  const antes = nd.recordInicio, nuevo = f.record && f.nivel > antes
+  const e = f.nivel > 0 ? etapaDe(f.nivel) : null
+  const titulo = f.motivo === 'tiempo' ? 'Se acabó el tiempo' : f.motivo === 'conexion' ? 'Se cortó la conexión' : 'Eliminado'
+  const resp = f.correcta === 'IN' ? '○ Sí' : f.correcta === 'OUT' ? '✕ No' : ''
+  ndEscena(`
+    <div class="nd-fin ${nuevo ? 'record' : ''}">
+      <span class="nd-fin-tit">${titulo}</span>
+      ${nuevo ? '<span class="nd-fin-badge">★ Nuevo récord</span>' : ''}
+      <div class="nd-fin-num"><small>Llegaste al nivel</small><b>${f.nivel > 0 ? f.nivel : '0'}</b>${e ? chipEtapa(e.id) : ''}</div>
+      ${nuevo ? `<p class="nd-fin-sub">Tu récord pasó de <b>${antes}</b> a <b>${f.nivel}</b>.</p>`
+        : antes > 0 ? `<p class="nd-fin-sub">Tu récord sigue en <b>${antes}</b>.${antes - f.nivel >= 0 ? ` Para superarlo te ${antes - f.nivel + 1 === 1 ? 'faltó 1 nivel' : `faltaron ${antes - f.nivel + 1} niveles`}.` : ''}</p>` : ''}
+      ${resp ? `<div class="nd-fin-exp"><span>La respuesta era <b>${resp}</b></span>${f.expl ? `<p>${esc(f.expl)}</p>` : ''}</div>` : ''}
+      <p class="nd-fin-pos" id="nd-fin-pos"></p>
+      <div class="nd-fin-btns">
+        <button class="nd-jugar" data-nd="otra"><span>↻</span> Jugar de nuevo</button>
+        <button class="nd-btn-sec" data-nd="volver">Volver al Playroom</button>
+      </div>
+      <small class="nd-atajo">Enter para jugar de nuevo</small>
+    </div>`, 'fin')
+  if (nuevo) nd.recordInicio = f.nivel
+  // posición actualizada
+  try {
+    const { data } = await sb.rpc('v2_nerdocrasy_estado')
+    if (data) {
+      const antesPos = nd.est?.posicion
+      nd.est = data
+      const p = $('#nd-fin-pos')
+      if (p && data.posicion) p.innerHTML = antesPos && data.posicion < antesPos
+        ? `Subiste al puesto <b>#${data.posicion}</b> de ${fmtNum(data.jugadores)} (antes #${antesPos}).`
+        : `Estás en el puesto <b>#${data.posicion}</b> de ${fmtNum(data.jugadores)}.`
+    }
+  } catch (e) {}
+}
+
+function ndCompleto() {
+  ndCabecera(0)
+  nd.recordInicio = 90
+  ndEscena(`<div class="nd-fin record completo">
+    <span class="nd-fin-badge">★ Nerdocrasy completo</span>
+    <div class="nd-fin-num"><small>Llegaste al nivel</small><b>90</b></div>
+    <div class="nd-fin-etapas">${ND_ETAPAS.map(e => chipEtapa(e.id, 'grande')).join('')}</div>
+    <p class="nd-fin-sub">Saber, pensar y no caer en las trampas. Sos parte de un grupo muy chico.</p>
+    <div class="nd-fin-btns"><button class="nd-btn-sec" data-nd="volver">Volver al Playroom</button></div>
+  </div>`, 'fin')
+}
+
+function enlazarPlayroom() {
+  $('#pl-vista')?.addEventListener('click', e => {
+    if (e.target.closest('#nd-jugar')) abrirJuego()
+  })
+  $('#pl-vista')?.addEventListener('mouseover', e => {
+    const t = e.target.closest('.nr-barras [data-tip]'); const tip = $('#es-tip')
+    if (!tip) return
+    if (!t) { tip.hidden = true; return }
+    const r = t.getBoundingClientRect(), z = parseFloat(getComputedStyle(document.body).zoom) || 1
+    tip.textContent = t.dataset.tip; tip.hidden = false
+    tip.style.left = (r.left + r.width / 2) / z - tip.offsetWidth / 2 + 'px'; tip.style.top = r.top / z - tip.offsetHeight - 8 + 'px'
+  })
+  $('#nd').addEventListener('click', e => {
+    const r = e.target.closest('[data-resp]'); if (r) return ndResponder(r.dataset.resp)
+    if (e.target.closest('#nd-salir')) return cerrarJuego()
+    const a = e.target.closest('[data-nd]')?.dataset.nd
+    if (a === 'otra') { nd.recordInicio = Math.max(nd.recordInicio, nd.est?.record || 0); return ndJugar() }
+    if (a === 'volver') return cerrarJuego()
+  })
+  document.addEventListener('keydown', e => {
+    if ($('#nd').hidden) return
+    if (e.key === 'Escape') { e.preventDefault(); return cerrarJuego() }
+    if ($('.nd-resp') && !nd.respondiendo) {
+      if (['ArrowLeft', 'a', 'A'].includes(e.key)) { e.preventDefault(); return ndResponder('OUT') }
+      if (['ArrowRight', 'd', 'D'].includes(e.key)) { e.preventDefault(); return ndResponder('IN') }
+    }
+    if (e.key === 'Enter' && $('[data-nd="otra"]')) { e.preventDefault(); ndJugar() }
+  })
+  window.addEventListener('pagehide', () => { if (nd.intento) sb.rpc('nerdocrasy_abandon', { p_attempt_id: nd.intento }) })
+}
+
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
   au.usuarioListo = true
   vigilarAuditorio()
   if (vistaActual() === 'auditorio') entrarAuditorio()
+  if (vistaActual() === 'playroom') cargarPlayroom()
   cargarSocial().then(() => {
     if (vistaActual() === 'ciudadanos') pintarCiudadanos()
     if (ciu.perfil) $$(`[data-seguir="${ciu.perfil}"]`).forEach(x => { x.outerHTML = botonSeguir(ciu.perfil) })
