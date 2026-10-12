@@ -133,7 +133,8 @@
           <article class="card muro">
             <header class="card-head">
               <h2>Muro del Día</h2>
-              <a href="/" class="link-more">Ver todo<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+              <a href="#muro" class="link-more" id="muro-escribir-ini">+ Escribir</a>
+              <a href="#muro" class="link-more">Ver todo<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
             </header>
             <ul class="muro-list" id="muro-list"><li class="muted">Cargando…</li></ul>
           </article>
@@ -270,6 +271,22 @@
       <div id="ap-cuerpo"></div>
     </section>
 
+    <!-- MURO DEL DÍA -->
+    <section class="view" data-view="muro" hidden id="mu-vista">
+      <header class="view-head">
+        <div><h1>Muro del día</h1><p id="mu-sub">Una opinión por butaca, por día. Lo que pasa hoy en el Cabildo, en primera persona.</p></div>
+        <div class="mu-reloj" id="mu-reloj" title="El Muro se reinicia todos los días a las 3:00 (hora de Venezuela)"></div>
+      </header>
+      <div id="mu-escribir"></div>
+      <div class="mu-barra">
+        <span id="mu-cuenta" class="muted"></span>
+        <div class="seg" role="tablist">
+          <button class="active" data-mu-orden="recientes">Recientes</button><button data-mu-orden="apoyadas">Más apoyadas</button>
+        </div>
+      </div>
+      <div class="mu-grid" id="mu-grid"><p class="muted">Cargando…</p></div>
+    </section>
+
     <!-- CIUDADANOS -->
     <section class="view" data-view="ciudadanos" hidden id="ci-vista">
       <header class="view-head">
@@ -376,6 +393,14 @@
   <div class="modal-box ap-box">
     <button class="modal-x" data-ap="cerrar" aria-label="Cerrar">✕</button>
     <div id="ap-leccion"></div>
+  </div>
+</div>
+
+<!-- MURO: publicación y respuestas -->
+<div class="modal" id="modal-muro" hidden role="dialog" aria-modal="true" aria-label="Publicación del Muro">
+  <div class="modal-box mu-box">
+    <button class="modal-x" data-mu="cerrar" aria-label="Cerrar">✕</button>
+    <div id="mu-detalle"></div>
   </div>
 </div>
 

@@ -26,15 +26,16 @@ const ICONOS = {
   aprende:      '<path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/>',
   noticias:     '<path d="M5 4h12v16H7a2 2 0 0 1-2-2z"/><path d="M17 8h2v10a2 2 0 0 1-2 2M8 8h6M8 12h6M8 16h4"/>',
   auditorio:    '<circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
+  muro:         '<path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/>',
   playroom:     '<path d="M6 9h12a3 3 0 0 1 3 3v3a2 2 0 0 1-3.5 1.3L15 14H9l-2.5 2.3A2 2 0 0 1 3 15v-3a3 3 0 0 1 3-3z"/><path d="M8 11v2M7 12h2M16 12h.01"/>',
 }
 const SECCIONES = [
-  ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
+  ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
   ['propuestas', 'Propuestas'], ['ciudadanos', 'Ciudadanos'], ['estadisticas', 'Estadísticas'],
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -58,6 +59,8 @@ function ruta() {
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
   if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
+  if (valida === 'muro') { pintarMuroDia(); if (estado.user || mu.cargado) cargarMuroDia() }
+  else if (mu.abierto) cerrarHiloMuro()
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
@@ -705,7 +708,7 @@ async function cargarMuro() {
       const alias = p.alias || 'Ciudadano'
       const resp = p.muro_replies?.[0]?.count ?? 0
       return `<li>
-        <span class="m-av" style="background:${colorDe(p.card_color, p.id)}">${esc(alias.charAt(0).toUpperCase())}</span>
+        <span class="m-av" style="background:${colorDe(p.card_color, p.id)}">${/^Butaca #/.test(alias) ? '#' : esc(alias.charAt(0).toUpperCase())}</span>
         <div>
           <div class="m-meta"><b>${esc(alias)}</b><span>${haceCuanto(p.created_at)}</span></div>
           <p class="m-body">${esc(p.body)}</p>
@@ -3413,15 +3416,212 @@ function enlazarAprende() {
   })
 }
 
+// ══════════════════════════════════════════════════════════════
+//  MURO DEL DÍA — una opinión por butaca por día (se reinicia a las 3:00 de Venezuela).
+//  El servidor pone la butaca, el alias (solo si es público) y el color; acá no se pide user_id ajeno.
+// ══════════════════════════════════════════════════════════════
+const mu = { posts: [], mios: new Set(), cargado: false, canal: null, abierto: null, orden: 'recientes', enviando: false }
+const diaMuro = () => new Date(Date.now() - 7 * 3600e3).toISOString().slice(0, 10)
+const finDiaMuro = () => { const d = new Date(Date.now() - 7 * 3600e3); d.setUTCHours(0, 0, 0, 0); return d.getTime() + 31 * 3600e3 }
+const miPostHoy = () => mu.posts.find(p => p.seat_number === estado.butaca)
+const MU_SEL = 'id, seat_number, alias, card_color, body, created_at, likes_count, muro_replies(id, seat_number, alias, card_color, body, created_at)'
+
+async function cargarMuroDia() {
+  if (!estado.user) { mu.cargado = true; return pintarMuroDia() }
+  try {
+    const { data, error } = await sb.from('muro_posts').select(MU_SEL).eq('day_key', diaMuro()).order('created_at', { ascending: false }).limit(300)
+    if (error) throw error
+    mu.posts = (data || []).map(p => ({ ...p, muro_replies: (p.muro_replies || []).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)) }))
+    mu.mios = new Set()
+    if (mu.posts.length) {
+      const { data: l } = await sb.from('muro_likes').select('post_id').eq('user_id', estado.user.id).in('post_id', mu.posts.map(p => p.id))
+      ;(l || []).forEach(x => mu.mios.add(x.post_id))
+    }
+  } catch (e) { console.warn('muro:', e) }
+  mu.cargado = true
+  pintarMuroDia()
+  escucharMuro()
+}
+
+function escucharMuro() {
+  if (mu.canal || !estado.user) return
+  mu.canal = sb.channel('muro-v2')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'muro_posts', filter: `day_key=eq.${diaMuro()}` }, ({ new: p }) => {
+      if (mu.posts.some(x => x.id === p.id)) return
+      mu.posts.unshift({ id: p.id, seat_number: p.seat_number, alias: p.alias, card_color: p.card_color, body: p.body, created_at: p.created_at, likes_count: p.likes_count || 0, muro_replies: [], nueva: true })
+      if (vistaActual() === 'muro') pintarMuroDia()
+    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'muro_replies' }, ({ new: r }) => {
+      const p = mu.posts.find(x => x.id === r.post_id); if (!p || p.muro_replies.some(x => x.id === r.id)) return
+      p.muro_replies.push({ id: r.id, seat_number: r.seat_number, alias: r.alias, card_color: r.card_color, body: r.body, created_at: r.created_at })
+      if (vistaActual() === 'muro') pintarMuroDia()
+      if (mu.abierto === p.id) pintarHiloMuro()
+    })
+    .subscribe()
+}
+function dejarMuro() { if (mu.canal) { sb.removeChannel(mu.canal); mu.canal = null } }
+
+const muAv = (alias, color, seat) => `<span class="mu-av" style="background:${colorDe(color, seat)}">${/^Butaca #/.test(alias || '') ? '#' : esc((alias || '#').charAt(0).toUpperCase())}</span>`
+
+function tarjetaMuro(p) {
+  const mia = p.seat_number === estado.butaca, c = colorDe(p.card_color, p.seat_number), resp = p.muro_replies.length
+  return `<article class="mu-card ${mia ? 'mia' : ''} ${p.nueva ? 'nueva' : ''}" style="--c:${c}" data-mu-abrir="${p.id}" tabindex="0">
+    <header>${muAv(p.alias, p.card_color, p.seat_number)}<div><b>${mia ? 'Vos' : esc(p.alias)}</b><small>#${p.seat_number} · ${haceCuanto(p.created_at)}</small></div></header>
+    <p>${esc(p.body)}</p>
+    <footer>
+      <button class="mu-like ${mu.mios.has(p.id) ? 'on' : ''}" data-mu-like="${p.id}" aria-label="Me gusta"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>${fmtNum(p.likes_count)}</span></button>
+      <span class="mu-resp"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>${resp ? fmtNum(resp) : 'Responder'}</span>
+    </footer>
+  </article>`
+}
+
+function pintarMuroDia() {
+  const esc_ = $('#mu-escribir'), grid = $('#mu-grid'); if (!grid) return
+  tickMuro()
+  const hoy = new Date(Date.now() - 7 * 3600e3)
+  $('#mu-sub').textContent = `${hoy.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).replace(/^./, c => c.toUpperCase())} · Una opinión por butaca, por día.`
+  if (!mu.cargado) { grid.innerHTML = '<p class="muted">Cargando…</p>'; return }
+  // Caja para escribir
+  const mio = miPostHoy(), ident = estado.ident || {}
+  const miAlias = ident.show_alias && ident.alias ? ident.alias : `Butaca #${estado.butaca}`
+  if (!estado.user) esc_.innerHTML = `<div class="card mu-caja mu-caja-info"><p>Iniciá sesión para leer y escribir en el Muro.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`
+  else if (!estado.butaca) esc_.innerHTML = `<div class="card mu-caja mu-caja-info"><p>Para escribir en el Muro necesitás tu butaca.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Completar verificación</a></div>`
+  else if (mio) esc_.innerHTML = `<div class="card mu-caja mu-hecho"><span class="mu-ok">✓</span><div><b>Ya dejaste tu opinión de hoy.</b><p>Mañana a las 3:00 se abre un Muro nuevo. Si querés cambiarla, podés borrarla y escribir otra.</p></div>
+      <button class="btn" data-mu-borrar="${mio.id}">Borrar y escribir otra</button></div>`
+  else if (!esc_.querySelector('#mu-txt')) esc_.innerHTML = `<div class="card mu-caja">
+      ${muAv(miAlias, ident.card_color, estado.butaca)}
+      <div class="mu-caja-cuerpo">
+        <label for="mu-txt" class="mu-caja-tit">¿Qué pensás hoy, <b>${esc(miAlias)}</b>?</label>
+        <textarea id="mu-txt" maxlength="280" rows="3" placeholder="Tu opinión del día. Tenés una sola: que valga."></textarea>
+        <div class="mu-caja-pie"><small>Publicás como <b>${esc(miAlias)}</b>${ident.show_alias ? '' : ' (tu alias está oculto)'} · se ve hasta mañana a las 3:00</small>
+          <span class="mu-cont" id="mu-cont">280</span><button class="btn btn-dark" id="mu-publicar" disabled>Publicar</button></div>
+      </div></div>`
+  // Lista
+  const lista = [...mu.posts].sort(mu.orden === 'apoyadas' ? (a, b) => b.likes_count - a.likes_count || new Date(b.created_at) - new Date(a.created_at) : (a, b) => new Date(b.created_at) - new Date(a.created_at))
+  $('#mu-cuenta').textContent = mu.posts.length ? `${fmtNum(mu.posts.length)} ${mu.posts.length === 1 ? 'voz' : 'voces'} hoy` : ''
+  grid.innerHTML = lista.length ? lista.map(tarjetaMuro).join('') : '<div class="card au-vacio"><span class="au-vacio-ico"><svg viewBox="0 0 24 24">' + ICONOS.muro + '</svg></span><h3>El Muro de hoy está vacío</h3><p class="muted">Sé la primera voz del día.</p></div>'
+  mu.posts.forEach(p => { delete p.nueva })
+}
+
+function tickMuro() {
+  const r = $('#mu-reloj'); if (!r) return
+  const resta = Math.max(0, finDiaMuro() - Date.now()), h = Math.floor(resta / 3600e3), m = Math.floor(resta % 3600e3 / 60e3)
+  r.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Nuevo Muro en <b>${h} h ${String(m).padStart(2, '0')} min</b>`
+  if (resta === 0 && mu.cargado) { mu.cargado = false; dejarMuro(); cargarMuroDia() }
+}
+
+async function publicarMuro() {
+  const el = $('#mu-txt'), btn = $('#mu-publicar'); if (!el || mu.enviando) return
+  const txt = limpiar(el.value).trim().slice(0, 280); if (!txt) return
+  mu.enviando = true; btn.disabled = true; btn.textContent = 'Publicando…'
+  const { data, error } = await sb.from('muro_posts').insert({ user_id: estado.user.id, body: txt, day_key: diaMuro() }).select(MU_SEL).single()
+  mu.enviando = false
+  if (error) {
+    btn.disabled = false; btn.textContent = 'Publicar'
+    if (error.code === '23505' || /row-level|policy/i.test(error.message)) { aviso('Ya publicaste tu opinión de hoy. Volvé mañana.', 'error'); return cargarMuroDia() }
+    return aviso(/caracteres|butaca/i.test(error.message) ? error.message : 'No se pudo publicar. Intentá de nuevo.', 'error')
+  }
+  if (!mu.posts.some(p => p.id === data.id)) mu.posts.unshift({ ...data, muro_replies: [], nueva: true })
+  $('#mu-escribir').innerHTML = ''
+  aviso('¡Publicado en el Muro del día!')
+  pintarMuroDia(); cargarMuro()
+}
+
+async function borrarMuro(id) {
+  if (!await confirmar('¿Borrar tu publicación de hoy?', 'Se borra con sus respuestas y me gusta. Después podés escribir otra.', 'Borrar', true)) return
+  const { error } = await sb.from('muro_posts').delete().eq('id', id)
+  if (error) return aviso('No se pudo borrar. Intentá de nuevo.', 'error')
+  mu.posts = mu.posts.filter(p => p.id !== id)
+  if (mu.abierto === id) cerrarHiloMuro()
+  aviso('Publicación borrada. Ya podés escribir otra.')
+  pintarMuroDia(); cargarMuro()
+}
+
+async function likeMuro(id, btn) {
+  if (!estado.butaca) return aviso('Necesitás tu butaca para dar me gusta.', 'error')
+  const p = mu.posts.find(x => x.id === id); if (!p || btn?.disabled) return
+  const antes = mu.mios.has(id)
+  const pinta = () => $$(`[data-mu-like="${id}"]`).forEach(b => { b.classList.toggle('on', mu.mios.has(id)); b.querySelector('span').textContent = fmtNum(p.likes_count) })
+  mu.mios[antes ? 'delete' : 'add'](id); p.likes_count += antes ? -1 : 1; pinta()
+  $$(`[data-mu-like="${id}"]`).forEach(b => { b.disabled = true; if (!antes) b.classList.add('late') })
+  const { data, error } = await sb.rpc('muro_toggle_like', { p_post_id: id })
+  if (error) { mu.mios[antes ? 'add' : 'delete'](id); p.likes_count += antes ? 1 : -1 }
+  else { mu.mios[data.liked ? 'add' : 'delete'](id); p.likes_count = data.likes_count }
+  pinta(); $$(`[data-mu-like="${id}"]`).forEach(b => { b.disabled = false; setTimeout(() => b.classList.remove('late'), 400) })
+}
+
+function abrirHiloMuro(id) { mu.abierto = id; $('#modal-muro').hidden = false; document.body.style.overflow = 'hidden'; pintarHiloMuro(); setTimeout(() => $('#mu-resp-txt')?.focus(), 50) }
+function cerrarHiloMuro() { mu.abierto = null; $('#modal-muro').hidden = true; document.body.style.overflow = '' }
+function pintarHiloMuro() {
+  const p = mu.posts.find(x => x.id === mu.abierto), box = $('#mu-detalle'); if (!p || !box) return cerrarHiloMuro()
+  const mia = p.seat_number === estado.butaca
+  box.innerHTML = `<article class="mu-det" style="--c:${colorDe(p.card_color, p.seat_number)}">
+      <header>${muAv(p.alias, p.card_color, p.seat_number)}<div><b>${mia ? 'Vos' : esc(p.alias)}</b><small>Butaca #${p.seat_number} · ${haceCuanto(p.created_at)}</small></div></header>
+      <p>${esc(p.body)}</p>
+      <footer><button class="mu-like ${mu.mios.has(p.id) ? 'on' : ''}" data-mu-like="${p.id}"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>${fmtNum(p.likes_count)}</span></button>
+        ${mia ? `<button class="mu-borrar" data-mu-borrar="${p.id}">Borrar</button>` : ''}</footer>
+    </article>
+    <div class="mu-hilo" id="mu-hilo">${p.muro_replies.length ? p.muro_replies.map(r => `<div class="mu-r">${muAv(r.alias, r.card_color, r.seat_number)}<div><div class="mu-r-cab"><b>${r.seat_number === estado.butaca ? 'Vos' : esc(r.alias)}</b><small>#${r.seat_number} · ${haceCuanto(r.created_at)}</small></div><p>${esc(r.body)}</p></div></div>`).join('')
+      : '<p class="muted mu-hilo-vacio">Todavía nadie respondió.</p>'}</div>
+    ${estado.butaca ? `<div class="mu-responder"><textarea id="mu-resp-txt" maxlength="280" rows="1" placeholder="Respondé con respeto…"></textarea><button class="btn btn-dark" id="mu-resp-btn">Responder</button></div>`
+      : '<p class="muted">Necesitás tu butaca para responder.</p>'}`
+  const h = $('#mu-hilo'); h.scrollTop = h.scrollHeight
+}
+
+async function responderMuro() {
+  const el = $('#mu-resp-txt'), btn = $('#mu-resp-btn'), p = mu.posts.find(x => x.id === mu.abierto); if (!el || !p) return
+  const txt = limpiar(el.value).trim().slice(0, 280); if (!txt) return
+  btn.disabled = true
+  const { data, error } = await sb.from('muro_replies').insert({ post_id: p.id, user_id: estado.user.id, body: txt }).select('id, seat_number, alias, card_color, body, created_at').single()
+  btn.disabled = false
+  if (error) return aviso(/caracteres|butaca/i.test(error.message) ? error.message : 'No se pudo responder.', 'error')
+  if (!p.muro_replies.some(r => r.id === data.id)) p.muro_replies.push(data)
+  el.value = ''; pintarHiloMuro(); pintarMuroDia(); $('#mu-resp-txt')?.focus()
+}
+
+function enlazarMuro() {
+  const v = $('#mu-vista'); if (!v) return
+  v.addEventListener('click', e => {
+    if (e.target.closest('#mu-publicar')) return publicarMuro()
+    const b = e.target.closest('[data-mu-borrar]'); if (b) return borrarMuro(b.dataset.muBorrar)
+    const l = e.target.closest('[data-mu-like]'); if (l) return likeMuro(l.dataset.muLike, l)
+    const o = e.target.closest('[data-mu-orden]')
+    if (o) { mu.orden = o.dataset.muOrden; $$('[data-mu-orden]').forEach(x => x.classList.toggle('active', x === o)); return pintarMuroDia() }
+    const a = e.target.closest('[data-mu-abrir]'); if (a) return abrirHiloMuro(a.dataset.muAbrir)
+  })
+  v.addEventListener('keydown', e => {
+    if (e.target.id === 'mu-txt' && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); publicarMuro() }
+    if (e.key === 'Enter' && e.target.matches('[data-mu-abrir]')) abrirHiloMuro(e.target.dataset.muAbrir)
+  })
+  v.addEventListener('input', e => {
+    if (e.target.id !== 'mu-txt') return
+    const n = 280 - e.target.value.length, c = $('#mu-cont')
+    c.textContent = n; c.className = 'mu-cont' + (n <= 20 ? ' poco' : '')
+    $('#mu-publicar').disabled = !e.target.value.trim()
+  })
+  const m = $('#modal-muro')
+  m.addEventListener('click', e => {
+    if (e.target === m || e.target.closest('[data-mu="cerrar"]')) return cerrarHiloMuro()
+    const l = e.target.closest('[data-mu-like]'); if (l) return likeMuro(l.dataset.muLike, l)
+    const b = e.target.closest('[data-mu-borrar]'); if (b) return borrarMuro(b.dataset.muBorrar)
+    if (e.target.closest('#mu-resp-btn')) return responderMuro()
+  })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.hidden && $('#modal-conf')?.hidden !== false) cerrarHiloMuro() })
+  m.addEventListener('keydown', e => {
+    if (e.target.id === 'mu-resp-txt' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); responderMuro() }
+  })
+}
+
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); ruta()
-  tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); ruta()
+  tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro() }, 1000)
   await cargarUsuario()
   vigilarSesion()
   au.usuarioListo = true
   vigilarAuditorio()
   if (vistaActual() === 'auditorio') entrarAuditorio()
   if (vistaActual() === 'playroom') cargarPlayroom()
+  if (vistaActual() === 'muro') cargarMuroDia()
   cargarSocial().then(() => {
     if (vistaActual() === 'ciudadanos') pintarCiudadanos()
     if (ciu.perfil) $$(`[data-seguir="${ciu.perfil}"]`).forEach(x => { x.outerHTML = botonSeguir(ciu.perfil) })
