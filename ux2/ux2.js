@@ -47,6 +47,11 @@ function pintarNav() {
 
 function ruta() {
   const [sec, arg] = (location.hash || '#inicio').slice(1).split('/')
+  if (sec === 'revelacion') {           // se abre encima de la sección en la que estabas
+    if (!vistaActual() || vistaActual() === 'pronto') { $$('.view').forEach(v => { v.hidden = v.dataset.view !== 'inicio' }); $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === 'inicio')) }
+    return abrirRevelacion(arg)
+  }
+  if (rv.abierto) cerrarRevelacion()
   const valida = SECCIONES.some(([id]) => id === sec) ? sec : 'inicio'
   $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === valida))
   const vista = LISTAS.has(valida) ? valida : 'pronto'
@@ -464,17 +469,21 @@ async function cargarHemiciclo() {
 }
 
 // ── Votación activa ─────────────────────────────────────────────
-let pregunta = null, iqPreguntas = [], iqMios = new Set()
+let pregunta = null, iqPreguntas = [], iqMios = new Set(), iqCerradas = []
 const IQ_MAX = 4
 async function cargarVotacion() {
   try {
-    const [{ data, error }, part] = await Promise.all([
+    const ahora = new Date().toISOString(), hace72 = new Date(Date.now() - 72 * 3600e3).toISOString()
+    const [{ data, error }, part, cer] = await Promise.all([
       sb.from('questions').select('id, text, category, description, ends_at, status, links, video_url')
-        .eq('status', 'activa').gt('ends_at', new Date().toISOString()).order('ends_at', { ascending: true }).limit(12),
+        .eq('status', 'activa').gt('ends_at', ahora).order('ends_at', { ascending: true }).limit(12),
       estado.butaca ? sb.rpc('v2_mis_participaciones') : Promise.resolve({ data: [] }),
+      sb.from('questions').select('id, text, category, ends_at, status').in('status', ['activa', 'cerrada'])
+        .lt('ends_at', ahora).gt('ends_at', hace72).order('ends_at', { ascending: false }).limit(3),
     ])
     if (error) throw error
     iqPreguntas = data || []
+    iqCerradas = cer?.data || []
     iqMios = new Set((part.data || []).map(x => typeof x === 'string' ? x : x.v2_mis_participaciones || x.question_id || x))
   } catch (e) { console.warn('cargarVotacion:', e); iqPreguntas = [] }
   pregunta = iqPreguntas[0] || null
@@ -495,7 +504,10 @@ function pintarVotacionesInicio() {
   $('#pill-live').hidden = !n
   $('#iq-vivo').hidden = !n
   $('#iq-n').textContent = n ? `· ${n}` : ''
-  if (!n) { ul.innerHTML = '<li class="iq-vacio">No hay votaciones abiertas en este momento.</li>'; return }
+  const cerradas = iqCerradas.length ? `<li class="iq-sep">Recién cerradas</li>` + iqCerradas.map(q => `<li class="iq-cerrada ${rvVista(q.id) ? '' : 'nueva'}">
+      <a href="#revelacion/${q.id}"><span class="iq-chispa" aria-hidden="true">✦</span><span class="iq-c-txt"><b>${esc(q.text)}</b><small>Cerró ${haceCuanto(q.ends_at)}</small></span>
+      <span class="iq-c-ir">${rvVista(q.id) ? 'Ver resultado' : 'Revelación'}</span></a></li>`).join('') : ''
+  if (!n) { ul.innerHTML = '<li class="iq-vacio">No hay votaciones abiertas en este momento.</li>' + cerradas; return }
   const pend = iqPreguntas.filter(q => !iqMios.has(q.id)).length
   ul.innerHTML = iqPreguntas.slice(0, IQ_MAX).map(q => {
     const vote = iqMios.has(q.id)
@@ -506,7 +518,7 @@ function pintarVotacionesInicio() {
         <a class="iq-deb" href="#debates/${q.id}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>
         ${vote ? '<span class="iq-ok">✓ Votaste</span>' : !estado.butaca ? `<a class="btn btn-dark iq-btn" href="${APP_ACTUAL}">Conseguí tu butaca</a>` : `<button class="btn btn-dark iq-btn" data-iq-votar="${q.id}">Votar</button>`}
       </div></li>`
-  }).join('') + (n > IQ_MAX ? `<li class="iq-mas"><a href="#votaciones">Ver las ${n} votaciones abiertas${pend ? ` · te faltan ${pend}` : ''} →</a></li>` : pend && estado.butaca ? '' : '')
+  }).join('') + (n > IQ_MAX ? `<li class="iq-mas"><a href="#votaciones">Ver las ${n} votaciones abiertas${pend ? ` · te faltan ${pend}` : ''} →</a></li>` : '') + cerradas
 }
 
 function tickVotacion() {
@@ -596,7 +608,9 @@ function pintarVotaciones() {
           ? `<span class="v-mio"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg>Ya votaste</span>`
           : `<button class="btn btn-dark" data-votar="${q.id}"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Votar</button>`)
         + `<a class="btn btn-soft" href="#debates/${q.id}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>`
-      : resultadosDe(q)
+      : rvVista(q.id)
+        ? resultadosDe(q) + `<a class="v-otra" href="#revelacion/${q.id}">✦ Ver la revelación otra vez</a>`
+        : `<a class="v-revelar" href="#revelacion/${q.id}"><span>✦</span><b>Ver la revelación</b><small>El resultado se muestra con su revelación</small></a>`
     return `<article class="card vcard">
       <div class="vcard-top"><span class="tag">${esc(q.category || 'General')}</span>
         ${vFiltro === 'abiertas'
@@ -3645,8 +3659,219 @@ function enlazarMuro() {
   })
 }
 
+// ══════════════════════════════════════════════════════════════
+//  REVELACIÓN — el momento en que una votación cerrada muestra su resultado.
+//  Privacidad: el servidor solo entrega totales. Las butacas que se encienden NO son las que votaron:
+//  se encienden tantas como votos hubo, en orden al azar. Tu butaca solo se marca si participaste
+//  (eso lo sabés vos), y nunca toma el color de una opción.
+// ══════════════════════════════════════════════════════════════
+const RV_COL = { si: '#22c55e', no: '#ef4444', abs: '#94a3b8', luz: '#f5b942' }
+const RV_T = { intro: 1300, luz: 3000, pausa: 700, conteo: 3600 }
+const rv = { abierto: false, q: null, r: null, pts: [], orden: [], miIdx: -1, t0: 0, raf: 0, fase: '', volver: 'inicio', vistas: new Set(), dpr: 1 }
+try { JSON.parse(localStorage.getItem('ux2_reveladas') || '[]').forEach(id => rv.vistas.add(id)) } catch (e) {}
+const rvVista = id => rv.vistas.has(id)
+const rvMarcar = id => { rv.vistas.add(id); try { localStorage.setItem('ux2_reveladas', JSON.stringify([...rv.vistas].slice(-300))) } catch (e) {} }
+
+function rvAsientos(n) {
+  const span = H.A1 - H.A0, res = []
+  for (let row = 0; res.length < n; row++) {
+    const r = H.R_IN + row * H.R_STEP, cap = Math.floor(r * span / H.GAP), cant = Math.min(cap, n - res.length), orden = ordenCentro(cap)
+    for (let i = 0; i < cant; i++) { const a = H.A0 + (cap > 1 ? orden[i] / (cap - 1) : .5) * span; res.push({ x: r * Math.cos(a), y: -r * Math.sin(a), a }) }
+  }
+  return res
+}
+// Barajado con semilla (mismo orden para todos los que miran la misma votación)
+function rvBarajar(n, semilla) {
+  let s = [...String(semilla)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
+  const azar = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
+  const o = Array.from({ length: n }, (_, i) => i)
+  for (let i = n - 1; i > 0; i--) { const j = Math.floor(azar() * (i + 1)); [o[i], o[j]] = [o[j], o[i]] }
+  return o
+}
+
+async function abrirRevelacion(id) {
+  if (!id) return
+  rv.volver = vistaActual() || 'inicio'
+  rv.abierto = true; rv.q = null; rv.r = null
+  $('#rv').hidden = false; document.body.style.overflow = 'hidden'
+  $('#rv-preg').innerHTML = '<p class="rv-cargando">Abriendo la urna…</p>'; $('#rv-panel').innerHTML = ''; $('#rv-mi').hidden = true; $('#rv-fase').textContent = ''
+  try {
+    let q = [...iqPreguntas, ...iqCerradas, ...vPreguntas].find(x => x.id === id)
+    const [qq, votos, part, cant] = await Promise.all([
+      q ? Promise.resolve({ data: q }) : sb.from('questions').select('id, text, category, ends_at, status').eq('id', id).maybeSingle(),
+      sb.rpc('get_question_votes', { p_question_id: id }),
+      estado.butaca ? sb.rpc('v2_mis_participaciones') : Promise.resolve({ data: [] }),
+      totalButacas ? Promise.resolve({ data: totalButacas }) : sb.rpc('get_butaca_count'),
+    ])
+    q = qq.data
+    if (!rv.abierto) return
+    if (!q) { $('#rv-preg').innerHTML = '<p class="rv-cargando">No encontramos esa votación.</p>'; return }
+    if (new Date(q.ends_at) > new Date() && q.status === 'activa') { $('#rv-preg').innerHTML = `<p class="rv-cargando">Esta votación sigue abierta. La revelación llega cuando cierre.</p><a class="rv-cta" href="#votaciones" data-rv="cerrar">Ir a votar</a>`; return }
+    const r = { si: 0, no: 0, abs: 0 }; let soloTotal = false
+    ;(votos.data || []).forEach(x => { if (x.vote_plain in r) r[x.vote_plain] = Number(x.total) || 0; if (x.vote_plain === 'total') soloTotal = true })
+    r.total = r.si + r.no + r.abs
+    r.nula = soloTotal || r.total < 3
+    rv.q = q; rv.r = r
+    const butacas = Math.max(Number(cant.data) || 0, r.total, estado.butaca || 0, 50)
+    rv.pts = rvAsientos(butacas)
+    rv.orden = rvBarajar(rv.pts.length, q.id)
+    rv.participe = (part.data || []).includes(q.id)
+    // Tu butaca: si participaste, se enciende última (con anillo); si no, queda apagada
+    rv.miIdx = estado.butaca && estado.butaca <= rv.pts.length ? estado.butaca - 1 : -1
+    if (rv.miIdx >= 0) { rv.orden = rv.orden.filter(i => i !== rv.miIdx); if (rv.participe) rv.orden.splice(Math.max(0, r.total - 1), 0, rv.miIdx); else rv.orden.push(rv.miIdx) }
+    rv.encendibles = rv.orden.slice(0, r.total)
+    // Para la composición final: las encendidas (menos la tuya) se ordenan de izquierda a derecha
+    rv.compo = rv.encendibles.filter(i => i !== rv.miIdx).sort((a, b) => rv.pts[b].a - rv.pts[a].a)
+    rv.color = new Map()
+    const n = rv.compo.length, nSi = Math.round(n * r.si / (r.total || 1)), nAbs = Math.round(n * r.abs / (r.total || 1))
+    rv.compo.forEach((idx, k) => rv.color.set(idx, k < nSi ? 'si' : k < nSi + nAbs ? 'abs' : 'no'))
+    rv.butacas = butacas
+    $('#rv-preg').innerHTML = `<span class="rv-tag">${esc(q.category || 'General')} · cerró el ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}</span><h1>${esc(q.text)}</h1>`
+    $('#rv-mi').innerHTML = rv.participe ? '<b>Tu butaca</b><span>Participaste · tu voto es secreto</span>' : '<b>Tu butaca</b><span>No votaste en esta</span>'
+    $('#rv').classList.remove('final')
+    rvMarcar(q.id)
+    rvTamano()
+    rv.t0 = performance.now()
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) rv.t0 -= 1e6
+    rv.fase = ''
+    cancelAnimationFrame(rv.raf); rv.raf = requestAnimationFrame(rvCuadro)
+  } catch (e) { console.warn('revelacion:', e); $('#rv-preg').innerHTML = '<p class="rv-cargando">No se pudo abrir la revelación. Probá de nuevo.</p>' }
+}
+
+function cerrarRevelacion() {
+  if (!rv.abierto) return
+  rv.abierto = false; cancelAnimationFrame(rv.raf)
+  $('#rv').hidden = true; document.body.style.overflow = ''
+  if (location.hash.startsWith('#revelacion')) location.hash = '#' + (rv.volver || 'inicio')
+  if (vistaActual() === 'votaciones') pintarVotaciones()
+  pintarVotacionesInicio()
+}
+
+function rvTamano() {
+  const cv = $('#rv-hemi'), z = parseFloat(getComputedStyle(document.body).zoom) || 1
+  rv.dpr = (window.devicePixelRatio || 1)
+  const W = cv.clientWidth, Hh = cv.clientHeight
+  cv.width = W * rv.dpr; cv.height = Hh * rv.dpr
+  // Encuadre: el hemiciclo ocupa la franja central (deja lugar arriba para la pregunta y abajo para el panel)
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+  rv.pts.forEach(p => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y) })
+  const movil = W < 700, arriba = Hh * (movil ? .28 : .25), abajo = Hh * (movil ? .44 : .38)
+  const s = Math.min((W * .9) / (x1 - x0 + 30), (Hh - arriba - abajo) / (y1 - y0 + 30))
+  rv.cam = { s, cx: W / 2 - (x0 + x1) / 2 * s, cy: arriba + (Hh - arriba - abajo) / 2 - (y0 + y1) / 2 * s, W, Hh }
+  void z
+}
+
+const rvEase = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+function rvCuadro(now) {
+  if (!rv.abierto || !rv.r) return
+  const t = now - rv.t0, r = rv.r, T = RV_T
+  const tLuz0 = T.intro, tLuz1 = T.intro + T.luz, tCont0 = tLuz1 + T.pausa, tCont1 = tCont0 + T.conteo
+  const pLuz = Math.min(1, Math.max(0, (t - tLuz0) / T.luz)), pCont = r.nula ? 0 : Math.min(1, Math.max(0, (t - tCont0) / T.conteo))
+  const encendidas = Math.floor(rvEase(pLuz) * r.total)
+  const fase = t < tLuz0 ? 'intro' : t < tLuz1 ? 'luz' : r.nula ? 'fin' : t < tCont0 ? 'pausa' : t < tCont1 ? 'conteo' : 'fin'
+  if (fase !== rv.fase) rvFase(fase)
+  // ── dibujar
+  const cv = $('#rv-hemi'), ctx = cv.getContext('2d'), d = rv.dpr, { s, cx, cy } = rv.cam
+  ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height)
+  const rad = Math.max(1.6, Math.min(7, H.DOT * s * .5))
+  const prendida = new Uint8Array(rv.pts.length); for (let k = 0; k < encendidas; k++) prendida[rv.encendibles[k]] = 1
+  const nComp = Math.floor(rvEase(pCont) * rv.compo.length)
+  const coloreada = new Set(rv.compo.slice(0, nComp))
+  ctx.fillStyle = 'rgba(255,255,255,.09)'
+  rv.pts.forEach((p, i) => { if (prendida[i] || i === rv.miIdx) return; ctx.beginPath(); ctx.arc(cx + p.x * s, cy + p.y * s, rad, 0, 6.283); ctx.fill() })
+  const dib = (i, col, brillo) => { const p = rv.pts[i]; ctx.shadowColor = col; ctx.shadowBlur = brillo; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx + p.x * s, cy + p.y * s, rad, 0, 6.283); ctx.fill() }
+  rv.encendibles.slice(0, encendidas).forEach(i => { if (i === rv.miIdx) return; const c = coloreada.has(i) ? RV_COL[rv.color.get(i)] : RV_COL.luz; dib(i, c, rad * 2.2) })
+  ctx.shadowBlur = 0
+  // tu butaca
+  if (rv.miIdx >= 0) {
+    const p = rv.pts[rv.miIdx], x = cx + p.x * s, y = cy + p.y * s, on = prendida[rv.miIdx]
+    if (on) dib(rv.miIdx, '#ffffff', rad * 3)
+    ctx.shadowBlur = 0; ctx.strokeStyle = on ? '#ffffff' : 'rgba(255,255,255,.5)'; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.arc(x, y, rad + 5 + (on ? Math.sin(now / 300) * 1.5 : 0), 0, 6.283); ctx.stroke()
+    const mi = $('#rv-mi'); mi.hidden = t < tLuz0 + 300
+    mi.style.left = x + 'px'; mi.style.top = y + 'px'
+  }
+  // ── números
+  const num = $('#rv-num'); if (num) num.textContent = fmtNum(encendidas)
+  const pc = $('#rv-pc'); if (pc) pc.textContent = `${Math.round(encendidas / rv.butacas * 100)}%`
+  if (fase === 'conteo' || fase === 'fin') {
+    const e = r.nula ? 0 : rvEase(pCont)
+    ;['si', 'no', 'abs'].forEach(k => {
+      const v = Math.round(r[k] * e), pct = r.total ? v / r.total * 100 : 0
+      const n = $(`#rv-n-${k}`), b = $(`#rv-b-${k}`), pp = $(`#rv-p-${k}`)
+      if (n) n.textContent = fmtNum(v); if (b) b.style.width = pct + '%'; if (pp) pp.textContent = (r[k] / r.total * 100 * e).toFixed(1).replace('.', ',') + '%'
+    })
+    const lider = r.si === r.no ? null : r.si > r.no ? 'si' : 'no'
+    $$('.rv-col').forEach(c => c.classList.toggle('lider', !!lider && c.dataset.k === lider && e > .35))
+  }
+  rv.raf = requestAnimationFrame(rvCuadro)
+}
+
+function rvFase(f) {
+  rv.fase = f
+  const r = rv.r, panel = $('#rv-panel'), fase = $('#rv-fase')
+  $('#rv-saltar').hidden = f === 'fin'
+  if (f === 'intro') { fase.textContent = 'La urna se cerró'; panel.innerHTML = '' }
+  if (f === 'luz') {
+    fase.textContent = 'Encendiendo las butacas que votaron'
+    panel.innerHTML = `<div class="rv-part"><b id="rv-num">0</b><span>butacas votaron</span><em id="rv-pc">0%</em><small>de participación</small></div>`
+  }
+  if (f === 'pausa') { fase.textContent = 'Contando…' }
+  if (f === 'conteo') {
+    fase.textContent = 'Contando los votos'
+    panel.innerHTML = `<div class="rv-cols">${[['si', 'Sí'], ['no', 'No'], ['abs', 'Abstención']].map(([k, t]) => `<div class="rv-col" data-k="${k}" style="--c:${RV_COL[k]}">
+        <div class="rv-col-cab"><span>${t}</span><b id="rv-p-${k}">0%</b></div>
+        <div class="rv-col-barra"><i id="rv-b-${k}"></i></div><small><span id="rv-n-${k}">0</span> votos</small></div>`).join('')}</div>`
+  }
+  if (f === 'fin') {
+    fase.textContent = 'Resultado'
+    $('#rv').classList.add('final')
+    const otra = [...iqCerradas, ...vPreguntas.filter(q => !abierta(q))].find(q => q.id !== rv.q.id && !rvVista(q.id))
+    let titulo, clase = '', sub = ''
+    if (r.total === 0 || (r.nula && !r.total)) { titulo = 'Votación sin resultado'; sub = 'Hubo menos de 3 votos: el resultado no se publica para proteger el secreto del voto.'; clase = 'nula' }
+    else if (r.nula) { titulo = 'Votación sin resultado'; sub = 'Hubo menos de 3 votos: el resultado no se publica para proteger el secreto del voto.'; clase = 'nula' }
+    else if (r.si === r.no) { titulo = 'Empate'; sub = `${fmtNum(r.si)} a ${fmtNum(r.no)}`; clase = 'empate' }
+    else { const k = r.si > r.no ? 'si' : 'no'; titulo = `El Cabildo dijo ${k === 'si' ? 'SÍ' : 'NO'}`; sub = `con el ${(r[k] / r.total * 100).toFixed(1).replace('.', ',')}% de los votos · ${fmtNum(r.total)} butacas votaron`; clase = k }
+    const cols = r.nula ? '' : `<div class="rv-cols chico">${[['si', 'Sí'], ['no', 'No'], ['abs', 'Abstención']].map(([k, t]) => `<div class="rv-col ${clase === k ? 'lider' : ''}" data-k="${k}" style="--c:${RV_COL[k]}">
+        <div class="rv-col-cab"><span>${t}</span><b>${(r[k] / r.total * 100).toFixed(1).replace('.', ',')}%</b></div>
+        <div class="rv-col-barra"><i style="width:${r[k] / r.total * 100}%"></i></div><small>${fmtNum(r[k])} votos</small></div>`).join('')}</div>`
+    panel.innerHTML = `<div class="rv-fin ${clase}">
+      <h2>${titulo}</h2><p>${sub}</p>${cols}
+      <div class="rv-acc">
+        <a class="rv-cta sec" href="#debates/${rv.q.id}" data-rv="ir">Ver el debate</a>
+        <button class="rv-cta sec" data-rv="compartir">Compartir</button>
+        ${otra ? `<a class="rv-cta" href="#revelacion/${otra.id}">Siguiente revelación →</a>` : `<button class="rv-cta" data-rv="cerrar">Listo</button>`}
+      </div></div>`
+    if (clase === 'si' || clase === 'no') rvConfeti(RV_COL[clase])
+  }
+}
+
+function rvConfeti(c) {
+  const box = $('#rv-panel'); if (!box || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const el = document.createElement('div'); el.className = 'rv-confeti'; el.setAttribute('aria-hidden', 'true')
+  el.innerHTML = Array.from({ length: 26 }, (_, i) => `<i style="--x:${(Math.sin(i * 2.1) * 260).toFixed(0)}px;--y:${(-120 - Math.abs(Math.cos(i * 1.3)) * 160).toFixed(0)}px;--r:${i * 53}deg;--c:${[c, '#f5b942', '#fff'][i % 3]};--d:${(i % 5) * .05}s"></i>`).join('')
+  box.appendChild(el); setTimeout(() => el.remove(), 2200)
+}
+
+function enlazarRevelacion() {
+  const v = $('#rv'); if (!v) return
+  v.addEventListener('click', e => {
+    const a = e.target.closest('[data-rv]')?.dataset.rv
+    if (a === 'cerrar') { e.preventDefault(); return cerrarRevelacion() }
+    if (a === 'saltar') { rv.t0 = performance.now() - 1e6; return }
+    if (a === 'compartir') {
+      const url = `${location.origin}${location.pathname}#revelacion/${rv.q.id}`
+      navigator.clipboard?.writeText(url).then(() => aviso('Enlace copiado'), () => aviso('No se pudo copiar el enlace', 'error'))
+      return
+    }
+    if (a === 'ir') { rv.abierto = false; cancelAnimationFrame(rv.raf); $('#rv').hidden = true; document.body.style.overflow = '' }
+  })
+  document.addEventListener('keydown', e => { if (!v.hidden && e.key === 'Escape') cerrarRevelacion() })
+  window.addEventListener('resize', () => { if (rv.abierto && rv.r) rvTamano() })
+}
+
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro() }, 1000)
   await cargarUsuario()
   vigilarSesion()

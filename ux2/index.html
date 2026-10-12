@@ -380,6 +380,19 @@
 <!-- ═══ MODAL DE VOTO ═══ -->
 <div class="es-tip" id="es-tip" hidden role="tooltip"></div>
 
+<!-- REVELACIÓN de una votación cerrada -->
+<div class="rv" id="rv" hidden role="dialog" aria-modal="true" aria-label="Revelación de la votación">
+  <canvas id="rv-hemi" aria-hidden="true"></canvas>
+  <header class="rv-top">
+    <button class="rv-boton" data-rv="cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Cerrar</span></button>
+    <span class="rv-fase" id="rv-fase"></span>
+    <button class="rv-boton" data-rv="saltar" id="rv-saltar">Saltar<svg viewBox="0 0 24 24"><path d="m6 6 8 6-8 6zM16 6v12"/></svg></button>
+  </header>
+  <div class="rv-preg" id="rv-preg"></div>
+  <div class="rv-mi" id="rv-mi" hidden></div>
+  <div class="rv-panel" id="rv-panel"></div>
+</div>
+
 <!-- NERDOCRASY: pantalla de juego -->
 <div class="nd" id="nd" hidden role="dialog" aria-modal="true" aria-label="Nerdocrasy">
   <div class="nd-fondo" aria-hidden="true"></div>
