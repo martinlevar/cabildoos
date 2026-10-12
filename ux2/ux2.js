@@ -3661,10 +3661,9 @@ function enlazarMuro() {
 
 // ══════════════════════════════════════════════════════════════
 //  REVELACIÓN — el momento en que una votación cerrada muestra su resultado.
-//  Privacidad: el servidor solo entrega totales. Las butacas encendidas tienen TODAS el mismo color
-//  (participaron, pero nadie sabe qué votaron): el resultado se ve solo en los totales, nunca en una butaca.
-//  Además no son las butacas reales: se encienden tantas como votos hubo, en orden al azar.
-//  Tu butaca solo se marca si participaste (eso lo sabés vos) y nunca toma el color de una opción.
+//  Privacidad: se encienden las butacas que votaron, TODAS del mismo color: muestra que esa butaca votó,
+//  nunca qué votó (ese dato no existe en la base). El resultado se ve solo en los totales.
+//  El hemiciclo mira hacia la pregunta, como en Inicio.
 // ══════════════════════════════════════════════════════════════
 const RV_COL = { si: '#22c55e', no: '#ef4444', abs: '#94a3b8', luz: '#f5b942' }
 const RV_T = { intro: 1300, luz: 3000, pausa: 700, conteo: 3600 }
@@ -3677,7 +3676,7 @@ function rvAsientos(n) {
   const span = H.A1 - H.A0, res = []
   for (let row = 0; res.length < n; row++) {
     const r = H.R_IN + row * H.R_STEP, cap = Math.floor(r * span / H.GAP), cant = Math.min(cap, n - res.length), orden = ordenCentro(cap)
-    for (let i = 0; i < cant; i++) { const a = H.A0 + (cap > 1 ? orden[i] / (cap - 1) : .5) * span; res.push({ x: r * Math.cos(a), y: -r * Math.sin(a), a }) }
+    for (let i = 0; i < cant; i++) { const a = H.A0 + (cap > 1 ? orden[i] / (cap - 1) : .5) * span; res.push({ x: r * Math.cos(a), y: r * Math.sin(a), a }) }
   }
   return res
 }
@@ -3690,6 +3689,20 @@ function rvBarajar(n, semilla) {
   return o
 }
 
+// Butacas que participaron en una votación (de a 1000 filas, el máximo por pedido)
+async function rvSillas(id) {
+  const todas = []
+  try {
+    for (let desde = 0; desde < 50000; desde += 1000) {
+      const { data, error } = await sb.from('vote_seats').select('seat_number').eq('question_id', id).range(desde, desde + 999)
+      if (error) throw error
+      todas.push(...(data || []))
+      if (!data || data.length < 1000) break
+    }
+  } catch (e) { console.warn('vote_seats:', e) }
+  return { data: todas }
+}
+
 async function abrirRevelacion(id) {
   if (!id) return
   rv.volver = vistaActual() || 'inicio'
@@ -3698,11 +3711,13 @@ async function abrirRevelacion(id) {
   $('#rv-preg').innerHTML = '<p class="rv-cargando">Abriendo la urna…</p>'; $('#rv-panel').innerHTML = ''; $('#rv-mi').hidden = true; $('#rv-fase').textContent = ''
   try {
     let q = [...iqPreguntas, ...iqCerradas, ...vPreguntas].find(x => x.id === id)
-    const [qq, votos, part, cant] = await Promise.all([
+    const [qq, votos, part, cant, sillas] = await Promise.all([
       q ? Promise.resolve({ data: q }) : sb.from('questions').select('id, text, category, ends_at, status').eq('id', id).maybeSingle(),
       sb.rpc('get_question_votes', { p_question_id: id }),
       estado.butaca ? sb.rpc('v2_mis_participaciones') : Promise.resolve({ data: [] }),
       totalButacas ? Promise.resolve({ data: totalButacas }) : sb.rpc('get_butaca_count'),
+      // Qué butacas participaron (nunca qué votó cada una: ese dato no existe)
+      rvSillas(id),
     ])
     q = qq.data
     if (!rv.abierto) return
@@ -3713,14 +3728,25 @@ async function abrirRevelacion(id) {
     r.total = r.si + r.no + r.abs
     r.nula = soloTotal || r.total < 3
     rv.q = q; rv.r = r
-    const butacas = Math.max(Number(cant.data) || 0, r.total, estado.butaca || 0, 50)
+    const reales = [...new Set((sillas?.data || []).map(x => Number(x.seat_number)).filter(n => n > 0))]
+    const maxSilla = reales.reduce((a, n) => Math.max(a, n), 0)
+    const butacas = Math.max(Number(cant.data) || 0, maxSilla, r.total, estado.butaca || 0, 50)
     rv.pts = rvAsientos(butacas)
-    rv.orden = rvBarajar(rv.pts.length, q.id)
-    rv.participe = (part.data || []).includes(q.id)
-    // Tu butaca: si participaste, se enciende última (con anillo); si no, queda apagada
+    rv.participe = (part.data || []).includes(q.id) || reales.includes(estado.butaca)
     rv.miIdx = estado.butaca && estado.butaca <= rv.pts.length ? estado.butaca - 1 : -1
-    if (rv.miIdx >= 0) { rv.orden = rv.orden.filter(i => i !== rv.miIdx); if (rv.participe) rv.orden.splice(Math.max(0, r.total - 1), 0, rv.miIdx); else rv.orden.push(rv.miIdx) }
-    rv.encendibles = rv.orden.slice(0, r.total)
+    if (reales.length) {
+      // Se encienden las butacas REALES que votaron, en orden al azar y todas del mismo color
+      const orden = rvBarajar(reales.length, q.id).map(k => reales[k] - 1)
+      rv.encendibles = orden
+      if (rv.participe && rv.miIdx >= 0) { rv.encendibles = orden.filter(i => i !== rv.miIdx); rv.encendibles.push(rv.miIdx) }   // la tuya, última
+      rv.cuenta = reales.length
+    } else {
+      // Sin acceso a la lista de participación: encendido simbólico (tantas como votos)
+      let orden = rvBarajar(rv.pts.length, q.id)
+      if (rv.miIdx >= 0) { orden = orden.filter(i => i !== rv.miIdx); if (rv.participe) orden.splice(Math.max(0, r.total - 1), 0, rv.miIdx) }
+      rv.encendibles = orden.slice(0, r.total)
+      rv.cuenta = r.total
+    }
     rv.butacas = butacas
     $('#rv-preg').innerHTML = `<span class="rv-tag">${esc(q.category || 'General')} · cerró el ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}</span><h1>${esc(q.text)}</h1>`
     $('#rv-mi').innerHTML = rv.participe ? '<b>Tu butaca</b><span>Participaste · tu voto es secreto</span>' : '<b>Tu butaca</b><span>No votaste en esta</span>'
@@ -3763,7 +3789,7 @@ function rvCuadro(now) {
   const t = now - rv.t0, r = rv.r, T = RV_T
   const tLuz0 = T.intro, tLuz1 = T.intro + T.luz, tCont0 = tLuz1 + T.pausa, tCont1 = tCont0 + T.conteo
   const pLuz = Math.min(1, Math.max(0, (t - tLuz0) / T.luz)), pCont = r.nula ? 0 : Math.min(1, Math.max(0, (t - tCont0) / T.conteo))
-  const encendidas = Math.floor(rvEase(pLuz) * r.total)
+  const encendidas = Math.floor(rvEase(pLuz) * rv.encendibles.length)
   const fase = t < tLuz0 ? 'intro' : t < tLuz1 ? 'luz' : r.nula ? 'fin' : t < tCont0 ? 'pausa' : t < tCont1 ? 'conteo' : 'fin'
   if (fase !== rv.fase) rvFase(fase)
   // ── dibujar
