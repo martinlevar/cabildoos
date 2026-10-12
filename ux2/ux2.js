@@ -2197,44 +2197,37 @@ async function cargarEstadisticas() {
 
 function pintarEstadisticas() {
   const d = est.d; if (!d || !$('#es-kpis')) return
-  const ult = (d.butacas_por_dia || []).reduce((a, x) => a + Number(x.n || 0), 0)
   const k = (n, t, s = '') => `<div class="card es-kpi"><b>${fmtNum(n)}</b><span>${t}</span>${s ? `<small>${s}</small>` : ''}</div>`
   $('#es-kpis').innerHTML =
-    k(d.butacas, 'butacas ocupadas', ult ? `+${fmtNum(ult)} en 14 días` : '') +
-    k(d.votos, 'votos emitidos', `en ${fmtNum(d.votaciones_cerradas)} votaciones cerradas`) +
-    k(d.propuestas?.lanzadas, 'propuestas lanzadas', `${fmtNum(d.propuestas?.en_hemiciclo)} llegaron al Hemiciclo`) +
+    k(d.butacas, 'butacas ocupadas') +
+    k(d.votos, 'votos emitidos') +
+    k(d.propuestas?.lanzadas, 'propuestas lanzadas') +
     k(d.propuestas?.apoyos, 'butacas encendidas', 'apoyos a propuestas') +
     k(d.debate, 'mensajes en debates') +
     k(d.muro, 'publicaciones en el Muro')
-  pintarCrecimiento(); pintarParticipacion()
+  pintarParticipacion()
 }
 
-// Barras: nuevas butacas por día (una sola serie → sin leyenda, el título la nombra)
-function pintarCrecimiento() {
-  const dias = est.d?.butacas_por_dia || [], box = $('#es-crec'); if (!box) return
-  const max = Math.max(1, ...dias.map(x => Number(x.n || 0)))
-  const fmtD = f => new Date(f + 'T12:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })
-  box.innerHTML = `<div class="es-barras" role="img" aria-label="Nuevas butacas por día, últimos 14 días">
-    ${dias.map((x, i) => `<div class="es-col" tabindex="0" data-tip="${fmtD(x.fecha)}: ${fmtNum(x.n)} ${Number(x.n) === 1 ? 'butaca nueva' : 'butacas nuevas'}">
-      <span class="es-bar ${i === dias.length - 1 ? 'hoy' : ''}" style="height:${Math.max(2, Number(x.n) / max * 100)}%"></span></div>`).join('')}
-  </div>
-  <div class="es-eje"><span>${dias[0] ? fmtD(dias[0].fecha) : ''}</span><span>Hoy</span></div>
-  <table class="sr-only"><caption>Nuevas butacas por día</caption>${dias.map(x => `<tr><td>${x.fecha}</td><td>${x.n}</td></tr>`).join('')}</table>`
-}
-
-// Barras apiladas Sí / No / Abstención por votación (azul/naranja validados para daltonismo + etiquetas directas)
 function pintarParticipacion() {
   const lista = est.d?.participacion || [], box = $('#es-part'); if (!box) return
   if (!lista.length) { box.innerHTML = '<p class="muted">Todavía no hay votaciones cerradas.</p>'; return }
-  const maxT = Math.max(...lista.map(v => Number(v.total || 0)), 1)
+  const ET = { si: 'Sí', no: 'No', abs: 'Abst.' }
   box.innerHTML = lista.map(v => {
-    const t = Number(v.total || 0) || 1, p = n => Math.round(Number(n || 0) / t * 100)
-    const seg = (k, n, et) => n > 0 ? `<i class="es-seg ${k}" style="flex:${n}" data-tip="${et}: ${fmtNum(n)} (${p(n)}%)"></i>` : ''
-    return `<div class="es-v">
-      <div class="es-v-top"><span class="es-v-txt" title="${esc(v.texto)}">${esc(v.texto)}</span><small>${fmtNum(v.total)} votos</small></div>
-      <div class="es-pila" style="width:${Math.max(18, Number(v.total) / maxT * 100)}%">${seg('si', v.si, 'Sí')}${seg('no', v.no, 'No')}${seg('abs', v.abs, 'Abstención')}</div>
-      <div class="es-v-et"><span><i class="es-dot si"></i>Sí ${p(v.si)}%</span><span><i class="es-dot no"></i>No ${p(v.no)}%</span>${Number(v.abs) ? `<span><i class="es-dot abs"></i>Abst. ${p(v.abs)}%</span>` : ''}</div>
-    </div>`
+    const n = { si: Number(v.si || 0), no: Number(v.no || 0), abs: Number(v.abs || 0) }
+    const t = n.si + n.no + n.abs || 1, p = x => Math.round(x / t * 100)
+    const orden = ['si', 'no', 'abs'].sort((a, b) => n[b] - n[a])
+    const empate = n[orden[0]] === n[orden[1]]
+    const gana = empate ? `<div class="es-gana empate"><b>=</b><small>Empate</small></div>`
+      : `<div class="es-gana ${orden[0]}"><b>${p(n[orden[0]])}%</b><small>${ET[orden[0]]}</small></div>`
+    const seg = k => n[k] > 0 ? `<i class="es-seg ${k}" style="flex:${n[k]}" data-tip="${k === 'abs' ? 'Abstención' : ET[k]}: ${fmtNum(n[k])} (${p(n[k])}%)"></i>` : ''
+    const fecha = v.ends_at ? new Date(v.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }) : ''
+    return `<article class="es-v">
+      <div class="es-v-txt" title="${esc(v.texto)}">${esc(v.texto)}</div>
+      <div class="es-v-meta">${[fecha, v.category ? esc(v.category) : '', `${fmtNum(v.total)} votos`].filter(Boolean).join(' · ')}</div>
+      ${gana}
+      <div class="es-pila" role="img" aria-label="Sí ${p(n.si)}%, No ${p(n.no)}%, Abstención ${p(n.abs)}%">${seg('si')}${seg('no')}${seg('abs')}</div>
+      <div class="es-v-et"><span><i class="es-dot si"></i>Sí ${p(n.si)}%</span><span><i class="es-dot no"></i>No ${p(n.no)}%</span>${n.abs ? `<span><i class="es-dot abs"></i>Abst. ${p(n.abs)}%</span>` : ''}</div>
+    </article>`
   }).join('')
 }
 
