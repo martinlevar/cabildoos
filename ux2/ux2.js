@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -57,6 +57,8 @@ function ruta() {
   if (valida === 'votaciones') cargarVotaciones()
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
   if (valida === 'estadisticas') cargarEstadisticas()
+  if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
+  else if (au.canal || au.vigia) salirAuditorio()
   if (valida === 'ciudadanos') cargarCiudadanos(arg)
   else if ($('#modal-ciu') && !$('#modal-ciu').hidden) cerrarPerfil()
   if (valida === 'propuestas') { if (!pr.d) cargarPropuestas(arg); else { refrescarPropuestas(); if (arg) abrirPropuesta(arg) } }
@@ -2328,11 +2330,351 @@ function irATab(tab) {
   pintarBloques()
 }
 
+// ══════════════════════════════════════════════════════════════
+//  AUDITORIO — sesiones en vivo. Comparte el canal 'auditorio-live' con la versión actual
+//  (presencia por butaca, reacciones, chat efímero y manos), así ambas versiones se ven entre sí.
+//  Nada de esto se guarda en la base: el chat existe solo mientras estás en la sala.
+// ══════════════════════════════════════════════════════════════
+const AU_COOLDOWN = 60          // segundos entre mensajes (igual que la versión actual)
+const AU_MAX_MSGS = 150
+const AU_EMOJIS = ['👏', '🔥', '💯', '🤔', '✊', '❤️']
+const au = { s: null, cargado: false, canal: null, vigia: null, presentes: new Set(), msgs: [], manos: [],
+  mano: false, finCd: 0, tick: null, muted: true, ultReac: 0, sala: null }
+
+const auNombre = num => { const p = perfiles.get(num); return p?.show_alias && p.alias ? p.alias : `Butaca #${num}` }
+const auMiNombre = () => estado.butaca ? auNombre(estado.butaca) : 'Invitado'
+
+function auYoutube(url) {
+  try {
+    const u = new URL(url)
+    let id = null
+    if (u.hostname === 'youtu.be') id = u.pathname.slice(1)
+    else if (/(^|\.)youtube\.com$/.test(u.hostname)) id = u.searchParams.get('v') || u.pathname.split('/').filter(Boolean).pop()
+    return id && /^[\w-]{6,20}$/.test(id) ? id : null
+  } catch (e) { return null }
+}
+const auLinkSeguro = url => { try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? u.href : null } catch (e) { return null } }
+
+async function entrarAuditorio() {
+  if (!estado.user) { au.cargado = au.usuarioListo; return pintarAuditorio() }
+  await cargarSesionAuditorio()
+  if (!au.vigia) au.vigia = sb.channel('auditorio-session-watch-v2')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'auditorio_sessions' }, () => cargarSesionAuditorio())
+    .subscribe()
+}
+
+async function cargarSesionAuditorio() {
+  const antes = au.cargado ? au.s?.id + '|' + au.s?.url : 'primera'
+  try {
+    const { data, error } = await sb.from('auditorio_sessions').select('id, title, description, url, type, is_active')
+      .eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (error) throw error
+    au.s = data || null
+  } catch (e) { console.warn('auditorio:', e); au.s = null }
+  au.cargado = true
+  marcarAuditorioEnVivo(!!au.s)
+  if (vistaActual() !== 'auditorio') return
+  if (au.s && !au.canal) unirseSala()
+  if (!au.s && au.canal) salirSala()
+  if (antes !== au.s?.id + '|' + au.s?.url) pintarAuditorio()
+}
+
+function marcarAuditorioEnVivo(on) {
+  const a = $('#nav a[data-sec="auditorio"]'); if (a) a.classList.toggle('en-vivo', on)
+}
+
+async function vigilarAuditorio() {      // punto rojo en el menú cuando hay sesión, aunque no estés en la sección
+  if (!estado.user) return
+  try {
+    const { data } = await sb.from('auditorio_sessions').select('id').eq('is_active', true).limit(1).maybeSingle()
+    marcarAuditorioEnVivo(!!data)
+  } catch (e) {}
+  sb.channel('auditorio-badge-watch-v2')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'auditorio_sessions' }, async () => {
+      if (vistaActual() === 'auditorio') return cargarSesionAuditorio()
+      const { data } = await sb.from('auditorio_sessions').select('id').eq('is_active', true).limit(1).maybeSingle()
+      marcarAuditorioEnVivo(!!data)
+    }).subscribe()
+}
+
+function unirseSala() {
+  au.canal = sb.channel('auditorio-live', { config: { presence: { key: String(estado.butaca || 0) } } })
+  au.canal
+    .on('presence', { event: 'sync' }, () => {
+      const set = new Set()
+      Object.values(au.canal.presenceState()).forEach(l => l.forEach(p => { const n = Number(p.seat); if (n > 0) set.add(n) }))
+      au.presentes = set
+      pintarPresencia()
+    })
+    .on('broadcast', { event: 'reaction' }, ({ payload: p }) => {
+      if (p && AU_EMOJIS.includes(p.emoji)) flotarReaccion(p.emoji, Number(p.seat) > 0 ? auNombre(Number(p.seat)) : 'Invitado')
+    })
+    .on('broadcast', { event: 'aud_chat' }, ({ payload: p }) => {
+      const seat = Number(p?.seat); const text = limpiar(p?.text).slice(0, 280).trim()
+      if (!(seat > 0) || !text) return
+      agregarChat({ seat, text, at: Number(p.at) || Date.now() })
+    })
+    .on('broadcast', { event: 'aud_hand' }, ({ payload: p }) => {
+      const seat = Number(p?.seat); if (!(seat > 0)) return
+      if (p.action === 'raise') { if (!au.manos.some(m => m.seat === seat)) au.manos.push({ seat, at: Number(p.at) || Date.now() }) }
+      else au.manos = au.manos.filter(m => m.seat !== seat)
+      au.manos.sort((a, b) => a.at - b.at)
+      pintarManos()
+    })
+    .subscribe(async st => { if (st === 'SUBSCRIBED' && estado.butaca) await au.canal.track({ seat: estado.butaca, at: Date.now() }) })
+}
+
+function salirSala() {
+  if (au.mano) enviarMano(false)
+  if (au.canal) { sb.removeChannel(au.canal); au.canal = null }
+  clearInterval(au.tick); au.tick = null
+  au.presentes = new Set(); au.msgs = []; au.manos = []; au.mano = false
+}
+
+function salirAuditorio() {
+  salirSala()
+  if (au.vigia) { sb.removeChannel(au.vigia); au.vigia = null }
+  const f = $('#au-video iframe'); if (f) f.remove()      // corta el video al salir de la sección
+  au.s = null; au.cargado = false
+}
+
+// ── Pintado ──
+function pintarAuditorio() {
+  const c = $('#au-cuerpo'); if (!c) return
+  $('#au-envivo').hidden = !au.s
+  $('#au-presentes').hidden = !au.s
+  $('#au-sub').textContent = au.s ? (au.s.title || 'Sesión en vivo') : 'Sesiones en vivo del Cabildo. Mirá, reaccioná y pedí la palabra.'
+  if (!au.cargado) { c.innerHTML = '<div class="card au-vacio"><p class="muted">Cargando…</p></div>'; return }
+  if (!estado.user) {
+    c.innerHTML = `<div class="card au-vacio">${auIconoVacio()}<h3>El Auditorio es para ciudadanos</h3>
+      <p class="muted">Iniciá sesión para entrar a las sesiones en vivo.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`
+    return
+  }
+  if (!au.s) {
+    c.innerHTML = `<div class="card au-vacio">${auIconoVacio()}<h3>No hay ninguna sesión en vivo</h3>
+      <p class="muted">Cuando empiece una sesión vas a ver el punto rojo en el menú y se abre acá sola.</p></div>`
+    return
+  }
+  const s = au.s, yt = auYoutube(s.url || ''), link = !yt && auLinkSeguro(s.url || '')
+  let escenario
+  if (yt) escenario = `<div class="au-video" id="au-video">
+      <iframe src="https://www.youtube.com/embed/${yt}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&iv_load_policy=3&disablekb=1&fs=0"
+        title="${esc(s.title || 'Sesión en vivo')}" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="origin"></iframe>
+      <div class="au-tapa"></div>
+      <button class="au-sonido" id="au-sonido" title="Activar sonido">${auIconoSonido(true)}<span>Activar sonido</span></button>
+    </div>`
+  else if (link) {
+    const donde = /meet\.google/.test(link) ? 'Google Meet' : /zoom\.us/.test(link) ? 'Zoom' : null
+    escenario = `<div class="au-video au-externo"><div>
+      <span class="au-ico-grande">📹</span><h3>${donde ? 'Sesión en ' + donde : 'Sesión en vivo'}</h3>
+      <p>Esta sesión se transmite en una plataforma externa.</p>
+      <a class="btn au-btn-claro" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Abrir ${donde || 'la sesión'} →</a></div></div>`
+  } else escenario = `<div class="au-video au-externo"><div><span class="au-espera"><i></i><i></i><i></i></span>
+      <h3>La transmisión todavía no empezó</h3><p>Aparece acá sola apenas arranque.</p></div></div>`
+
+  const puedeHablar = !!estado.butaca
+  c.innerHTML = `
+  <div class="au-wrap">
+    <div class="au-col">
+      <section class="au-escenario">
+        ${escenario}
+        <div class="au-flotan" id="au-flotan" aria-hidden="true"></div>
+      </section>
+      <div class="au-barra card">
+        <div class="au-reac" role="group" aria-label="Reaccionar">
+          ${AU_EMOJIS.map(e => `<button data-reac="${e}" title="Reaccionar ${e}">${e}</button>`).join('')}
+        </div>
+        ${s.description ? `<p class="au-desc">${esc(s.description)}</p>` : ''}
+      </div>
+      <section class="card au-sala">
+        <div class="au-sala-cab"><div><h3>La sala</h3><p class="muted" id="au-sala-txt">Cada punto encendido es una butaca mirando ahora.</p></div></div>
+        <div class="au-sala-svg" id="au-sala"></div>
+      </section>
+    </div>
+    <aside class="card au-lado">
+      <div class="au-manos" id="au-manos"></div>
+      <div class="au-chat" id="au-chat"></div>
+      ${puedeHablar ? `
+      <div class="au-compo">
+        <div class="au-compo-fila">
+          <button class="db-mano" id="au-mano" title="Pedir la palabra">✋</button>
+          <textarea id="au-txt" maxlength="280" rows="2" placeholder="Pedí la palabra…" disabled></textarea>
+          <button class="btn btn-dark" id="au-enviar" disabled>Enviar</button>
+        </div>
+        <div class="db-estado"><span id="au-estado"></span><em id="au-cont">0/280</em></div>
+        <div class="db-cd" id="au-cd" hidden><i id="au-cd-fill"></i></div>
+      </div>` : `<div class="db-cerrado">Para hablar necesitás tu butaca: <a href="${APP_ACTUAL}">completá la verificación</a>.</div>`}
+    </aside>
+  </div>`
+  pintarPresencia(); pintarManos(); pintarChat(); pintarMiMano()
+}
+
+const auIconoVacio = () => `<span class="au-vacio-ico"><svg viewBox="0 0 24 24">${ICONOS.auditorio}</svg></span>`
+const auIconoSonido = mudo => mudo
+  ? '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="m22 9-6 6M16 9l6 6"/></svg>'
+  : '<svg viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>'
+
+function pintarPresencia() {
+  const n = au.presentes.size
+  const el = $('#au-n'); if (el) el.textContent = fmtNum(n)
+  const t = $('#au-sala-txt')
+  if (t) t.textContent = n ? `${fmtNum(n)} ${n === 1 ? 'butaca está' : 'butacas están'} mirando ahora.` : 'Sé el primero en llegar.'
+  pintarSala()
+}
+
+// Mini hemiciclo: el escenario arriba, las filas abiertas hacia abajo (como un teatro)
+function pintarSala() {
+  const box = $('#au-sala'); if (!box) return
+  const total = Math.max(totalButacas, estado.butaca, ...au.presentes, 1)
+  if (!au.sala || au.sala.n !== total) {
+    const span = H.A1 - H.A0, pts = []
+    for (let row = 0; pts.length < total; row++) {
+      const r = H.R_IN + row * H.R_STEP, cap = Math.floor(r * span / H.GAP), cant = Math.min(cap, total - pts.length), orden = ordenCentro(cap)
+      for (let i = 0; i < cant; i++) { const a = H.A0 + (cap > 1 ? orden[i] / (cap - 1) : .5) * span; pts.push({ x: r * Math.cos(a), y: r * Math.sin(a), num: pts.length + 1 }) }
+    }
+    let x0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    pts.forEach(p => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y) })
+    au.sala = { n: total, pts, vb: `${x0 - 40} -40 ${x1 - x0 + 80} ${y1 + 80}` }
+  }
+  const { pts, vb } = au.sala, yo = estado.butaca
+  const fondo = pts.filter(p => !au.presentes.has(p.num) && p.num !== yo).map(p => `<circle cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" r="9"/>`).join('')
+  const luz = pts.filter(p => au.presentes.has(p.num) || p.num === yo).map(p =>
+    `<g class="${p.num === yo ? 'yo' : ''}"><circle class="halo" cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" r="36"/><circle cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" r="15"><title>${esc(p.num === yo ? 'Vos' : auNombre(p.num))}</title></circle>${p.num === yo ? `<circle class="anillo" cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" r="30"/>` : ''}</g>`).join('')
+  box.innerHTML = `<svg viewBox="${vb}" role="img" aria-label="${au.presentes.size} butacas presentes">
+    <line class="tablado" x1="-300" y1="-10" x2="300" y2="-10"/><text class="tablado-txt" x="0" y="36" text-anchor="middle">ESCENARIO</text>
+    <g class="fondo">${fondo}</g><g class="luz">${luz}</g></svg>`
+}
+
+function pintarManos() {
+  const el = $('#au-manos'); if (!el) return
+  el.innerHTML = `<div class="au-sec-cab">✋ Piden la palabra ${au.manos.length ? `<span class="au-cuenta">${au.manos.length}</span>` : ''}</div>` +
+    (au.manos.length ? `<div class="au-manos-lista">${au.manos.slice(0, 12).map((m, i) =>
+      `<span class="${m.seat === estado.butaca ? 'yo' : ''}"><b>${i + 1}</b>${esc(m.seat === estado.butaca ? 'Vos' : auNombre(m.seat))}</span>`).join('')}</div>`
+      : '<p class="muted au-chico">Nadie pidió la palabra todavía.</p>')
+}
+
+function burbujaChat(m) {
+  const mia = m.seat === estado.butaca, nombre = auNombre(m.seat), p = perfiles.get(m.seat)
+  const ini = p?.show_alias && p.alias ? esc(p.alias.charAt(0).toUpperCase()) : '#'
+  return `<div class="au-msg ${mia ? 'mia' : ''}"><span class="db-av" style="background:${mia ? 'var(--orange)' : colorDe(p?.card_color, m.seat)}">${ini}</span>
+    <div><div class="au-msg-cab"><b>${mia ? 'Vos' : esc(nombre)}</b><span>#${m.seat}</span></div><p>${esc(m.text)}</p></div></div>`
+}
+
+function pintarChat() {
+  const el = $('#au-chat'); if (!el) return
+  el.innerHTML = au.msgs.length ? au.msgs.map(burbujaChat).join('')
+    : '<p class="muted au-chat-vacio">El chat de la sala es efímero: no se guarda y solo lo ven quienes están ahora.</p>'
+  el.scrollTop = el.scrollHeight
+}
+
+function agregarChat(m) {
+  au.msgs.push(m); if (au.msgs.length > AU_MAX_MSGS) au.msgs.shift()
+  const el = $('#au-chat'); if (!el) return
+  if (au.msgs.length === 1 || au.msgs.length === AU_MAX_MSGS) return pintarChat()
+  const cerca = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+  el.insertAdjacentHTML('beforeend', burbujaChat(m))
+  if (cerca || m.seat === estado.butaca) el.scrollTop = el.scrollHeight
+}
+
+function pintarMiMano() {
+  const btn = $('#au-mano'); if (!btn) return
+  const enCd = au.finCd > Date.now()
+  const txt = $('#au-txt'), env = $('#au-enviar'), est = $('#au-estado'), cd = $('#au-cd')
+  btn.className = 'db-mano ' + (enCd ? 'cooldown' : au.mano ? 'ready' : 'idle')
+  btn.disabled = enCd
+  txt.disabled = !au.mano; env.disabled = !au.mano
+  txt.placeholder = au.mano ? 'Tu mensaje para la sala (máx. 280)…' : 'Pedí la palabra…'
+  cd.hidden = !enCd; est.className = ''
+  if (enCd) { est.innerHTML = `Esperá <b>${Math.ceil((au.finCd - Date.now()) / 1000)} s</b> para volver a hablar`; est.className = 'espera' }
+  else if (au.mano) { est.innerHTML = '<b>Tenés la palabra</b>: escribí tu mensaje'; est.className = 'ok' }
+  else est.textContent = 'Levantá la mano para hablar'
+}
+
+// ── Acciones ──
+function enviarMano(arriba) {
+  au.mano = arriba
+  const at = Date.now()
+  try { au.canal?.send({ type: 'broadcast', event: 'aud_hand', payload: { seat: estado.butaca, alias: auMiNombre(), action: arriba ? 'raise' : 'lower', at } }) } catch (e) {}
+  au.manos = au.manos.filter(m => m.seat !== estado.butaca)
+  if (arriba) au.manos.push({ seat: estado.butaca, at })
+  pintarManos(); pintarMiMano()
+}
+
+function alternarManoAud() {
+  if (!estado.butaca || !au.canal || au.finCd > Date.now()) return
+  enviarMano(!au.mano)
+  if (au.mano) $('#au-txt')?.focus()
+}
+
+function enviarChatAud() {
+  if (!au.mano || !au.canal) return
+  const el = $('#au-txt'), text = limpiar(el.value).replace(/\s+/g, ' ').trim().slice(0, 280)
+  if (!text) return
+  const m = { seat: estado.butaca, text, at: Date.now() }
+  au.canal.send({ type: 'broadcast', event: 'aud_chat', payload: { ...m, alias: auMiNombre() } })
+  agregarChat(m)                      // el canal no devuelve tus propios mensajes
+  el.value = ''; $('#au-cont').textContent = '0/280'
+  enviarMano(false)
+  au.finCd = Date.now() + AU_COOLDOWN * 1000
+  clearInterval(au.tick)
+  au.tick = setInterval(() => {
+    const resta = au.finCd - Date.now()
+    const f = $('#au-cd-fill'); if (f) f.style.width = Math.max(0, resta / (AU_COOLDOWN * 10)) + '%'
+    if (resta <= 0) { clearInterval(au.tick); au.tick = null }
+    pintarMiMano()
+  }, 500)
+  pintarMiMano()
+}
+
+function reaccionar(emoji) {
+  if (!au.canal || Date.now() - au.ultReac < 700) return      // sin lluvias de reacciones
+  au.ultReac = Date.now()
+  try { au.canal.send({ type: 'broadcast', event: 'reaction', payload: { emoji, seat: estado.butaca || 0, alias: auMiNombre() } }) } catch (e) {}
+  flotarReaccion(emoji, 'Vos')
+}
+
+function flotarReaccion(emoji, nombre) {
+  const area = $('#au-flotan'); if (!area || area.childElementCount > 40) return
+  const el = document.createElement('div')
+  el.className = 'au-flota'
+  el.style.left = (6 + Math.random() * 80) + '%'
+  el.style.setProperty('--deriva', (Math.random() * 60 - 30).toFixed(0) + 'px')
+  el.innerHTML = `<span>${emoji}</span><small>${esc(nombre)}</small>`
+  area.appendChild(el)
+  setTimeout(() => el.remove(), 3400)
+}
+
+function alternarSonido() {
+  const f = $('#au-video iframe'); if (!f) return
+  au.muted = !au.muted
+  f.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: au.muted ? 'mute' : 'unMute', args: [] }), '*')
+  if (!au.muted) f.contentWindow?.postMessage(JSON.stringify({ event: 'command', func: 'playVideo', args: [] }), '*')
+  const b = $('#au-sonido')
+  if (b) { b.classList.toggle('activo', !au.muted); b.title = au.muted ? 'Activar sonido' : 'Silenciar'
+    b.innerHTML = `${auIconoSonido(au.muted)}<span>${au.muted ? 'Activar sonido' : ''}</span>` }
+}
+
+function enlazarAuditorio() {
+  const v = $('#au-vista'); if (!v) return
+  v.addEventListener('click', e => {
+    const r = e.target.closest('[data-reac]'); if (r) return reaccionar(r.dataset.reac)
+    if (e.target.closest('#au-mano')) return alternarManoAud()
+    if (e.target.closest('#au-enviar')) return enviarChatAud()
+    if (e.target.closest('#au-sonido')) return alternarSonido()
+  })
+  v.addEventListener('input', e => { if (e.target.id === 'au-txt') $('#au-cont').textContent = `${e.target.value.length}/280` })
+  v.addEventListener('keydown', e => { if (e.target.id === 'au-txt' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviarChatAud() } })
+  window.addEventListener('beforeunload', () => { if (au.mano) enviarMano(false) })
+}
+
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
+  au.usuarioListo = true
+  vigilarAuditorio()
+  if (vistaActual() === 'auditorio') entrarAuditorio()
   cargarSocial().then(() => {
     if (vistaActual() === 'ciudadanos') pintarCiudadanos()
     if (ciu.perfil) $$(`[data-seguir="${ciu.perfil}"]`).forEach(x => { x.outerHTML = botonSeguir(ciu.perfil) })

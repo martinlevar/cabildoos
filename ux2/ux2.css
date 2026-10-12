@@ -953,3 +953,107 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .b-hero img { width: 100%; opacity: .35; mask-image: none; }
   .b-hero .b-info { margin-left: 0; }
 }
+
+/* ═══ Auditorio ═══ */
+.nav a { position: relative; }
+.nav a.en-vivo::after { content: ''; position: absolute; top: 10px; left: 30px; width: 9px; height: 9px; border-radius: 50%; background: var(--red);
+  border: 2px solid var(--surface); animation: au-latido 1.6s ease-in-out infinite; }
+.app.side-plegado .nav a.en-vivo::after { left: auto; right: 14px; }
+@keyframes au-latido { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--red) 25%, transparent); } }
+.au-envivo { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; margin-left: 10px; font-size: 12px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: #fff; background: var(--red); padding: 5px 11px; border-radius: 99px; }
+.au-envivo i { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: pulse 1.6s infinite; }
+.au-presentes { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line);
+  font-size: 14px; color: var(--ink-2); box-shadow: var(--shadow); }
+.au-presentes b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.au-presentes svg { width: 18px; height: 18px; color: #f5a623; }
+.au-vacio { padding: 56px 24px; text-align: center; display: grid; justify-items: center; gap: 6px; }
+.au-vacio h3 { margin: 10px 0 0; font-size: 20px; }
+.au-vacio p { margin: 0 0 10px; max-width: 420px; }
+.au-vacio-ico { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: var(--accent-bg); color: var(--accent); }
+.au-vacio-ico svg { width: 30px; height: 30px; }
+
+.au-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+.au-col { display: grid; gap: 14px; min-width: 0; }
+.au-escenario { position: relative; border-radius: var(--radius); overflow: hidden; background: #070915;
+  box-shadow: 0 20px 50px rgba(7,9,21,.35), 0 0 0 1px rgba(255,255,255,.04); }
+.au-video { position: relative; aspect-ratio: 16 / 9; }
+.au-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.au-tapa { position: absolute; inset: 0; }               /* tapa los controles de YouTube */
+.au-sonido { position: absolute; left: 16px; bottom: 16px; z-index: 3; display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 99px;
+  background: rgba(7,9,21,.72); color: #fff; font-size: 13px; font-weight: 600; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.15); }
+.au-sonido:hover { background: rgba(7,9,21,.9); }
+.au-sonido.activo { padding: 10px; }
+.au-sonido.activo span { display: none; }
+.au-externo { display: grid; place-items: center; text-align: center; color: #fff; padding: 24px;
+  background: radial-gradient(120% 90% at 50% 0%, #1f2757 0%, #070915 70%); }
+.au-externo h3 { margin: 12px 0 4px; font-size: 22px; }
+.au-externo p { margin: 0 0 16px; color: rgba(255,255,255,.65); }
+.au-ico-grande { font-size: 42px; }
+.au-btn-claro { background: #fff; color: #070915; }
+.au-espera { display: inline-flex; gap: 7px; }
+.au-espera i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.5); animation: au-salto 1.2s ease-in-out infinite; }
+.au-espera i:nth-child(2) { animation-delay: .15s; } .au-espera i:nth-child(3) { animation-delay: .3s; }
+@keyframes au-salto { 40% { transform: translateY(-8px); background: #fff; } }
+.au-flotan { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+.au-flota { position: absolute; bottom: 14px; display: grid; justify-items: center; animation: au-sube 3.3s cubic-bezier(.2,.7,.3,1) forwards; }
+.au-flota span { font-size: 34px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.35)); }
+.au-flota small { font-size: 11px; font-weight: 600; color: #fff; background: rgba(7,9,21,.6); padding: 2px 8px; border-radius: 99px; white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+@keyframes au-sube { 0% { transform: translate(0, 20px) scale(.6); opacity: 0; } 12% { opacity: 1; transform: translate(0, 0) scale(1.1); }
+  100% { transform: translate(var(--deriva), -260px) scale(.9); opacity: 0; } }
+
+.au-barra { display: flex; align-items: center; gap: 16px; padding: 10px 12px; flex-wrap: wrap; }
+.au-reac { display: flex; gap: 6px; }
+.au-reac button { width: 48px; height: 48px; border-radius: 14px; font-size: 24px; background: var(--surface-2); border: 1px solid var(--line); transition: transform .12s, background .12s; }
+.au-reac button:hover { transform: translateY(-2px) scale(1.06); background: var(--accent-bg); }
+.au-reac button:active { transform: scale(.92); }
+.au-desc { margin: 0; flex: 1; min-width: 200px; font-size: 14px; color: var(--ink-2); }
+
+.au-sala { padding: 18px 20px 12px; }
+.au-sala h3 { margin: 0; font-size: 16px; }
+.au-sala .muted { margin: 2px 0 0; font-size: 12.5px; }
+.au-sala-svg svg { width: 100%; height: auto; max-height: 380px; display: block; margin-top: 8px; fill: initial; stroke: none; }
+.au-sala .tablado { stroke: var(--muted); opacity: .5; stroke-width: 10; stroke-linecap: round; }
+.au-sala .tablado-txt { font-size: 30px; letter-spacing: .2em; fill: var(--muted); font-weight: 700; }
+.au-sala .fondo circle { fill: var(--line); }
+.au-sala .luz circle { fill: #f5a623; }
+.au-sala .luz .halo { fill: #f5a623; opacity: .18; }
+.au-sala .luz .anillo { fill: none; stroke: #f5a623; stroke-width: 4; opacity: .8; }
+.au-sala .luz .yo circle:not(.halo):not(.anillo) { fill: var(--orange); }
+
+.au-lado { position: sticky; top: calc(var(--top) + 16px); display: flex; flex-direction: column; height: min(760px, calc(100vh / var(--zoom) - var(--top) - 40px)); padding: 0; overflow: hidden; }
+.au-manos { padding: 14px 18px 12px; border-bottom: 1px solid var(--line); }
+.au-sec-cab { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.au-cuenta { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: #f5a623; color: #241500; font-size: 11px; display: inline-grid; place-items: center; }
+.au-manos-lista { display: flex; flex-wrap: wrap; gap: 6px; }
+.au-manos-lista span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px 4px 4px; border-radius: 99px; background: var(--surface-2); color: var(--ink-2); max-width: 100%; }
+.au-manos-lista b { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); font-size: 11px; color: var(--muted); flex: none; }
+.au-manos-lista span.yo { background: var(--accent-bg); color: var(--accent); font-weight: 700; }
+.au-chico { margin: 0; font-size: 12.5px; }
+.au-chat { flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; }
+.au-chat-vacio { margin: auto 0; text-align: center; font-size: 13px; padding: 0 10px; }
+.au-msg { display: flex; gap: 10px; min-width: 0; }
+.au-msg > div { min-width: 0; }
+.au-msg-cab { display: flex; align-items: baseline; gap: 6px; font-size: 13px; }
+.au-msg-cab span { font-size: 11.5px; color: var(--muted); }
+.au-msg p { margin: 2px 0 0; font-size: 14px; color: var(--ink-2); overflow-wrap: anywhere; }
+.au-msg.mia .au-msg-cab b { color: var(--orange); }
+.au-compo { padding: 12px 14px 14px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
+.au-compo-fila { display: flex; gap: 8px; align-items: flex-start; }
+.au-compo textarea { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 14px; resize: none; height: 46px; }
+.au-compo textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface); }
+.au-compo textarea:disabled { opacity: .7; }
+.au-compo .btn { flex: none; height: 46px; }
+.au-lado .db-cerrado { border-top: 1px solid var(--line); }
+
+@media (max-width: 1080px) {
+  .au-wrap { grid-template-columns: 1fr; }
+  .au-col { display: contents; }
+  .au-escenario { order: 1; } .au-barra { order: 2; } .au-lado { order: 3; position: static; height: 460px; } .au-sala { order: 4; }
+}
+@media (max-width: 640px) {
+  .au-escenario { border-radius: 14px; }
+  .au-reac { width: 100%; justify-content: space-between; }
+  .au-reac button { width: 44px; height: 44px; font-size: 21px; }
+  .au-envivo { margin-left: 6px; }
+}
