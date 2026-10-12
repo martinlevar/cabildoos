@@ -151,7 +151,8 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .hero-play { display: grid; justify-items: center; gap: 6px; font-size: 12px; opacity: .9; }
 .hero-play svg { width: 46px; height: 46px; padding: 11px; border-radius: 50%; border: 2px solid #fff; fill: #fff; stroke: none; }
 
-.home-grid { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 20px; }
+.home-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); grid-template-rows: auto 1fr; gap: 20px; align-items: start; }
+.home-grid > .quick { align-self: start; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
 .card-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 6px; }
 .card-head h2 { font-size: 16px; margin: 0; }
@@ -173,7 +174,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .pill-live i { width: 9px; height: 9px; border-radius: 50%; background: var(--red); animation: pulse 1.6s infinite; }
 .pill-live svg { width: 16px; height: 16px; }
 @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
-.hemi-wrap { position: relative; flex: 1; width: 100%; aspect-ratio: 16 / 9; min-height: 380px; max-height: 600px; }
+.hemi-wrap { position: relative; flex: 1; width: 100%; aspect-ratio: 16 / 9; min-height: 300px; max-height: 430px; }
 #hemi { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
 .hemi-label { transition: opacity .25s; }
 .my-seat-tip { z-index: 2; }
@@ -227,6 +228,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .q-head small { color: var(--muted); font-size: 12px; }
 .q-text { margin: 0 0 14px; font-weight: 600; font-size: 14px; line-height: 1.4; }
 .q-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.q-actions .btn { min-width: 0; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 16px;
   border-radius: 10px; font-weight: 600; font-size: 14px; transition: transform .1s, opacity .15s;
@@ -1520,3 +1522,20 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 .muro .card-head h2, .muro .card-head .link-more { white-space: nowrap; }
 .muro .card-head { gap: 6px; }
+
+/* Inicio: propuestas en carrera */
+.ip-n { color: var(--muted); font-weight: 600; }
+.ip-list { list-style: none; margin: 0; padding: 2px 10px 10px; display: grid; }
+.ip-list li { border-top: 1px solid var(--line); }
+.ip-list li:first-child { border-top: 0; }
+.ip-list a { display: grid; gap: 7px; padding: 11px 8px; border-radius: 12px; }
+.ip-list a:hover { background: var(--surface-2); }
+.ip-list p { margin: 0; font-size: 13.5px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ip-barra { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.ip-barra i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #f5c518, #f59e0b); }
+.ip-datos { display: flex; gap: 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ip-datos b { color: var(--ink); }
+.ip-datos span:last-child { margin-left: auto; }
+.ip-datos .urge { color: var(--red); font-weight: 700; }
+.ip-vacio, .ip-list li.muted { padding: 12px 8px; font-size: 13px; color: var(--muted); }
+.ip-vacio a { color: var(--accent); font-weight: 600; }

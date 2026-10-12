@@ -721,6 +721,29 @@ async function cargarMuro() {
   } catch (e) { console.warn('cargarMuro:', e); ul.innerHTML = '<li class="muted">No se pudo cargar el Muro.</li>' }
 }
 
+// ── Propuestas en carrera (Inicio) ──
+async function cargarPropInicio() {
+  const ul = $('#ip-list'); if (!ul) return
+  try {
+    const { data, error } = await sb.rpc('v2_propuestas')
+    if (error) throw error
+    const ahora = new Date(data.ahora).getTime(), desf = ahora - Date.now(), meta = data.meta || 20
+    const vivas = (data.propuestas || []).filter(p => p.status === 'pending' && new Date(p.expires_at).getTime() > ahora)
+      .sort((a, b) => (meta - a.likes) - (meta - b.likes) || new Date(a.expires_at) - new Date(b.expires_at))
+    $('#ip-n').textContent = vivas.length ? `· ${vivas.length}` : ''
+    if (!vivas.length) { ul.innerHTML = '<li class="ip-vacio">No hay propuestas en carrera. <a href="#propuestas">Lanzá la tuya →</a></li>'; return }
+    ul.innerHTML = vivas.slice(0, 3).map(p => {
+      const falta = Math.max(0, meta - p.likes), resta = new Date(p.expires_at).getTime() - (Date.now() + desf)
+      const h = Math.floor(resta / 3600e3), m = Math.floor(resta % 3600e3 / 60e3)
+      return `<li><a href="#propuestas/${p.id}">
+        <p>${esc(p.text)}</p>
+        <div class="ip-barra"><i style="width:${Math.min(100, p.likes / meta * 100)}%"></i></div>
+        <div class="ip-datos"><b>${p.likes}/${meta}</b><span>${falta ? `faltan ${falta}` : '¡meta!'}</span><span class="${resta < 6 * 3600e3 ? 'urge' : ''}">⏳ ${h > 0 ? `${h} h ` : ''}${m} min</span></div>
+      </a></li>`
+    }).join('')
+  } catch (e) { console.warn('cargarPropInicio:', e); ul.innerHTML = '<li class="muted">No se pudieron cargar las propuestas.</li>' }
+}
+
 // ── Bloques ─────────────────────────────────────────────────────
 async function cargarBloques() {
   try {
@@ -3628,9 +3651,10 @@ async function iniciar() {
   })
   if (vistaActual() === 'propuestas' && pr.d) refrescarPropuestas()
   if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
-  await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques()])
+  await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques(), cargarPropInicio()])
   if (vistaActual() === 'butaca') cargarMiButaca()
   if (vistaActual() === 'propuestas' && pr.d) pintarPropuestas()   // ya con alias públicos cargados
-  setInterval(cargarVotacion, 60_000)   // refresca votos y estado de la sesión
+  setInterval(cargarVotacion, 60_000)
+  setInterval(() => { if (vistaActual() === 'inicio') { cargarPropInicio(); cargarMuro() } }, 90_000)   // refresca votos y estado de la sesión
 }
 iniciar()
