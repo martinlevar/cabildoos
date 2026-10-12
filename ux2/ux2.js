@@ -2840,8 +2840,11 @@ async function ndJugar() {
   ndMostrar(data.question, Number(data.question?.level) || 1)
 }
 
+// Imágenes válidas: https o SVG embebido (las ilustraciones de las preguntas van guardadas en la propia pregunta)
+const ndImgOk = u => /^https:\/\//.test(u || '') || /^data:image\/svg\+xml[;,]/.test(u || '')
+
 function precargar(q) {
-  const urls = [q.visual_asset_url, q.visual_asset_a_url, q.visual_asset_b_url].filter(u => /^https:\/\//.test(u || ''))
+  const urls = [q.visual_asset_url, q.visual_asset_a_url, q.visual_asset_b_url].filter(ndImgOk)
   if (!urls.length) return Promise.resolve()
   return Promise.race([Promise.all(urls.map(u => new Promise(res => { const i = new Image(); i.onload = i.onerror = res; i.src = u }))), new Promise(r => setTimeout(r, 1500))])
 }
@@ -2852,7 +2855,7 @@ async function ndMostrar(q, nivel) {
   if (!nd.abierto || !nd.intento) return
   nd.q = q; nd.nivel = nivel; nd.respondiendo = false
   ndCabecera(nivel)
-  const segura = u => /^https:\/\//.test(u || '') ? esc(u) : ''
+  const segura = u => ndImgOk(u) ? esc(u) : ''
   let visual = ''
   if (q.visual_asset_a_url && q.visual_asset_b_url && segura(q.visual_asset_a_url))
     visual = `<div class="nd-visual dos"><figure><span>A</span><img src="${segura(q.visual_asset_a_url)}" alt="${esc(q.visual_alt || 'Imagen A')}"></figure><figure><span>B</span><img src="${segura(q.visual_asset_b_url)}" alt="${esc(q.visual_alt || 'Imagen B')}"></figure></div>`
