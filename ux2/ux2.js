@@ -2235,7 +2235,7 @@ function pintarParticipacion() {
 async function cargarTendencias() {
   const vacio = $('#cloud-empty-msg'), canvas = $('#cloud-canvas')
   if (!vacio) return
-  if (!est.nube) { vacio.textContent = 'Analizando con IA…'; vacio.style.display = ''; canvas.style.display = 'none' }
+  if (!est.nube) { vacio.textContent = 'Analizando conversaciones…'; vacio.style.display = ''; canvas.style.display = 'none' }
   try {
     const r = await fetch(`${TEND_URL()}?horas=${est.horas}`, { headers: { apikey: window.__ENV.SUPABASE_KEY } })
     const data = await r.json()
@@ -2292,7 +2292,7 @@ function renderWordCloud(entities, hours, total, generado, aviso) {
   }))
   drawCloud(null)
   const hora = generado ? new Date(generado).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''
-  meta.textContent = `${label} · ${fmtNum(total)} mensajes · analizado ${hora}${aviso ? ' · Gemini saturado, mostrando el último análisis' : ''}`
+  meta.textContent = `${label} · ${fmtNum(total)} mensajes · analizado ${hora}${aviso ? ' · mostrando el último análisis disponible' : ''}`
 }
 
 function enlazarEstadisticas() {
