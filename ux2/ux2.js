@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -56,6 +56,7 @@ function ruta() {
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
   if (valida === 'votaciones') cargarVotaciones()
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
+  if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'ciudadanos') cargarCiudadanos(arg)
   else if ($('#modal-ciu') && !$('#modal-ciu').hidden) cerrarPerfil()
   if (valida === 'propuestas') { if (!pr.d) cargarPropuestas(arg); else { refrescarPropuestas(); if (arg) abrirPropuesta(arg) } }
@@ -88,6 +89,7 @@ function alternarTema() {
   document.documentElement.dataset.theme = nuevo
   try { localStorage.setItem('ux2_tema', nuevo) } catch (e) {}
   dibujarHemiciclo()
+  if (est.nube && vistaActual() === 'estadisticas') renderWordCloud(est.nube.entities || [], est.nube.horas || est.horas, est.nube.total || 0, est.nube.generado_at, est.nube.error)
 }
 
 // ── Aviso breve ─────────────────────────────────────────────────
@@ -549,7 +551,7 @@ function resultadosDe(q) {
   const r = vResultados.get(q.id)
   const total = Number(r?.total || 0)
   if (!total) return '<p class="muted">Sin votos registrados.</p>'
-  const filas = [['si', '#16a34a'], ['no', '#e11d48'], ['abs', '#64748b']].map(([k, c]) => {
+  const filas = [['si', 'var(--voto-si)'], ['no', 'var(--voto-no)'], ['abs', 'var(--voto-abs)']].map(([k, c]) => {
     const n = Number(r['cnt_' + k] || 0), pct = Math.round(n / total * 100)
     return `<div class="res-row"><b>${OPC[k][0]}</b><div class="res-bar"><i style="width:${pct}%;background:${c}"></i></div><span>${pct}% · ${fmtNum(n)}</span></div>`
   }).join('')
@@ -2182,6 +2184,141 @@ function enlazarCrearBloque() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.hidden && $('#modal-conf').hidden) cerrarCrearBloque() })
 }
 
+// ── Estadísticas ────────────────────────────────────────────────
+// Números públicos del Cabildo + la nube de tendencias de stats (Gemini), con caché compartida en el servidor.
+const est = { d: null, horas: 1, nube: null, cargando: false }
+const TEND_URL = () => `${window.__ENV.SUPABASE_URL}/functions/v1/v2-tendencias`
+
+async function cargarEstadisticas() {
+  try { const { data, error } = await sb.rpc('v2_estadisticas'); if (error) throw error; est.d = data } catch (e) { console.warn('v2_estadisticas:', e) }
+  pintarEstadisticas()
+  cargarTendencias()
+}
+
+function pintarEstadisticas() {
+  const d = est.d; if (!d || !$('#es-kpis')) return
+  const ult = (d.butacas_por_dia || []).reduce((a, x) => a + Number(x.n || 0), 0)
+  const k = (n, t, s = '') => `<div class="card es-kpi"><b>${fmtNum(n)}</b><span>${t}</span>${s ? `<small>${s}</small>` : ''}</div>`
+  $('#es-kpis').innerHTML =
+    k(d.butacas, 'butacas ocupadas', ult ? `+${fmtNum(ult)} en 14 días` : '') +
+    k(d.votos, 'votos emitidos', `en ${fmtNum(d.votaciones_cerradas)} votaciones cerradas`) +
+    k(d.propuestas?.lanzadas, 'propuestas lanzadas', `${fmtNum(d.propuestas?.en_hemiciclo)} llegaron al Hemiciclo`) +
+    k(d.propuestas?.apoyos, 'butacas encendidas', 'apoyos a propuestas') +
+    k(d.debate, 'mensajes en debates') +
+    k(d.muro, 'publicaciones en el Muro')
+  pintarCrecimiento(); pintarParticipacion()
+}
+
+// Barras: nuevas butacas por día (una sola serie → sin leyenda, el título la nombra)
+function pintarCrecimiento() {
+  const dias = est.d?.butacas_por_dia || [], box = $('#es-crec'); if (!box) return
+  const max = Math.max(1, ...dias.map(x => Number(x.n || 0)))
+  const fmtD = f => new Date(f + 'T12:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })
+  box.innerHTML = `<div class="es-barras" role="img" aria-label="Nuevas butacas por día, últimos 14 días">
+    ${dias.map((x, i) => `<div class="es-col" tabindex="0" data-tip="${fmtD(x.fecha)}: ${fmtNum(x.n)} ${Number(x.n) === 1 ? 'butaca nueva' : 'butacas nuevas'}">
+      <span class="es-bar ${i === dias.length - 1 ? 'hoy' : ''}" style="height:${Math.max(2, Number(x.n) / max * 100)}%"></span></div>`).join('')}
+  </div>
+  <div class="es-eje"><span>${dias[0] ? fmtD(dias[0].fecha) : ''}</span><span>Hoy</span></div>
+  <table class="sr-only"><caption>Nuevas butacas por día</caption>${dias.map(x => `<tr><td>${x.fecha}</td><td>${x.n}</td></tr>`).join('')}</table>`
+}
+
+// Barras apiladas Sí / No / Abstención por votación (azul/naranja validados para daltonismo + etiquetas directas)
+function pintarParticipacion() {
+  const lista = est.d?.participacion || [], box = $('#es-part'); if (!box) return
+  if (!lista.length) { box.innerHTML = '<p class="muted">Todavía no hay votaciones cerradas.</p>'; return }
+  const maxT = Math.max(...lista.map(v => Number(v.total || 0)), 1)
+  box.innerHTML = lista.map(v => {
+    const t = Number(v.total || 0) || 1, p = n => Math.round(Number(n || 0) / t * 100)
+    const seg = (k, n, et) => n > 0 ? `<i class="es-seg ${k}" style="flex:${n}" data-tip="${et}: ${fmtNum(n)} (${p(n)}%)"></i>` : ''
+    return `<div class="es-v">
+      <div class="es-v-top"><span class="es-v-txt" title="${esc(v.texto)}">${esc(v.texto)}</span><small>${fmtNum(v.total)} votos</small></div>
+      <div class="es-pila" style="width:${Math.max(18, Number(v.total) / maxT * 100)}%">${seg('si', v.si, 'Sí')}${seg('no', v.no, 'No')}${seg('abs', v.abs, 'Abstención')}</div>
+      <div class="es-v-et"><span><i class="es-dot si"></i>Sí ${p(v.si)}%</span><span><i class="es-dot no"></i>No ${p(v.no)}%</span>${Number(v.abs) ? `<span><i class="es-dot abs"></i>Abst. ${p(v.abs)}%</span>` : ''}</div>
+    </div>`
+  }).join('')
+}
+
+// ── Nube de tendencias (port de stats.cabildodevenezuela.com) ──
+async function cargarTendencias() {
+  const vacio = $('#cloud-empty-msg'), canvas = $('#cloud-canvas')
+  if (!vacio) return
+  if (!est.nube) { vacio.textContent = 'Analizando con IA…'; vacio.style.display = ''; canvas.style.display = 'none' }
+  try {
+    const r = await fetch(`${TEND_URL()}?horas=${est.horas}`, { headers: { apikey: window.__ENV.SUPABASE_KEY } })
+    const data = await r.json()
+    if (!r.ok) throw new Error(data.error || 'HTTP ' + r.status)
+    est.nube = data
+    renderWordCloud(data.entities || [], data.horas || est.horas, data.total || 0, data.generado_at, data.error)
+  } catch (e) {
+    console.warn('tendencias:', e)
+    $('#cloud-tabs')?.remove(); $('#cloud-legend').style.display = 'none'
+    vacio.textContent = 'No se pudo cargar el análisis. Probá de nuevo en unos minutos.'; vacio.style.display = ''; canvas.style.display = 'none'
+  }
+}
+
+function renderWordCloud(entities, hours, total, generado, aviso) {
+  const wrap = $('#cloud-wrap'), meta = $('#cloud-meta'), emptyMsg = $('#cloud-empty-msg'), canvas = $('#cloud-canvas'), legend = $('#cloud-legend')
+  const label = hours === 1 ? 'última hora' : 'últimas ' + hours + ' horas'
+  $('#cloud-tabs')?.remove()
+  if (!entities || !entities.length) {
+    emptyMsg.textContent = aviso && !generado ? 'El análisis todavía no está disponible.' : 'Sin actividad suficiente en la ' + label
+    emptyMsg.style.display = ''; canvas.style.display = 'none'; legend.style.display = 'none'
+    meta.textContent = total ? `${fmtNum(total)} mensajes en la ${label}` : 'Sin mensajes en la ' + label
+    return
+  }
+  emptyMsg.style.display = 'none'; canvas.style.display = 'block'; legend.style.display = 'flex'
+  const isDark = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)
+  const sentimentColor = isDark ? { neg: '#E74C3C', pos: '#2ECC71', neu: '#A0B8D8' } : { neg: '#C0392B', pos: '#1A7A4A', neu: '#4A6FA5' }
+
+  const tabs = document.createElement('div'); tabs.id = 'cloud-tabs'; tabs.className = 'cloud-tabs'
+  tabs.innerHTML = `<button class="cloud-tab active">Todos</button>` + entities.map(e =>
+    `<button class="cloud-tab cloud-tab-${['neg', 'pos', 'neu'].includes(e.sentiment) ? e.sentiment : 'neu'}" data-entity="${esc(e.name)}" title="${esc(e.name)} · ${fmtNum(e.mentions)} menciones">${esc(e.name.split(' ').slice(0, 2).join(' '))}</button>`).join('')
+  wrap.insertBefore(tabs, emptyMsg)
+
+  function drawCloud(filtro) {
+    const entradas = []
+    ;(filtro ? entities.filter(e => e.name === filtro) : entities).forEach(e => {
+      const color = sentimentColor[e.sentiment] || sentimentColor.neu
+      ;(e.words || []).forEach((w, i) => entradas.push({ word: w, weight: Math.max(2, (e.words.length - i) + 4), color }))
+    })
+    if (!entradas.length || typeof WordCloud !== 'function') return
+    const W = wrap.offsetWidth || 600, Hh = Math.max(200, Math.round(W * 0.42))
+    canvas.width = W; canvas.height = Hh
+    const colorMap = {}; entradas.forEach(e => { colorMap[e.word] = e.color })
+    const escala = Math.max(8, W / 50)
+    WordCloud(canvas, {
+      list: entradas.map(e => [e.word, e.weight]),
+      weightFactor: s => Math.max(12, s * escala),
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif', fontWeight: 'bold',
+      color: w => colorMap[w] || sentimentColor.neu, rotateRatio: 0.1, backgroundColor: 'transparent',
+      gridSize: Math.round(W / 55), drawOutOfBound: false, shrinkToFit: true, minSize: 10, wait: 0,
+    })
+  }
+  tabs.querySelectorAll('.cloud-tab').forEach(b => b.addEventListener('click', () => {
+    tabs.querySelectorAll('.cloud-tab').forEach(x => x.classList.remove('active')); b.classList.add('active'); drawCloud(b.dataset.entity || null)
+  }))
+  drawCloud(null)
+  const hora = generado ? new Date(generado).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''
+  meta.textContent = `${label} · ${fmtNum(total)} mensajes · analizado ${hora}${aviso ? ' · Gemini saturado, mostrando el último análisis' : ''}`
+}
+
+function enlazarEstadisticas() {
+  const v = $('#es-vista'); if (!v) return
+  $('#es-ver-res').addEventListener('click', () => { vFiltro = 'cerradas'; $$('[data-vfiltro]').forEach(x => x.classList.toggle('active', x.dataset.vfiltro === 'cerradas')) })
+  $$('[data-horas]').forEach(b => b.addEventListener('click', () => {
+    est.horas = Number(b.dataset.horas); est.nube = null
+    $$('[data-horas]').forEach(x => x.classList.toggle('active', x === b)); cargarTendencias()
+  }))
+  // Tooltip compartido para barras
+  const tip = $('#es-tip')
+  v.addEventListener('pointerover', e => { const t = e.target.closest('[data-tip]'); if (!t) return; tip.textContent = t.dataset.tip; tip.hidden = false })
+  v.addEventListener('pointermove', e => { if (!tip.hidden) { tip.style.left = e.clientX / (parseFloat(getComputedStyle(document.body).zoom) || 1) + 12 + 'px'; tip.style.top = e.clientY / (parseFloat(getComputedStyle(document.body).zoom) || 1) + 12 + 'px' } })
+  v.addEventListener('pointerout', e => { if (e.target.closest('[data-tip]')) tip.hidden = true })
+  v.addEventListener('focusin', e => { const t = e.target.closest('[data-tip]'); if (!t) return; const r = t.getBoundingClientRect(), z = parseFloat(getComputedStyle(document.body).zoom) || 1; tip.textContent = t.dataset.tip; tip.hidden = false; tip.style.left = r.left / z + 'px'; tip.style.top = r.bottom / z + 6 + 'px' })
+  v.addEventListener('focusout', () => { tip.hidden = true })
+  let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => { if (est.nube && vistaActual() === 'estadisticas') renderWordCloud(est.nube.entities || [], est.nube.horas || est.horas, est.nube.total || 0, est.nube.generado_at, est.nube.error) }, 250) }).observe($('#cloud-wrap'))
+}
+
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
 function plegar(k) {
   const on = $('.app').classList.toggle(k + '-plegado')
@@ -2199,7 +2336,7 @@ function irATab(tab) {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
   await cargarUsuario()
   vigilarSesion()

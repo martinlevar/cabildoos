@@ -211,6 +211,48 @@
       <div class="pr-grid" id="pr-grid"><p class="muted">Cargando…</p></div>
     </section>
 
+    <!-- ESTADÍSTICAS -->
+    <section class="view" data-view="estadisticas" hidden id="es-vista">
+      <header class="view-head">
+        <div><h1>Estadísticas</h1><p>Lo que pasa en el Cabildo, en números. Todo es agregado: nada identifica a ninguna butaca.</p></div>
+      </header>
+      <div class="es-kpis" id="es-kpis"></div>
+
+      <section class="card cloud-card">
+        <div class="cloud-header">
+          <div>
+            <div class="cloud-title">¿De qué se habla en el Cabildo? <span class="es-ia">Gemini</span></div>
+            <div class="cloud-meta" id="cloud-meta">Cargando…</div>
+          </div>
+          <div class="cloud-range">
+            <button class="active" data-horas="1">1h</button><button data-horas="3">3h</button><button data-horas="24">24h</button>
+          </div>
+        </div>
+        <div class="cloud-wrap" id="cloud-wrap">
+          <div class="cloud-empty" id="cloud-empty-msg">Cargando conversaciones…</div>
+          <canvas id="cloud-canvas" style="display:none"></canvas>
+        </div>
+        <div class="cloud-legend" id="cloud-legend" style="display:none">
+          <div class="cloud-legend-item"><span class="cloud-legend-dot" style="background:#C0392B"></span>Crítica / negativo</div>
+          <div class="cloud-legend-item"><span class="cloud-legend-dot" style="background:#1A7A4A"></span>Apoyo / positivo</div>
+          <div class="cloud-legend-item"><span class="cloud-legend-dot" style="background:#4A6FA5"></span>Neutro / descriptivo</div>
+        </div>
+        <p class="cloud-nota">Análisis automático de los mensajes de los debates y el Muro, sin autores. Se actualiza cada 15 minutos.</p>
+      </section>
+
+      <div class="es-dos">
+        <section class="card es-panel">
+          <h3>Nuevas butacas por día</h3><p class="muted">Últimos 14 días</p>
+          <div id="es-crec"></div>
+        </section>
+        <section class="card es-panel">
+          <div class="es-panel-cab"><div><h3>Cómo votó el Cabildo</h3><p class="muted">Últimas votaciones cerradas</p></div><a href="#votaciones" class="es-link" id="es-ver-res">Ver todos los resultados</a></div>
+          <div id="es-part"></div>
+        </section>
+      </div>
+      <div class="es-tip" id="es-tip" hidden role="tooltip"></div>
+    </section>
+
     <!-- CIUDADANOS -->
     <section class="view" data-view="ciudadanos" hidden id="ci-vista">
       <header class="view-head">
@@ -385,6 +427,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="/ux2/ux2.js"></script>
 </body>
