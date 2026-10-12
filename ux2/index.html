@@ -265,6 +265,11 @@
       <div id="pl-cuerpo"><div class="card au-vacio"><p class="muted">Cargando…</p></div></div>
     </section>
 
+    <!-- APRENDÉ -->
+    <section class="view" data-view="aprende" hidden id="ap-vista">
+      <div id="ap-cuerpo"></div>
+    </section>
+
     <!-- CIUDADANOS -->
     <section class="view" data-view="ciudadanos" hidden id="ci-vista">
       <header class="view-head">
@@ -364,6 +369,14 @@
     <div class="nd-nivel-chip" id="nd-nivel-chip"></div>
   </header>
   <main class="nd-escena" id="nd-escena" aria-live="polite"></main>
+</div>
+
+<!-- APRENDÉ: lección -->
+<div class="modal ap-modal" id="modal-leccion" hidden role="dialog" aria-modal="true" aria-labelledby="ap-l-titulo">
+  <div class="modal-box ap-box">
+    <button class="modal-x" data-ap="cerrar" aria-label="Cerrar">✕</button>
+    <div id="ap-leccion"></div>
+  </div>
 </div>
 
 <div class="modal" id="modal-voto" hidden role="dialog" aria-modal="true" aria-labelledby="mv-pregunta">

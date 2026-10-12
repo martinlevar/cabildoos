@@ -34,7 +34,7 @@ const SECCIONES = [
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -58,6 +58,8 @@ function ruta() {
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
   if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
+  if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
+  else if (ap.lec) cerrarLeccion()
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
@@ -3021,8 +3023,398 @@ function enlazarPlayroom() {
   window.addEventListener('pagehide', () => { if (nd.intento) sb.rpc('nerdocrasy_abandon', { p_attempt_id: nd.intento }) })
 }
 
+// ══════════════════════════════════════════════════════════════
+//  APRENDÉ — el Cabildo para principiantes
+//  Lecciones cortas con escenas animadas (SVG + CSS), simuladores para probar sin miedo
+//  y una pregunta al final. El progreso se guarda solo en este navegador.
+// ══════════════════════════════════════════════════════════════
+const AC = { azul: '#3b6fd8', rojo: '#e0483e', oro: '#f2b33d', verde: '#2f9e6b', violeta: '#8a5cd6', teal: '#1fa3a3', gris: '#9aa0b5', piel: '#f0c8a0' }
+const sv = b => `<svg class="ap-svg" viewBox="0 0 640 360" aria-hidden="true">${b}</svg>`
+const dl = d => `style="--d:${d}s"`
+const tx = (x, y, s, size = 18, cls = 'tinta', w = 800, extra = '') => {
+  const anim = /class=/.test(extra), t = `<text x="${x}" y="${y}" class="${cls}" font-size="${size}" font-weight="${w}" text-anchor="middle" ${anim ? '' : extra}>${s}</text>`
+  return anim ? `<g ${extra}>${t}</g>` : t
+}
+
+function aPer(x, y, s = 1, c = AC.azul, extra = '') {
+  return `<g ${extra}><circle cx="${x}" cy="${y - 52 * s}" r="${13 * s}" fill="${AC.piel}" class="borde" stroke-width="${3 * s}"/>
+    <path d="M${x - 18 * s} ${y}v${-24 * s}a${18 * s} ${18 * s} 0 0 1 ${36 * s} 0v${24 * s}z" fill="${c}" class="borde" stroke-width="${3 * s}"/></g>`
+}
+function aUrna(x, y, s = 1, extra = '') {
+  const w = 130 * s, h = 100 * s
+  return `<g ${extra}><rect x="${x - w / 2}" y="${y - h}" width="${w}" height="${h}" rx="${9 * s}" class="papel borde" stroke-width="${4 * s}"/>
+    <rect x="${x - w / 2 - 6 * s}" y="${y - h - 12 * s}" width="${w + 12 * s}" height="${16 * s}" rx="${5 * s}" fill="${AC.azul}" class="borde" stroke-width="${4 * s}"/>
+    <rect x="${x - 30 * s}" y="${y - h - 7 * s}" width="${60 * s}" height="${6 * s}" rx="3" class="relleno-tinta"/>
+    ${tx(x, y - h / 2 + 8 * s, 'VOTO', 20 * s, 'azul', 900, `letter-spacing="${3 * s}"`)}</g>`
+}
+const aPapel = (x, y, s = 1, extra = '') => `<g ${extra}><rect x="${x - 22 * s}" y="${y - 30 * s}" width="${44 * s}" height="${58 * s}" rx="${4 * s}" class="papel borde" stroke-width="${3 * s}"/><path d="M${x - 10 * s} ${y - 4 * s}l${8 * s} ${9 * s}l${14 * s} ${-18 * s}" fill="none" stroke="${AC.azul}" stroke-width="${5 * s}" stroke-linecap="round" stroke-linejoin="round"/></g>`
+function aHemi(cx, cy, { filas = 4, r0 = 70, paso = 24, prendidas = 0.55, yo = 37, rad = 6.5 } = {}) {
+  let i = 0, out = ''
+  for (let f = 0; f < filas; f++) {
+    const r = r0 + f * paso, n = Math.floor(Math.PI * r / (rad * 3.2))
+    for (let k = 0; k < n; k++) {
+      const a = Math.PI * (k + .5) / n, x = cx - r * Math.cos(a), y = cy - r * Math.sin(a)
+      const h = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1
+      const cls = i === yo ? 'seat yo' : h < prendidas ? 'seat on' : 'seat'
+      out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad}" class="${cls}" ${cls !== 'seat' ? dl((h * 2.4).toFixed(2)) : ''}/>`
+      i++
+    }
+  }
+  return out
+}
+const aChip = (x, y, t, c = AC.azul, extra = '') => `<g ${extra}><rect x="${x - t.length * 5.4 - 14}" y="${y - 17}" width="${t.length * 10.8 + 28}" height="30" rx="15" fill="${c}"/>${tx(x, y + 4, t, 15, 'blanco', 800)}</g>`
+const aCaja = (x, y, w, h, extra = '') => `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="14" class="papel borde" stroke-width="3" ${extra}/>`
+const aFlecha = (x1, y1, x2, y2, extra = '') => `<g class="flecha" ${extra}><path d="M${x1} ${y1}L${x2} ${y2}"/><path d="M${x2} ${y2}l${-12 * Math.cos(Math.atan2(y2 - y1, x2 - x1) - .5)} ${-12 * Math.sin(Math.atan2(y2 - y1, x2 - x1) - .5)}M${x2} ${y2}l${-12 * Math.cos(Math.atan2(y2 - y1, x2 - x1) + .5)} ${-12 * Math.sin(Math.atan2(y2 - y1, x2 - x1) + .5)}"/></g>`
+const aTacha = (x, y, s = 1, extra = '') => `<path d="M${x - 16 * s} ${y - 16 * s}L${x + 16 * s} ${y + 16 * s}M${x + 16 * s} ${y - 16 * s}L${x - 16 * s} ${y + 16 * s}" stroke="${AC.rojo}" stroke-width="${7 * s}" stroke-linecap="round" class="a-pop" ${extra}/>`
+const aBurbuja = (x, y, w, t, mia = false, extra = '') => `<g ${extra}><rect x="${x}" y="${y}" width="${w}" height="40" rx="14" ${mia ? `fill="${AC.azul}"` : 'class="papel borde" stroke-width="2.5"'}/>${tx(x + w / 2, y + 26, t, 14, mia ? 'blanco' : 'tinta', 600)}</g>`
+const aCheck = (x, y, s = 1, extra = '') => `<g ${extra}><circle cx="${x}" cy="${y}" r="${16 * s}" fill="${AC.verde}"/><path d="M${x - 7 * s} ${y}l${5 * s} ${6 * s}l${10 * s} ${-12 * s}" fill="none" stroke="#fff" stroke-width="${4 * s}" stroke-linecap="round" stroke-linejoin="round"/></g>`
+
+const ESCENAS = {
+  hemiciclo: () => sv(`${aHemi(320, 300, { filas: 6, r0: 90, paso: 30 })}
+    <g class="a-pop" ${dl(1.2)}><rect x="252" y="306" width="136" height="34" rx="17" fill="${AC.oro}"/>${tx(320, 329, 'Tu butaca', 16, 'tinta', 900)}</g>`),
+  ciclo: () => sv(`<circle cx="320" cy="180" r="118" class="giro-pista a-girar"/>
+    ${[[320, 62, '💡', 'Proponés', 0], [430, 245, '💬', 'Debatís', .3], [210, 245, '🗳️', 'Votás', .6]].map(([x, y, e, t, d]) =>
+      `<g class="a-pop" ${dl(d)}><circle cx="${x}" cy="${y}" r="50" class="papel borde" stroke-width="3"/><text x="${x}" y="${y + 12}" font-size="36" text-anchor="middle">${e}</text>${tx(x, y + 78, t, 18)}</g>`).join('')}`),
+  uno: () => sv(`${aPer(110, 230, 1.6, AC.teal, `class="a-pop" ${dl(0)}`)}${tx(215, 200, '=', 54, 'tenue', 900, `class="a-pop" ${dl(.4)}`)}
+    <g class="a-pop" ${dl(.7)}><rect x="262" y="130" width="96" height="110" rx="16" fill="${AC.oro}" class="borde" stroke-width="4"/>${tx(310, 196, '#250', 26, 'tinta', 900)}</g>
+    ${tx(405, 200, '=', 54, 'tenue', 900, `class="a-pop" ${dl(1.1)}`)}${aPapel(500, 200, 1.8, `class="a-pop" ${dl(1.4)}`)}
+    ${tx(110, 290, '1 persona', 18, 'tinta', 800, `class="a-fade" ${dl(.2)}`)}${tx(310, 290, '1 butaca', 18, 'tinta', 800, `class="a-fade" ${dl(.9)}`)}${tx(500, 290, '1 voto', 18, 'tinta', 800, `class="a-fade" ${dl(1.6)}`)}`),
+  verif: () => sv(`<g class="a-pop"><rect x="60" y="110" width="150" height="96" rx="12" class="papel borde" stroke-width="3"/><circle cx="100" cy="150" r="20" fill="${AC.gris}"/><rect x="132" y="138" width="60" height="9" rx="4" class="suave"/><rect x="132" y="156" width="44" height="9" rx="4" class="suave"/>${tx(135, 232, 'Documento', 15, 'tenue', 700)}</g>
+    <g class="a-pop" ${dl(.3)}><rect x="236" y="96" width="70" height="124" rx="14" class="papel borde" stroke-width="3"/>${aPer(271, 196, .9, AC.teal)}${tx(271, 246, 'Selfie', 15, 'tenue', 700)}</g>
+    ${aFlecha(320, 160, 380, 160, `class="a-fade" ${dl(.8)}`)}
+    <g class="a-pop" ${dl(1.1)}><path d="M450 90l60 22v50c0 40-28 66-60 78c-32-12-60-38-60-78v-50z" fill="${AC.verde}" class="borde" stroke-width="3"/><path d="M428 160l16 17l30-34" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></g>
+    <g class="a-pop" ${dl(1.7)}><rect x="530" y="122" width="84" height="76" rx="14" fill="${AC.oro}" class="borde" stroke-width="3"/>${tx(572, 168, '#250', 22, 'tinta', 900)}</g>
+    ${tx(320, 312, 'Lo hacés una sola vez', 18, 'tinta', 800, `class="a-fade" ${dl(2.1)}`)}`),
+  anonimo: () => sv(`<g class="a-pop"><ellipse cx="320" cy="96" rx="110" ry="26" class="papel borde" stroke-width="3"/><path d="M210 96v150c0 14 49 26 110 26s110-12 110-26V96" class="papel borde" stroke-width="3"/>
+      ${tx(320, 170, 'Butaca #250', 22, 'tinta', 900)}${tx(320, 205, 'código •••••', 18, 'tenue', 700)}</g>
+    ${['Nombre', 'N° de documento', 'Fotos'].map((t, i) => `<g class="a-salir" ${dl(.8 + i * .5)}>${aChip(i === 1 ? 528 : 108, 120 + i * 70, t, AC.rojo)}</g>${aTacha(i === 1 ? 528 : 108, 117 + i * 70, 1.1, dl(1.3 + i * .5))}`).join('')}
+    ${tx(320, 330, 'No se guardan', 18, 'rojo', 800, `class="a-fade" ${dl(2.6)}`)}`),
+  mostrar: () => sv(`<g class="a-pop"><rect x="200" y="70" width="240" height="220" rx="22" class="papel borde" stroke-width="3"/><circle cx="320" cy="140" r="38" fill="${AC.violeta}"/>${tx(320, 153, 'A', 36, 'blanco', 900)}
+    <g class="alt-a">${tx(320, 220, 'Ayn Rand', 26, 'tinta', 900)}</g><g class="alt-b">${tx(320, 220, 'Butaca #250', 24, 'tinta', 900)}</g><g class="alt-a">${tx(320, 258, '“Ideas hoy, libertad mañana”', 14, 'tenue', 600)}</g></g>
+    <g class="a-fade" ${dl(.6)}><rect x="470" y="150" width="70" height="38" rx="19" class="interruptor"/><circle cx="489" cy="169" r="14" fill="#fff" class="perilla"/>${tx(505, 218, 'mostrar alias', 13, 'tenue', 700)}</g>`),
+  vlista: () => sv(`<g class="a-pop"><rect x="120" y="70" width="400" height="220" rx="20" class="papel borde" stroke-width="3"/>
+    <rect x="146" y="96" width="92" height="26" rx="13" fill="${AC.azul}" opacity=".15"/>${tx(192, 114, 'POLÍTICA', 12, 'azul', 900)}
+    <circle cx="480" cy="110" r="7" fill="${AC.rojo}" class="a-latir"/>${tx(440, 115, 'En vivo', 13, 'rojo', 800)}
+    <rect x="146" y="140" width="330" height="16" rx="8" class="suave"/><rect x="146" y="166" width="250" height="16" rx="8" class="suave"/>
+    <circle cx="186" cy="240" r="24" fill="none" class="pista-reloj"/><circle cx="186" cy="240" r="24" fill="none" stroke="${AC.oro}" stroke-width="6" stroke-linecap="round" class="a-reloj" transform="rotate(-90 186 240)"/>
+    ${tx(268, 246, 'Cierra en 3 h', 16, 'tinta', 800)}<rect x="360" y="222" width="130" height="40" rx="12" fill="${AC.azul}"/>${tx(425, 248, 'Votar', 16, 'blanco', 900)}</g>`),
+  velegir: () => sv(`${tx(320, 70, '¿Debe el Cabildo exigir una auditoría?', 20, 'tinta', 800, 'class="a-fade"')}
+    ${[['Sí', AC.verde, 160], ['No', AC.rojo, 320], ['Abstención', AC.gris, 480]].map(([t, c, x], i) => `<g class="a-pop ${i === 0 ? 'elegida' : ''}" ${dl(.2 + i * .15)}><rect x="${x - 70}" y="120" width="140" height="110" rx="20" class="papel borde opcion" stroke-width="3"/><circle cx="${x}" cy="160" r="20" fill="${c}"/>${tx(x, 210, t, 18)}</g>`).join('')}
+    <g class="a-tocar"><path d="M168 300c-6-22-2-44 6-60c4-8 14-6 14 2l-2 30l18-6c10-3 18 4 16 14l-6 30c-2 10-10 16-20 16h-14c-6 0-10-4-12-8z" fill="${AC.piel}" class="borde" stroke-width="3"/></g>`),
+  vuno: () => sv(`${aUrna(320, 300, 1.3)}<g class="a-volar">${aPapel(320, 80, 1.2)}</g>
+    <g class="a-rebote">${aPapel(470, 120, 1, '')}</g><g class="a-pop" ${dl(2.3)}>${aChip(500, 70, 'Ya votaste', AC.rojo)}</g>
+    ${tx(140, 160, '1 voto', 26, 'tinta', 900, `class="a-pop" ${dl(.4)}`)}${tx(140, 192, 'por butaca', 18, 'tenue', 700, `class="a-pop" ${dl(.5)}`)}`),
+  surna: () => sv(`${aUrna(320, 170, 1.05, 'class="a-pop"')}
+    ${aFlecha(270, 190, 170, 240, `class="a-fade" ${dl(.6)}`)}${aFlecha(370, 190, 470, 240, `class="a-fade" ${dl(.6)}`)}
+    <g class="a-pop" ${dl(.9)}>${aCaja(130, 290, 220, 86)}${tx(130, 276, 'PARTICIPÓ', 13, 'tenue', 900, 'letter-spacing="2"')}${tx(130, 306, 'Butaca #250 ✓', 19, 'tinta', 900)}</g>
+    <g class="a-pop" ${dl(1.2)}>${aCaja(510, 290, 220, 86)}${tx(510, 276, 'CONTADOR', 13, 'tenue', 900, 'letter-spacing="2"')}${tx(510, 306, 'Sí 1.206 · No 412', 19, 'tinta', 900)}</g>
+    <path d="M245 300H395" stroke-dasharray="8 8" class="corte a-fade" ${dl(1.7)}/>${aTacha(320, 300, 1.2, dl(2.1))}
+    ${tx(320, 40, 'Se separan para siempre', 18, 'tinta', 800, `class="a-fade" ${dl(2.4)}`)}`),
+  scandado: () => sv(`<g class="a-pop">${aCaja(320, 180, 420, 230)}
+    ${[['Sí', AC.verde, .62], ['No', AC.rojo, .28], ['Abst.', AC.gris, .1]].map(([t, c, p], i) => `${tx(160, 128 + i * 52, t, 15, 'tinta', 800, 'text-anchor="start"')}<rect x="210" y="${112 + i * 52}" width="${300 * p}" height="22" rx="11" fill="${c}" class="borroso"/>`).join('')}</g>
+    <g class="a-candado"><rect x="286" y="160" width="68" height="56" rx="10" fill="${AC.oro}" class="borde" stroke-width="3"/><path d="M298 160v-16a22 22 0 0 1 44 0v16" fill="none" class="borde" stroke-width="7"/></g>
+    ${tx(320, 330, 'Mientras está abierta, solo se ve cuántos votaron', 16, 'tenue', 700, `class="a-fade" ${dl(.8)}`)}`),
+  snadie: () => sv(`${[['🕵️', 120], ['👩‍💼', 250], ['🏛️', 390], ['🤖', 520]].map(([e, x], i) => `<g class="a-pop" ${dl(i * .2)}><circle cx="${x}" cy="150" r="46" class="papel borde" stroke-width="3"/><text x="${x}" y="166" font-size="44" text-anchor="middle">${e}</text></g>${aTacha(x + 34, 116, 1, dl(.9 + i * .2))}`).join('')}
+    ${tx(320, 260, 'Nadie puede ver qué votaste', 24, 'tinta', 900, `class="a-fade" ${dl(1.8)}`)}${tx(320, 292, 'ni otro ciudadano, ni un admin, ni el propio Cabildo', 16, 'tenue', 700, `class="a-fade" ${dl(2)}`)}`),
+  duno: () => sv(`<g class="a-pop"><rect x="60" y="110" width="200" height="140" rx="18" class="papel borde" stroke-width="3"/>${tx(160, 150, 'VOTACIÓN', 13, 'azul', 900, 'letter-spacing="2"')}<rect x="84" y="166" width="152" height="12" rx="6" class="suave"/><rect x="84" y="188" width="110" height="12" rx="6" class="suave"/>${tx(160, 232, '🗳️', 26)}</g>
+    ${aFlecha(272, 180, 330, 180, `class="a-fade" ${dl(.4)}`)}
+    ${aBurbuja(350, 70, 210, 'Yo creo que sí, porque…', false, `class="a-pop" ${dl(.7)}`)}${aBurbuja(400, 126, 200, 'Pero pensá en…', true, `class="a-pop" ${dl(1.1)}`)}${aBurbuja(350, 182, 230, 'Buen punto, aunque…', false, `class="a-pop" ${dl(1.5)}`)}${aBurbuja(420, 238, 170, '¡Coincido!', true, `class="a-pop" ${dl(1.9)}`)}
+    ${tx(320, 330, 'Cada votación tiene su debate', 17, 'tenue', 800, `class="a-fade" ${dl(2.2)}`)}`),
+  dmano: () => sv(`${[0, 1, 2, 3, 4, 5].map(i => `<g class="a-pop" ${dl(i * .25)}><circle cx="${90 + i * 92}" cy="170" r="34" class="papel borde" stroke-width="3" ${i < 3 ? `stroke="${AC.verde}"` : ''}/><text x="${90 + i * 92}" y="184" font-size="34" text-anchor="middle">${i < 3 ? '🎙️' : '✋'}</text>${tx(90 + i * 92, 234, '#' + [250, 12, 77, 403, 9, 610][i], 15, 'tenue', 800)}</g>`).join('')}
+    <rect x="50" y="108" width="276" height="150" rx="20" fill="none" stroke="${AC.verde}" stroke-width="3" stroke-dasharray="8 8" class="a-fade" ${dl(1.8)}/>${tx(188, 96, 'Hablan ahora (3)', 15, 'verde', 900, `class="a-fade" ${dl(1.9)}`)}${tx(462, 96, 'Esperan su turno', 15, 'tenue', 800, `class="a-fade" ${dl(2.1)}`)}`),
+  dreglas: () => sv(`<g class="a-pop">${aCaja(320, 140, 440, 120)}<rect x="130" y="112" width="300" height="14" rx="7" class="suave"/><rect x="130" y="136" width="250" height="14" rx="7" class="suave"/><rect x="130" y="160" width="180" height="14" rx="7" class="suave"/>${tx(500, 186, '280', 18, 'azul', 900, 'class="a-contar"')}</g>
+    <g class="a-pop" ${dl(.6)}><circle cx="200" cy="268" r="34" class="papel borde" stroke-width="3"/><circle cx="200" cy="268" r="26" fill="none" stroke="${AC.rojo}" stroke-width="6" class="a-reloj" transform="rotate(-90 200 268)"/>${tx(200, 275, '60 s', 15, 'tinta', 900)}</g>
+    ${tx(380, 262, 'Máximo 280 caracteres', 17, 'tinta', 800, `class="a-fade" ${dl(.9)}`)}${tx(380, 290, 'y 1 minuto entre mensajes', 17, 'tinta', 800, `class="a-fade" ${dl(1.1)}`)}`),
+  pidea: () => sv(`<g class="a-pop"><circle cx="150" cy="150" r="60" fill="${AC.oro}" class="borde" stroke-width="3"/><rect x="128" y="206" width="44" height="30" rx="6" class="papel borde" stroke-width="3"/>${tx(150, 166, '💡', 46)}</g>
+    ${aFlecha(230, 170, 300, 170, `class="a-fade" ${dl(.5)}`)}
+    <g class="a-lanzar" ${dl(.9)}><rect x="320" y="90" width="260" height="170" rx="18" class="papel borde" stroke-width="3"/>${tx(450, 124, 'MI PROPUESTA', 13, 'azul', 900, 'letter-spacing="2"')}<rect x="344" y="142" width="212" height="12" rx="6" class="suave"/><rect x="344" y="164" width="170" height="12" rx="6" class="suave"/><rect x="344" y="200" width="110" height="36" rx="12" fill="${AC.azul}"/>${tx(399, 224, 'Lanzar 🚀', 14, 'blanco', 900)}</g>
+    ${tx(320, 320, 'Una idea en 280 caracteres + contexto y enlaces', 16, 'tenue', 700, `class="a-fade" ${dl(1.4)}`)}`),
+  pmeta: () => sv(`<g transform="translate(150 40) scale(3.4)" class="arco-esc">${Array.from({ length: 20 }, (_, i) => { const fila = i < 8 ? 0 : 1, n = fila ? 12 : 8, k = fila ? i - 8 : i, r = fila ? 38 : 24, a = Math.PI - (k + .5) * Math.PI / n; return `<circle cx="${(50 + r * Math.cos(a)).toFixed(1)}" cy="${(46 - r * Math.sin(a)).toFixed(1)}" r="3.6" class="seat on" ${dl((i * .12).toFixed(2))}/>` }).join('')}</g>
+    ${tx(320, 225, '20 butacas', 28, 'tinta', 900, `class="a-pop" ${dl(2.5)}`)}<rect x="170" y="262" width="300" height="12" rx="6" class="suave"/><rect x="170" y="262" width="300" height="12" rx="6" fill="${AC.rojo}" class="a-mecha"/>${tx(320, 310, 'en 48 horas', 18, 'rojo', 800)}`),
+  pcamino: () => sv(`${[['Campaña', '🔥', 80, AC.oro], ['Meta: 20', '🎯', 240, AC.verde], ['Revisión', '🔎', 400, AC.violeta], ['Votación', '🗳️', 560, AC.azul]].map(([t, e, x, c], i) => `<g class="a-pop" ${dl(i * .5)}><circle cx="${x}" cy="160" r="48" fill="${c}" class="borde" stroke-width="3"/><text x="${x}" y="175" font-size="40" text-anchor="middle">${e}</text>${tx(x, 240, t, 17)}</g>${i < 3 ? aFlecha(x + 56, 160, x + 104, 160, `class="a-fade" ${dl(i * .5 + .3)}`) : ''}`).join('')}
+    <circle cx="80" cy="100" r="9" fill="${AC.rojo}" class="a-viaje"/>${tx(320, 310, 'Si llega a la meta, el Cabildo la puede votar', 17, 'tenue', 800, `class="a-fade" ${dl(2.2)}`)}`),
+  puna: () => sv(`<g class="a-pop"><rect x="230" y="80" width="180" height="190" rx="18" class="papel borde" stroke-width="3" stroke="${AC.oro}"/>${tx(320, 120, 'EN CARRERA', 13, 'oro', 900, 'letter-spacing="2"')}${tx(320, 190, '🔥', 52)}<rect x="262" y="222" width="116" height="12" rx="6" class="suave"/></g>
+    ${[110, 530].map((x, i) => `<g class="a-fade" ${dl(.6 + i * .2)} opacity=".45"><rect x="${x - 70}" y="100" width="140" height="150" rx="16" class="papel borde" stroke-width="3" stroke-dasharray="8 8"/>${tx(x, 190, '🔒', 40)}</g>`).join('')}
+    ${tx(320, 320, 'Una propuesta en carrera a la vez', 18, 'tinta', 800, `class="a-fade" ${dl(1)}`)}`),
+  bque: () => sv(`<g class="a-pop"><path d="M320 60v200" class="borde" stroke-width="5"/><path d="M322 64h110l-24 30l24 30h-110z" fill="${AC.violeta}" class="borde" stroke-width="3"/></g>
+    ${aPer(320, 300, 1.4, AC.oro, `class="a-pop" ${dl(.4)}`)}<g class="a-pop" ${dl(.7)}><rect x="250" y="312" width="140" height="30" rx="15" fill="${AC.oro}"/>${tx(320, 333, 'Anfitrión', 15, 'tinta', 900)}</g>
+    ${Array.from({ length: 12 }, (_, i) => { const a = Math.PI * (i / 11), x = 320 - 230 * Math.cos(a), y = 300 - 150 * Math.sin(a); return `<g class="a-acercar" ${dl((1 + i * .12).toFixed(2))}><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="18" class="papel borde" stroke-width="3"/>${tx(x.toFixed(0), (y + 6).toFixed(0), '?', 16, 'tenue', 900)}</g>` }).join('')}`),
+  bsumar: () => sv(`${[['Bloque A', AC.azul, 150], ['Bloque B', AC.verde, 490]].map(([t, c, x]) => `<g class="a-pop"><rect x="${x - 100}" y="80" width="200" height="170" rx="20" fill="${c}" opacity=".12"/><rect x="${x - 100}" y="80" width="200" height="170" rx="20" fill="none" stroke="${c}" stroke-width="3"/>${tx(x, 112, t, 18, 'tinta', 900)}</g>`).join('')}
+    <g class="a-mudar">${aPer(150, 220, 1.1, AC.teal)}</g>
+    <g class="a-pop" ${dl(1.8)}><rect x="264" y="270" width="112" height="62" rx="12" class="papel borde" stroke-width="3"/><rect x="264" y="270" width="112" height="20" rx="10" fill="${AC.rojo}"/>${tx(320, 322, '30 días', 18, 'tinta', 900)}</g>`),
+  bcrear: () => sv(`<g class="a-pop"><rect x="70" y="100" width="180" height="120" rx="18" class="papel borde" stroke-width="3"/>${aPer(120, 196, .8, AC.oro)}${tx(190, 150, 'Martín L.', 17, 'tinta', 900)}${tx(190, 176, 'público', 13, 'verde', 800)}</g>
+    <g class="a-pop" ${dl(.6)}><rect x="300" y="110" width="120" height="76" rx="10" class="papel borde" stroke-width="3"/><circle cx="330" cy="140" r="14" fill="${AC.gris}"/><rect x="352" y="132" width="50" height="8" rx="4" class="suave"/>${tx(360, 210, 'DNI', 14, 'tenue', 900)}</g>
+    <g class="a-guardar" ${dl(1.2)}><rect x="300" y="110" width="120" height="76" rx="10" fill="${AC.gris}" opacity=".0"/></g>
+    <g class="a-pop" ${dl(1.4)}><rect x="460" y="90" width="130" height="150" rx="14" fill="#4b5470" class="borde" stroke-width="3"/><circle cx="525" cy="165" r="30" fill="none" stroke="#c9cfe0" stroke-width="6"/><path d="M525 165l18-10" stroke="#c9cfe0" stroke-width="6" stroke-linecap="round" class="a-girar-perilla"/>${tx(525, 270, 'Caja fuerte', 15, 'tenue', 800)}</g>
+    ${aFlecha(428, 150, 452, 150, `class="a-fade" ${dl(1)}`)}${tx(320, 320, 'Tu DNI solo lo ve el equipo, y se borra si el bloque cierra', 15, 'tenue', 700, `class="a-fade" ${dl(2)}`)}`),
+  badentro: () => sv(`${[['Idea 1', 110, 90, AC.oro, '-4'], ['Idea 2', 260, 110, '#9be3c8', '3'], ['Idea 3', 410, 86, '#b9c8ff', '-2']].map(([t, x, y, c, r], i) => `<g class="a-pop" ${dl(i * .3)} transform="rotate(${r} ${x + 60} ${y + 60})"><rect x="${x}" y="${y}" width="120" height="110" rx="6" fill="${c}" class="borde" stroke-width="2.5"/>${tx(x + 60, y + 40, t, 16, 'tinta', 900)}${tx(x + 60, y + 82, '👍 ' + (12 - i * 4), 16, 'tinta', 700)}</g>`).join('')}
+    <g class="a-sello"><rect x="300" y="236" width="180" height="56" rx="10" fill="none" stroke="${AC.rojo}" stroke-width="5"/>${tx(390, 272, 'DECIDIDO', 22, 'rojo', 900, 'letter-spacing="3"')}</g>
+    ${tx(160, 272, 'Los miembros proponen', 15, 'tenue', 700, `class="a-fade" ${dl(1)}`)}${tx(160, 296, 'el anfitrión decide', 15, 'tenue', 700, `class="a-fade" ${dl(1.2)}`)}`),
+  cseguir: () => sv(`<g class="a-fade">${aChip(320, 50, 'Solicitud de seguimiento', AC.azul)}</g>
+    <g class="a-pop">${aCaja(115, 200, 170, 190)}${aPer(115, 226, 1.1, AC.violeta)}${tx(115, 268, 'Butaca #12', 15, 'tinta', 900)}</g>
+    <g class="a-pop" ${dl(.4)}>${aCaja(525, 200, 170, 190)}${aPer(525, 226, 1.1, AC.teal)}${tx(525, 268, 'Vos', 15, 'tinta', 900)}</g>
+    ${aFlecha(212, 110, 300, 110, `class="a-fade" ${dl(.8)}`)}${aCheck(320, 110, 1.1, `class="a-pop" ${dl(1.3)}`)}
+    ${aBurbuja(232, 170, 150, '¡Hola! ¿Cómo va?', false, `class="a-pop" ${dl(1.8)}`)}${aBurbuja(262, 226, 116, '¡Bien! 👋', true, `class="a-pop" ${dl(2.2)}`)}
+    ${tx(320, 330, 'Si acepta, pueden escribirse', 16, 'tenue', 800, `class="a-fade" ${dl(2.6)}`)}`),
+  aud: () => sv(`<g class="a-pop"><rect x="120" y="60" width="400" height="230" rx="20" fill="#0b0e1d"/><circle cx="320" cy="175" r="40" fill="#fff" opacity=".15"/><path d="M308 155v40l32-20z" fill="#fff"/><rect x="140" y="76" width="74" height="24" rx="12" fill="${AC.rojo}"/>${tx(177, 93, 'EN VIVO', 12, 'blanco', 900)}</g>
+    ${['👏', '🔥', '❤️', '✊', '💯'].map((e, i) => `<text x="${200 + i * 60}" y="270" font-size="30" text-anchor="middle" class="a-flotar" ${dl(i * .5)}>${e}</text>`).join('')}`),
+  play: () => sv(`<g class="a-pop"><rect x="150" y="50" width="340" height="260" rx="24" fill="#0b0e1d"/>${tx(320, 104, 'NIVEL', 13, 'blanco', 800, 'opacity=".6" letter-spacing="3"')}<text x="320" y="158" font-size="52" font-weight="900" fill="#fff" text-anchor="middle" class="a-nivel"></text>
+    <rect x="190" y="200" width="120" height="80" rx="16" fill="#fff" opacity=".08"/><rect x="330" y="200" width="120" height="80" rx="16" fill="#fff" opacity=".08"/>${tx(250, 252, '✕', 36, 'blanco', 300)}${tx(390, 252, '○', 36, 'blanco', 300)}</g>`),
+}
+
+// ── Lecciones ──
+const LECCIONES = [
+  { id: 'cabildo', titulo: '¿Qué es el Cabildo?', sub: 'La idea en 1 minuto', color: AC.azul, ico: '🏛️', ir: ['#inicio', 'Ver el hemiciclo'], pasos: [
+    { esc: 'hemiciclo', t: 'Un parlamento de ciudadanos', p: 'El Cabildo es un hemiciclo digital. Cada punto es una <b>butaca</b>, y cada butaca es una persona real. Vos también tenés tu lugar.' },
+    { esc: 'ciclo', t: 'Proponés, debatís, votás', p: 'Acá los ciudadanos <b>proponen</b> ideas, las <b>debaten</b> con argumentos y las <b>votan</b>. Lo que decide el Cabildo queda a la vista de todos.' },
+    { esc: 'uno', t: '1 persona = 1 butaca = 1 voto', p: 'Nadie puede tener dos butacas. Por eso lo que vota el Cabildo <b>no se puede inflar ni falsificar</b>: es la voz real de la gente.' }],
+    quiz: { q: '¿Cuántas butacas puede tener una persona?', o: [['Una sola', 1], ['Las que quiera', 0], ['Tres', 0]], e: 'Una persona, una butaca. Así cada voto vale lo mismo.' } },
+  { id: 'butaca', titulo: 'Tu butaca', sub: 'Anónima y tuya', color: AC.oro, ico: '💺', ir: ['#butaca', 'Ir a Mi Butaca'], pasos: [
+    { esc: 'verif', t: 'Primero, mostrás que sos una persona real', p: 'Una sola vez, con tu documento y una selfie. Así sabemos que sos una persona y que no tenés otra butaca. Después recibís tu número.' },
+    { esc: 'anonimo', t: 'Y después, nadie sabe quién sos', p: 'No guardamos tu nombre ni tu número de documento, y las fotos se borran. Tu butaca queda identificada solo por su número.' },
+    { esc: 'mostrar', t: 'Vos elegís qué mostrar', p: 'Podés ponerle un <b>alias</b>, una frase y un color, o no mostrar nada. Probalo acá abajo 👇', sim: 'alias' }],
+    quiz: { q: '¿Tu nombre real aparece en tu butaca?', o: [['No, solo si elijo mostrar un alias', 1], ['Sí, siempre', 0], ['Solo para los que me siguen', 0]], e: 'Tu butaca es anónima. El alias es opcional y lo elegís vos.' } },
+  { id: 'votar', titulo: 'Cómo votar', sub: 'Paso a paso', color: AC.verde, ico: '🗳️', ir: ['#votaciones', 'Ir a votar'], pasos: [
+    { esc: 'vlista', t: 'Entrá a Votaciones', p: 'Ahí ves las votaciones <b>abiertas</b>. Cada una tiene un reloj: cuando llega a cero, se cierra.' },
+    { esc: 'velegir', t: 'Elegí Sí, No o Abstención', p: 'Leé la pregunta (y el contexto si tiene), tocá tu opción y <b>confirmá</b>. Abstenerse también cuenta: significa “participé, pero no elijo”.' },
+    { esc: 'vuno', t: 'Un voto, y no se cambia', p: 'Tenés un voto por pregunta. Una vez que confirmás, <b>no se puede cambiar</b>: pensalo bien antes.' },
+    { esc: null, t: 'Probalo sin miedo', p: 'Esto es una práctica: no cuenta para nada. Votá y mirá qué pasa por dentro.', sim: 'votar' }],
+    quiz: { q: 'Votaste “Sí” y te arrepentiste. ¿Podés cambiarlo?', o: [['No, el voto es definitivo', 1], ['Sí, durante 5 minutos', 0], ['Sí, hasta que cierre', 0]], e: 'Cada butaca vota una vez por pregunta, y ese voto queda.' } },
+  { id: 'secreto', titulo: 'Tu voto es secreto', sub: 'De verdad', color: AC.violeta, ico: '🔒', ir: ['#votaciones', 'Ver resultados'], pasos: [
+    { esc: 'surna', t: 'La urna no sabe quién sos', p: 'Cuando votás pasan dos cosas por separado: se anota que tu butaca <b>participó</b>, y se suma 1 al <b>contador</b> de tu opción. Nunca se guarda qué votó cada butaca.' },
+    { esc: 'scandado', t: 'Los resultados, al cerrar', p: 'Mientras la votación está abierta solo se ve <b>cuántos</b> votaron, no qué ganó. Así nadie se deja llevar por la mayoría.' },
+    { esc: 'snadie', t: 'Nadie puede saber qué votaste', p: 'Ni otro ciudadano, ni un administrador, ni el propio Cabildo. Simplemente <b>ese dato no existe</b>.' }],
+    quiz: { q: '¿Quién puede ver qué votaste?', o: [['Nadie', 1], ['Los administradores', 0], ['Las butacas que me siguen', 0]], e: 'El Cabildo guarda que participaste y suma tu voto al total, pero nunca une las dos cosas.' } },
+  { id: 'debates', titulo: 'Debates', sub: 'Argumentos, no gritos', color: AC.teal, ico: '💬', ir: ['#debates', 'Ir a Debates'], pasos: [
+    { esc: 'duno', t: 'Un debate por cada votación', p: 'Mientras una votación está abierta, su debate también. Leé qué piensan los demás antes de votar.' },
+    { esc: 'dmano', t: 'Levantá la mano ✋', p: 'Para hablar, levantás la mano. Hasta <b>3 personas</b> hablan a la vez; el resto espera su turno en la fila.', sim: 'mano' },
+    { esc: 'dreglas', t: 'Corto y con respeto', p: 'Cada mensaje tiene hasta <b>280 caracteres</b> y hay <b>1 minuto</b> de espera entre mensajes. Así todos tienen lugar.' }],
+    quiz: { q: '¿Qué hacés para escribir en un debate?', o: [['Levanto la mano y espero mi turno', 1], ['Escribo directamente', 0], ['Le pido permiso a un admin', 0]], e: 'Levantás la mano: si hay lugar, hablás enseguida; si no, esperás tu turno.' } },
+  { id: 'propuestas', titulo: 'Propuestas', sub: 'Tu idea, al Cabildo', color: AC.rojo, ico: '💡', ir: ['#propuestas', 'Ir a Propuestas'], pasos: [
+    { esc: 'pidea', t: 'Tenés una idea: lanzala', p: 'Escribila en hasta 280 caracteres. Podés sumar contexto y enlaces para explicarla mejor.' },
+    { esc: 'pmeta', t: '48 horas para encender 20 butacas', p: 'Durante <b>48 horas</b>, otros ciudadanos pueden <b>apoyarla</b>. Si llega a <b>20 apoyos</b>, logró la meta. Si no, vence. Probalo 👇', sim: 'propuesta' },
+    { esc: 'pcamino', t: 'De idea a votación', p: 'Las que llegan a la meta pasan a <b>revisión</b>. Si se aprueban, el Cabildo entero las <b>vota</b>.' },
+    { esc: 'puna', t: 'Una a la vez', p: 'Cada butaca puede tener <b>una propuesta en carrera</b>. Cuando termina, podés lanzar otra. Elegí tu mejor idea.' }],
+    quiz: { q: 'Tu propuesta llegó a 14 apoyos en 48 horas. ¿Qué pasa?', o: [['Vence: no llegó a la meta', 1], ['Pasa igual a votación', 0], ['Se extiende sola otra semana', 0]], e: 'La meta es 20 apoyos en 48 horas. Si no llega, vence y podés lanzar otra.' } },
+  { id: 'bloques', titulo: 'Bloques', sub: 'Organizarse', color: AC.violeta, ico: '🚩', ir: ['#inicio', 'Ver bloques'], pasos: [
+    { esc: 'bque', t: '¿Qué es un bloque?', p: 'Un grupo de ciudadanos que se junta alrededor de ideas comunes, con un <b>anfitrión</b> que lo lidera. El anfitrión es público; los miembros, no.' },
+    { esc: 'bsumar', t: 'Sumarte a uno', p: 'Podés estar en <b>un bloque a la vez</b>. Si te vas a otro, esperás <b>30 días</b>. Igual seguís votando todo lo del Cabildo.' },
+    { esc: 'bcrear', t: 'Crear tu propio bloque', p: 'Para ser anfitrión mostrás tu <b>nombre real</b> y verificás tu identidad otra vez con tu DNI. El DNI queda guardado bajo llave y se borra si el bloque cierra.' },
+    { esc: 'badentro', t: 'Adentro del bloque', p: 'Los miembros proponen ideas y las debaten entre ellos. <b>El anfitrión decide</b> qué impulsa el bloque.' }],
+    quiz: { q: '¿Se sabe quiénes son los miembros de un bloque?', o: [['No, solo el anfitrión es público', 1], ['Sí, hay una lista pública', 0], ['Solo se ven sus alias', 0]], e: 'Los miembros son anónimos. Solo se ve cuántos son.' } },
+  { id: 'comunidad', titulo: 'Ciudadanos, Auditorio y Playroom', sub: 'Lo demás', color: AC.teal, ico: '🎟️', ir: ['#playroom', 'Ir al Playroom'], pasos: [
+    { esc: 'cseguir', t: 'Seguí a otras butacas', p: 'En <b>Ciudadanos</b> podés seguir a otras butacas. Si aceptan tu solicitud, pueden mandarse mensajes.' },
+    { esc: 'aud', t: 'El Auditorio', p: 'Sesiones <b>en vivo</b>: mirás, reaccionás y podés pedir la palabra en el chat de la sala.' },
+    { esc: 'play', t: 'El Playroom', p: '<b>Nerdocrasy</b>: 90 niveles de preguntas sobre democracia. Un error y empezás de nuevo. ¿Hasta dónde llegás?' }],
+    quiz: { q: '¿Cuándo podés mandarle un mensaje a otra butaca?', o: [['Cuando acepta que la sigas', 1], ['Siempre, a cualquiera', 0], ['Nunca', 0]], e: 'Primero mandás una solicitud de seguimiento; si la acepta, pueden escribirse.' } },
+]
+
+const FAQ = [
+  ['¿Alguien puede saber qué voté?', 'No. El Cabildo anota que tu butaca participó y suma tu voto al total, por separado. Qué votó cada butaca no se guarda en ningún lado.'],
+  ['¿Por qué no veo quién va ganando?', 'Para que nadie vote “con la mayoría”. Mientras la votación está abierta solo se ve cuántos votaron; el resultado aparece al cerrar.'],
+  ['¿Puedo cambiar mi voto?', 'No. Hay un voto por butaca y por pregunta, y es definitivo.'],
+  ['¿Qué pasa si mi propuesta no llega a 20 apoyos?', 'Vence a las 48 horas. Podés lanzar otra cuando quieras.'],
+  ['¿Tengo que mostrar mi nombre?', 'No. Tu butaca es anónima. Solo los anfitriones de bloques muestran su nombre real, porque lo eligen.'],
+  ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Si cambiás de bloque, esperás 30 días.'],
+  ['¿Qué guardan de mí?', 'Tu email (para entrar) y tu butaca. No guardamos tu nombre ni tu número de documento, y las fotos de la verificación se borran.'],
+]
+
+// ── Estado y progreso (solo en este navegador) ──
+const ap = { hechas: new Set(), lec: null, paso: 0, sim: {} }
+try { JSON.parse(localStorage.getItem('ux2_aprende_v1') || '[]').forEach(id => ap.hechas.add(id)) } catch (e) {}
+const apGuardar = () => { try { localStorage.setItem('ux2_aprende_v1', JSON.stringify([...ap.hechas])) } catch (e) {} }
+
+function pintarAprende() {
+  const c = $('#ap-cuerpo'); if (!c) return
+  const n = ap.hechas.size, total = LECCIONES.length, sig = LECCIONES.find(l => !ap.hechas.has(l.id))
+  const pct = n / total, R = 34, C = 2 * Math.PI * R
+  c.innerHTML = `
+  <section class="ap-hero">
+    <div class="ap-hero-txt">
+      <span class="ap-tag">Aprendé · para principiantes</span>
+      <h1>El Cabildo, explicado <em>sin vueltas</em></h1>
+      <p>${total} lecciones cortas, con dibujos y prácticas. En 15 minutos sabés votar, proponer y organizarte.</p>
+      <div class="ap-hero-acc">
+        <button class="btn btn-dark ap-empezar" data-leccion="${(sig || LECCIONES[0]).id}">${n === 0 ? '▶ Empezar' : sig ? `▶ Seguir: ${esc(sig.titulo)}` : '↻ Repasar'}</button>
+        <div class="ap-prog" title="${n} de ${total} lecciones">
+          <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="${R}" class="ap-prog-pista"/><circle cx="40" cy="40" r="${R}" class="ap-prog-arco" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}" transform="rotate(-90 40 40)"/></svg>
+          <b>${n}/${total}</b>
+        </div>
+        ${n === total ? '<span class="ap-insignia">🏅 Ciudadano informado</span>' : ''}
+      </div>
+    </div>
+    <div class="ap-hero-esc">${ESCENAS.hemiciclo()}</div>
+  </section>
+
+  <ol class="ap-ruta">
+    ${LECCIONES.map((l, i) => `<li class="ap-lec ${ap.hechas.has(l.id) ? 'hecha' : ''} ${sig?.id === l.id ? 'siguiente' : ''}" style="--c:${l.color}">
+      <button data-leccion="${l.id}">
+        <span class="ap-num">${ap.hechas.has(l.id) ? '✓' : i + 1}</span>
+        <span class="ap-ico">${l.ico}</span>
+        <span class="ap-lec-txt"><b>${esc(l.titulo)}</b><small>${esc(l.sub)} · ${l.pasos.length} pasos${l.pasos.some(p => p.sim) ? ' · con práctica' : ''}</small></span>
+        <span class="ap-lec-ir">${ap.hechas.has(l.id) ? 'Repasar' : sig?.id === l.id ? 'Empezar' : 'Ver'} →</span>
+      </button></li>`).join('')}
+  </ol>
+
+  <section class="card ap-faq">
+    <h2>Preguntas rápidas</h2>
+    ${FAQ.map(([q, r]) => `<details><summary>${esc(q)}</summary><p>${esc(r)}</p></details>`).join('')}
+  </section>`
+}
+
+// ── Lección ──
+function abrirLeccion(id) {
+  const l = LECCIONES.find(x => x.id === id); if (!l) return
+  ap.lec = l; ap.paso = 0; ap.sim = {}
+  $('#modal-leccion').hidden = false; document.body.style.overflow = 'hidden'
+  pintarLeccion()
+}
+function cerrarLeccion() {
+  if ($('#modal-leccion').hidden) return
+  $('#modal-leccion').hidden = true; document.body.style.overflow = ''
+  clearInterval(ap.sim.t); ap.lec = null
+  if (location.hash.startsWith('#aprende/')) history.replaceState(null, '', '#aprende')
+  pintarAprende()
+}
+
+function pintarLeccion() {
+  const l = ap.lec, box = $('#ap-leccion'); if (!l || !box) return
+  clearInterval(ap.sim.t)
+  const total = l.pasos.length + 1, enQuiz = ap.paso >= l.pasos.length, p = l.pasos[ap.paso]
+  box.style.setProperty('--c', l.color)
+  box.innerHTML = `
+    <header class="ap-l-cab"><span class="ap-l-ico">${l.ico}</span><div><small>Lección ${LECCIONES.indexOf(l) + 1} de ${LECCIONES.length}</small><h2 id="ap-l-titulo">${esc(l.titulo)}</h2></div></header>
+    <div class="ap-pasos" role="progressbar" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${ap.paso + 1}">${Array.from({ length: total }, (_, i) => `<i class="${i < ap.paso ? 'ok' : i === ap.paso ? 'act' : ''}"></i>`).join('')}</div>
+    ${enQuiz ? quizHTML(l) : `
+    ${p.esc ? `<div class="ap-escena" key="${ap.paso}">${ESCENAS[p.esc]()}</div>` : ''}
+    <div class="ap-texto"><h3>${esc(p.t)}</h3><p>${p.p}</p></div>
+    ${p.sim ? `<div class="ap-sim" id="ap-sim">${simHTML(p.sim)}</div>` : ''}`}
+    <footer class="ap-nav">
+      <button class="btn" data-ap="atras" ${ap.paso === 0 ? 'disabled' : ''}>← Atrás</button>
+      ${enQuiz ? '' : `<button class="btn btn-dark" data-ap="sig">${ap.paso === l.pasos.length - 1 ? 'Una pregunta →' : 'Siguiente →'}</button>`}
+    </footer>`
+  if (p?.sim) iniciarSim(p.sim)
+  if (p?.esc === 'play') animarNivel()
+  box.closest('.modal-box').scrollTop = 0
+}
+
+function quizHTML(l) {
+  const q = l.quiz, orden = q.o.map((o, i) => [o, i]).sort((a, b) => ((a[1] * 7 + l.id.length) % 3) - ((b[1] * 7 + l.id.length) % 3))
+  return `<div class="ap-quiz">
+    <span class="ap-quiz-tag">Para cerrar</span>
+    <h3>${esc(q.q)}</h3>
+    <div class="ap-ops">${orden.map(([[t, ok]]) => `<button class="ap-op" data-ok="${ok}">${esc(t)}</button>`).join('')}</div>
+    <div class="ap-res" id="ap-res" hidden></div>
+  </div>`
+}
+
+function responderQuiz(btn) {
+  const l = ap.lec, ok = btn.dataset.ok === '1', res = $('#ap-res')
+  if (!ok) { btn.classList.add('mal'); btn.disabled = true; res.hidden = false; res.className = 'ap-res mal'; res.innerHTML = '<b>Casi.</b> Probá con otra opción.'; return }
+  $$('.ap-op').forEach(b => b.disabled = true); btn.classList.add('bien')
+  const nueva = !ap.hechas.has(l.id); ap.hechas.add(l.id); apGuardar()
+  const sig = LECCIONES[LECCIONES.indexOf(l) + 1]
+  const todas = ap.hechas.size === LECCIONES.length
+  res.hidden = false; res.className = 'ap-res bien'
+  res.innerHTML = `<div class="ap-confeti" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<i style="--x:${(Math.sin(i * 2.4) * 160).toFixed(0)}px;--r:${i * 47}deg;--c:${[AC.oro, AC.azul, AC.verde, AC.rojo, AC.violeta][i % 5]}"></i>`).join('')}</div>
+    <b>¡Correcto!</b> ${esc(l.quiz.e)}
+    <div class="ap-fin">${todas && nueva ? '<span class="ap-insignia">🏅 ¡Completaste todo! Sos un Ciudadano informado.</span>' : `<span class="ap-hecha">✓ Lección completada</span>`}
+      <div class="ap-fin-btns"><a class="btn" href="${l.ir[0]}" data-ap="ir">${esc(l.ir[1])}</a>${sig ? `<button class="btn btn-dark" data-leccion="${sig.id}">Siguiente: ${esc(sig.titulo)} →</button>` : '<button class="btn btn-dark" data-ap="cerrar">Terminar</button>'}</div></div>`
+}
+
+// ── Simuladores ──
+function simHTML(tipo) {
+  if (tipo === 'alias') return `<div class="sim-alias"><label class="sim-sw"><input type="checkbox" id="sim-alias-on" checked><span></span> Mostrar mi alias</label>
+    <div class="sim-carta"><span class="sim-av">A</span><b id="sim-alias-nombre">Ayn Rand</b><small id="sim-alias-sub">Butaca #250</small></div></div>`
+  if (tipo === 'votar') return `<div class="sim-votar"><p class="sim-q">¿Las arepas son mejores que las empanadas? <small>(práctica)</small></p>
+    <div class="sim-ops">${[['si', 'Sí', AC.verde], ['no', 'No', AC.rojo], ['abs', 'Abstención', AC.gris]].map(([k, t, c]) => `<button data-sim-voto="${k}" style="--c:${c}">${t}</button>`).join('')}</div>
+    <div class="sim-dentro" id="sim-dentro" hidden>
+      <div><small>PARTICIPÓ</small><b>Butaca #${estado.butaca || 250} ✓</b></div>
+      <span class="sim-corte">✂</span>
+      <div><small>CONTADOR</small><b id="sim-cont"></b></div>
+    </div><p class="sim-nota" id="sim-nota" hidden>Fijate: <b>nada une tu butaca con tu opción</b>. Y si intentás votar otra vez, no te deja.</p></div>`
+  if (tipo === 'propuesta') return `<div class="sim-prop"><div class="sim-prop-arco" id="sim-arco">${arcoButacas(3, 20, 'grande')}</div>
+    <div class="sim-prop-datos"><b id="sim-apoyos">3 / 20 apoyos</b><span id="sim-reloj">⏳ 47:59:59</span></div>
+    <button class="btn btn-dark" id="sim-apoyar">🔥 Simular apoyos</button><p class="sim-nota" id="sim-prop-nota">Tocá varias veces: cada toque es otra butaca apoyando.</p></div>`
+  if (tipo === 'mano') return `<div class="sim-mano"><div class="sim-cola" id="sim-cola"></div><button class="db-mano" id="sim-mano-btn">✋</button><p class="sim-nota" id="sim-mano-nota">Hay 4 personas en la fila. Levantá la mano.</p></div>`
+  return ''
+}
+
+function iniciarSim(tipo) {
+  if (tipo === 'mano') {
+    ap.sim.cola = [12, 77, 403, 9]; ap.sim.yo = false; pintarCola()
+    ap.sim.t = setInterval(() => { if (ap.sim.cola.length && ap.sim.yo) { ap.sim.cola.shift(); pintarCola() } }, 1600)
+  }
+  if (tipo === 'propuesta') { ap.sim.n = 3; ap.sim.seg = 48 * 3600 - 1; ap.sim.t = setInterval(() => { ap.sim.seg = Math.max(0, ap.sim.seg - 977); const h = Math.floor(ap.sim.seg / 3600), m = Math.floor(ap.sim.seg % 3600 / 60), s = ap.sim.seg % 60; const r = $('#sim-reloj'); if (r) r.textContent = `⏳ ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; if (!ap.sim.seg && ap.sim.n < 20) { clearInterval(ap.sim.t); $('#sim-prop-nota').innerHTML = '⌛ <b>Se acabó el tiempo.</b> La propuesta venció. Volvé a intentarlo con “Atrás” y “Siguiente”.'; $('#sim-apoyar').disabled = true } }, 100) }
+}
+function pintarCola() {
+  const el = $('#sim-cola'); if (!el) return
+  const fila = [...ap.sim.cola, ...(ap.sim.yo ? ['yo'] : [])]
+  el.innerHTML = fila.map((s, i) => `<span class="${s === 'yo' ? 'yo' : ''} ${i < 3 ? 'habla' : ''}">${i < 3 ? '🎙️' : '✋'} ${s === 'yo' ? 'Vos' : '#' + s}</span>`).join('')
+  const pos = fila.indexOf('yo'), nota = $('#sim-mano-nota')
+  if (!nota) return
+  if (pos < 0) nota.textContent = `Hay ${fila.length} personas en la fila. Levantá la mano.`
+  else if (pos < 3) { nota.innerHTML = '🎙️ <b>¡Te toca!</b> Ya podés escribir tu argumento.'; clearInterval(ap.sim.t) }
+  else nota.innerHTML = `Estás en la fila: posición <b>${pos + 1}</b>. Hablan 3 a la vez…`
+}
+
+// ── Nivel de Nerdocrasy que sube solo en la escena ──
+function animarNivel() { let n = 1; const el = $('.a-nivel'); if (!el) return; el.textContent = n; ap.sim.t = setInterval(() => { if (!document.contains(el)) return clearInterval(ap.sim.t); n = n >= 90 ? 1 : n + 1; el.textContent = n }, 120) }
+
+function enlazarAprende() {
+  $('#ap-vista')?.addEventListener('click', e => { const b = e.target.closest('[data-leccion]'); if (b) location.hash = '#aprende/' + b.dataset.leccion })
+  const m = $('#modal-leccion'); if (!m) return
+  m.addEventListener('click', e => {
+    if (e.target === m) return cerrarLeccion()
+    const a = e.target.closest('[data-ap]')?.dataset.ap
+    if (a === 'cerrar') return cerrarLeccion()
+    if (a === 'ir') { $('#modal-leccion').hidden = true; document.body.style.overflow = ''; ap.lec = null; return }
+    if (a === 'sig') { ap.paso++; return pintarLeccion() }
+    if (a === 'atras') { ap.paso = Math.max(0, ap.paso - 1); return pintarLeccion() }
+    const l = e.target.closest('[data-leccion]'); if (l) { location.hash = '#aprende/' + l.dataset.leccion; return }
+    const op = e.target.closest('.ap-op'); if (op && !op.disabled) return responderQuiz(op)
+    const v = e.target.closest('[data-sim-voto]')
+    if (v) {
+      if (ap.sim.votado) { const n = $('#sim-nota'); n.hidden = false; n.innerHTML = '🚫 <b>Ya votaste.</b> Un voto por butaca, y no se cambia.'; n.classList.add('sacudir'); setTimeout(() => n.classList.remove('sacudir'), 500); return }
+      ap.sim.votado = v.dataset.simVoto
+      $$('[data-sim-voto]').forEach(b => b.classList.toggle('elegida', b === v))
+      const base = { si: 1205, no: 412, abs: 61 }, et = { si: 'Sí', no: 'No', abs: 'Abst.' }
+      $('#sim-cont').innerHTML = Object.keys(base).map(k => `${et[k]} <span class="${k === ap.sim.votado ? 'sube' : ''}">${fmtNum(base[k] + (k === ap.sim.votado ? 1 : 0))}</span>`).join(' · ')
+      $('#sim-dentro').hidden = false; $('#sim-nota').hidden = false
+      return
+    }
+    if (e.target.closest('#sim-apoyar')) {
+      if (ap.sim.n >= 20) return
+      ap.sim.n++; $('#sim-arco').innerHTML = arcoButacas(ap.sim.n, 20, 'grande' + (ap.sim.n >= 20 ? ' completo' : ''))
+      $(`#sim-arco circle[data-i="${ap.sim.n - 1}"]`)?.classList.add('nueva')
+      $('#sim-apoyos').textContent = `${ap.sim.n} / 20 apoyos`
+      if (ap.sim.n >= 20) { clearInterval(ap.sim.t); $('#sim-prop-nota').innerHTML = '🎯 <b>¡Meta lograda!</b> Ahora pasa a revisión y puede convertirse en votación del Cabildo.'; $('#sim-apoyar').disabled = true }
+      else if (ap.sim.n >= 15) $('#sim-prop-nota').innerHTML = `🔥 ¡Faltan <b>${20 - ap.sim.n}</b>!`
+      return
+    }
+    if (e.target.closest('#sim-mano-btn')) {
+      if (ap.sim.yo) return
+      ap.sim.yo = true; e.target.closest('#sim-mano-btn').classList.add('ready'); pintarCola(); return
+    }
+  })
+  m.addEventListener('change', e => {
+    if (e.target.id === 'sim-alias-on') {
+      const on = e.target.checked
+      $('#sim-alias-nombre').textContent = on ? 'Ayn Rand' : 'Ciudadano anónimo'
+      $('.sim-av').textContent = on ? 'A' : '#'
+    }
+  })
+  document.addEventListener('keydown', e => {
+    if ($('#modal-leccion').hidden) return
+    if (e.key === 'Escape') return cerrarLeccion()
+    if (e.target.matches('input, textarea')) return
+    if (e.key === 'ArrowRight' && $('[data-ap="sig"]')) { ap.paso++; pintarLeccion() }
+    if (e.key === 'ArrowLeft' && ap.paso > 0) { ap.paso--; pintarLeccion() }
+  })
+}
+
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
