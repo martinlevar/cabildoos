@@ -116,18 +116,11 @@
         <!-- Votación activa + Muro -->
         <div class="col-side">
           <article class="card q-card" id="q-card">
-            <div class="q-head">
-              <span class="tag" id="q-cat">—</span>
-              <b class="q-timer" id="q-timer">--:--:--</b>
-              <small id="q-state">Cargando…</small>
-            </div>
-            <p class="q-text" id="q-text">Buscando votaciones activas…</p>
-            <div class="q-actions">
-              <a class="btn btn-soft" href="/" id="q-debate">
-                <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>
-              <a class="btn btn-dark" href="/" id="q-votar">
-                <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Votar</a>
-            </div>
+            <header class="card-head">
+              <h2><span class="iq-vivo" id="iq-vivo" hidden></span>Votaciones en curso <span class="ip-n" id="iq-n"></span></h2>
+              <a href="#votaciones" class="link-more">Ver todas<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+            </header>
+            <ul class="iq-list" id="iq-list"><li class="muted">Buscando votaciones activas…</li></ul>
           </article>
 
           <article class="card ini-prop">
@@ -138,14 +131,7 @@
             <ul class="ip-list" id="ip-list"><li class="muted">Cargando…</li></ul>
           </article>
 
-          <article class="card muro">
-            <header class="card-head">
-              <h2>Muro del Día</h2>
-              <a href="#muro" class="link-more" id="muro-escribir-ini">+ Escribir</a>
-              <a href="#muro" class="link-more">Ver todo<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
-            </header>
-            <ul class="muro-list" id="muro-list"><li class="muted">Cargando…</li></ul>
-          </article>
+
         </div>
 
         <!-- Accesos rápidos -->
@@ -171,6 +157,15 @@
             <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
           </a>
         </div>
+
+        <article class="card muro">
+            <header class="card-head">
+              <h2>Muro del Día</h2>
+              <a href="#muro" class="link-more" id="muro-escribir-ini">+ Escribir</a>
+              <a href="#muro" class="link-more">Ver todo<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+            </header>
+            <ul class="muro-list" id="muro-list"><li class="muted">Cargando…</li></ul>
+          </article>
       </div>
     </section>
 

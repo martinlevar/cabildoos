@@ -464,50 +464,60 @@ async function cargarHemiciclo() {
 }
 
 // ── Votación activa ─────────────────────────────────────────────
-let pregunta = null
+let pregunta = null, iqPreguntas = [], iqMios = new Set()
+const IQ_MAX = 4
 async function cargarVotacion() {
   try {
-    const { data, error } = await sb.from('questions')
-      .select('id, text, category, description, ends_at, status')
-      .eq('status', 'activa').gt('ends_at', new Date().toISOString())
-      .order('ends_at', { ascending: true }).limit(1)
+    const [{ data, error }, part] = await Promise.all([
+      sb.from('questions').select('id, text, category, description, ends_at, status, links, video_url')
+        .eq('status', 'activa').gt('ends_at', new Date().toISOString()).order('ends_at', { ascending: true }).limit(12),
+      estado.butaca ? sb.rpc('v2_mis_participaciones') : Promise.resolve({ data: [] }),
+    ])
     if (error) throw error
-    pregunta = data?.[0] || null
-  } catch (e) { console.warn('cargarVotacion:', e); pregunta = null }
-
-  $('#pill-live').hidden = !pregunta
-  if (!pregunta) {
-    $('#q-cat').textContent = 'Sin sesión'
-    $('#q-timer').textContent = '—'
-    $('#q-state').textContent = ''
-    $('#q-text').textContent = 'No hay votaciones activas en este momento.'
-    $('#q-votar').setAttribute('aria-disabled', 'true')
-    $('#st-votos').textContent = '0'
-    return
-  }
-  $('#q-cat').textContent = pregunta.category || 'General'
-  $('#q-text').textContent = pregunta.text
-  $('#q-debate').href = '#debates/' + pregunta.id
-  $('#q-votar').removeAttribute('aria-disabled')
-  tickVotacion()
+    iqPreguntas = data || []
+    iqMios = new Set((part.data || []).map(x => typeof x === 'string' ? x : x.v2_mis_participaciones || x.question_id || x))
+  } catch (e) { console.warn('cargarVotacion:', e); iqPreguntas = [] }
+  pregunta = iqPreguntas[0] || null
+  pintarVotacionesInicio()
+  // Votos emitidos en la sesión (todas las votaciones abiertas). Solo el total: el detalle se ve al cerrar.
+  if (!iqPreguntas.length) { $('#st-votos').textContent = '0'; return }
   try {
-    const { data } = await sb.rpc('get_question_votes', { p_question_id: pregunta.id })
-    const total = (data || []).reduce((a, r) => a + Number(r.total || 0), 0)
-    $('#st-votos').textContent = fmtNum(total)
+    const tot = await Promise.all(iqPreguntas.map(q => sb.rpc('get_question_votes', { p_question_id: q.id })
+      .then(({ data }) => (data || []).reduce((a, r) => a + Number(r.total || 0), 0), () => 0)))
+    $('#st-votos').textContent = fmtNum(tot.reduce((a, n) => a + n, 0))
+    tot.forEach((n, i) => { const el = $(`[data-iq-votos="${iqPreguntas[i].id}"]`); if (el) el.textContent = `${fmtNum(n)} ${n === 1 ? 'voto' : 'votos'}` })
   } catch (e) {}
 }
 
+function pintarVotacionesInicio() {
+  const ul = $('#iq-list'); if (!ul) return
+  const n = iqPreguntas.length
+  $('#pill-live').hidden = !n
+  $('#iq-vivo').hidden = !n
+  $('#iq-n').textContent = n ? `· ${n}` : ''
+  if (!n) { ul.innerHTML = '<li class="iq-vacio">No hay votaciones abiertas en este momento.</li>'; return }
+  const pend = iqPreguntas.filter(q => !iqMios.has(q.id)).length
+  ul.innerHTML = iqPreguntas.slice(0, IQ_MAX).map(q => {
+    const vote = iqMios.has(q.id)
+    return `<li class="${vote ? 'hecha' : ''}">
+      <div class="iq-top"><span class="tag">${esc(q.category || 'General')}</span><b class="iq-reloj" data-iq-fin="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b><small data-iq-votos="${q.id}"></small></div>
+      <p title="${esc(q.text)}">${esc(q.text)}</p>
+      <div class="iq-acc">
+        <a class="iq-deb" href="#debates/${q.id}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>
+        ${vote ? '<span class="iq-ok">✓ Votaste</span>' : !estado.butaca ? `<a class="btn btn-dark iq-btn" href="${APP_ACTUAL}">Conseguí tu butaca</a>` : `<button class="btn btn-dark iq-btn" data-iq-votar="${q.id}">Votar</button>`}
+      </div></li>`
+  }).join('') + (n > IQ_MAX ? `<li class="iq-mas"><a href="#votaciones">Ver las ${n} votaciones abiertas${pend ? ` · te faltan ${pend}` : ''} →</a></li>` : pend && estado.butaca ? '' : '')
+}
+
 function tickVotacion() {
-  if (!pregunta) return
-  const s = Math.floor((new Date(pregunta.ends_at) - Date.now()) / 1000)
-  if (s <= 0) {
-    $('#q-timer').textContent = '00:00:00'; $('#q-state').textContent = 'Finalizada'
-    $('#q-votar').setAttribute('aria-disabled', 'true'); $('#pill-live').hidden = true
-    return
-  }
-  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60
-  $('#q-timer').textContent = [h, m, ss].map(v => String(v).padStart(2, '0')).join(':')
-  $('#q-state').textContent = 'En curso'
+  let termino = false
+  $$('[data-iq-fin]').forEach(el => {
+    const s = Math.floor((new Date(el.dataset.iqFin) - Date.now()) / 1000)
+    if (s <= 0) { el.textContent = 'Cerró'; termino = true; return }
+    el.textContent = cuentaRegresiva(el.dataset.iqFin)
+    el.classList.toggle('urge', s < 3600)
+  })
+  if (termino && !tickVotacion.recargando) { tickVotacion.recargando = true; setTimeout(() => { tickVotacion.recargando = false; cargarVotacion() }, 1500) }
 }
 
 // ── Votaciones ──────────────────────────────────────────────────
@@ -825,7 +835,7 @@ function enlazar() {
   $('#scrim').addEventListener('click', cerrarMenu)
   $('#theme-btn').addEventListener('click', alternarTema)
   $('#bloque-buscar').addEventListener('input', pintarBloques)
-  $('#q-votar').addEventListener('click', e => { e.preventDefault(); if (pregunta) abrirVoto(pregunta) })
+  $('#q-card').addEventListener('click', e => { const b = e.target.closest('[data-iq-votar]'); if (!b) return; const q = iqPreguntas.find(x => x.id === b.dataset.iqVotar); if (q) abrirVoto(q) })
   $('#pill-live').addEventListener('click', e => { e.preventDefault(); location.hash = '#votaciones' })
   $('#mv-cerrar').addEventListener('click', cerrarVoto)
   $('#modal-voto').addEventListener('click', e => { if (e.target.id === 'modal-voto') cerrarVoto() })
