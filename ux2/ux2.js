@@ -3661,9 +3661,10 @@ function enlazarMuro() {
 
 // ══════════════════════════════════════════════════════════════
 //  REVELACIÓN — el momento en que una votación cerrada muestra su resultado.
-//  Privacidad: el servidor solo entrega totales. Las butacas que se encienden NO son las que votaron:
-//  se encienden tantas como votos hubo, en orden al azar. Tu butaca solo se marca si participaste
-//  (eso lo sabés vos), y nunca toma el color de una opción.
+//  Privacidad: el servidor solo entrega totales. Las butacas encendidas tienen TODAS el mismo color
+//  (participaron, pero nadie sabe qué votaron): el resultado se ve solo en los totales, nunca en una butaca.
+//  Además no son las butacas reales: se encienden tantas como votos hubo, en orden al azar.
+//  Tu butaca solo se marca si participaste (eso lo sabés vos) y nunca toma el color de una opción.
 // ══════════════════════════════════════════════════════════════
 const RV_COL = { si: '#22c55e', no: '#ef4444', abs: '#94a3b8', luz: '#f5b942' }
 const RV_T = { intro: 1300, luz: 3000, pausa: 700, conteo: 3600 }
@@ -3720,11 +3721,6 @@ async function abrirRevelacion(id) {
     rv.miIdx = estado.butaca && estado.butaca <= rv.pts.length ? estado.butaca - 1 : -1
     if (rv.miIdx >= 0) { rv.orden = rv.orden.filter(i => i !== rv.miIdx); if (rv.participe) rv.orden.splice(Math.max(0, r.total - 1), 0, rv.miIdx); else rv.orden.push(rv.miIdx) }
     rv.encendibles = rv.orden.slice(0, r.total)
-    // Para la composición final: las encendidas (menos la tuya) se ordenan de izquierda a derecha
-    rv.compo = rv.encendibles.filter(i => i !== rv.miIdx).sort((a, b) => rv.pts[b].a - rv.pts[a].a)
-    rv.color = new Map()
-    const n = rv.compo.length, nSi = Math.round(n * r.si / (r.total || 1)), nAbs = Math.round(n * r.abs / (r.total || 1))
-    rv.compo.forEach((idx, k) => rv.color.set(idx, k < nSi ? 'si' : k < nSi + nAbs ? 'abs' : 'no'))
     rv.butacas = butacas
     $('#rv-preg').innerHTML = `<span class="rv-tag">${esc(q.category || 'General')} · cerró el ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}</span><h1>${esc(q.text)}</h1>`
     $('#rv-mi').innerHTML = rv.participe ? '<b>Tu butaca</b><span>Participaste · tu voto es secreto</span>' : '<b>Tu butaca</b><span>No votaste en esta</span>'
@@ -3775,12 +3771,11 @@ function rvCuadro(now) {
   ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height)
   const rad = Math.max(1.6, Math.min(7, H.DOT * s * .5))
   const prendida = new Uint8Array(rv.pts.length); for (let k = 0; k < encendidas; k++) prendida[rv.encendibles[k]] = 1
-  const nComp = Math.floor(rvEase(pCont) * rv.compo.length)
-  const coloreada = new Set(rv.compo.slice(0, nComp))
   ctx.fillStyle = 'rgba(255,255,255,.09)'
   rv.pts.forEach((p, i) => { if (prendida[i] || i === rv.miIdx) return; ctx.beginPath(); ctx.arc(cx + p.x * s, cy + p.y * s, rad, 0, 6.283); ctx.fill() })
   const dib = (i, col, brillo) => { const p = rv.pts[i]; ctx.shadowColor = col; ctx.shadowBlur = brillo; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(cx + p.x * s, cy + p.y * s, rad, 0, 6.283); ctx.fill() }
-  rv.encendibles.slice(0, encendidas).forEach(i => { if (i === rv.miIdx) return; const c = coloreada.has(i) ? RV_COL[rv.color.get(i)] : RV_COL.luz; dib(i, c, rad * 2.2) })
+  // Todas las butacas encendidas tienen el MISMO color: muestra que se votó, nunca qué se votó
+  rv.encendibles.slice(0, encendidas).forEach(i => { if (i !== rv.miIdx) dib(i, RV_COL.luz, rad * 2.2) })
   ctx.shadowBlur = 0
   // tu butaca
   if (rv.miIdx >= 0) {
