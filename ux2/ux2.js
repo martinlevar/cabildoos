@@ -719,6 +719,7 @@ async function cargarBloques() {
   } catch (e) { console.warn('cargarBloques:', e); estado.bloques = [] }
   if (estado.butaca) {
     try { const { data } = await sb.rpc('bloque_mi_estado'); estado.miBloque = data } catch (e) {}
+    await cargarSolicitudBloque()
   }
   pintarBloques()
 }
@@ -753,26 +754,6 @@ function heroBloque(b) {
     ${estado.miBloque?.bloque_id === b.id
       ? '<span class="btn" aria-disabled="true">Ya sos parte de este bloque</span>'
       : `<button class="btn" data-unirme="${b.id}">Sumarse al bloque</button>`}
-  </div>`
-}
-
-function vistaCrear() {
-  const sol = estado.miBloque?.solicitud
-  if (sol && ['pendiente', 'aprobada', 'suspendida'].includes(sol.estado)) {
-    const txt = { pendiente: 'Tu solicitud está en revisión.', aprobada: 'Ya sos anfitrión de un bloque.', suspendida: 'Tu bloque está suspendido.' }[sol.estado]
-    return `<div class="empty"><h3>${esc(sol.bloque_nombre || 'Tu bloque')}</h3><p>${txt}</p></div>`
-  }
-  return `<div class="empty">
-    <div class="e-icon">${ICON_GRUPO}</div>
-    <h3>Creá tu bloque</h3>
-    <p>Reuní ciudadanos alrededor de tus ideas.</p>
-    <ul class="reqs">
-      <li><span class="n">1</span><span><b>Tener butaca.</b> Haber pasado la verificación del Cabildo.</span></li>
-      <li><span class="n">2</span><span><b>Mostrar tu nombre.</b> Como anfitrión, tu nombre y apellido serán públicos.</span></li>
-      <li><span class="n">3</span><span><b>Verificar tu identidad.</b> Subís tu DNI, que se borra al cerrar el bloque.</span></li>
-      <li><span class="n">4</span><span><b>Aprobación.</b> El equipo del Cabildo revisa tu solicitud.</span></li>
-    </ul>
-    <span class="btn btn-accent" aria-disabled="true">Empezar solicitud · próximamente</span>
   </div>`
 }
 
@@ -1955,6 +1936,252 @@ function enlazarCiudadanos() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal-ciu').hidden && $('#modal-conf').hidden) cerrarPerfil() })
 }
 
+// ── Crear bloque (segunda verificación) ─────────────────────────
+// Pasos: qué implica → tu identidad pública → tu bloque → DNI → consentimiento y envío.
+// Las imágenes se re-dibujan en el navegador (se achican y se pierden los metadatos, como la ubicación)
+// y las recibe la función "bloques-archivos": el DNI va a un depósito privado.
+const CONSENTIMIENTO_VERSION = 'v1-2026-10'
+const cb = { paso: 0, sol: null, f: { nombre: '', apellido: '', bio: '', bloque: '', lema: '', desc: '' }, archivos: {}, prev: {}, completar: false, enviando: false }
+const PASOS = ['Qué implica', 'Tu identidad pública', 'Tu bloque', 'Tu DNI', 'Confirmar']
+
+async function cargarSolicitudBloque() {
+  if (!estado.butaca) { cb.sol = null; return }
+  try { const { data } = await sb.rpc('v2_bloque_mi_solicitud'); cb.sol = data || null } catch (e) { cb.sol = null }
+}
+
+function vistaCrear() {
+  const s = cb.sol
+  if (!estado.user) return `<div class="empty"><div class="e-icon">${ICON_GRUPO}</div><h3>Creá tu bloque</h3><p>Iniciá sesión para empezar.</p><a class="btn btn-accent" href="${APP_ACTUAL}">Iniciar sesión</a></div>`
+  if (s && s.estado === 'pendiente') {
+    const falta = !s.dni_frente || !s.dni_dorso
+    const item = (ok, t) => `<li class="${ok ? 'ok' : 'falta'}"><span>${ok ? '✓' : '!'}</span>${t}</li>`
+    return `<div class="cb-estado">
+      <span class="cb-sello">${falta ? 'Falta completar' : 'En revisión'}</span>
+      <h3>${esc(s.bloque_nombre || 'Tu bloque')}</h3>
+      <p>${falta ? 'Tu solicitud quedó guardada, pero falta tu DNI para que el equipo pueda revisarla.' : 'El equipo del Cabildo está revisando tu solicitud. Te vamos a avisar cuando haya una respuesta.'}</p>
+      <ul class="cb-check">${item(true, 'Datos del bloque')}${item(s.dni_frente, 'DNI · frente')}${item(s.dni_dorso, 'DNI · dorso')}${item(!!s.foto_url, 'Tu foto (opcional)')}</ul>
+      ${falta || !s.foto_url ? `<button class="btn btn-accent" data-cb="completar">${falta ? 'Completar solicitud' : 'Agregar mi foto'}</button>` : ''}
+    </div>`
+  }
+  if (s && s.estado === 'aprobada') return `<div class="cb-estado"><span class="cb-sello ok">Aprobado</span><h3>${esc(s.bloque_nombre || 'Tu bloque')}</h3><p>Sos el anfitrión de este bloque.</p></div>`
+  if (s && s.estado === 'suspendida') return `<div class="cb-estado"><span class="cb-sello mal">Suspendido</span><h3>${esc(s.bloque_nombre || 'Tu bloque')}</h3><p>${esc(s.motivo || 'Tu bloque está suspendido.')}</p></div>`
+  return `<div class="empty">
+    <div class="e-icon">${ICON_GRUPO}</div>
+    <h3>Creá tu bloque</h3>
+    <p>Reuní ciudadanos alrededor de tus ideas.</p>
+    ${s?.estado === 'rechazada' ? `<p class="cb-rechazo">Tu solicitud anterior no fue aprobada${s.motivo ? `: ${esc(s.motivo)}` : '.'} Podés enviar una nueva.</p>` : ''}
+    <ul class="reqs">
+      <li><span class="n">1</span><span><b>Tener butaca.</b> Haber pasado la verificación del Cabildo.</span></li>
+      <li><span class="n">2</span><span><b>Mostrar tu nombre.</b> Como anfitrión, tu nombre y apellido serán públicos.</span></li>
+      <li><span class="n">3</span><span><b>Verificar tu identidad.</b> Subís tu DNI, que se borra al cerrar el bloque.</span></li>
+      <li><span class="n">4</span><span><b>Aprobación.</b> El equipo del Cabildo revisa tu solicitud.</span></li>
+    </ul>
+    ${estado.butaca ? '<button class="btn btn-accent" data-cb="empezar">Empezar solicitud</button>'
+      : `<a class="btn btn-accent" href="${APP_ACTUAL}">Primero conseguí tu butaca</a>`}
+  </div>`
+}
+
+function abrirCrearBloque(completar = false) {
+  if (!estado.butaca) { aviso('Necesitás tu butaca verificada.', 'error'); return }
+  cb.completar = completar
+  cb.paso = completar ? 4 : 0
+  $('#cb-pie').hidden = false
+  if (!completar) { cb.archivos = {}; Object.values(cb.prev).forEach(u => URL.revokeObjectURL(u)); cb.prev = {} }
+  $('#modal-bloque').hidden = false
+  pintarCrear()
+}
+
+function cerrarCrearBloque() {
+  if (cb.enviando) return
+  $('#modal-bloque').hidden = true
+}
+
+const campo = (id, etiqueta, max, valor, tipo = 'input', extra = '') => `
+  <label class="ml-l">${etiqueta} <em data-cc="${id}">${(valor || '').length}/${max}</em>
+    ${tipo === 'input' ? `<input id="cb-${id}" maxlength="${max}" value="${esc(valor)}" ${extra}>` : `<textarea id="cb-${id}" maxlength="${max}" rows="3" ${extra}>${esc(valor)}</textarea>`}</label>`
+
+function cajaArchivo(tipo, titulo, ayuda, forma = 'rect') {
+  const ya = cb.prev[tipo] || (tipo === 'foto' && cb.sol?.foto_url) || (tipo === 'imagen' && cb.sol?.imagen_url)
+  const subido = tipo.startsWith('dni') && cb.sol?.[tipo] && !cb.archivos[tipo]
+  return `<label class="cb-archivo ${forma} ${ya ? 'con' : ''}">
+    <input type="file" accept="image/jpeg,image/png,image/webp" ${tipo.startsWith('dni') ? 'capture="environment"' : ''} data-archivo="${tipo}" hidden>
+    ${ya ? `<img src="${esc(ya)}" alt="">` : subido ? '<span class="cb-ok-doc">✓ Ya subido</span>' : '<span class="cb-mas">+</span>'}
+    <span class="cb-arch-txt"><b>${titulo}</b><small>${ya || subido ? 'Tocá para cambiarla' : ayuda}</small></span>
+  </label>`
+}
+
+function pintarCrear() {
+  const f = cb.f, p = cb.paso
+  $('#cb-pasos').innerHTML = PASOS.map((t, i) => `<li class="${i < p ? 'hecho' : i === p ? 'actual' : ''}"><span>${i < p ? '✓' : i + 1}</span>${t}</li>`).join('')
+  let cuerpo = ''
+  if (p === 0) cuerpo = `
+    <h2>Antes de empezar</h2>
+    <p class="muted">Un bloque es la única forma de tener una cara pública en el Cabildo. Todo lo demás sigue siendo anónimo.</p>
+    <div class="cb-dos">
+      <div class="cb-col pub"><h4>Va a ser público</h4><ul><li>Tu nombre y apellido</li><li>Tu foto y tu bio, si las cargás</li><li>El nombre, lema y descripción del bloque</li><li>Cuántos ciudadanos tiene el bloque</li></ul></div>
+      <div class="cb-col priv"><h4>Sigue siendo privado</h4><ul><li>Tu número de butaca y cómo votás</li><li>Quiénes son los miembros del bloque</li><li>Tu DNI: solo lo ve el equipo de verificación y se borra al cerrar el bloque o si se rechaza la solicitud</li></ul></div>
+    </div>
+    <p class="cb-nota">Podés tener un solo bloque. Si te sumaste a otro bloque, al aprobarse el tuyo pasás a ser miembro del tuyo.</p>`
+  else if (p === 1) cuerpo = `
+    <h2>Tu identidad pública</h2>
+    <p class="muted">Así te van a ver como anfitrión. Usá tu nombre real: lo comparamos con tu DNI.</p>
+    <div class="cb-form">
+      <div class="cb-fila">${campo('nombre', 'Nombre', 60, f.nombre, 'input', 'autocomplete="given-name"')}${campo('apellido', 'Apellido', 60, f.apellido, 'input', 'autocomplete="family-name"')}</div>
+      ${campo('bio', 'Bio (opcional)', 500, f.bio, 'textarea', 'placeholder="Quién sos y por qué armás este bloque"')}
+      ${cajaArchivo('foto', 'Tu foto (opcional)', 'Una foto tuya, de frente. Nunca usamos la del DNI.', 'redonda')}
+    </div>`
+  else if (p === 2) cuerpo = `
+    <h2>Tu bloque</h2>
+    <div class="cb-con-vista">
+      <div class="cb-form">
+        ${campo('bloque', 'Nombre del bloque', 60, f.bloque, 'input', 'placeholder="Ej: Venezuela Posible"')}
+        ${campo('lema', 'Lema', 120, f.lema, 'input', 'placeholder="Una frase que lo resuma"')}
+        ${campo('desc', 'Qué propone el bloque', 2000, f.desc, 'textarea', 'placeholder="Ideas, valores, cómo van a trabajar"')}
+        ${cajaArchivo('imagen', 'Imagen del bloque (opcional)', 'Horizontal, sin texto encima')}
+      </div>
+      <div class="cb-vista"><small class="muted">Así se verá en el panel</small><div id="cb-vista-bloque"></div></div>
+    </div>`
+  else if (p === 3) cuerpo = `
+    <h2>Verificá tu identidad</h2>
+    <p class="muted">Sacale una foto a tu DNI o documento de identidad. Solo lo ve el equipo de verificación, para confirmar que sos quien decís ser.</p>
+    <div class="cb-dni">${cajaArchivo('dni_frente', 'Frente', 'Con buena luz, sin reflejos, que se vean los 4 bordes')}${cajaArchivo('dni_dorso', 'Dorso', 'Mismo cuidado: legible y completo')}</div>
+    <p class="cb-nota">Se guarda en un depósito privado, separado de la verificación anónima de tu butaca. Cada vez que alguien del equipo lo abre, queda registrado. Se borra cuando cerrás el bloque o si la solicitud se rechaza.</p>`
+  else {
+    const nom = cb.completar ? `${cb.sol?.nombre || ''} ${cb.sol?.apellido || ''}` : `${f.nombre} ${f.apellido}`
+    const blq = cb.completar ? cb.sol?.bloque_nombre : f.bloque
+    cuerpo = `
+    <h2>${cb.completar ? 'Subir lo que falta' : 'Confirmá y enviá'}</h2>
+    ${cb.completar ? `<p class="muted">Tu solicitud para «${esc(blq || '')}» ya está guardada. Subí lo que falta.</p>
+    <div class="cb-dni">${!cb.sol?.dni_frente ? cajaArchivo('dni_frente', 'DNI · frente', 'Con buena luz, sin reflejos, que se vean los 4 bordes') : ''}${!cb.sol?.dni_dorso ? cajaArchivo('dni_dorso', 'DNI · dorso', 'Legible y completo') : ''}${cajaArchivo('foto', 'Tu foto (opcional)', 'Una foto tuya, de frente', 'redonda')}${cajaArchivo('imagen', 'Imagen del bloque (opcional)', 'Horizontal, sin texto encima')}</div>` : `<div class="cb-resumen"><div><small>Anfitrión</small><b>${esc(nom)}</b></div><div><small>Bloque</small><b>${esc(blq)}</b></div><div><small>DNI</small><b>${cb.archivos.dni_frente && cb.archivos.dni_dorso ? 'Frente y dorso listos' : 'Falta'}</b></div></div>
+    <label class="cb-acepto"><input type="checkbox" id="cb-ok1"> Acepto que mi nombre y apellido, <b>${esc(nom.trim())}</b>, se muestren públicamente como anfitrión del bloque «${esc(blq)}».</label>
+    <label class="cb-acepto"><input type="checkbox" id="cb-ok2"> Entiendo que mi DNI se guarda de forma privada solo para verificar mi identidad, y que se borra al cerrar el bloque o si la solicitud se rechaza.</label>`}
+    <ul class="cb-subidas" id="cb-subidas"></ul>`
+  }
+  $('#cb-cuerpo').innerHTML = cuerpo
+  if (p === 2) vistaPreviaBloque()
+  const ultimo = p === 4
+  $('#cb-atras').hidden = p === 0 || cb.completar
+  $('#cb-pasos').hidden = cb.completar
+  $('#cb-sig').textContent = ultimo ? (cb.completar ? 'Subir' : 'Enviar solicitud') : p === 0 ? 'Empezar' : 'Siguiente'
+  validarPaso()
+}
+
+function vistaPreviaBloque() {
+  const v = $('#cb-vista-bloque'); if (!v) return
+  v.innerHTML = heroBloque({ id: '_', nombre: cb.f.bloque || 'Nombre del bloque', lema: cb.f.lema || 'Tu lema', anfitrion_nombre: `${cb.f.nombre} ${cb.f.apellido}`.trim() || 'Tu nombre', anfitrion_foto: cb.prev.foto || null, miembros: 1, ideas: 0 })
+}
+
+function validarPaso() {
+  const f = cb.f, p = cb.paso
+  const largo = (s, a, b) => s.trim().length >= a && s.trim().length <= b
+  let ok = true
+  if (p === 1) ok = largo(f.nombre, 2, 60) && largo(f.apellido, 2, 60)
+  if (p === 2) ok = largo(f.bloque, 3, 60)
+  if (p === 3) ok = (cb.archivos.dni_frente || cb.sol?.dni_frente) && (cb.archivos.dni_dorso || cb.sol?.dni_dorso)
+  if (p === 4 && !cb.completar) ok = $('#cb-ok1')?.checked && $('#cb-ok2')?.checked
+  if (p === 4 && cb.completar) ok = Object.keys(cb.archivos).length > 0 && (cb.sol?.dni_frente || cb.archivos.dni_frente) && (cb.sol?.dni_dorso || cb.archivos.dni_dorso)
+  $('#cb-sig').disabled = !ok || cb.enviando
+}
+
+// Achica y re-dibuja la imagen: sale un JPEG nuevo, sin metadatos (ubicación, cámara, etc.)
+function prepararImagen(file, maxLado, calidad = 0.85) {
+  return new Promise((res, rej) => {
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type) && !/\.(jpe?g|png|webp|heic)$/i.test(file.name)) return rej(new Error('Elegí una imagen JPG, PNG o WEBP'))
+    const img = new Image(), url = URL.createObjectURL(file)
+    img.onload = () => {
+      const k = Math.min(1, maxLado / Math.max(img.width, img.height))
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k)
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height)
+      URL.revokeObjectURL(url)
+      c.toBlob(b => b ? res(b) : rej(new Error('No se pudo procesar la imagen')), 'image/jpeg', calidad)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('No se pudo leer la imagen. Probá con otra foto.')) }
+    img.src = url
+  })
+}
+
+async function elegirArchivo(tipo, file) {
+  if (!file) return
+  try {
+    const blob = await prepararImagen(file, tipo.startsWith('dni') ? 1800 : tipo === 'foto' ? 800 : 1400)
+    cb.archivos[tipo] = blob
+    if (cb.prev[tipo]) URL.revokeObjectURL(cb.prev[tipo])
+    cb.prev[tipo] = URL.createObjectURL(blob)
+    pintarCrear()
+  } catch (e) { aviso(e.message, 'error') }
+}
+
+async function subirArchivo(tipo, blob) {
+  const { data: { session } } = await sb.auth.getSession()
+  const fd = new FormData(); fd.append('tipo', tipo); fd.append('archivo', blob, tipo + '.jpg')
+  const r = await fetch(`${window.__ENV.SUPABASE_URL}/functions/v1/bloques-archivos?accion=subir`, {
+    method: 'POST', headers: { Authorization: `Bearer ${session?.access_token}`, apikey: window.__ENV.SUPABASE_KEY }, body: fd,
+  })
+  const j = await r.json().catch(() => ({}))
+  if (!r.ok || !j.ok) throw new Error(j.error || 'No se pudo subir el archivo')
+  return j
+}
+
+async function enviarSolicitudBloque() {
+  if (cb.enviando) return
+  cb.enviando = true; validarPaso()
+  const lista = $('#cb-subidas')
+  const fila = (t, e) => { let li = lista.querySelector(`[data-s="${t}"]`); if (!li) { li = document.createElement('li'); li.dataset.s = t; lista.appendChild(li) } li.className = e[0]; li.textContent = e[1] }
+  try {
+    if (!cb.completar) {
+      fila('datos', ['va', 'Guardando tu solicitud…'])
+      const f = cb.f
+      const { error } = await sb.rpc('bloque_solicitar', { p_nombre: f.nombre, p_apellido: f.apellido, p_bio: f.bio, p_foto_url: null,
+        p_bloque_nombre: f.bloque, p_lema: f.lema, p_descripcion: f.desc, p_imagen_url: null, p_acepto_nombre_publico: true, p_consentimiento_version: CONSENTIMIENTO_VERSION })
+      if (error) throw new Error(error.message || 'No se pudo guardar la solicitud')
+      fila('datos', ['ok', 'Solicitud guardada'])
+      cb.completar = true
+    }
+    const nombres = { dni_frente: 'DNI · frente', dni_dorso: 'DNI · dorso', foto: 'Tu foto', imagen: 'Imagen del bloque' }
+    for (const t of ['dni_frente', 'dni_dorso', 'foto', 'imagen']) {
+      if (!cb.archivos[t]) continue
+      fila(t, ['va', `Subiendo ${nombres[t]}…`])
+      await subirArchivo(t, cb.archivos[t])
+      delete cb.archivos[t]
+      fila(t, ['ok', `${nombres[t]} listo`])
+    }
+    await cargarSolicitudBloque()
+    cb.enviando = false
+    $('#cb-cuerpo').innerHTML = `<div class="ml-listo"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
+      <h2>Solicitud enviada</h2><p>El equipo del Cabildo va a revisar tus datos y tu DNI. Te avisamos apenas haya una respuesta.</p></div>`
+    $('#cb-pie').hidden = true
+    pintarBloques()
+  } catch (e) {
+    cb.enviando = false
+    await cargarSolicitudBloque()
+    fila('error', ['mal', e.message + (cb.completar ? ' Tu solicitud quedó guardada: podés volver a intentarlo.' : '')])
+    validarPaso(); pintarBloques()
+  }
+}
+
+function enlazarCrearBloque() {
+  const m = $('#modal-bloque'); if (!m) return
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-cb]'); if (!b) return
+    abrirCrearBloque(b.dataset.cb === 'completar')
+  })
+  m.addEventListener('input', e => {
+    const id = e.target.id?.replace('cb-', '')
+    if (id in cb.f) { cb.f[id] = e.target.value; const c = m.querySelector(`[data-cc="${id}"]`); if (c) c.textContent = `${e.target.value.length}/${e.target.maxLength}` }
+    if (cb.paso === 2) vistaPreviaBloque()
+    validarPaso()
+  })
+  m.addEventListener('change', e => { if (e.target.dataset.archivo) elegirArchivo(e.target.dataset.archivo, e.target.files[0]); if (e.target.id?.startsWith('cb-ok')) validarPaso() })
+  $('#cb-x').addEventListener('click', cerrarCrearBloque)
+  m.addEventListener('click', e => { if (e.target.id === 'modal-bloque') cerrarCrearBloque() })
+  $('#cb-atras').addEventListener('click', () => { cb.paso = Math.max(0, cb.paso - 1); pintarCrear() })
+  $('#cb-sig').addEventListener('click', () => {
+    if (cb.paso < 4) { cb.paso++; return pintarCrear() }
+    enviarSolicitudBloque()
+  })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !m.hidden && $('#modal-conf').hidden) cerrarCrearBloque() })
+}
+
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
 function plegar(k) {
   const on = $('.app').classList.toggle(k + '-plegado')
@@ -1972,7 +2199,7 @@ function irATab(tab) {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas() }, 1000)
   await cargarUsuario()
   vigilarSesion()
