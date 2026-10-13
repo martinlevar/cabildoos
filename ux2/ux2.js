@@ -47,6 +47,12 @@ function pintarNav() {
 
 function ruta() {
   const [sec, arg] = (location.hash || '#inicio').slice(1).split('/')
+  if (sec === 'monitor') {              // monitor del Hemiciclo: también se abre encima
+    if (rv.abierto) cerrarRevelacion()
+    if (!vistaActual() || vistaActual() === 'pronto') { $$('.view').forEach(v => { v.hidden = v.dataset.view !== 'inicio' }); $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === 'inicio')) }
+    return abrirMonitor()
+  }
+  if (mon.abierto) cerrarMonitor(false)
   if (sec === 'revelacion') {           // se abre encima de la sección en la que estabas
     if (!vistaActual() || vistaActual() === 'pronto') { $$('.view').forEach(v => { v.hidden = v.dataset.view !== 'inicio' }); $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === 'inicio')) }
     return abrirRevelacion(arg)
@@ -628,7 +634,7 @@ async function cargarHemiciclo() {
 }
 
 // ── Votación activa ─────────────────────────────────────────────
-let pregunta = null, iqPreguntas = [], iqMios = new Set(), iqCerradas = []
+let pregunta = null, iqPreguntas = [], iqMios = new Set(), iqCerradas = [], iqVotos = new Map()
 const IQ_MAX = 4
 async function cargarVotacion() {
   try {
@@ -648,13 +654,15 @@ async function cargarVotacion() {
   pregunta = iqPreguntas[0] || null
   pintarVotacionesInicio()
   // Votos emitidos en la sesión (todas las votaciones abiertas). Solo el total: el detalle se ve al cerrar.
-  if (!iqPreguntas.length) { $('#st-votos').textContent = '0'; return }
+  if (!iqPreguntas.length) { $('#st-votos').textContent = '0'; iqVotos = new Map(); if (mon.abierto) pintarMonitor(); return }
   try {
     const tot = await Promise.all(iqPreguntas.map(q => sb.rpc('get_question_votes', { p_question_id: q.id })
       .then(({ data }) => (data || []).reduce((a, r) => a + Number(r.total || 0), 0), () => 0)))
     $('#st-votos').textContent = fmtNum(tot.reduce((a, n) => a + n, 0))
     tot.forEach((n, i) => { const el = $(`[data-iq-votos="${iqPreguntas[i].id}"]`); if (el) el.textContent = `${fmtNum(n)} ${n === 1 ? 'voto' : 'votos'}` })
+    iqVotos = new Map(iqPreguntas.map((q, i) => [q.id, tot[i]]))
   } catch (e) {}
+  if (mon.abierto) pintarMonitor()
 }
 
 function pintarVotacionesInicio() {
@@ -3958,6 +3966,196 @@ function enlazarMuro() {
 }
 
 // ══════════════════════════════════════════════════════════════
+//  MONITOR — el Hemiciclo y las votaciones vigentes a pantalla completa, como una pantalla de sesión.
+//  Pensado para proyectar o dejar abierto: se actualiza solo, tiene reloj, cuentas regresivas y modo pantalla completa.
+//  Privacidad: mientras una votación está abierta NO se marca qué butacas votaron; solo se muestran totales.
+//  Cuando entra un voto nuevo, una onda recorre todo el hemiciclo (es simbólica: no señala a nadie).
+// ══════════════════════════════════════════════════════════════
+const mon = { abierto: false, volver: 'inicio', raf: 0, poll: 0, dpr: 1, cam: null, ondas: [], votos: null, quieto: 0, ultimaQ: '' }
+const fmtMonHora = new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })
+const fmtMonFecha = new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', weekday: 'long', day: 'numeric', month: 'long' })
+
+function abrirMonitor() {
+  if (!mon.abierto) { mon.volver = vistaActual() || 'inicio'; mon.votos = null; mon.ondas = [] }
+  mon.abierto = true
+  $('#mon').hidden = false; document.body.style.overflow = 'hidden'
+  monTamano(); tickMonitor(); pintarMonitor()
+  cargarVotacion()                                         // datos frescos al abrir
+  if (!totalButacas) cargarHemiciclo()
+  clearInterval(mon.poll); mon.poll = setInterval(() => { if (mon.abierto) cargarVotacion() }, 15_000)
+  clearInterval(mon.rueda); mon.rueda = setInterval(monRodar, 7000)
+  cancelAnimationFrame(mon.raf); mon.raf = requestAnimationFrame(monCuadro)
+  monDespertar()
+  setTimeout(() => $('#mon-cerrar')?.focus({ preventScroll: true }), 50)
+}
+
+function cerrarMonitor(volver = true) {
+  if (!mon.abierto) return
+  mon.abierto = false
+  cancelAnimationFrame(mon.raf); clearInterval(mon.poll); clearInterval(mon.rueda); clearTimeout(mon.quieto)
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+  $('#mon').hidden = true; $('#mon').classList.remove('quieto'); document.body.style.overflow = ''
+  if (volver && location.hash.startsWith('#monitor')) location.hash = '#' + (mon.volver || 'inicio')
+  if (vistaActual() === 'inicio') requestAnimationFrame(dibujarHemiciclo)
+}
+
+function pintarMonitor() {
+  if (!mon.abierto) return
+  const n = iqPreguntas.length
+  const total = [...iqVotos.values()].reduce((a, v) => a + v, 0)
+  $('#mon-butacas').textContent = totalButacas ? fmtNum(totalButacas) : '—'
+  $('#mon-abiertas').textContent = fmtNum(n)
+  $('#mon-votos').textContent = fmtNum(total)
+  $('#mon-vivo').classList.toggle('apagado', !n)
+  $('#mon-vivo-txt').textContent = n ? 'Sesión en vivo' : 'Sin sesión'
+  // Llegaron votos nuevos: onda por el hemiciclo y "+N" junto al contador
+  if (mon.votos !== null && total > mon.votos) {
+    mon.ondas.push(performance.now())
+    const mas = $('#mon-mas'); mas.textContent = `+${fmtNum(total - mon.votos)}`
+    mas.classList.remove('sube'); void mas.offsetWidth; mas.classList.add('sube')
+  }
+  mon.votos = total
+  // Lista de votaciones vigentes
+  const ul = $('#mon-vq')
+  const firma = iqPreguntas.map(q => q.id).join()
+  if (!n) ul.innerHTML = '<li class="mon-vacio"><b>No hay votaciones abiertas</b><span>Cuando empiece una sesión aparece aquí sola, con su cuenta regresiva.</span></li>'
+  else {
+    if (firma !== mon.ultimaQ) {
+      ul.innerHTML = iqPreguntas.map((q, i) => `<li class="mon-q" style="--i:${i}">
+        <div class="mon-q-top"><span class="mon-tag">${esc(q.category || 'General')}</span><b class="mon-cd" data-mon-fin="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b></div>
+        <p title="${esc(q.text)}">${esc(q.text)}</p>
+        <div class="mon-q-barra"><i data-mon-barra="${q.id}"></i></div>
+        <div class="mon-q-pie"><span data-mon-votos="${q.id}"></span><span data-mon-pc="${q.id}"></span></div>
+      </li>`).join('')
+    }
+    iqPreguntas.forEach(q => {
+      const v = iqVotos.get(q.id) ?? 0, pc = totalButacas ? v / totalButacas * 100 : 0
+      const a = $(`[data-mon-votos="${q.id}"]`), b = $(`[data-mon-pc="${q.id}"]`), c = $(`[data-mon-barra="${q.id}"]`)
+      if (a) a.innerHTML = `<b>${fmtNum(v)}</b> ${v === 1 ? 'voto' : 'votos'}`
+      if (b) b.textContent = `${pc > 0 && pc < 1 ? '<1' : Math.round(pc)}% de participación`
+      if (c) c.style.width = Math.min(100, pc) + '%'
+    })
+  }
+  mon.ultimaQ = n ? firma : ''
+  $('#mon-cerradas').innerHTML = iqCerradas.length ? `<h3>Recién cerradas</h3>` + iqCerradas.map(q => `<a class="mon-cer ${rvVista(q.id) ? '' : 'nueva'}" href="#revelacion/${q.id}">
+      <span class="iq-chispa" aria-hidden="true">✦</span><span><b>${esc(q.text)}</b><small>Cerró ${haceCuanto(q.ends_at)}</small></span><em>${rvVista(q.id) ? 'Ver resultado' : 'Revelación'}</em></a>`).join('') : ''
+}
+
+function tickMonitor() {
+  const now = new Date()
+  $('#mon-hora').textContent = fmtMonHora.format(now).replace(/\s+/g, ' ')
+  const f = fmtMonFecha.format(now); $('#mon-fecha').textContent = f.charAt(0).toUpperCase() + f.slice(1) + ' · hora de Venezuela'
+  $$('[data-mon-fin]').forEach(el => {
+    const s = Math.floor((new Date(el.dataset.monFin) - Date.now()) / 1000)
+    el.textContent = s <= 0 ? 'Cerró' : cuentaRegresiva(el.dataset.monFin)
+    el.closest('.mon-q')?.classList.toggle('urge', s > 0 && s < 600)
+    el.closest('.mon-q')?.classList.toggle('fin', s <= 0)
+  })
+}
+
+// Encuadre del hemiciclo dentro de la escena (misma geometría y orientación que el de Inicio)
+function monTamano() {
+  const cv = $('#mon-hemi'), esc_ = $('#mon-escena'); if (!cv || !esc_ || !limites) { mon.cam = null; return }
+  mon.dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const W = esc_.clientWidth, Hh = esc_.clientHeight
+  cv.width = Math.max(1, Math.round(W * mon.dpr)); cv.height = Math.max(1, Math.round(Hh * mon.dpr))
+  const pad = Math.min(W, Hh) * .04, t1 = Math.max(13, Math.min(W * .024, 34)), abajo = t1 * 3.4   // lugar para el rótulo bajo el arco
+  const s = Math.max(.05, Math.min((W - pad * 2) / (limites.x1 - limites.x0 + H.DOT * 2), (Hh - pad * 2 - abajo) / (limites.y1 - limites.y0 + H.DOT * 2)))
+  const alto = (limites.y1 - limites.y0) * s + abajo
+  mon.cam = { s, t1, cx: W / 2 - (limites.x0 + limites.x1) / 2 * s, cy: (Hh - alto) / 2 - limites.y0 * s, W, Hh }
+}
+
+function monCuadro(now) {
+  if (!mon.abierto) return
+  mon.raf = requestAnimationFrame(monCuadro)
+  if (!mon.cam || mon.cam.W !== $('#mon-escena').clientWidth) monTamano()
+  if (!mon.cam || !asientos.length) return
+  const cv = $('#mon-hemi'), ctx = cv.getContext('2d'), d = mon.dpr, { s, cx, cy, W, Hh } = mon.cam
+  ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, W, Hh)
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const rad = Math.max(1.6, Math.min(10, H.DOT * s * .75))
+  const vivo = iqPreguntas.length > 0
+  // ondas activas (cada voto nuevo dispara una, dura 2,2 s)
+  mon.ondas = mon.ondas.filter(t0 => now - t0 < 2200)
+  const rMax = H.R_IN + 40 * H.R_STEP
+  const frentes = quieto ? [] : mon.ondas.map(t0 => (now - t0) / 2200 * (rMax + 200))
+  for (let i = 0; i < asientos.length; i++) {
+    const a = asientos[i]
+    if (a.num === estado.butaca) continue
+    const rr = Math.hypot(a.x, a.y)
+    // respiración suave en barrido (igual para todos: no representa votos)
+    let alfa = vivo && !quieto ? .24 + .08 * Math.sin(Math.atan2(a.y, a.x) * 4 - now / 900) : .22
+    let oro = 0
+    for (const f of frentes) oro = Math.max(oro, Math.exp(-(((rr - f) / 55) ** 2)))
+    if (oro > .02) { ctx.fillStyle = `rgba(245,185,66,${(.25 + .75 * oro).toFixed(3)})` }
+    else ctx.fillStyle = `rgba(255,255,255,${alfa.toFixed(3)})`
+    ctx.beginPath(); ctx.arc(cx + a.x * s, cy + a.y * s, rad, 0, 6.283); ctx.fill()
+  }
+  // tu butaca
+  const mia = estado.butaca && asientos[estado.butaca - 1]
+  if (mia) {
+    const x = cx + mia.x * s, y = cy + mia.y * s
+    ctx.shadowColor = 'rgba(247,106,30,.8)'; ctx.shadowBlur = 16; ctx.fillStyle = '#f76a1e'
+    ctx.beginPath(); ctx.arc(x, y, rad * 1.35, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0
+    ctx.strokeStyle = 'rgba(247,106,30,.6)'; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.arc(x, y, rad * 1.35 + 5 + (quieto ? 0 : Math.sin(now / 350) * 1.5), 0, 6.283); ctx.stroke()
+  }
+  // rótulo en el centro del arco
+  const t1 = mon.cam.t1, fx = cx, fy = cy + limites.y1 * s + rad + t1 * 1.2   // rótulo debajo del arco, como en Inicio
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+  ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = `800 ${t1}px Inter, system-ui, sans-serif`
+  ctx.fillText('C A B I L D O', fx, fy)
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `600 ${t1 * .48}px Inter, system-ui, sans-serif`
+  ctx.fillText('D E   V E N E Z U E L A', fx, fy + t1 * .95)
+  if (mia) { ctx.fillStyle = 'rgba(247,106,30,.95)'; ctx.font = `700 ${t1 * .42}px Inter, system-ui, sans-serif`; ctx.fillText(`● Tu butaca #${estado.butaca}`, fx, fy + t1 * 1.75) }
+}
+
+// Si no entran todas las votaciones, la lista baja sola de a una tarjeta (como en una pantalla de sesión).
+// Se detiene mientras el mouse está encima o en el teléfono (ahí se desplaza a mano).
+function monRodar() {
+  const l = $('.mon-lista'); if (!l || mon.encima || window.innerWidth <= 900) return
+  if (l.scrollHeight - l.clientHeight < 8) return
+  const fin = l.scrollTop + l.clientHeight >= l.scrollHeight - 8
+  const paso = ($('.mon-q')?.offsetHeight || 160) + 12
+  l.scrollTo({ top: fin ? 0 : l.scrollTop + paso, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+}
+
+// En pantalla completa, los controles y el cursor se esconden si no se mueve el mouse
+function monDespertar() {
+  const m = $('#mon'); m.classList.remove('quieto'); clearTimeout(mon.quieto)
+  if (document.fullscreenElement) mon.quieto = setTimeout(() => m.classList.add('quieto'), 3000)
+}
+function monPantallaCompleta() {
+  const m = $('#mon')
+  if (document.fullscreenElement) document.exitFullscreen?.()
+  else if (m.requestFullscreen) m.requestFullscreen().catch(() => aviso('Tu navegador no permitió la pantalla completa.', 'err'))
+  else aviso('Tu navegador no permite pantalla completa. Probá con F11.', 'err')
+}
+
+function enlazarMonitor() {
+  const m = $('#mon')
+  $('#mon-cerrar').addEventListener('click', () => cerrarMonitor())
+  $('#mon-full').addEventListener('click', monPantallaCompleta)
+  m.addEventListener('pointermove', monDespertar)
+  $('.mon-lista').addEventListener('pointerenter', () => { mon.encima = true })
+  $('.mon-lista').addEventListener('pointerleave', () => { mon.encima = false })
+  m.addEventListener('click', e => { if (e.target.closest('.mon-cer')) cerrarMonitor(false) })
+  document.addEventListener('fullscreenchange', () => {
+    const full = document.fullscreenElement === m
+    $('#mon-full span').textContent = full ? 'Salir de pantalla completa' : 'Pantalla completa'
+    m.classList.toggle('full', full); monDespertar()
+    setTimeout(monTamano, 60)
+  })
+  document.addEventListener('keydown', e => {
+    if (!mon.abierto || e.target.closest('input, textarea')) return
+    if (e.key === 'Escape' && !document.fullscreenElement) cerrarMonitor()
+    if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey) monPantallaCompleta()
+  })
+  window.addEventListener('resize', () => { if (mon.abierto) monTamano() })
+  if (window.ResizeObserver) new ResizeObserver(() => { if (mon.abierto) monTamano() }).observe($('#mon-escena'))
+}
+
+// ══════════════════════════════════════════════════════════════
 //  REVELACIÓN — el momento en que una votación cerrada muestra su resultado.
 //  Privacidad: se encienden las butacas que votaron, TODAS del mismo color: muestra que esa butaca votó,
 //  nunca qué votó (ese dato no existe en la base). El resultado se ve solo en los totales.
@@ -4190,8 +4388,8 @@ function enlazarRevelacion() {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarHeader(); enlazarBuscador(); ruta()
-  tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro() }, 1000)
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarHeader(); enlazarBuscador(); ruta()
+  tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
   vigilarSesion()
   vigilarPortada()

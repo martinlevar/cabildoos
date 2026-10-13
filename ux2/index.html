@@ -111,6 +111,7 @@
             <div class="stat"><b id="st-butacas">—</b><small>Ciudadanos<br>con butaca</small></div>
             <div class="stat"><b id="st-votos">—</b><small><i class="live-dot"></i>Votos en<br>la sesión</small></div>
             <a class="pill-live" id="pill-live" href="#votaciones" hidden><i></i>Sesión en vivo<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+            <a class="hemi-expand" id="hemi-expand" href="#monitor" title="Abrir el monitor del Hemiciclo (pantalla completa)" aria-label="Abrir el monitor del Hemiciclo"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Monitor</span></a>
           </header>
           <div class="hemi-wrap">
             <canvas id="hemi" aria-label="Hemiciclo con las butacas del Cabildo"></canvas>
@@ -411,6 +412,37 @@
     <div class="rv-mi" id="rv-mi" hidden></div>
   </div>
   <div class="rv-panel" id="rv-panel"></div>
+</div>
+
+<!-- MONITOR: el Hemiciclo y las votaciones vigentes a pantalla completa (para proyectar o dejar abierto) -->
+<div class="mon" id="mon" hidden role="dialog" aria-modal="true" aria-label="Monitor del Hemiciclo">
+  <header class="mon-top">
+    <div class="mon-marca">
+      <span class="mon-vivo" id="mon-vivo"><i></i><span id="mon-vivo-txt">En vivo</span></span>
+      <div><b>Cabildo de Venezuela</b><small>Monitor del Hemiciclo</small></div>
+    </div>
+    <div class="mon-reloj" aria-live="off"><b id="mon-hora">--:--</b><small id="mon-fecha"></small></div>
+    <div class="mon-acc">
+      <button class="rv-boton" id="mon-full" title="Pantalla completa (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Pantalla completa</span></button>
+      <button class="rv-boton" id="mon-cerrar" title="Cerrar (Esc)" aria-label="Cerrar el monitor"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Cerrar</span></button>
+    </div>
+  </header>
+  <div class="mon-cuerpo">
+    <section class="mon-sala">
+      <div class="mon-escena" id="mon-escena"><canvas id="mon-hemi" aria-label="Hemiciclo del Cabildo"></canvas></div>
+      <div class="mon-stats">
+        <div><b id="mon-butacas">—</b><small>Ciudadanos con butaca</small></div>
+        <div class="mon-st-votos"><b id="mon-votos">—</b><small>Votos en la sesión</small><span class="mon-mas" id="mon-mas" aria-hidden="true"></span></div>
+        <div><b id="mon-abiertas">—</b><small>Votaciones abiertas</small></div>
+      </div>
+    </section>
+    <aside class="mon-lista">
+      <h2>Votaciones vigentes</h2>
+      <ol class="mon-vq" id="mon-vq"></ol>
+      <div class="mon-cerradas" id="mon-cerradas"></div>
+    </aside>
+  </div>
+  <footer class="mon-pie"><span>🔒 El voto es secreto: el Cabildo muestra cuántos votaron, nunca qué votó cada butaca.</span><span>cabildodevenezuela.com</span></footer>
 </div>
 
 <!-- NERDOCRASY: pantalla de juego -->
