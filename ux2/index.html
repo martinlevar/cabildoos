@@ -73,12 +73,19 @@
     <!-- INICIO -->
     <section class="view" data-view="inicio">
       <div class="hero">
-        <div>
-          <h1>El futuro de <br>Venezuela <span>se debate aquí.</span></h1>
-          <p>Ciudadanos. Ideas. Votaciones. Un país posible.</p>
+        <div class="hero-flip" id="hero-flip">
+          <div class="hero-cara frente" id="hero-frente">
+            <h1 id="hero-titulo">El futuro de <br>Venezuela <span>se debate aquí.</span></h1>
+            <p id="hero-sub">Ciudadanos. Ideas. Votaciones. Un país posible.</p>
+          </div>
+          <div class="hero-cara dorso" id="hero-dorso" aria-live="polite">
+            <span class="hero-anuncio-tag" id="hero-anuncio-tag"><i></i>Anuncio</span>
+            <p class="hero-anuncio" id="hero-anuncio"></p>
+            <button class="hero-girar" id="hero-girar" type="button">Ver portada ↺</button>
+          </div>
         </div>
         <div class="hero-card">
-          <p>Más ciudadanos.<br>Más ideas.<br>Más Venezuela.</p>
+          <p id="hero-tarjeta">Más ciudadanos.<br>Más ideas.<br>Más Venezuela.</p>
           <span class="hero-play" title="Próximamente">
             <svg viewBox="0 0 24 24"><path d="M9 7v10l8-5z"/></svg>
             <small>Ver video</small>

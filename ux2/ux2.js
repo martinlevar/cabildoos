@@ -809,6 +809,56 @@ async function cargarMuro() {
   } catch (e) { console.warn('cargarMuro:', e); ul.innerHTML = '<li class="muted">No se pudo cargar el Muro.</li>' }
 }
 
+// ── Portada (textos editables desde el admin) + anuncio global con giro ──
+const portada = { anuncio: null, mostrandoAnuncio: false, visto: '' }
+async function cargarPortada() {
+  try {
+    const { data, error } = await sb.rpc('v2_portada')
+    if (error) throw error
+    pintarPortada(data?.portada)
+    ponerAnuncio(data?.anuncio)
+  } catch (e) { console.warn('portada:', e) }
+}
+function pintarPortada(p) {
+  if (!p) return
+  const titulo = String(p.titulo || '').trim(), dest = String(p.destacado || '').trim()
+  if (titulo || dest) {
+    // corta el título en dos líneas por la última palabra (como el diseño original)
+    const pal = titulo.split(/\s+/)
+    const l1 = pal.length > 2 ? pal.slice(0, -1).join(' ') : titulo, l2 = pal.length > 2 ? pal.at(-1) : ''
+    $('#hero-titulo').innerHTML = `${esc(l1)}${l2 ? ` <br>${esc(l2)}` : ''}${dest ? ` <span>${esc(dest)}</span>` : ''}`
+  }
+  if (p.subtitulo != null) $('#hero-sub').textContent = p.subtitulo
+  if (p.tarjeta) $('#hero-tarjeta').innerHTML = esc(p.tarjeta).replace(/\n/g, '<br>')
+}
+function ponerAnuncio(a) {
+  const texto = a?.text ? String(a.text).trim() : ''
+  portada.anuncio = texto ? { text: texto, type: ['info', 'warning', 'error'].includes(a.type) ? a.type : 'info' } : null
+  const flip = $('#hero-flip'); if (!flip) return
+  if (!portada.anuncio) { flip.classList.remove('girada', 'tiene-anuncio'); portada.mostrandoAnuncio = false; return }
+  $('#hero-anuncio').textContent = portada.anuncio.text
+  $('#hero-anuncio-tag').innerHTML = `<i></i>${{ info: 'Anuncio', warning: 'Atención', error: 'Urgente' }[portada.anuncio.type]}`
+  flip.dataset.tipo = portada.anuncio.type
+  flip.classList.add('tiene-anuncio')
+  // gira al anuncio (con un pequeño respiro para que se vea el efecto)
+  if (!portada.mostrandoAnuncio || portada.visto !== portada.anuncio.text) {
+    portada.visto = portada.anuncio.text; portada.mostrandoAnuncio = true
+    flip.classList.remove('girada'); requestAnimationFrame(() => setTimeout(() => flip.classList.add('girada'), 600))
+  }
+}
+function vigilarPortada() {
+  if (estado.user) sb.channel('portada-v2')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, ({ new: n }) => {
+      if (n?.key === 'portada') pintarPortada(n.value)
+      if (n?.key === 'announcement') ponerAnuncio(n.value?.active ? n.value : null)
+    }).subscribe()
+  setInterval(cargarPortada, 120_000)   // respaldo (y para quien no inició sesión)
+  $('#hero-girar')?.addEventListener('click', () => {
+    const f = $('#hero-flip'); f.classList.remove('girada'); portada.mostrandoAnuncio = false
+    setTimeout(() => { if (portada.anuncio) { portada.mostrandoAnuncio = true; f.classList.add('girada') } }, 8000)
+  })
+}
+
 // ── Propuestas en carrera (Inicio) ──
 async function cargarPropInicio() {
   const ul = $('#ip-list'); if (!ul) return
@@ -3279,7 +3329,7 @@ const ESCENAS = {
   revela: () => { let out = '', i = 0
     for (let f = 0; f < 4; f++) { const r = 60 + f * 22, n = Math.floor(Math.PI * r / 17)
       for (let k = 0; k < n; k++) { const a = Math.PI * (k + .5) / n, x = 320 - r * Math.cos(a), y = 200 - r * Math.sin(a), h = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1
-        out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.5" class="seat ${h < .62 ? 'on' : ''}" ${h < .62 ? dl((h * 2.6).toFixed(2)) : ''}/>`; i++ } }
+        out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.5" class="seat ${h < .62 ? 'on' : ''}" ${h < .62 ? dl((h * 2.6).toFixed(2)) : 'style="fill:rgba(255,255,255,.14)"'}/>`; i++ } }
     return sv(`<rect x="0" y="0" width="640" height="360" rx="20" fill="#0b0e1d"/>${tx(320, 40, 'ESA BUTACA VOTÓ · NADIE SABE QUÉ', 14, 'oro', 900, 'letter-spacing="2"')}${out}
     ${[['Sí', AC.verde, 150, .62], ['No', AC.rojo, 320, .3], ['Abst.', AC.gris, 490, .08]].map(([t, c, x, p], k) => `<g class="a-fade" ${dl(2.8 + k * .15)}><rect x="${x - 70}" y="240" width="140" height="86" rx="14" fill="#fff" opacity=".07"/>${tx(x - 52, 266, t, 14, 'blanco', 800, 'text-anchor="start"')}${tx(x + 52, 268, Math.round(p * 100) + '%', 18, 'blanco', 900, 'text-anchor="end"')}<rect x="${x - 54}" y="284" width="108" height="8" rx="4" fill="#fff" opacity=".12"/><rect x="${x - 54}" y="284" width="${108 * p}" height="8" rx="4" fill="${c}"/></g>`).join('')}`) },
   cerradas: () => sv(`${[['12', 'OCT', 'SÍ 62%', AC.verde, false], ['10', 'OCT', '✦ Revelación', '#f97316', true], ['9', 'OCT', 'NO 71%', AC.rojo, false]].map(([d, m, r, c, nueva], k) => `<g class="a-pop" ${dl(k * .3)}><rect x="70" y="${50 + k * 92}" width="500" height="76" rx="16" class="papel borde" stroke-width="${nueva ? 3 : 2}" ${nueva ? 'stroke="#f97316"' : ''}/>
@@ -3985,6 +4035,7 @@ async function iniciar() {
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro() }, 1000)
   await cargarUsuario()
   vigilarSesion()
+  vigilarPortada()
   au.usuarioListo = true
   vigilarAuditorio()
   if (vistaActual() === 'auditorio') entrarAuditorio()
@@ -3996,7 +4047,7 @@ async function iniciar() {
   })
   if (vistaActual() === 'propuestas' && pr.d) refrescarPropuestas()
   if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
-  await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques(), cargarPropInicio()])
+  await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques(), cargarPropInicio(), cargarPortada()])
   if (vistaActual() === 'butaca') cargarMiButaca()
   if (vistaActual() === 'propuestas' && pr.d) pintarPropuestas()   // ya con alias públicos cargados
   setInterval(cargarVotacion, 60_000)
