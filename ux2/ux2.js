@@ -148,12 +148,87 @@ function pintarUsuario() {
   $('#my-seat-num').textContent = estado.butaca ? `#${estado.butaca}` : ''
 }
 
+// ── Notificaciones y menú de usuario (header) ──
+let notifs = []
 async function cargarNotificaciones() {
-  if (!estado.butaca) return
+  if (!estado.butaca) { notifs = []; $('#notif-dot').hidden = true; return }
   try {
     const { data } = await sb.rpc('get_my_notifications', { p_seat: estado.butaca })
-    $('#notif-dot').hidden = !(data || []).some(n => !n.read_at)
+    notifs = data || []
+    $('#notif-dot').hidden = !notifs.length
+    if (!$('#notif-pop').hidden) pintarNotifs()
   } catch (e) {}
+}
+const NOTIF = {
+  new_proposal:      ['💡', n => `#propuestas/${n.proposal_id}`],
+  proposal_approved: ['✅', n => `#propuestas/${n.proposal_id}`],
+  proposal_rejected: ['⚠️', n => `#propuestas/${n.proposal_id}`],
+  proposal_consent:  ['✍️', () => APP_ACTUAL],
+  question_active:   ['🗳️', () => '#votaciones'],
+  moderation:        ['🛡️', () => null],
+}
+function pintarNotifs() {
+  const pop = $('#notif-pop')
+  if (!estado.user) { pop.innerHTML = `<div class="hp-vacio"><p>Iniciá sesión para ver tus notificaciones.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`; return }
+  if (!estado.butaca) { pop.innerHTML = '<div class="hp-vacio"><p>Cuando tengas tu butaca vas a recibir avisos de propuestas y votaciones.</p></div>'; return }
+  pop.innerHTML = `<header class="hp-cab"><b>Notificaciones</b>${notifs.length ? '<button data-notif-todas>Marcar todas como leídas</button>' : ''}</header>
+    ${notifs.length ? `<ul class="hp-lista">${notifs.map(n => {
+      const [ico, dest] = NOTIF[n.type] || ['🔔', () => null], href = dest(n)
+      return `<li><${href ? `a href="${esc(href)}"` : 'div'} class="hp-item" data-notif="${n.id}"><span class="hp-ico">${ico}</span><span><span class="hp-txt">${esc(n.message || 'Tenés una novedad')}</span><small>${haceCuanto(n.created_at)}</small></span></${href ? 'a' : 'div'}></li>`
+    }).join('')}</ul>` : '<div class="hp-vacio"><span class="hp-ok">✓</span><p>Estás al día. No tenés notificaciones nuevas.</p></div>'}`
+}
+async function leerNotif(id) {
+  notifs = notifs.filter(n => n.id !== id); $('#notif-dot').hidden = !notifs.length
+  try { await sb.rpc('mark_notification_read', { p_id: id }) } catch (e) {}
+}
+async function leerTodas() {
+  notifs = []; $('#notif-dot').hidden = true; pintarNotifs()
+  try { await sb.rpc('mark_all_notifications_read', { p_seat: estado.butaca }) } catch (e) {}
+}
+function pintarMenuUsuario() {
+  const pop = $('#user-pop'), oscuro = document.documentElement.dataset.theme === 'dark' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches)
+  if (!estado.user) { pop.innerHTML = `<div class="hp-vacio"><p>Entrá con tu cuenta del Cabildo.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`; return }
+  const nombre = estado.alias || (estado.butaca ? `Butaca #${estado.butaca}` : 'Mi cuenta')
+  pop.innerHTML = `<header class="hp-yo"><span class="avatar">${esc(nombre.charAt(0).toUpperCase())}</span><span><b>${esc(nombre)}</b><small>${estado.butaca ? `Butaca #${estado.butaca}` : 'Sin butaca todavía'}</small></span></header>
+    <nav class="hp-nav">
+      ${estado.butaca ? `<a href="#butaca">💺 Mi Butaca</a><a href="#ciudadanos/${estado.butaca}">👤 Mi perfil público</a><a href="#ciudadanos/mensajes">💬 Mensajes</a>` : `<a href="${APP_ACTUAL}">🪪 Conseguir mi butaca</a>`}
+      <a href="#aprende">🎓 Cómo funciona el Cabildo</a>
+      <button data-um="tema">${oscuro ? '☀️ Tema claro' : '🌙 Tema oscuro'}</button>
+      <button data-um="salir" class="hp-salir">↩ Cerrar sesión</button>
+    </nav>`
+}
+function abrirPop(id) {
+  const otros = id === 'notif-pop' ? 'user-pop' : 'notif-pop'
+  $('#' + otros).hidden = true
+  const pop = $('#' + id), abrir = pop.hidden
+  if (abrir) { id === 'notif-pop' ? (pintarNotifs(), cargarNotificaciones()) : pintarMenuUsuario() }
+  pop.hidden = !abrir
+  $('#btn-notif').setAttribute('aria-expanded', String(!$('#notif-pop').hidden))
+  $('#user-chip').setAttribute('aria-expanded', String(!$('#user-pop').hidden))
+}
+function cerrarPops() { $('#notif-pop').hidden = true; $('#user-pop').hidden = true; $('#btn-notif').setAttribute('aria-expanded', 'false'); $('#user-chip').setAttribute('aria-expanded', 'false') }
+function enlazarHeader() {
+  $('#btn-notif').addEventListener('click', e => { e.stopPropagation(); abrirPop('notif-pop') })
+  $('#user-chip').addEventListener('click', e => { e.stopPropagation(); abrirPop('user-pop') })
+  $('#notif-pop').addEventListener('click', e => {
+    e.stopPropagation()
+    if (e.target.closest('[data-notif-todas]')) return leerTodas()
+    const it = e.target.closest('[data-notif]'); if (it) { leerNotif(it.dataset.notif); cerrarPops() }
+  })
+  $('#user-pop').addEventListener('click', async e => {
+    e.stopPropagation()
+    const a = e.target.closest('[data-um]')?.dataset.um
+    if (a === 'tema') { alternarTema(); return pintarMenuUsuario() }
+    if (a === 'salir') {
+      if (!await confirmar('¿Cerrar sesión?', 'Vas a salir del Cabildo en este navegador.', 'Cerrar sesión')) return
+      await sb.auth.signOut(); location.reload(); return
+    }
+    if (e.target.closest('a')) cerrarPops()
+  })
+  document.addEventListener('click', cerrarPops)
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPops() })
+  window.addEventListener('hashchange', cerrarPops)
+  setInterval(() => { if (estado.butaca) cargarNotificaciones() }, 120_000)
 }
 
 // ── Hemiciclo ───────────────────────────────────────────────────
@@ -4031,7 +4106,7 @@ function enlazarRevelacion() {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarHeader(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro() }, 1000)
   await cargarUsuario()
   vigilarSesion()

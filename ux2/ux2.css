@@ -1710,3 +1710,30 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .hero-girar { font-size: 13px; font-weight: 600; color: var(--muted); padding: 2px 0; }
 .hero-girar:hover { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .hero-cara { transition: none; } }
+
+/* Header: notificaciones y menú de usuario */
+.hd-menu { position: relative; }
+button.user-chip { font: inherit; cursor: pointer; }
+.hd-pop { position: absolute; right: 0; top: calc(100% + 10px); z-index: 70; width: 340px; max-width: calc(100vw / var(--zoom) - 24px); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; box-shadow: 0 20px 50px rgba(18,22,46,.18); overflow: hidden; animation: ap-sube .18s; }
+.notif-pop { width: 380px; }
+.hp-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--line); }
+.hp-cab b { font-size: 15px; }
+.hp-cab button { font-size: 12.5px; font-weight: 600; color: var(--accent); }
+.hp-lista { list-style: none; margin: 0; padding: 6px; max-height: min(60vh, 460px); overflow-y: auto; }
+.hp-item { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; padding: 10px; border-radius: 12px; }
+a.hp-item:hover { background: var(--surface-2); }
+.hp-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--surface-2); font-size: 16px; }
+.hp-txt { display: block; font-size: 13.5px; line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
+.hp-item small { font-size: 11.5px; color: var(--muted); }
+.hp-vacio { padding: 22px 18px; text-align: center; display: grid; justify-items: center; gap: 10px; }
+.hp-vacio p { margin: 0; font-size: 14px; color: var(--ink-2); }
+.hp-ok { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--green-bg); color: var(--green); font-weight: 900; }
+.hp-yo { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--line); }
+.hp-yo span:last-child { display: grid; min-width: 0; }
+.hp-yo b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hp-yo small { font-size: 12.5px; color: var(--muted); }
+.hp-nav { display: grid; padding: 6px; }
+.hp-nav a, .hp-nav button { text-align: left; padding: 10px 12px; border-radius: 10px; font-size: 14px; color: var(--ink); font-weight: 500; }
+.hp-nav a:hover, .hp-nav button:hover { background: var(--surface-2); }
+.hp-salir { color: var(--red) !important; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px !important; margin-top: 4px; }
