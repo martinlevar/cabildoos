@@ -667,7 +667,7 @@ function pintarCerradas() {
   const barra = lista.querySelector('.vc-barra')
   if (!barra) lista.innerHTML = `<div class="vc-barra card">
       <label class="vc-buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="vc-q" type="search" placeholder="Buscar en las votaciones cerradas…" value="${esc(vc.q)}"></label>
-      <div class="seg" role="tablist"><button data-vc="todas">Todas</button><button data-vc="sinver">Sin ver <span id="vc-sinver"></span></button><button data-vc="mias">En las que voté</button></div>
+      <div class="seg" role="tablist"><button class="seg-btn" data-vc="todas">Todas</button><button class="seg-btn" data-vc="sinver">Sin ver <span id="vc-sinver"></span></button><button class="seg-btn" data-vc="mias">En las que voté</button></div>
     </div><div id="vc-lista"></div>`
   $$('[data-vc]').forEach(b => b.classList.toggle('active', b.dataset.vc === vc.filtro))
   $('#vc-sinver').textContent = sinVer ? `(${sinVer})` : ''
@@ -3276,6 +3276,19 @@ const ESCENAS = {
     ${aFlecha(212, 110, 300, 110, `class="a-fade" ${dl(.8)}`)}${aCheck(320, 110, 1.1, `class="a-pop" ${dl(1.3)}`)}
     ${aBurbuja(232, 170, 150, '¡Hola! ¿Cómo va?', false, `class="a-pop" ${dl(1.8)}`)}${aBurbuja(262, 226, 116, '¡Bien! 👋', true, `class="a-pop" ${dl(2.2)}`)}
     ${tx(320, 330, 'Si acepta, pueden escribirse', 16, 'tenue', 800, `class="a-fade" ${dl(2.6)}`)}`),
+  revela: () => { let out = '', i = 0
+    for (let f = 0; f < 4; f++) { const r = 60 + f * 22, n = Math.floor(Math.PI * r / 17)
+      for (let k = 0; k < n; k++) { const a = Math.PI * (k + .5) / n, x = 320 - r * Math.cos(a), y = 200 - r * Math.sin(a), h = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1
+        out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.5" class="seat ${h < .62 ? 'on' : ''}" ${h < .62 ? dl((h * 2.6).toFixed(2)) : ''}/>`; i++ } }
+    return sv(`<rect x="0" y="0" width="640" height="360" rx="20" fill="#0b0e1d"/>${tx(320, 40, 'ESA BUTACA VOTÓ · NADIE SABE QUÉ', 14, 'oro', 900, 'letter-spacing="2"')}${out}
+    ${[['Sí', AC.verde, 150, .62], ['No', AC.rojo, 320, .3], ['Abst.', AC.gris, 490, .08]].map(([t, c, x, p], k) => `<g class="a-fade" ${dl(2.8 + k * .15)}><rect x="${x - 70}" y="240" width="140" height="86" rx="14" fill="#fff" opacity=".07"/>${tx(x - 52, 266, t, 14, 'blanco', 800, 'text-anchor="start"')}${tx(x + 52, 268, Math.round(p * 100) + '%', 18, 'blanco', 900, 'text-anchor="end"')}<rect x="${x - 54}" y="284" width="108" height="8" rx="4" fill="#fff" opacity=".12"/><rect x="${x - 54}" y="284" width="${108 * p}" height="8" rx="4" fill="${c}"/></g>`).join('')}`) },
+  cerradas: () => sv(`${[['12', 'OCT', 'SÍ 62%', AC.verde, false], ['10', 'OCT', '✦ Revelación', '#f97316', true], ['9', 'OCT', 'NO 71%', AC.rojo, false]].map(([d, m, r, c, nueva], k) => `<g class="a-pop" ${dl(k * .3)}><rect x="70" y="${50 + k * 92}" width="500" height="76" rx="16" class="papel borde" stroke-width="${nueva ? 3 : 2}" ${nueva ? 'stroke="#f97316"' : ''}/>
+      <rect x="88" y="${64 + k * 92}" width="48" height="48" rx="10" class="suave"/>${tx(112, 92 + k * 92, d, 18, 'tinta', 900)}${tx(112, 106 + k * 92, m, 10, 'tenue', 800)}
+      <rect x="152" y="${74 + k * 92}" width="220" height="11" rx="5" class="suave"/><rect x="152" y="${94 + k * 92}" width="160" height="11" rx="5" class="suave"/>
+      <rect x="${nueva ? 404 : 434}" y="${72 + k * 92}" width="${nueva ? 150 : 120}" height="32" rx="16" fill="${c}" ${nueva ? 'class="a-latir"' : 'opacity=".9"'}/>${tx(nueva ? 479 : 494, 93 + k * 92, r, 14, 'blanco', 900)}</g>`).join('')}`),
+  muro: () => sv(`<g class="a-pop">${aCaja(320, 100, 460, 110)}${tx(320, 78, '¿Qué pensás hoy?', 17, 'tinta', 800)}<rect x="120" y="96" width="400" height="12" rx="6" class="suave"/><rect x="420" y="122" width="96" height="30" rx="10" fill="${AC.azul}"/>${tx(468, 142, 'Publicar', 13, 'blanco', 900)}</g>
+    ${[[150, '#cfe0ff'], [320, '#d6f5e5'], [490, '#ffe3cc']].map(([x, c], k) => `<g class="a-pop" ${dl(.6 + k * .25)}><rect x="${x - 75}" y="190" width="150" height="110" rx="14" fill="${c}" class="borde" stroke-width="2"/><rect x="${x - 58}" y="212" width="116" height="9" rx="4" fill="#fff" opacity=".8"/><rect x="${x - 58}" y="230" width="90" height="9" rx="4" fill="#fff" opacity=".8"/>${tx(x - 40, 282, '♥ ' + (14 - k * 5), 13, 'rojo', 800)}</g>`).join('')}
+    ${tx(320, 336, 'Una opinión por día · se renueva a las 3:00', 15, 'tenue', 800, `class="a-fade" ${dl(1.6)}`)}`),
   aud: () => sv(`<g class="a-pop"><rect x="120" y="60" width="400" height="230" rx="20" fill="#0b0e1d"/><circle cx="320" cy="175" r="40" fill="#fff" opacity=".15"/><path d="M308 155v40l32-20z" fill="#fff"/><rect x="140" y="76" width="74" height="24" rx="12" fill="${AC.rojo}"/>${tx(177, 93, 'EN VIVO', 12, 'blanco', 900)}</g>
     ${['👏', '🔥', '❤️', '✊', '💯'].map((e, i) => `<text x="${200 + i * 60}" y="270" font-size="30" text-anchor="middle" class="a-flotar" ${dl(i * .5)}>${e}</text>`).join('')}`),
   play: () => sv(`<g class="a-pop"><rect x="150" y="50" width="340" height="260" rx="24" fill="#0b0e1d"/>${tx(320, 104, 'NIVEL', 13, 'blanco', 800, 'opacity=".6" letter-spacing="3"')}<text x="320" y="158" font-size="52" font-weight="900" fill="#fff" text-anchor="middle" class="a-nivel"></text>
@@ -3303,8 +3316,10 @@ const LECCIONES = [
   { id: 'secreto', titulo: 'Tu voto es secreto', sub: 'De verdad', color: AC.violeta, ico: '🔒', ir: ['#votaciones', 'Ver resultados'], pasos: [
     { esc: 'surna', t: 'La urna no sabe quién sos', p: 'Cuando votás pasan dos cosas por separado: se anota que tu butaca <b>participó</b>, y se suma 1 al <b>contador</b> de tu opción. Nunca se guarda qué votó cada butaca.' },
     { esc: 'scandado', t: 'Los resultados, al cerrar', p: 'Mientras la votación está abierta solo se ve <b>cuántos</b> votaron, no qué ganó. Así nadie se deja llevar por la mayoría.' },
-    { esc: 'snadie', t: 'Nadie puede saber qué votaste', p: 'Ni otro ciudadano, ni un administrador, ni el propio Cabildo. Simplemente <b>ese dato no existe</b>.' }],
-    quiz: { q: '¿Quién puede ver qué votaste?', o: [['Nadie', 1], ['Los administradores', 0], ['Las butacas que me siguen', 0]], e: 'El Cabildo guarda que participaste y suma tu voto al total, pero nunca une las dos cosas.' } },
+    { esc: 'snadie', t: 'Nadie puede saber qué votaste', p: 'Ni otro ciudadano, ni un administrador, ni el propio Cabildo. Simplemente <b>ese dato no existe</b>.' },
+    { esc: 'revela', t: 'La revelación', p: 'Cuando la votación cierra, el hemiciclo <b>enciende las butacas que votaron</b>, todas del <b>mismo color</b>: se ve que esa butaca participó, pero nunca qué votó. El resultado aparece solo en los <b>totales</b> de abajo.' },
+    { esc: 'cerradas', t: 'Todas quedan guardadas', p: 'En <b>Votaciones → Cerradas</b> se acumulan todas las votaciones. Las que todavía no viste tienen el botón naranja <b>✦ Revelación</b>; las que ya viste muestran su resultado.' }],
+    quiz: { q: 'En la revelación tu butaca se enciende. ¿Qué significa?', o: [['Que voté, pero no qué voté', 1], ['Que voté Sí', 0], ['Que gané la votación', 0]], e: 'Todas las butacas que votaron se encienden del mismo color. Qué votó cada una no se sabe: ese dato no existe.' } },
   { id: 'debates', titulo: 'Debates', sub: 'Argumentos, no gritos', color: AC.teal, ico: '💬', ir: ['#debates', 'Ir a Debates'], pasos: [
     { esc: 'duno', t: 'Un debate por cada votación', p: 'Mientras una votación está abierta, su debate también. Leé qué piensan los demás antes de votar.' },
     { esc: 'dmano', t: 'Levantá la mano ✋', p: 'Para hablar, levantás la mano. Hasta <b>3 personas</b> hablan a la vez; el resto espera su turno en la fila.', sim: 'mano' },
@@ -3322,7 +3337,8 @@ const LECCIONES = [
     { esc: 'bcrear', t: 'Crear tu propio bloque', p: 'Para ser anfitrión mostrás tu <b>nombre real</b> y verificás tu identidad otra vez con tu DNI. El DNI queda guardado bajo llave y se borra si el bloque cierra.' },
     { esc: 'badentro', t: 'Adentro del bloque', p: 'Los miembros proponen ideas y las debaten entre ellos. <b>El anfitrión decide</b> qué impulsa el bloque.' }],
     quiz: { q: '¿Se sabe quiénes son los miembros de un bloque?', o: [['No, solo el anfitrión es público', 1], ['Sí, hay una lista pública', 0], ['Solo se ven sus alias', 0]], e: 'Los miembros son anónimos. Solo se ve cuántos son.' } },
-  { id: 'comunidad', titulo: 'Ciudadanos, Auditorio y Playroom', sub: 'Lo demás', color: AC.teal, ico: '🎟️', ir: ['#playroom', 'Ir al Playroom'], pasos: [
+  { id: 'comunidad', titulo: 'Muro, Ciudadanos, Auditorio y Playroom', sub: 'Lo demás', color: AC.teal, ico: '🎟️', ir: ['#playroom', 'Ir al Playroom'], pasos: [
+    { esc: 'muro', t: 'El Muro del día', p: 'Cada butaca puede dejar <b>una opinión por día</b> (hasta 280 caracteres). Los demás la leen, le dan me gusta y responden. A las 3:00 de Venezuela empieza un Muro nuevo.' },
     { esc: 'cseguir', t: 'Seguí a otras butacas', p: 'En <b>Ciudadanos</b> podés seguir a otras butacas. Si aceptan tu solicitud, pueden mandarse mensajes.' },
     { esc: 'aud', t: 'El Auditorio', p: 'Sesiones <b>en vivo</b>: mirás, reaccionás y podés pedir la palabra en el chat de la sala.' },
     { esc: 'play', t: 'El Playroom', p: '<b>Nerdocrasy</b>: 90 niveles de preguntas sobre democracia. Un error y empezás de nuevo. ¿Hasta dónde llegás?' }],
@@ -3331,7 +3347,10 @@ const LECCIONES = [
 
 const FAQ = [
   ['¿Alguien puede saber qué voté?', 'No. El Cabildo anota que tu butaca participó y suma tu voto al total, por separado. Qué votó cada butaca no se guarda en ningún lado.'],
+  ['¿La revelación muestra qué votó cada butaca?', 'No. Se encienden las butacas que votaron, todas del mismo color: solo demuestra que esa butaca participó. El resultado se ve únicamente en los totales.'],
+  ['¿Dónde veo las votaciones que ya cerraron?', 'En Votaciones → Cerradas. Ahí se acumulan todas, con buscador y filtros (sin ver, en las que voté).'],
   ['¿Por qué no veo quién va ganando?', 'Para que nadie vote “con la mayoría”. Mientras la votación está abierta solo se ve cuántos votaron; el resultado aparece al cerrar.'],
+  ['¿Cuántas veces puedo escribir en el Muro?', 'Una opinión por día. Si querés cambiarla, podés borrarla y escribir otra. El Muro se renueva a las 3:00 de Venezuela.'],
   ['¿Puedo cambiar mi voto?', 'No. Hay un voto por butaca y por pregunta, y es definitivo.'],
   ['¿Qué pasa si mi propuesta no llega a 20 apoyos?', 'Vence a las 48 horas. Podés lanzar otra cuando quieras.'],
   ['¿Tengo que mostrar mi nombre?', 'No. Tu butaca es anónima. Solo los anfitriones de bloques muestran su nombre real, porque lo eligen.'],
