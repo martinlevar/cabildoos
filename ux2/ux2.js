@@ -148,6 +148,90 @@ function pintarUsuario() {
   $('#my-seat-num').textContent = estado.butaca ? `#${estado.butaca}` : ''
 }
 
+// ── Buscador del header: votaciones, propuestas, ciudadanos, bloques + secciones y lecciones ──
+const bus = { t: 0, n: 0, sel: -1, items: [] }
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+function marcar(texto, q) {
+  const t = String(texto || ''), nt = norm(t), nq = norm(q).trim(); const i = nq ? nt.indexOf(nq) : -1
+  if (i < 0) return esc(t)
+  return esc(t.slice(0, i)) + '<mark>' + esc(t.slice(i, i + nq.length)) + '</mark>' + esc(t.slice(i + nq.length))
+}
+function recortar(texto, q, max = 110) {
+  const t = String(texto || ''); if (t.length <= max) return t
+  const i = norm(t).indexOf(norm(q).trim()); const desde = Math.max(0, Math.min(i - 30, t.length - max))
+  return (desde > 0 ? '…' : '') + t.slice(desde, desde + max) + '…'
+}
+async function buscar(q) {
+  const caja = $('#bus-res'), n = ++bus.n
+  q = q.trim()
+  if (q.length < 2) { $('#bus-res').hidden = true; $('#bus-q').setAttribute('aria-expanded', 'false'); return }
+  // locales (instantáneo): secciones y lecciones de Aprendé
+  const nq = norm(q)
+  const secciones = SECCIONES.filter(([id, l]) => LISTAS.has(id) && norm(l).includes(nq)).slice(0, 3).map(([id, l]) => ({ g: 'Ir a', ico: `<svg viewBox="0 0 24 24">${ICONOS[id]}</svg>`, t: marcar(l, q), href: '#' + id }))
+  const lecciones = (typeof LECCIONES !== 'undefined' ? LECCIONES : []).filter(l => norm(l.titulo + ' ' + l.sub + ' ' + l.pasos.map(p => p.t).join(' ')).includes(nq)).slice(0, 2)
+    .map(l => ({ g: 'Aprendé', ico: l.ico, t: marcar(l.titulo, q), s: 'Lección · ' + esc(l.sub), href: '#aprende/' + l.id }))
+  pintarBusqueda(q, [...secciones, ...lecciones], true)
+  try {
+    const { data, error } = await sb.rpc('v2_buscar', { p_q: q })
+    if (error) throw error
+    if (n !== bus.n) return
+    const r = data || {}, items = []
+    ;(r.votaciones || []).forEach(v => items.push({ g: 'Votaciones', ico: v.abierta ? '🗳️' : '✦', t: marcar(recortar(v.text, q), q),
+      s: v.abierta ? `<b class="bus-vivo">Abierta</b> · ${esc(v.category || 'General')}` : `Cerró ${new Date(v.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' })} · Ver revelación`,
+      href: v.abierta ? '#votaciones' : '#revelacion/' + v.id }))
+    ;(r.propuestas || []).forEach(p => { const viva_ = p.status === 'pending' && new Date(p.expires_at) > new Date()
+      items.push({ g: 'Propuestas', ico: viva_ ? '🔥' : p.status === 'approved' ? '🏛️' : '💡', t: marcar(recortar(p.text, q), q),
+        s: viva_ ? `<b class="bus-vivo">En carrera</b> · ${p.likes} apoyos` : { accepted: 'Logró la meta', approved: 'En el Hemiciclo', expired: 'No llegó a la meta' }[p.status] || '', href: '#propuestas/' + p.id }) })
+    ;(r.ciudadanos || []).forEach(c => items.push({ g: 'Ciudadanos', ico: `<span class="bus-av" style="background:${colorDe(c.card_color, c.seat)}">${c.alias ? esc(c.alias.charAt(0).toUpperCase()) : '#'}</span>`,
+      t: c.alias ? marcar(c.alias, q) : `Butaca #${c.seat}`, s: c.alias ? `Butaca #${c.seat}` : 'Perfil anónimo', href: '#ciudadanos/' + c.seat }))
+    ;(r.bloques || []).forEach(b => items.push({ g: 'Bloques', ico: '🚩', t: marcar(b.nombre, q), s: b.lema ? esc(recortar(b.lema, q, 70)) : 'Bloque', bloque: b.nombre }))
+    pintarBusqueda(q, [...secciones, ...lecciones, ...items], false)
+  } catch (e) { console.warn('buscar:', e); if (n === bus.n) pintarBusqueda(q, [...secciones, ...lecciones], false, true) }
+}
+function pintarBusqueda(q, items, cargando, error = false) {
+  const caja = $('#bus-res'); bus.items = items; bus.sel = -1
+  let g = '', html = ''
+  items.forEach((it, i) => {
+    if (it.g !== g) { g = it.g; html += `<div class="bus-grupo">${g}</div>` }
+    html += `<a class="bus-item" role="option" id="bus-i${i}" data-i="${i}" href="${it.href || '#inicio'}"><span class="bus-ico">${it.ico}</span><span class="bus-tx"><span>${it.t}</span>${it.s ? `<small>${it.s}</small>` : ''}</span></a>`
+  })
+  if (cargando) html += '<div class="bus-estado">Buscando…</div>'
+  else if (error) html += '<div class="bus-estado">No se pudo buscar. Probá de nuevo.</div>'
+  else if (!items.length) html = `<div class="bus-vacio"><b>Sin resultados para “${esc(q)}”</b><small>Probá con otra palabra, un alias o un número de butaca (#250).</small></div>`
+  caja.innerHTML = html; caja.hidden = false; $('#bus-q').setAttribute('aria-expanded', 'true')
+}
+function cerrarBuscador() { $('#bus-res').hidden = true; $('#bus-q').setAttribute('aria-expanded', 'false'); $('#buscador').classList.remove('abierto-movil') }
+function elegirResultado(i) {
+  const it = bus.items[i]; if (!it) return
+  cerrarBuscador(); $('#bus-q').blur()
+  if (it.bloque) { location.hash = '#inicio'; const b = $('#bloque-buscar'); if (b) { b.value = it.bloque; b.dispatchEvent(new Event('input', { bubbles: true })); $('.app')?.classList.remove('panel-plegado'); b.scrollIntoView({ behavior: 'smooth', block: 'center' }) } return }
+  location.hash = it.href
+}
+function enlazarBuscador() {
+  const inp = $('#bus-q'); if (!inp) return
+  inp.addEventListener('input', () => { clearTimeout(bus.t); const q = inp.value; bus.t = setTimeout(() => buscar(q), 220) })
+  inp.addEventListener('focus', () => { if (inp.value.trim().length >= 2) buscar(inp.value) })
+  inp.addEventListener('keydown', e => {
+    const n = bus.items.length
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); if (!n) return
+      bus.sel = (bus.sel + (e.key === 'ArrowDown' ? 1 : -1) + n) % n
+      $$('.bus-item').forEach(x => x.classList.toggle('sel', Number(x.dataset.i) === bus.sel))
+      $(`#bus-i${bus.sel}`)?.scrollIntoView({ block: 'nearest' }); inp.setAttribute('aria-activedescendant', `bus-i${bus.sel}`)
+    }
+    if (e.key === 'Enter') { e.preventDefault(); elegirResultado(bus.sel >= 0 ? bus.sel : 0) }
+    if (e.key === 'Escape') { inp.value = ''; cerrarBuscador(); inp.blur() }
+  })
+  $('#bus-res').addEventListener('mousedown', e => e.preventDefault())
+  $('#bus-res').addEventListener('click', e => { const a = e.target.closest('.bus-item'); if (a) { e.preventDefault(); elegirResultado(Number(a.dataset.i)) } })
+  document.addEventListener('click', e => { if (!e.target.closest('#buscador') && !e.target.closest('#bus-movil')) cerrarBuscador() })
+  document.addEventListener('keydown', e => {
+    if ((e.key === '/' || (e.key === 'k' && (e.metaKey || e.ctrlKey))) && !e.target.matches('input, textarea, [contenteditable]')) { e.preventDefault(); inp.focus(); inp.select() }
+  })
+  $('#bus-movil').addEventListener('click', e => { e.stopPropagation(); $('#buscador').classList.add('abierto-movil'); inp.focus() })
+  window.addEventListener('hashchange', () => { cerrarBuscador() })
+}
+
 // ── Notificaciones y menú de usuario (header) ──
 let notifs = []
 async function cargarNotificaciones() {
@@ -174,7 +258,7 @@ function pintarNotifs() {
   pop.innerHTML = `<header class="hp-cab"><b>Notificaciones</b>${notifs.length ? '<button data-notif-todas>Marcar todas como leídas</button>' : ''}</header>
     ${notifs.length ? `<ul class="hp-lista">${notifs.map(n => {
       const [ico, dest] = NOTIF[n.type] || ['🔔', () => null], href = dest(n)
-      return `<li><${href ? `a href="${esc(href)}"` : 'div'} class="hp-item" data-notif="${n.id}"><span class="hp-ico">${ico}</span><span><span class="hp-txt">${esc(n.message || 'Tenés una novedad')}</span><small>${haceCuanto(n.created_at)}</small></span></${href ? 'a' : 'div'}></li>`
+      return `<li><${href ? `a href="${esc(href)}"` : 'div'} class="hp-item" data-notif="${n.id}"><span class="hp-ico">${ico}</span><span><span class="hp-txt">${esc(String(n.message || 'Tenés una novedad').replace(/^[^\p{L}\p{N}¿¡]+/u, ''))}</span><small>${haceCuanto(n.created_at)}</small></span></${href ? 'a' : 'div'}></li>`
     }).join('')}</ul>` : '<div class="hp-vacio"><span class="hp-ok">✓</span><p>Estás al día. No tenés notificaciones nuevas.</p></div>'}`
 }
 async function leerNotif(id) {
@@ -4106,7 +4190,7 @@ function enlazarRevelacion() {
 }
 
 async function iniciar() {
-  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarHeader(); ruta()
+  pintarNav(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarHeader(); enlazarBuscador(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro() }, 1000)
   await cargarUsuario()
   vigilarSesion()
