@@ -1920,3 +1920,24 @@ a.hp-item:hover { background: var(--surface-2); }
 /* Presencia: butaca encendida */
 .sc-presente { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 11.5px; font-weight: 700; color: var(--ink); }
 .sc-presente i { width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #f5aa28, 0 0 8px 2px rgba(255,196,80,.9); }
+
+/* Botón "Encender mi butaca" (Inicio) */
+.btn-luz { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px 0 10px; border-radius: 999px; white-space: nowrap;
+  background: var(--surface-2); color: var(--ink); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid transparent; transition: background .2s, box-shadow .3s, color .2s, transform .15s; }
+.btn-luz[hidden] { display: none; }
+.btn-luz svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn-luz:hover { border-color: rgba(245,170,40,.6); }
+.btn-luz:active { transform: scale(.96); }
+.btn-luz.on { background: #fff8e6; color: #9a5b00; border-color: rgba(245,170,40,.7); box-shadow: 0 0 0 3px rgba(255,196,80,.22), 0 0 18px rgba(255,190,60,.55); }
+.btn-luz.on svg { fill: #ffd56a; stroke: #b86e00; filter: drop-shadow(0 0 4px rgba(255,190,60,.9)); }
+:root[data-theme="dark"] .btn-luz.on { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.55); box-shadow: 0 0 0 3px rgba(255,255,255,.08), 0 0 20px rgba(255,255,255,.35); }
+:root[data-theme="dark"] .btn-luz.on svg { fill: #fff; stroke: #fff; filter: drop-shadow(0 0 5px rgba(255,255,255,.9)); }
+.hemi-card { container-type: inline-size; container-name: hemi; }
+@container hemi (max-width: 780px) {
+  .hemi-head { gap: 16px; }
+  .btn-luz span, .hemi-expand span { display: none; }
+  .btn-luz, .hemi-expand { padding: 0 9px; }
+  .pill-live:not([hidden]) + .hemi-expand { margin-left: -6px; }
+}
+@media (max-width: 640px) { .btn-luz { order: 2; height: 30px; } }

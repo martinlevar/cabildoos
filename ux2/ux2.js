@@ -464,7 +464,7 @@ function pintar() {
   const mia = estado.butaca && asientos[estado.butaca - 1]
   if (mia) {
     const p = aPantalla(mia.x, mia.y, W, Hh)
-    if (pres.mia) { ctx.save(); ctx.shadowColor = 'rgba(255,255,255,.95)'; ctx.shadowBlur = Math.max(10, r * 4); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.6, 0, Math.PI * 2); ctx.fill(); ctx.restore() }
+    if (pres.mia) dibujarEncendida(ctx, p.x, p.y, r * 1.5, document.documentElement.dataset.theme === 'dark')
     ctx.shadowColor = 'rgba(247,106,30,.6)'; ctx.shadowBlur = 12
     ctx.fillStyle = cMine
     ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.25, 0, Math.PI * 2); ctx.fill()
@@ -666,15 +666,15 @@ async function iniciarPresencia() {
   if (estado.user && estado.butaca) {
     try { const { data } = await sb.rpc('v2_presencia_mia'); pres.mia = !!data } catch (e) {}
   }
-  latirPresencia(); cargarPresencia()
+  pintarBotonLuz(); latirPresencia(); cargarPresencia()
   clearInterval(pres.latido); pres.latido = setInterval(latirPresencia, 45_000)
   clearInterval(pres.poll); pres.poll = setInterval(() => { if (vistaActual() === 'inicio' || mon.abierto) cargarPresencia() }, 30_000)
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { latirPresencia(); cargarPresencia() } })
 }
-async function cambiarPresencia() {
+async function cambiarPresencia(rapido = false) {
   if (!estado.butaca) { aviso('Necesitás una butaca para esto.', 'error'); return }
   const nuevo = !pres.mia
-  const ok = await confirmar(
+  const ok = rapido || await confirmar(
     nuevo ? '¿Encender tu butaca cuando estés presente?' : '¿Dejar de mostrar tu presencia?',
     nuevo ? 'Mientras tengas el Cabildo abierto, tu butaca se va a ver encendida con una luz blanca en el hemiciclo de Inicio y en el Monitor, para todos. Se apaga sola cuando te vas. No muestra nada de lo que votás.'
           : 'Tu butaca deja de encenderse para todos de forma inmediata.',
@@ -684,9 +684,19 @@ async function cambiarPresencia() {
   if (error) { aviso('No se pudo guardar. Intentá de nuevo.', 'error'); return }
   pres.mia = nuevo
   if (!nuevo) pres.set.delete(estado.butaca)
-  pintarMiButaca(); cargarPresencia()
+  pintarMiButaca(); pintarBotonLuz(); cargarPresencia()
   aviso(nuevo ? '💡 Tu butaca se enciende cuando estás presente' : '✓ Tu presencia ya no se muestra')
 }
+// Botón de Inicio (al lado de "Votos en la sesión") para encender/apagar mi butaca
+function pintarBotonLuz() {
+  const b = $('#btn-luz'); if (!b) return
+  b.hidden = !(estado.user && estado.butaca)
+  b.classList.toggle('on', pres.mia)
+  b.setAttribute('aria-pressed', String(pres.mia))
+  $('#btn-luz-txt').textContent = pres.mia ? 'Butaca encendida' : 'Encender mi butaca'
+  b.title = pres.mia ? 'Tu butaca se ve encendida mientras estás presente. Tocá para apagarla.' : 'Encender mi butaca: se ve con luz blanca mientras estás presente'
+}
+
 // Dibuja una butaca "encendida": luz blanca con resplandor
 function dibujarEncendida(ctx, x, y, r, oscuro) {
   ctx.save()
@@ -4213,6 +4223,7 @@ function monPantallaCompleta() {
 }
 
 function enlazarMonitor() {
+  $('#btn-luz')?.addEventListener('click', () => cambiarPresencia(true))
   const m = $('#mon')
   $('#mon-cerrar').addEventListener('click', () => cerrarMonitor())
   $('#mon-full').addEventListener('click', monPantallaCompleta)
