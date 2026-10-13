@@ -1916,3 +1916,7 @@ a.hp-item:hover { background: var(--surface-2); }
   .hemi-expand span { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .mon-q, .mon-mas.sube { animation: none; } }
+
+/* Presencia: butaca encendida */
+.sc-presente { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; font-size: 11.5px; font-weight: 700; color: var(--ink); }
+.sc-presente i { width: 9px; height: 9px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1.5px #f5aa28, 0 0 8px 2px rgba(255,196,80,.9); }

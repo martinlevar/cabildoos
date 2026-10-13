@@ -442,6 +442,18 @@ function pintar() {
   }
   ctx.globalAlpha = 1
 
+  // Butacas presentes (opcional, decidido por cada ciudadano): luz blanca con resplandor
+  if (pres.set.size) {
+    const oscuro = document.documentElement.dataset.theme === 'dark'
+    for (const n of pres.set) {
+      if (n === estado.butaca) continue
+      const a = asientos[n - 1]; if (!a) continue
+      const p = aPantalla(a.x, a.y, W, Hh)
+      if (p.x < -m || p.x > W + m || p.y < -m || p.y > Hh + m) continue
+      dibujarEncendida(ctx, p.x, p.y, r, oscuro)
+    }
+  }
+
   if (hover && hover !== estado.butaca && asientos[hover - 1]) {
     const p = aPantalla(asientos[hover - 1].x, asientos[hover - 1].y, W, Hh)
     ctx.strokeStyle = cAcc; ctx.lineWidth = 2
@@ -452,6 +464,7 @@ function pintar() {
   const mia = estado.butaca && asientos[estado.butaca - 1]
   if (mia) {
     const p = aPantalla(mia.x, mia.y, W, Hh)
+    if (pres.mia) { ctx.save(); ctx.shadowColor = 'rgba(255,255,255,.95)'; ctx.shadowBlur = Math.max(10, r * 4); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.6, 0, Math.PI * 2); ctx.fill(); ctx.restore() }
     ctx.shadowColor = 'rgba(247,106,30,.6)'; ctx.shadowBlur = 12
     ctx.fillStyle = cMine
     ctx.beginPath(); ctx.arc(p.x, p.y, r * 1.25, 0, Math.PI * 2); ctx.fill()
@@ -517,6 +530,7 @@ function tarjetaButaca(num, sx, sy) {
       <div><b>${esc(nombre)}</b><small>Butaca #${num}</small></div>
       <span class="sc-badge ${publico ? 'pub' : ''}">${publico ? 'Público' : 'Anónimo'}</span>
     </div>
+    ${pres.set.has(num) ? '<div class="sc-presente"><i></i>Presente ahora</div>' : ''}
     ${p?.show_phrase && p.phrase ? `<p class="sc-phrase">“${esc(p.phrase)}”</p>` : ''}
     ${p?.show_votes ? `<div class="sc-votes"><b>${fmtNum(p.vote_count)}</b> votaciones</div>` : ''}`
   card.hidden = false
@@ -631,6 +645,63 @@ async function cargarHemiciclo() {
     dibujarHemiciclo()
     estado.perfilesListos = cargarPerfiles().then(() => { if (vistaActual() === 'playroom') pintarPlayroom() })
   } catch (e) { console.warn('cargarHemiciclo:', e) }
+}
+
+// ── Presencia (opcional) ────────────────────────────────────────
+// Cada ciudadano decide en Mi Butaca si su butaca se "enciende" mientras tiene el Cabildo abierto.
+// El servidor solo guarda número de butaca y último latido; la butaca se apaga sola a los 2 minutos sin latido.
+// La luz es blanca para todos y no tiene relación con votar: solo dice "esta persona está acá".
+const pres = { mia: false, set: new Set(), latido: 0, poll: 0 }
+async function cargarPresencia() {
+  try {
+    const { data, error } = await sb.rpc('v2_presentes')
+    if (error) throw error
+    pres.set = new Set((data || []).map(Number))
+  } catch (e) { pres.set = new Set() }
+  if (pres.mia && estado.butaca) pres.set.add(estado.butaca)
+  if (vistaActual() === 'inicio') pintar()
+}
+function latirPresencia() { if (pres.mia && estado.butaca) sb.rpc('v2_presencia_latido').then(() => {}, () => {}) }
+async function iniciarPresencia() {
+  if (estado.user && estado.butaca) {
+    try { const { data } = await sb.rpc('v2_presencia_mia'); pres.mia = !!data } catch (e) {}
+  }
+  latirPresencia(); cargarPresencia()
+  clearInterval(pres.latido); pres.latido = setInterval(latirPresencia, 45_000)
+  clearInterval(pres.poll); pres.poll = setInterval(() => { if (vistaActual() === 'inicio' || mon.abierto) cargarPresencia() }, 30_000)
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { latirPresencia(); cargarPresencia() } })
+}
+async function cambiarPresencia() {
+  if (!estado.butaca) { aviso('Necesitás una butaca para esto.', 'error'); return }
+  const nuevo = !pres.mia
+  const ok = await confirmar(
+    nuevo ? '¿Encender tu butaca cuando estés presente?' : '¿Dejar de mostrar tu presencia?',
+    nuevo ? 'Mientras tengas el Cabildo abierto, tu butaca se va a ver encendida con una luz blanca en el hemiciclo de Inicio y en el Monitor, para todos. Se apaga sola cuando te vas. No muestra nada de lo que votás.'
+          : 'Tu butaca deja de encenderse para todos de forma inmediata.',
+    nuevo ? 'Sí, encender' : 'Sí, apagar')
+  if (!ok) return
+  const { error } = await sb.rpc('v2_presencia_config', { p_activa: nuevo })
+  if (error) { aviso('No se pudo guardar. Intentá de nuevo.', 'error'); return }
+  pres.mia = nuevo
+  if (!nuevo) pres.set.delete(estado.butaca)
+  pintarMiButaca(); cargarPresencia()
+  aviso(nuevo ? '💡 Tu butaca se enciende cuando estás presente' : '✓ Tu presencia ya no se muestra')
+}
+// Dibuja una butaca "encendida": luz blanca con resplandor
+function dibujarEncendida(ctx, x, y, r, oscuro) {
+  ctx.save()
+  // halo (como una lámpara encendida)
+  const R = Math.max(7, r * 4.2), g = ctx.createRadialGradient(x, y, r * .6, x, y, R)
+  g.addColorStop(0, oscuro ? 'rgba(255,255,255,.75)' : 'rgba(255,186,60,.7)')
+  g.addColorStop(.45, oscuro ? 'rgba(255,255,255,.22)' : 'rgba(255,196,80,.28)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, 6.283); ctx.fill()
+  // bombilla
+  ctx.shadowColor = oscuro ? '#ffffff' : 'rgba(255,170,40,1)'; ctx.shadowBlur = Math.max(6, r * 2.2)
+  ctx.fillStyle = '#ffffff'
+  ctx.beginPath(); ctx.arc(x, y, r * 1.18, 0, 6.283); ctx.fill()
+  if (!oscuro) { ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(240,160,30,.9)'; ctx.lineWidth = Math.max(1, r * .3); ctx.stroke() }
+  ctx.restore()
 }
 
 // ── Votación activa ─────────────────────────────────────────────
@@ -1324,6 +1395,7 @@ function pintarMiButaca() {
       ${interruptor('alias', !!id.show_alias, 'Mostrar mi alias', 'Tu butaca deja de ser anónima')}
       ${interruptor('phrase', !!id.show_phrase, 'Mostrar mi frase', 'Aparece en tu tarjeta del hemiciclo')}
       ${interruptor('votes', !!id.show_votes, 'Mostrar en cuántas votaciones participé', 'Solo la cantidad, nunca el voto')}
+      ${interruptor('presencia', pres.mia, 'Encender mi butaca cuando estoy presente', 'Se ve con luz blanca en el hemiciclo y en el Monitor mientras tenés el Cabildo abierto')}
     </article>
     <article class="card mb-sec mb-o5">
       <h3>Mi bloque</h3>
@@ -1419,6 +1491,7 @@ function enlazarMiButaca() {
     if (!t) return
     if (t.dataset.guardar) return guardarCampo(t.dataset.guardar, t)
     if (t.dataset.color) return guardarColor(t.dataset.color)
+    if (t.dataset.visib === 'presencia') return cambiarPresencia()
     if (t.dataset.visib) return cambiarVisibilidad(t.dataset.visib)
     if (t.id === 'mb-salir') return salirDelBloque()
     if (t.id === 'mb-ver-bloques') {
@@ -3980,7 +4053,7 @@ function abrirMonitor() {
   mon.abierto = true
   $('#mon').hidden = false; document.body.style.overflow = 'hidden'
   monTamano(); tickMonitor(); pintarMonitor()
-  cargarVotacion()                                         // datos frescos al abrir
+  cargarVotacion(); cargarPresencia()                      // datos frescos al abrir
   if (!totalButacas) cargarHemiciclo()
   clearInterval(mon.poll); mon.poll = setInterval(() => { if (mon.abierto) cargarVotacion() }, 15_000)
   clearInterval(mon.rueda); mon.rueda = setInterval(monRodar, 7000)
@@ -4091,10 +4164,16 @@ function monCuadro(now) {
     else ctx.fillStyle = `rgba(255,255,255,${alfa.toFixed(3)})`
     ctx.beginPath(); ctx.arc(cx + a.x * s, cy + a.y * s, rad, 0, 6.283); ctx.fill()
   }
+  // butacas presentes (luz blanca)
+  for (const n of pres.set) {
+    if (n === estado.butaca) continue
+    const a = asientos[n - 1]; if (a) dibujarEncendida(ctx, cx + a.x * s, cy + a.y * s, rad, true)
+  }
   // tu butaca
   const mia = estado.butaca && asientos[estado.butaca - 1]
   if (mia) {
     const x = cx + mia.x * s, y = cy + mia.y * s
+    if (pres.mia) { ctx.save(); ctx.shadowColor = 'rgba(255,255,255,.95)'; ctx.shadowBlur = rad * 5; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(x, y, rad * 1.7, 0, 6.283); ctx.fill(); ctx.restore() }
     ctx.shadowColor = 'rgba(247,106,30,.8)'; ctx.shadowBlur = 16; ctx.fillStyle = '#f76a1e'
     ctx.beginPath(); ctx.arc(x, y, rad * 1.35, 0, 6.283); ctx.fill(); ctx.shadowBlur = 0
     ctx.strokeStyle = 'rgba(247,106,30,.6)'; ctx.lineWidth = 2
@@ -4107,7 +4186,8 @@ function monCuadro(now) {
   ctx.fillText('C A B I L D O', fx, fy)
   ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `600 ${t1 * .48}px Inter, system-ui, sans-serif`
   ctx.fillText('D E   V E N E Z U E L A', fx, fy + t1 * .95)
-  if (mia) { ctx.fillStyle = 'rgba(247,106,30,.95)'; ctx.font = `700 ${t1 * .42}px Inter, system-ui, sans-serif`; ctx.fillText(`● Tu butaca #${estado.butaca}`, fx, fy + t1 * 1.75) }
+  const linea = [mia ? `● Tu butaca #${estado.butaca}` : '', pres.set.size ? `💡 ${fmtNum(pres.set.size)} ${pres.set.size === 1 ? 'butaca presente' : 'butacas presentes'}` : ''].filter(Boolean).join('     ')
+  if (linea) { ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = `700 ${t1 * .42}px Inter, system-ui, sans-serif`; ctx.fillText(linea, fx, fy + t1 * 1.75) }
 }
 
 // Si no entran todas las votaciones, la lista baja sola de a una tarjeta (como en una pantalla de sesión).
@@ -4405,6 +4485,7 @@ async function iniciar() {
   if (vistaActual() === 'propuestas' && pr.d) refrescarPropuestas()
   if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques(), cargarPropInicio(), cargarPortada()])
+  iniciarPresencia()
   if (vistaActual() === 'butaca') cargarMiButaca()
   if (vistaActual() === 'propuestas' && pr.d) pintarPropuestas()   // ya con alias públicos cargados
   setInterval(cargarVotacion, 60_000)
