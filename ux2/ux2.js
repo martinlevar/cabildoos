@@ -591,6 +591,7 @@ function resultadosDe(q) {
 }
 
 function pintarVotaciones() {
+  if (vFiltro === 'cerradas') { $('#vc-abiertas').textContent = vPreguntas.filter(abierta).length ? `(${vPreguntas.filter(abierta).length})` : ''; if (!vc.items.length && !vc.fin) cargarCerradas(); return pintarCerradas() }
   const lista = $('#vlist')
   const abiertas = vPreguntas.filter(abierta).sort((a, b) => new Date(a.ends_at) - new Date(b.ends_at))
   const cerradas = vPreguntas.filter(q => !abierta(q))
@@ -623,6 +624,69 @@ function pintarVotaciones() {
       ${vFiltro === 'abiertas' ? `<div class="vcard-foot">${pie}</div>` : `<div class="vcard-res">${pie}</div>`}
     </article>`
   }).join('')
+}
+
+// ── Cerradas: archivo de todas las votaciones cerradas, se va acumulando (de a 25) ──
+const vc = { items: [], total: null, cargando: false, fin: false, q: '', filtro: 'todas', buscarT: 0 }
+async function cargarCerradas(reiniciar = false) {
+  if (vc.cargando || (vc.fin && !reiniciar)) return
+  if (reiniciar) { vc.items = []; vc.fin = false }
+  vc.cargando = true; pintarCerradas()
+  try {
+    let qy = sb.from('questions').select('id, text, category, ends_at, status', { count: 'exact' })
+      .in('status', ['activa', 'cerrada']).lt('ends_at', new Date().toISOString())
+    if (vc.q) qy = qy.ilike('text', `%${vc.q.replace(/[%_]/g, '')}%`)
+    const { data, error, count } = await qy.order('ends_at', { ascending: false }).range(vc.items.length, vc.items.length + 24)
+    if (error) throw error
+    vc.items.push(...(data || []).filter(q => !vc.items.some(x => x.id === q.id)))
+    if (!vc.q) vc.total = count ?? vc.total
+    vc.fin = !data || data.length < 25
+    if (!vResultados.size) { const { data: res } = await sb.rpc('get_all_question_results'); vResultados = new Map((res || []).map(r => [r.id, r])) }
+  } catch (e) { console.warn('cerradas:', e) }
+  vc.cargando = false
+  pintarCerradas()
+}
+
+function chipResultado(q) {
+  const r = vResultados.get(q.id), t = Number(r?.total || 0)
+  if (!t || t < 3) return '<span class="vc-res nula">Sin resultado</span>'
+  const si = Number(r.cnt_si || 0), no = Number(r.cnt_no || 0)
+  if (si === no) return '<span class="vc-res empate">Empate</span>'
+  const k = si > no ? 'si' : 'no'
+  return `<span class="vc-res ${k}">${k === 'si' ? 'SÍ' : 'NO'} ${Math.round(Math.max(si, no) / t * 100)}%</span>`
+}
+
+function pintarCerradas() {
+  if (vFiltro !== 'cerradas') return
+  const lista = $('#vlist'); if (!lista) return
+  if (vc.total != null) $('#vc-cerradas').textContent = `(${fmtNum(vc.total)})`
+  const sinVer = vc.items.filter(q => !rvVista(q.id)).length
+  let items = vc.items
+  if (vc.filtro === 'sinver') items = items.filter(q => !rvVista(q.id))
+  if (vc.filtro === 'mias') items = items.filter(q => vMisVotos.has(q.id))
+  const barra = lista.querySelector('.vc-barra')
+  if (!barra) lista.innerHTML = `<div class="vc-barra card">
+      <label class="vc-buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="vc-q" type="search" placeholder="Buscar en las votaciones cerradas…" value="${esc(vc.q)}"></label>
+      <div class="seg" role="tablist"><button data-vc="todas">Todas</button><button data-vc="sinver">Sin ver <span id="vc-sinver"></span></button><button data-vc="mias">En las que voté</button></div>
+    </div><div id="vc-lista"></div>`
+  $$('[data-vc]').forEach(b => b.classList.toggle('active', b.dataset.vc === vc.filtro))
+  $('#vc-sinver').textContent = sinVer ? `(${sinVer})` : ''
+  // agrupadas por mes
+  let mes = '', html = ''
+  items.forEach(q => {
+    const d = new Date(q.ends_at), m = d.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+    if (m !== mes) { mes = m; html += `<h3 class="vc-mes">${m.replace(/^./, c => c.toUpperCase())}</h3>` }
+    const visto = rvVista(q.id), voto = vMisVotos.has(q.id)
+    html += `<a class="vc-fila card ${visto ? '' : 'nueva'}" href="#revelacion/${q.id}">
+      <span class="vc-fecha"><b>${d.getDate()}</b><small>${d.toLocaleDateString('es-VE', { month: 'short' }).replace('.', '')}</small></span>
+      <span class="vc-txt"><span class="vc-meta"><span class="tag">${esc(q.category || 'General')}</span>${voto ? '<span class="vc-voto">✓ Votaste</span>' : ''}</span><b>${esc(q.text)}</b></span>
+      <span class="vc-der">${visto ? chipResultado(q) : '<span class="vc-revelar">✦ Revelación</span>'}</span>
+    </a>`
+  })
+  const pie = vc.cargando ? '<p class="muted vc-pie">Cargando…</p>'
+    : !vc.fin ? '<button class="btn btn-ghost vc-mas" data-vc-mas>Cargar más votaciones</button>'
+    : items.length ? `<p class="muted vc-pie">${vc.q ? 'No hay más resultados para tu búsqueda.' : 'Llegaste a la primera votación del Cabildo.'}</p>` : ''
+  $('#vc-lista').innerHTML = (items.length ? html : !vc.cargando ? `<div class="card soon"><h3 style="margin:0">${vc.q ? 'No encontramos votaciones con ese texto' : vc.filtro === 'sinver' ? '¡Viste todas las revelaciones!' : vc.filtro === 'mias' ? 'Todavía no votaste en ninguna de estas' : 'Todavía no hay votaciones cerradas'}</h3></div>` : '') + pie
 }
 
 function tickCuentas() {
@@ -860,8 +924,14 @@ function enlazar() {
     pintarVotaciones()
   }))
   $('#vlist').addEventListener('click', e => {
+    const f = e.target.closest('[data-vc]'); if (f) { vc.filtro = f.dataset.vc; if (vc.filtro !== 'todas' && !vc.fin && vc.items.length < 100) cargarCerradas(); return pintarCerradas() }
+    if (e.target.closest('[data-vc-mas]')) return cargarCerradas()
     const b = e.target.closest('[data-votar]'); if (!b) return
     const q = vPreguntas.find(x => x.id === b.dataset.votar); if (q) abrirVoto(q)
+  })
+  $('#vlist').addEventListener('input', e => {
+    if (e.target.id !== 'vc-q') return
+    clearTimeout(vc.buscarT); vc.buscarT = setTimeout(() => { vc.q = e.target.value.trim(); cargarCerradas(true) }, 350)
   })
   $$('.tab').forEach(t => t.addEventListener('click', () => irATab(t.dataset.tab)))
   $('#bloques-body').addEventListener('click', e => {

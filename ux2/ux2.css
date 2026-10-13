@@ -1652,7 +1652,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .rv-cols.chico .rv-col-cab b, .rv-col-cab b { font-size: 22px; }
   .rv-panel { padding-bottom: 16px; }
   .rv.final .rv-escena { min-height: 110px; }
-  .rv-fin h2 { font-size: 40px; }
+  .rv-fin h2 { font-size: 32px; }
   .rv-fin > p { font-size: 14px; }
   .rv-cols.chico .rv-col { grid-template-columns: 1fr auto; grid-template-areas: "cab cab" "barra n"; padding: 9px 12px; gap: 5px 10px; align-items: center; }
   .rv-cols.chico .rv-col-cab { grid-area: cab; }
@@ -1661,4 +1661,33 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .rv-cols.chico .rv-col-cab b { font-size: 19px; }
   .rv-acc { gap: 8px; }
   .rv-cta { padding: 11px 16px; font-size: 14px; }
+}
+
+/* Votaciones › Cerradas */
+.vc-barra { display: flex; align-items: center; gap: 12px; padding: 10px 12px; flex-wrap: wrap; }
+.vc-buscar { flex: 1; min-width: 220px; display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 40px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+.vc-buscar svg { width: 17px; height: 17px; color: var(--muted); }
+.vc-buscar input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: 14px; color: var(--ink); outline: none; }
+#vc-lista { display: grid; gap: 8px; }
+.vc-mes { margin: 14px 2px 2px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.vc-fila { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 12px 16px; transition: transform .12s, border-color .12s; }
+.vc-fila:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.vc-fecha { width: 46px; display: grid; justify-items: center; line-height: 1; padding: 6px 0; border-radius: 12px; background: var(--surface-2); }
+.vc-fecha b { font-size: 19px; } .vc-fecha small { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 3px; }
+.vc-txt { display: grid; gap: 5px; min-width: 0; }
+.vc-meta { display: flex; align-items: center; gap: 8px; }
+.vc-meta .tag { font-size: 10px; padding: 3px 8px; }
+.vc-voto { font-size: 11.5px; font-weight: 700; color: var(--green); }
+.vc-txt b { font-size: 14.5px; line-height: 1.35; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.vc-res { display: inline-block; font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 99px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vc-res.si { background: var(--green-bg); color: var(--green); }
+.vc-res.no { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red); }
+.vc-res.empate, .vc-res.nula { background: var(--surface-2); color: var(--muted); }
+.vc-revelar { display: inline-block; font-size: 13px; font-weight: 800; padding: 7px 13px; border-radius: 99px; color: #fff; background: linear-gradient(135deg, #f5b942, #f97316); white-space: nowrap; }
+.vc-fila.nueva { border-color: color-mix(in srgb, #f97316 35%, var(--line)); }
+.vc-mas { justify-self: center; margin-top: 8px; }
+.vc-pie { text-align: center; font-size: 13px; margin: 10px 0; }
+@media (max-width: 640px) {
+  .vc-fila { grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px; }
+  .vc-der { grid-column: 2; }
 }
