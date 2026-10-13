@@ -3663,7 +3663,7 @@ function enlazarMuro() {
 //  REVELACIÓN — el momento en que una votación cerrada muestra su resultado.
 //  Privacidad: se encienden las butacas que votaron, TODAS del mismo color: muestra que esa butaca votó,
 //  nunca qué votó (ese dato no existe en la base). El resultado se ve solo en los totales.
-//  El hemiciclo mira hacia la pregunta, como en Inicio.
+//  Hemiciclo clásico (arco hacia arriba). Pregunta, hemiciclo y panel van en franjas separadas: nunca se pisan.
 // ══════════════════════════════════════════════════════════════
 const RV_COL = { si: '#22c55e', no: '#ef4444', abs: '#94a3b8', luz: '#f5b942' }
 const RV_T = { intro: 1300, luz: 3000, pausa: 700, conteo: 3600 }
@@ -3676,7 +3676,7 @@ function rvAsientos(n) {
   const span = H.A1 - H.A0, res = []
   for (let row = 0; res.length < n; row++) {
     const r = H.R_IN + row * H.R_STEP, cap = Math.floor(r * span / H.GAP), cant = Math.min(cap, n - res.length), orden = ordenCentro(cap)
-    for (let i = 0; i < cant; i++) { const a = H.A0 + (cap > 1 ? orden[i] / (cap - 1) : .5) * span; res.push({ x: r * Math.cos(a), y: r * Math.sin(a), a }) }
+    for (let i = 0; i < cant; i++) { const a = H.A0 + (cap > 1 ? orden[i] / (cap - 1) : .5) * span; res.push({ x: r * Math.cos(a), y: -r * Math.sin(a), a }) }
   }
   return res
 }
@@ -3748,7 +3748,8 @@ async function abrirRevelacion(id) {
       rv.cuenta = r.total
     }
     rv.butacas = butacas
-    $('#rv-preg').innerHTML = `<span class="rv-tag">${esc(q.category || 'General')} · cerró el ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}</span><h1>${esc(q.text)}</h1>`
+    const largo = (q.text || '').length
+    $('#rv-preg').innerHTML = `<span class="rv-tag">${esc(q.category || 'General')} · cerró el ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}</span><h1 class="${largo > 220 ? 'muy-larga' : largo > 120 ? 'larga' : ''}" title="${esc(q.text)}">${esc(q.text)}</h1>`
     $('#rv-mi').innerHTML = rv.participe ? '<b>Tu butaca</b><span>Participaste · tu voto es secreto</span>' : '<b>Tu butaca</b><span>No votaste en esta</span>'
     $('#rv').classList.remove('final')
     rvMarcar(q.id)
@@ -3770,17 +3771,15 @@ function cerrarRevelacion() {
 }
 
 function rvTamano() {
-  const cv = $('#rv-hemi'), z = parseFloat(getComputedStyle(document.body).zoom) || 1
-  rv.dpr = (window.devicePixelRatio || 1)
-  const W = cv.clientWidth, Hh = cv.clientHeight
-  cv.width = W * rv.dpr; cv.height = Hh * rv.dpr
-  // Encuadre: el hemiciclo ocupa la franja central (deja lugar arriba para la pregunta y abajo para el panel)
+  const cv = $('#rv-hemi'), esc_ = $('#rv-escena'); if (!cv || !esc_) return
+  rv.dpr = window.devicePixelRatio || 1
+  const W = esc_.clientWidth, Hh = esc_.clientHeight
+  cv.width = Math.max(1, W * rv.dpr); cv.height = Math.max(1, Hh * rv.dpr)
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
   rv.pts.forEach(p => { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y) })
-  const movil = W < 700, arriba = Hh * (movil ? .28 : .25), abajo = Hh * (movil ? .44 : .38)
-  const s = Math.min((W * .9) / (x1 - x0 + 30), (Hh - arriba - abajo) / (y1 - y0 + 30))
+  const arriba = 46, abajo = 8   // lugar para el cartel "Tu butaca"
+  const s = Math.max(.05, Math.min((W * .94) / (x1 - x0 + 30), (Hh - arriba - abajo) / (y1 - y0 + 30)))
   rv.cam = { s, cx: W / 2 - (x0 + x1) / 2 * s, cy: arriba + (Hh - arriba - abajo) / 2 - (y0 + y1) / 2 * s, W, Hh }
-  void z
 }
 
 const rvEase = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
@@ -3889,6 +3888,7 @@ function enlazarRevelacion() {
   })
   document.addEventListener('keydown', e => { if (!v.hidden && e.key === 'Escape') cerrarRevelacion() })
   window.addEventListener('resize', () => { if (rv.abierto && rv.r) rvTamano() })
+  if (window.ResizeObserver) new ResizeObserver(() => { if (rv.abierto && rv.r) rvTamano() }).observe($('#rv-escena'))
 }
 
 async function iniciar() {
