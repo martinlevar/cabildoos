@@ -367,7 +367,7 @@ function tamCanvas() {
 function calcularEncuadre() {
   const { W, H: Hh } = tamCanvas()
   if (!limites || !W || !Hh) return
-  const padTop = 70, padBottom = 96, padX = 12
+  const chico = W < 520, padTop = chico ? 52 : 70, padBottom = chico ? 26 : 96, padX = chico ? 4 : 12
   const s = Math.min((W - padX * 2) / (limites.x1 - limites.x0 + H.DOT * 2),
                      (Hh - padTop - padBottom) / (limites.y1 - limites.y0 + H.DOT * 2))
   encuadre = { s, x: (limites.x0 + limites.x1) / 2, y: (limites.y0 + limites.y1) / 2 + (padBottom - padTop) / 2 / s }
@@ -380,7 +380,7 @@ function columnasDesplegadas() {
 
 function objetivoAuto() {
   const mia = estado.butaca && asientos[estado.butaca - 1]
-  if (mia && columnasDesplegadas()) return { x: mia.x, y: mia.y + 60 / (encuadre.s * 1.7), s: encuadre.s * 1.7 }
+  if (mia && columnasDesplegadas() && window.innerWidth > 860) return { x: mia.x, y: mia.y + 60 / (encuadre.s * 1.7), s: encuadre.s * 1.7 }
   return { ...encuadre }
 }
 
