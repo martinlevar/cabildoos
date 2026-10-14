@@ -77,7 +77,7 @@ function ruta() {
   else if (mu.abierto) cerrarHiloMuro()
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
-  if (valida === 'funding') entrarFunding(); else if (fd.vivo) salirFunding()
+  if (valida === 'funding') entrarFunding(arg); else if (fd.vivo) salirFunding()
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
@@ -1851,18 +1851,32 @@ function enlazarMiBloque() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  FOUNDING — meta de financiación del Cabildo (se activa desde el admin: system_config.funding).
-//  La franja va de $0 a la meta. Cada marca auspiciante ocupa su tramo con su logo; las butacas que aportan
-//  forman un tramo dorado y, en la "lupa" de abajo, aparece cada butaca aportante.
+//  FUNDING — financiación del Cabildo (se activa desde el admin: system_config.funding).
+//  Tres pestañas: Fondo del Cabildo · Proyectos · Socios.
+//  · Fondo: franja de $0 a la meta. Cada marca ocupa su tramo con su logo; las butacas que aportan forman
+//    un tramo dorado y en la "lupa" aparece cada butaca aportante.
+//  · Socios: una butaca que aporta $12 en el año (sumando todos sus aportes) es socia por 12 meses; el
+//    acumulado vuelve a 0 cada año. Los socios proponen proyectos y deciden en votación secreta cuáles se
+//    financian. En el Hemiciclo nada cambia: 1 butaca = 1 voto, aporte o no.
+//  · Proyectos: propuesta → debate (48 h) → votación secreta de socios (mayoría + 30 % de participación)
+//    → franja propia donde pueden aportar TODAS las butacas y las marcas → financiado. Si no llega a la
+//    meta en el plazo, se devuelve todo.
 //  Privacidad: una butaca solo aparece con su número si elige mostrarse; si no, como "Butaca anónima".
-//  Mientras funding.simulado = true todo es una simulación (datos de ejemplo y aportes en vivo ficticios):
-//  no se cobra nada ni se guarda nada.
+//  El voto de los socios es secreto: ni siquiera se le muestra a cada socio lo que votó.
+//  Mientras funding.simulado = true todo es una simulación: no se cobra ni se guarda nada.
 // ══════════════════════════════════════════════════════════════
-const fd = { cfg: null, d: null, t: 0, vivo: 0, nuevos: new Set(), mostrarme: true, ultimo: null }
+const fd = { cfg: null, d: null, vivo: 0, n: 0, nuevos: new Set(), mostrarme: true, ultimo: null, tab: 'cabildo', formProy: false }
+const FD_TABS = [['cabildo', 'Fondo del Cabildo'], ['proyectos', 'Proyectos'], ['socios', 'Socios']]
+const FD_SOCIO = 12, FD_QUORUM = 0.3
 const FD_LOGOS = {
   tepuy: '<svg viewBox="0 0 40 40"><path d="M4 31h32L27 15l-4 6-5-10z" fill="#fff"/><path d="M18 11l5 10-3 4-4-7z" fill="#fff" opacity=".55"/><circle cx="31" cy="9" r="3" fill="#fde68a"/></svg>',
   avila: '<svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="10" ry="14" fill="#fff" transform="rotate(30 20 20)"/><path d="M14 9c6 6 6 16 12 22" stroke="#7c2d12" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>',
   orinoco: '<svg viewBox="0 0 40 40"><path d="M3 24c6-6 11 6 17 0s11-6 17 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M3 15c6-6 11 6 17 0s11-6 17 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".6"/></svg>',
+}
+const FD_MARCAS = {
+  tepuy: { id: 'tepuy', nombre: 'Tepuy', color: '#0f766e', color2: '#14b8a6', frase: 'Creemos en una Venezuela que decide.' },
+  avila: { id: 'avila', nombre: 'Café Ávila', color: '#9a3412', color2: '#ea580c', frase: 'Cada taza, una conversación.' },
+  orinoco: { id: 'orinoco', nombre: 'Orinoco', color: '#1d4ed8', color2: '#38bdf8', frase: 'Donde se juntan los ríos.' },
 }
 const FD_TRAMOS = [
   [10000, '🛡️', 'Infraestructura y seguridad', 'Servidores, verificación y auditorías de seguridad por 12 meses.'],
@@ -1874,32 +1888,64 @@ const FD_NIVELES = [
   ['Aliada', 5000, 'Logo en la franja y en la lista de marcas que auspician.'],
   ['Amiga', 1000, 'Nombre en la franja y en la lista de marcas.'],
 ]
+const FD_PASOS = ['Propuesta', 'Debate', 'Votación', 'Financiando', 'Financiado']
+const FD_ESTADO = {
+  debate: [1, 'Debate de socios', 'deb'], votacion: [2, 'Votación de socios', 'vot'], financiando: [3, 'Financiando', 'fin'],
+  financiado: [4, 'Financiado', 'ok'], devuelto: [3, 'No llegó · se devolvió', 'dev'], rechazado: [2, 'No aprobado', 'dev'],
+}
 const fd$ = n => '$' + Math.round(n).toLocaleString('es-VE')
 const fdK = n => n >= 1000 ? '$' + (n / 1000).toLocaleString('es-VE', { maximumFractionDigits: 1 }) + 'K' : fd$(n)
+const fdFecha = ms => new Date(ms).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })
+function fdFalta(ms) {
+  const s = Math.max(0, Math.floor((ms - Date.now()) / 1000)), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60)
+  return d ? `${d} ${d === 1 ? 'día' : 'días'}` : h ? `${h} h ${m} min` : `${m} min`
+}
+const fdPct = (n, t) => (t ? n / t * 100 : 0).toLocaleString('es-VE', { maximumFractionDigits: 1 }) + '%'
 
-// Datos de ejemplo (siempre los mismos, para que la demo se vea igual cada vez)
+// ── Datos de ejemplo (siempre los mismos, para que la demo se vea igual cada vez)
+function fdRnd(seed) { let s = seed; return () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648 }
+function fdAportes(rnd, n, dias, montos) {
+  const ahora = Date.now(), out = []
+  for (let i = 0; i < n; i++) out.push({ butaca: 1 + Math.floor(rnd() * 1068), monto: montos[Math.floor(rnd() * montos.length)], anonima: rnd() < 0.28, at: ahora - Math.floor(Math.pow(rnd(), 1.6) * dias * 864e5) })
+  return out.sort((a, b) => b.at - a.at)
+}
 function fdSimular() {
-  let s = 20261014
-  const rnd = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648
-  const montos = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 10, 10, 25]
-  const ahora = Date.now(), aportes = []
-  for (let i = 0; i < 742; i++) {
-    aportes.push({ butaca: 1 + Math.floor(rnd() * 1068), monto: montos[Math.floor(rnd() * montos.length)], anonima: rnd() < 0.28, at: ahora - Math.floor(Math.pow(rnd(), 1.6) * 21 * 864e5) })
-  }
-  aportes.sort((a, b) => b.at - a.at)
+  const rnd = fdRnd(20261014), ahora = Date.now()
+  const chicos = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 10, 10, 25]
+  const marca = (id, nivel, monto) => ({ ...FD_MARCAS[id], nivel, monto })
   return {
     meta: fd.cfg?.meta || 30000, cierra: ahora + 23 * 864e5 + 7 * 36e5,
-    marcas: [
-      { id: 'tepuy', nombre: 'Tepuy', nivel: 'Fundadora', monto: 10000, color: '#0f766e', color2: '#14b8a6', frase: 'Creemos en una Venezuela que decide.' },
-      { id: 'avila', nombre: 'Café Ávila', nivel: 'Amiga', monto: 1500, color: '#9a3412', color2: '#ea580c', frase: 'Cada taza, una conversación.' },
+    marcas: [marca('tepuy', 'Fundadora', 10000), marca('avila', 'Amiga', 1500)],
+    aportes: fdAportes(rnd, 742, 21, chicos),
+    socios: 214,
+    yo: { aportado: 7, socioHasta: null },
+    proyectos: [
+      { id: 'monumento', titulo: 'Monumento a los presos políticos', lugar: 'Plaza Altamira, Caracas', estado: 'financiando',
+        texto: 'Una escultura en homenaje a quienes estuvieron presos por pensar distinto, con sus nombres grabados y un código QR a sus historias.',
+        meta: 5000, cierra: ahora + 12 * 864e5, votacion: { si: 0.78, part: 0.64 }, comentarios: 57,
+        marcas: [marca('avila', 'Amiga', 1000)], aportes: fdAportes(rnd, 380, 9, [1, 1, 1, 1, 5, 5, 10, 25]) },
+      { id: 'biblioteca', titulo: 'Biblioteca digital de la Constitución', lugar: 'En línea, para todo el país', estado: 'votacion',
+        texto: 'Una edición anotada y gratuita de la Constitución, con audio y lenguaje sencillo, para escuelas y liceos.',
+        meta: 3000, votaCierra: ahora + 20 * 36e5, votaron: 0.41, comentarios: 34, marcas: [], aportes: [] },
+      { id: 'kit', titulo: 'Kit legal para venezolanos en el exterior', lugar: 'Diáspora', estado: 'debate',
+        texto: 'Guías y asesoría gratuita para trámites de documentos, apostillas y residencias en los 10 países con más venezolanos.',
+        meta: 8000, votaAbre: ahora + 31 * 36e5, comentarios: 23, marcas: [], aportes: [] },
+      { id: 'mural', titulo: 'Mural de la libertad', lugar: 'Maracaibo', estado: 'financiado',
+        texto: 'Un mural de 40 metros pintado por artistas zulianos sobre la historia de la lucha democrática.',
+        meta: 2500, votacion: { si: 0.84, part: 0.58 }, comentarios: 41, nota: 'Financiado en 9 días. Los artistas empiezan a pintar el 2 de noviembre.',
+        marcas: [marca('tepuy', 'Amiga', 500)], aportes: fdAportes(rnd, 236, 30, [1, 1, 5, 5, 10, 10, 25]), ajustarMeta: true },
+      { id: 'radio', titulo: 'Radio comunitaria', lugar: 'Mérida', estado: 'devuelto',
+        texto: 'Una radio por internet con programas hechos por los vecinos.',
+        meta: 6000, votacion: { si: 0.61, part: 0.37 }, comentarios: 18, devuelto: { monto: 1240, aportantes: 96 }, marcas: [], aportes: [] },
     ],
-    aportes,
   }
 }
+const fdAjustar = d => { d.proyectos.filter(p => p.ajustarMeta).forEach(p => { p.meta = Math.floor(fdTotales(p).total / 100) * 100 }); return d }
 const fdTotales = d => {
-  const marcas = d.marcas.reduce((n, m) => n + m.monto, 0), butacas = d.aportes.reduce((n, a) => n + a.monto, 0)
-  return { marcas, butacas, total: marcas + butacas, aportantes: new Set(d.aportes.map(a => a.anonima ? 'a' + a.at : a.butaca)).size }
+  const marcas = (d.marcas || []).reduce((n, m) => n + m.monto, 0), butacas = (d.aportes || []).reduce((n, a) => n + a.monto, 0)
+  return { marcas, butacas, total: marcas + butacas, aportantes: new Set((d.aportes || []).map(a => a.anonima ? 'a' + a.at + a.butaca : a.butaca)).size }
 }
+const fdSoySocio = () => !!fd.d?.yo?.socioHasta && fd.d.yo.socioHasta > Date.now()
 
 function fdConfig(cfg) {
   const antes = fd.cfg
@@ -1909,22 +1955,47 @@ function fdConfig(cfg) {
   if (vistaActual() === 'funding') entrarFunding()
 }
 
-function entrarFunding() {
-  if (fd.cfg?.activo && fd.cfg.simulado && !fd.d) fd.d = fdSimular()
-  if (fd.cfg?.activo && !fd.cfg.simulado) fd.d = { meta: fd.cfg.meta || 30000, cierra: null, marcas: [], aportes: [] }
+function entrarFunding(arg) {
+  if (arg && FD_TABS.some(([k]) => k === arg)) fd.tab = arg
+  if (fd.cfg?.activo && !fd.d) fd.d = fd.cfg.simulado ? fdAjustar(fdSimular())
+    : { meta: fd.cfg.meta || 30000, cierra: null, marcas: [], aportes: [], socios: 0, yo: { aportado: 0, socioHasta: null }, proyectos: [] }
   pintarFunding()
   clearInterval(fd.vivo)
-  if (fd.cfg?.activo && fd.cfg.simulado) fd.vivo = setInterval(() => { if (vistaActual() === 'funding' && document.visibilityState === 'visible') fdAporteSimulado() }, 3200)
+  if (fd.cfg?.activo && fd.cfg.simulado) fd.vivo = setInterval(() => { if (vistaActual() === 'funding' && document.visibilityState === 'visible') fdTick() }, 3200)
 }
 function salirFunding() { clearInterval(fd.vivo); fd.vivo = 0 }
 
-function fdAporteSimulado(propio) {
-  const d = fd.d; if (!d) return
+// Aportes en vivo de la simulación: al fondo y, cada tanto, al proyecto que se está financiando
+function fdTick() {
   const montos = [1, 1, 1, 1, 1, 1, 5, 5, 10, 25]
-  const a = propio || { butaca: 1 + Math.floor(Math.random() * 1068), monto: montos[Math.floor(Math.random() * montos.length)], anonima: Math.random() < 0.25, at: Date.now() }
+  const a = { butaca: 1 + Math.floor(Math.random() * 1068), monto: montos[Math.floor(Math.random() * montos.length)], anonima: Math.random() < 0.25, at: Date.now() }
+  const p = fd.d?.proyectos?.find(x => x.estado === 'financiando')
+  if (p && ++fd.n % 3 === 0) { fdSumarAProyecto(p, a); return }
+  fdSumarAlFondo(a)
+}
+function fdSumarAlFondo(a) {
+  const d = fd.d; if (!d) return
   d.aportes.unshift(a); fd.nuevos.add(a); fd.ultimo = a
   setTimeout(() => fd.nuevos.delete(a), 2600)
-  fdActualizar(true)
+  if (fd.tab === 'cabildo') fdActualizar(true); else fdRepintarTab()
+}
+function fdSumarAProyecto(p, a) {
+  p.aportes.unshift(a); fd.nuevos.add(a); fd.ultimo = { ...a, proyecto: p.titulo }
+  setTimeout(() => fd.nuevos.delete(a), 2600)
+  const t = fdTotales(p)
+  if (p.estado === 'financiando' && t.total >= p.meta) { p.estado = 'financiado'; p.nota = 'Financiado. El equipo del proyecto publica los avances acá.'; if (fd.tab === 'proyectos') aviso(`🎉 «${p.titulo}» llegó a la meta`) }
+  fdRepintarTab(p.id)
+}
+
+// Mi aporte (simulado): suma a mi acumulado del año y, al llegar a $12, me hace socio por 12 meses
+function fdMiAporte(monto, p) {
+  const d = fd.d, yo = d.yo, eraSocio = fdSoySocio()
+  const a = { butaca: estado.butaca || 250, monto, anonima: !fd.mostrarme, vos: true, at: Date.now() }
+  yo.aportado += monto
+  if (!eraSocio && yo.aportado >= FD_SOCIO) { yo.socioHasta = Date.now() + 365 * 864e5; d.socios++ }
+  if (p) fdSumarAProyecto(p, a); else fdSumarAlFondo(a)
+  if (!eraSocio && fdSoySocio()) { aviso('★ ¡Ya sos socio del Cabildo! Ahora podés proponer y votar proyectos.'); const f = fd.formProy && $('#fd-pf-tit') ? null : 1; if (f) pintarFunding(); else fdRepintarTab() }
+  else aviso(`Así se vería tu aporte de ${fd$(monto)}${p ? ` a «${p.titulo}»` : ''} (simulación: no se cobró nada)`)
 }
 
 // ── Pintado
@@ -1932,12 +2003,56 @@ function pintarFunding() {
   const c = $('#fd-cuerpo'); if (!c) return
   if (!fd.cfg?.activo) { c.innerHTML = `<div class="card au-vacio"><span class="au-vacio-ico"><svg viewBox="0 0 24 24">${ICONOS.funding}</svg></span><h3>Funding no está disponible</h3><p class="muted">Vuelve pronto.</p></div>`; return }
   if (!fd.d) { entrarFunding(); return }
-  const d = fd.d, sim = fd.cfg.simulado
-  c.innerHTML = `
+  const vivos = fd.d.proyectos.filter(p => ['debate', 'votacion', 'financiando'].includes(p.estado)).length
+  c.innerHTML = `<nav class="fd-tabs" role="tablist">${FD_TABS.map(([k, t]) => `<button role="tab" class="fd-tab ${fd.tab === k ? 'on' : ''}" aria-selected="${fd.tab === k}" data-fd-tab="${k}">${t}${k === 'proyectos' && vivos ? `<span>${vivos}</span>` : ''}${k === 'socios' && fdSoySocio() ? '<span class="oro">★</span>' : ''}</button>`).join('')}
+    ${fd.cfg.simulado ? '<span class="fd-sim-chip" title="Montos, marcas, proyectos y aportes de ejemplo">● Simulación</span>' : ''}</nav>
+    <div id="fd-tab"></div>`
+  fdRepintarTab()
+}
+function fdRepintarTab(soloProyecto) {
+  const box = $('#fd-tab'); if (!box || !fd.d) return
+  if (fd.tab === 'proyectos') {
+    if (soloProyecto && $(`#fd-p-${soloProyecto}`)) { $(`#fd-p-${soloProyecto}`).outerHTML = fdProyecto(fd.d.proyectos.find(p => p.id === soloProyecto)); return }
+    if ($('#fd-proy-lista')) { $('#fd-proy-lista').innerHTML = fd.d.proyectos.map(fdProyecto).join(''); $('#fd-mi-socio').innerHTML = fdMiSocio(true); return }
+    box.innerHTML = fdTabProyectos(); return
+  }
+  if (fd.tab === 'socios') { box.innerHTML = fdTabSocios(); return }
+  if (!$('#fd-franja')) { box.innerHTML = fdTabCabildo(); }
+  fdActualizar(false)
+}
+
+function fdTicker() {
+  const a = fd.ultimo || fd.d?.aportes?.[0]
+  if (!a) return '<i></i> Esperando el primer aporte'
+  if (a.marca) return `<i></i> <b>${esc(a.marca)}</b> se sumó como marca · ${fd$(a.monto)}`
+  return `<i></i> ${a.vos ? '<b>Vos</b> aportaste' : `<b>${a.anonima ? 'Una butaca anónima' : 'Butaca #' + a.butaca}</b> aportó`} ${fd$(a.monto)}${a.proyecto ? ` a <b>${esc(a.proyecto)}</b>` : ''} · ${a.at > Date.now() - 6e4 ? 'recién' : haceCuanto(new Date(a.at).toISOString())}`
+}
+
+// Franja reutilizable: tramos de marcas + tramo de butacas + cursor + escala
+function fdFranja({ meta, marcas, butacas, aportantes, anchoPx, alta, anim }) {
+  const total = marcas.reduce((n, m) => n + m.monto, 0) + butacas, pct = Math.min(100, total / meta * 100)
+  const cabe = w => anchoPx * w / 100 >= (alta ? 116 : 104)
+  let x = 0
+  const segs = marcas.map(m => {
+    const w = Math.min(100 - x, m.monto / meta * 100), s = `<div class="fd-seg fd-seg-marca ${cabe(w) ? '' : 'chico'} ${m.nueva ? 'entra' : ''}" style="left:${x}%;width:${w}%;--c1:${m.color};--c2:${m.color2}" title="${esc(m.nombre)} · ${fd$(m.monto)}">
+        <span class="fd-logo">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span><span class="fd-seg-txt"><b>${esc(m.nombre)}</b><small>${fdK(m.monto)}</small></span></div>`
+    x += w; return s
+  }).join('')
+  const wB = Math.min(100 - x, butacas / meta * 100)
+  return { pct, xB: x, wB, total, html: `<div class="fd-franja ${alta ? '' : 'mini'}" role="img" aria-label="${fd$(total)} de ${fd$(meta)}">
+      ${segs}${butacas ? `<div class="fd-seg fd-seg-butacas ${anim ? 'pulso' : ''} ${cabe(wB) ? '' : 'chico'}" style="left:${x}%;width:${wB}%" title="${fmtNum(aportantes)} butacas · ${fd$(butacas)}"><span class="fd-seg-txt"><b>${fmtNum(aportantes)} butacas</b><small>${fdK(butacas)}</small></span></div>` : ''}
+      <div class="fd-cursor" style="left:${pct}%"></div>
+      ${alta ? [1, 2].map(k => `<i class="fd-marca-meta" style="left:${k / 3 * 100}%"></i>`).join('') : ''}
+    </div>` }
+}
+
+// ── Pestaña: Fondo del Cabildo
+function fdTabCabildo() {
+  const sim = fd.cfg.simulado
+  return `
     <section class="fd-hero">
       <div class="fd-hero-top">
         <span class="fd-kicker">Ronda fundacional del Cabildo</span>
-        ${sim ? '<span class="fd-sim" title="Los montos, marcas y aportes son de ejemplo">● Simulación</span>' : ''}
         <span class="fd-vivo" id="fd-vivo">${fdTicker()}</span>
       </div>
       <h2 class="fd-titulo">Un Cabildo que se sostiene <em>con su gente.</em></h2>
@@ -1950,7 +2065,8 @@ function pintarFunding() {
         <h3>Aportá con tu butaca</h3>
         <p class="muted">Tu aporte aparece al instante en la franja. Desde $1.</p>
         <div class="fd-montos">${[1, 5, 10, 25].map(m => `<button class="fd-monto" data-fd-aportar="${m}">${fd$(m)}</button>`).join('')}</div>
-        <label class="fd-check"><input type="checkbox" id="fd-mostrarme" ${fd.mostrarme ? 'checked' : ''}><span>Mostrar mi número de butaca en la franja <small>Si no, aparecés como “Butaca anónima”.</small></span></label>
+        <div id="fd-socio-mini">${fdSocioMini()}</div>
+        <label class="fd-check"><input type="checkbox" class="fd-mostrarme" ${fd.mostrarme ? 'checked' : ''}><span>Mostrar mi número de butaca en la franja <small>Si no, aparecés como “Butaca anónima”.</small></span></label>
         ${sim ? '<p class="fd-nota">Simulación: los pagos todavía no están habilitados. Tocar un monto muestra cómo se vería tu aporte.</p>' : '<p class="fd-nota">Los pagos se habilitan pronto.</p>'}
       </article>
       <article class="card fd-card fd-marcas" id="fd-marcas"></article>
@@ -1961,58 +2077,44 @@ function pintarFunding() {
       <div class="fd-niveles">${FD_NIVELES.map(([n, m, t]) => `<div class="fd-nivel"><b>${n}</b><span>${fd$(m)}</span><small>${t}</small></div>`).join('')}</div>
       ${sim ? '<button class="btn btn-dark" data-fd="marca">Simular una marca nueva</button>' : ''}
     </article>`
-  fdActualizar(false)
 }
-
-function fdTicker() {
-  const a = fd.ultimo || fd.d?.aportes?.[0]
-  if (!a) return '<i></i> Esperando el primer aporte'
-  return `<i></i> ${a.vos ? '<b>Vos</b> aportaste' : `<b>${a.anonima ? 'Una butaca anónima' : 'Butaca #' + a.butaca}</b> aportó`} ${fd$(a.monto)} · ${a.at > Date.now() - 6e4 ? 'recién' : haceCuanto(new Date(a.at).toISOString())}`
+function fdSocioMini() {
+  const yo = fd.d.yo
+  if (fdSoySocio()) return `<div class="fd-socio-mini ok"><span>★</span><div><b>Sos socio hasta el ${fdFecha(yo.socioHasta)}</b><small>Proponés y votás los proyectos.</small></div><button class="bq-link" data-fd-tab="proyectos">Ver proyectos →</button></div>`
+  const falta = Math.max(0, FD_SOCIO - yo.aportado)
+  return `<div class="fd-socio-mini"><div class="fd-socio-barra"><i style="width:${Math.min(100, yo.aportado / FD_SOCIO * 100)}%"></i></div>
+    <small>Aportaste <b>${fd$(yo.aportado)}</b> este año · te faltan <b>${fd$(falta)}</b> para ser <button class="bq-link" data-fd-tab="socios">socio</button></small></div>`
 }
 
 // Actualiza números, franja, lupa y tarjetas sin re-armar la vista (para que las animaciones se vean)
 function fdActualizar(anim) {
   const d = fd.d; if (!d || !$('#fd-franja')) return
-  const t = fdTotales(d), meta = d.meta, pct = Math.min(100, t.total / meta * 100)
+  const t = fdTotales(d), meta = d.meta
   const dias = d.cierra ? Math.max(0, Math.ceil((d.cierra - Date.now()) / 864e5)) : null
+  const f = fdFranja({ meta, marcas: d.marcas, butacas: t.butacas, aportantes: t.aportantes, anchoPx: $('#fd-franja').clientWidth || 800, alta: true, anim })
   $('#fd-numeros').innerHTML = `
-    <div class="fd-recaudado"><b data-fd-n="${t.total}">${fd$(t.total)}</b><span>recaudados de <strong>${fd$(meta)}</strong></span></div>
+    <div class="fd-recaudado"><b>${fd$(t.total)}</b><span>recaudados de <strong>${fd$(meta)}</strong></span></div>
     <div class="fd-stats">
-      <div><b>${pct.toLocaleString('es-VE', { maximumFractionDigits: 1 })}%</b><small>de la meta</small></div>
+      <div><b>${fdPct(t.total, meta)}</b><small>de la meta</small></div>
       <div><b>${fmtNum(t.aportantes)}</b><small>butacas aportaron</small></div>
+      <div><b>${fmtNum(d.socios)}</b><small>socios</small></div>
       <div><b>${d.marcas.length}</b><small>${d.marcas.length === 1 ? 'marca auspicia' : 'marcas auspician'}</small></div>
       ${dias != null ? `<div><b>${dias}</b><small>días restantes</small></div>` : ''}
     </div>`
-  // Franja (las etiquetas se esconden si el tramo no tiene lugar)
-  const anchoPx = $('#fd-franja').clientWidth || 800, cabe = w => anchoPx * w / 100 >= 116
-  let x = 0
-  const segs = d.marcas.map(m => {
-    const w = m.monto / meta * 100, s = `<div class="fd-seg fd-seg-marca ${cabe(w) ? '' : 'chico'} ${m.nueva ? 'entra' : ''}" style="left:${x}%;width:${w}%;--c1:${m.color};--c2:${m.color2}" title="${esc(m.nombre)} · ${fd$(m.monto)}">
-        <span class="fd-logo">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span><span class="fd-seg-txt"><b>${esc(m.nombre)}</b><small>${fdK(m.monto)}</small></span></div>`
-    x += w; return s
-  }).join('')
-  const wB = t.butacas / meta * 100, xB = x
-  const butacas = `<div class="fd-seg fd-seg-butacas ${anim ? 'pulso' : ''} ${cabe(wB) ? '' : 'chico'}" style="left:${xB}%;width:${wB}%" title="${fmtNum(t.aportantes)} butacas · ${fd$(t.butacas)}"><span class="fd-seg-txt"><b>${fmtNum(t.aportantes)} butacas</b><small>${fdK(t.butacas)}</small></span></div>`
   $('#fd-franja').innerHTML = `
     <div class="fd-hitos">${FD_TRAMOS.map(([m, ico, n]) => `<div class="fd-hito ${t.total >= m ? 'ok' : ''}" style="left:${m / meta * 100}%"><span>${t.total >= m ? '✓' : ico}</span><small>${n}</small></div>`).join('')}</div>
-    <div class="fd-franja" role="img" aria-label="${fd$(t.total)} de ${fd$(meta)}: ${d.marcas.map(m => `${m.nombre} ${fd$(m.monto)}`).join(', ')}${d.marcas.length ? ', ' : ''}${fmtNum(t.aportantes)} butacas ${fd$(t.butacas)}">
-      ${segs}${butacas}
-      <div class="fd-cursor" style="left:${pct}%"><span>${fd$(t.total)}</span></div>
-      ${[1, 2].map(k => `<i class="fd-marca-meta" style="left:${k / 3 * 100}%"></i>`).join('')}
-    </div>
+    ${f.html}
     <div class="fd-escala">${[0, 1, 2, 3].map(k => `<span style="left:${k / 3 * 100}%">${fdK(meta * k / 3)}</span>`).join('')}</div>`
-  // Lupa: el tramo de las butacas, ampliado
   const recientes = d.aportes.slice(0, window.innerWidth < 640 ? 60 : 140)
   $('#fd-lupa').innerHTML = `
-    <svg class="fd-embudo" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M${xB} 0 L${Math.min(100, xB + Math.max(wB, 0.6))} 0 L100 40 L0 40 Z"/></svg>
+    <svg class="fd-embudo" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M${f.xB} 0 L${Math.min(100, f.xB + Math.max(f.wB, 0.6))} 0 L100 40 L0 40 Z"/></svg>
     <div class="fd-lupa-cuerpo">
       <header><div><b>La franja de las butacas</b><small>Cada butaca que aporta aparece acá. Las más recientes primero.</small></div>
         <span>${fmtNum(t.aportantes)} butacas · ${fd$(t.butacas)}</span></header>
-      <div class="fd-muro">${recientes.map(a => `<span class="fd-b m${a.monto >= 25 ? 3 : a.monto >= 5 ? 2 : 1} ${a.anonima ? 'anon' : ''} ${a.vos ? 'vos' : ''} ${fd.nuevos.has(a) ? 'nueva' : ''}" title="${a.anonima ? 'Butaca anónima' : 'Butaca #' + a.butaca} · ${fd$(a.monto)}">${a.vos ? 'Vos' : a.anonima ? '<svg viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/></svg>' : '#' + a.butaca}${a.monto > 1 ? `<em>${fd$(a.monto)}</em>` : ''}</span>`).join('')}
+      <div class="fd-muro">${recientes.map(fdFicha).join('')}
         ${d.aportes.length > recientes.length ? `<span class="fd-mas">+${fmtNum(d.aportes.length - recientes.length)} aportes</span>` : ''}
         ${!d.aportes.length ? '<p class="fd-vacio">Todavía no hay aportes. ¡Tu butaca puede ser la primera!</p>' : ''}</div>
     </div>`
-  // Marcas y tramos
   $('#fd-marcas').innerHTML = `<h3>Marcas que auspician</h3>
     ${d.marcas.map(m => `<div class="fd-marca"><span class="fd-marca-logo" style="--c1:${m.color};--c2:${m.color2}">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span>
       <div><b>${esc(m.nombre)}</b><small>Marca ${m.nivel.toLowerCase()} · ${fd$(m.monto)}</small>${m.frase ? `<p>“${esc(m.frase)}”</p>` : ''}</div></div>`).join('')}
@@ -2023,34 +2125,163 @@ function fdActualizar(anim) {
       return `<div class="fd-tramo ${p >= 100 ? 'ok' : p > 0 ? 'en' : ''}"><span>${p >= 100 ? '✓' : ico}</span><div><b>${n} <small>${fdK(m)}</small></b><p>${txt}</p>
         <div class="fd-tramo-barra"><i style="width:${p}%"></i></div></div></div>`
     }).join('')}`
+  const sm = $('#fd-socio-mini'); if (sm) sm.innerHTML = fdSocioMini()
   const tk = $('#fd-vivo'); if (tk) tk.innerHTML = fdTicker()
   if (anim) { const n = $('#fd-numeros .fd-recaudado b'); n?.classList.remove('sube'); void n?.offsetWidth; n?.classList.add('sube') }
+}
+const fdFicha = a => `<span class="fd-b m${a.monto >= 25 ? 3 : a.monto >= 5 ? 2 : 1} ${a.anonima ? 'anon' : ''} ${a.vos ? 'vos' : ''} ${fd.nuevos.has(a) ? 'nueva' : ''}" title="${a.anonima ? 'Butaca anónima' : 'Butaca #' + a.butaca} · ${fd$(a.monto)}">${a.vos ? 'Vos' : a.anonima ? '<svg viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/></svg>' : '#' + a.butaca}${a.monto > 1 ? `<em>${fd$(a.monto)}</em>` : ''}</span>`
+
+// ── Pestaña: Proyectos
+function fdMiSocio(compacto) {
+  const yo = fd.d.yo
+  if (fdSoySocio()) return `<div class="fd-yo ok"><span class="fd-yo-ico">★</span><div><b>Sos socio del Cabildo</b><small>Hasta el ${fdFecha(yo.socioHasta)}. Podés proponer proyectos y votar en secreto cuáles se financian.</small></div>
+    ${compacto ? '<button class="btn btn-dark" data-fd="proponer">+ Proponer un proyecto</button>' : ''}</div>`
+  const falta = Math.max(0, FD_SOCIO - yo.aportado)
+  return `<div class="fd-yo"><span class="fd-yo-ico">☆</span><div><b>Te faltan ${fd$(falta)} para ser socio</b><small>Con ${fd$(FD_SOCIO)} aportados en el año proponés y votás los proyectos. Aportar a un proyecto también suma.</small>
+      <div class="fd-socio-barra"><i style="width:${Math.min(100, yo.aportado / FD_SOCIO * 100)}%"></i></div></div>
+    <button class="btn btn-accent" data-fd-aportar="${falta}">Aportar ${fd$(falta)} y ser socio</button></div>`
+}
+function fdTabProyectos() {
+  return `<div class="fd-proy-intro">
+      <div><h2>Proyectos del Cabildo</h2><p class="muted">Los socios proponen y deciden en <b>votación secreta</b> qué se financia. Cuando un proyecto se aprueba, abre su propia meta y <b>todos pueden aportar</b>: cualquier butaca y cualquier marca. Si no llega a la meta a tiempo, se devuelve todo.</p></div>
+    </div>
+    <div id="fd-mi-socio">${fdMiSocio(true)}</div>
+    <div id="fd-proy-form">${fd.formProy ? fdFormProyecto() : ''}</div>
+    <div class="fd-proy-lista" id="fd-proy-lista">${fd.d.proyectos.map(fdProyecto).join('')}</div>`
+}
+function fdFormProyecto() {
+  return `<article class="card fd-card fd-form">
+    <h3>Proponer un proyecto</h3><p class="muted">Se debate 48 horas entre los socios y después se vota en secreto. Si se aprueba, abre su meta para que aporten todos.</p>
+    <label>Qué querés hacer<input id="fd-pf-tit" maxlength="80" placeholder="Ej.: Monumento a los presos políticos"></label>
+    <label>Dónde<input id="fd-pf-lugar" maxlength="60" placeholder="Ej.: Plaza Altamira, Caracas"></label>
+    <label>Por qué y cómo<textarea id="fd-pf-txt" rows="3" maxlength="400" placeholder="Contá en pocas líneas qué se hace con la plata y quién lo ejecuta."></textarea></label>
+    <div class="fd-form-fila"><label>Meta (USD)<input id="fd-pf-meta" type="number" min="100" step="100" value="5000"></label>
+      <label>Plazo para juntarla<select id="fd-pf-dias"><option value="15">15 días</option><option value="30" selected>30 días</option><option value="60">60 días</option></select></label></div>
+    <div class="fd-form-acc"><button class="btn btn-ghost" data-fd="cancelar-proy">Cancelar</button><button class="btn btn-dark" data-fd="crear-proy">Proponer</button></div>
+  </article>`
+}
+function fdProyecto(p) {
+  const [paso, etq, cl] = FD_ESTADO[p.estado], socio = fdSoySocio(), sim = fd.cfg.simulado
+  const pasos = `<ol class="fd-pasos ${cl}">${FD_PASOS.map((n, i) => `<li class="${i < paso || (i === paso && ['financiado'].includes(p.estado)) ? 'hecho' : i === paso ? 'ahora' : ''}"><i></i><span>${n}</span></li>`).join('')}</ol>`
+  let cuerpo = ''
+  if (p.estado === 'debate') cuerpo = `<div class="fd-p-info"><span>💬 <b>${p.comentarios}</b> comentarios de socios</span><span>🗳️ La votación abre en <b>${fdFalta(p.votaAbre)}</b></span></div>
+      <div class="fd-p-acc">${socio ? '<button class="btn btn-ghost" data-fd-debate="1">Opinar en el debate</button>' : '<span class="fd-p-solo">🔒 El debate es entre socios</span>'}
+        ${sim ? `<button class="bq-link" data-fd-sim="abrir" data-p="${p.id}">Simular: abrir la votación</button>` : ''}</div>`
+  if (p.estado === 'votacion') cuerpo = `<div class="fd-p-voto">
+      <div class="fd-p-part"><div><b>${fdPct(p.votaron, 1)}</b> de los socios ya votó <small>(mínimo ${Math.round(FD_QUORUM * 100)}% para que valga)</small></div>
+        <div class="fd-part-barra"><i style="width:${p.votaron * 100}%"></i><em style="left:${FD_QUORUM * 100}%"></em></div>
+        <small>El resultado se conoce al cerrar, en ${fdFalta(p.votaCierra)}. Hasta entonces nadie lo sabe.</small></div>
+      ${p.yoVote ? '<div class="fd-p-votado">✓ Ya votaste. Tu voto es secreto: no se guarda qué elegiste ni quién lo eligió.</div>'
+        : socio ? `<div class="fd-p-opc"><button class="fd-op si" data-fd-votar="${p.id}">Sí, financiarlo</button><button class="fd-op no" data-fd-votar="${p.id}">No</button></div>`
+        : `<div class="fd-p-solo">🔒 Solo votan los socios · te faltan ${fd$(Math.max(0, FD_SOCIO - fd.d.yo.aportado))} <button class="bq-link" data-fd-tab="socios">Ver cómo</button></div>`}
+      ${sim ? `<button class="bq-link" data-fd-sim="cerrar" data-p="${p.id}">Simular: cerrar la votación</button>` : ''}</div>`
+  if (['financiando', 'financiado', 'devuelto'].includes(p.estado)) {
+    const t = fdTotales(p), dev = p.estado === 'devuelto'
+    const total = dev ? p.devuelto.monto : t.total
+    const f = fdFranja({ meta: p.meta, marcas: dev ? [] : p.marcas, butacas: dev ? p.devuelto.monto : t.butacas, aportantes: dev ? p.devuelto.aportantes : t.aportantes, anchoPx: Math.min(window.innerWidth - 80, 760) })
+    cuerpo = `${p.votacion ? `<p class="fd-p-res">✓ Aprobado por los socios: <b>${fdPct(p.votacion.si, 1)} Sí</b> · participó el ${fdPct(p.votacion.part, 1)}</p>` : ''}
+      <div class="fd-p-meta ${dev ? 'dev' : p.estado === 'financiado' ? 'ok' : ''}">
+        <div class="fd-p-num"><b>${fd$(total)}</b><span>de ${fd$(p.meta)} · ${fdPct(total, p.meta)}</span>
+          <em>${dev ? `No llegó · se devolvieron ${fd$(p.devuelto.monto)} a ${fmtNum(p.devuelto.aportantes)} aportantes` : p.estado === 'financiado' ? '✓ Financiado' : `Quedan ${fdFalta(p.cierra)}`}</em></div>
+        ${f.html}
+        ${!dev && p.aportes.length ? `<div class="fd-p-fichas">${p.aportes.slice(0, 12).map(fdFicha).join('')}<span class="fd-mas">${fmtNum(t.aportantes)} butacas${p.marcas.length ? ` · ${p.marcas.map(m => esc(m.nombre)).join(', ')}` : ''}</span></div>` : ''}
+      </div>
+      ${p.estado === 'financiando' ? `<div class="fd-p-aportar"><span>Aportá a este proyecto <small>Pueden aportar todas las butacas</small></span>
+        ${[1, 5, 10, 25].map(m => `<button class="fd-monto chico" data-fd-aportar="${m}" data-p="${p.id}">${fd$(m)}</button>`).join('')}
+        ${sim && !p.marcas.some(m => m.id === 'orinoco') ? `<button class="bq-link" data-fd-sim="marca" data-p="${p.id}">Simular: una marca auspicia</button>` : ''}</div>
+        <p class="fd-p-regla">Si no llega a ${fd$(p.meta)} antes del ${fdFecha(p.cierra)}, se devuelve todo lo aportado.</p>` : ''}
+      ${p.nota ? `<p class="fd-p-nota">${esc(p.nota)}</p>` : ''}`
+  }
+  if (p.estado === 'rechazado') cuerpo = `<p class="fd-p-res no">✕ No aprobado por los socios${p.votacion ? `: ${fdPct(p.votacion.si, 1)} Sí · participó el ${fdPct(p.votacion.part, 1)}` : ''}.</p>`
+  return `<article class="card fd-proy ${cl}" id="fd-p-${p.id}">
+    <header><span class="fd-p-chip ${cl}">${etq}</span><span class="fd-p-lugar">📍 ${esc(p.lugar)}</span><span class="fd-p-meta-chip">Meta ${fd$(p.meta)}</span></header>
+    <h3>${esc(p.titulo)}</h3><p class="fd-p-txt">${esc(p.texto)}</p>
+    ${pasos}${cuerpo}</article>`
+}
+
+// ── Pestaña: Socios
+function fdTabSocios() {
+  const d = fd.d, proy = d.proyectos, financiado = proy.filter(p => p.estado === 'financiado').reduce((n, p) => n + fdTotales(p).total, 0)
+  return `<section class="fd-socios-hero">
+      <span class="fd-kicker">Socios del Cabildo</span>
+      <h2 class="fd-titulo">Los que sostienen el Cabildo <em>deciden qué construir.</em></h2>
+      <div class="fd-regla-grande"><b>${fd$(FD_SOCIO)}</b><span>aportados en el año<br>= socio por 12 meses</span></div>
+      <div class="fd-stats"><div><b>${fmtNum(d.socios)}</b><small>socios activos</small></div><div><b>${proy.length}</b><small>proyectos propuestos</small></div><div><b>${fd$(financiado)}</b><small>financiado en proyectos</small></div></div>
+    </section>
+    ${fdMiSocio(false)}
+    <div class="fd-grid">
+      <article class="card fd-card"><h3>Qué hace un socio</h3>
+        <div class="fd-lista"><p><span>💡</span><span><b>Propone proyectos</b> concretos para financiar: un monumento, una biblioteca, asesoría legal.</span></p>
+        <p><span>💬</span><span><b>Debate</b> cada propuesta 48 horas con los demás socios.</span></p>
+        <p><span>🗳️</span><span><b>Vota en secreto</b> si se financia. Se aprueba con mayoría y al menos ${Math.round(FD_QUORUM * 100)}% de participación.</span></p></div></article>
+      <article class="card fd-card"><h3>Cómo se mantiene</h3>
+        <div class="fd-lista"><p><span>➕</span><span>Todo suma: aportes al fondo del Cabildo y a cualquier proyecto.</span></p>
+        <p><span>📅</span><span>Al llegar a ${fd$(FD_SOCIO)} sos socio <b>por 12 meses</b>. Después el acumulado vuelve a $0 y se renueva aportando de nuevo.</span></p>
+        <p><span>↩️</span><span>Si un proyecto no llega a su meta, <b>se devuelve todo</b>.</span></p></div></article>
+      <article class="card fd-card"><h3>Lo que no cambia</h3>
+        <div class="fd-lista"><p><span>⚖️</span><span>En el <b>Hemiciclo</b> cada butaca vale <b>1 voto</b>, aporte o no aporte.</span></p>
+        <p><span>🤝</span><span><b>Todos pueden aportar</b> a cualquier proyecto, sean socios o no, y también las marcas.</span></p>
+        <p><span>🔒</span><span>Ser socio <b>no muestra quién sos</b>, y nadie sabe qué votó cada socio.</span></p></div></article>
+    </div>`
 }
 
 function enlazarFunding() {
   const v = $('#fd-vista'); if (!v) return
   v.addEventListener('click', e => {
-    const ap = e.target.closest('[data-fd-aportar]')
+    const t = e.target, d = fd.d
+    const tab = t.closest('[data-fd-tab]')
+    if (tab) { fd.tab = tab.dataset.fdTab; history.replaceState(null, '', '#funding/' + fd.tab); pintarFunding(); window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    const ap = t.closest('[data-fd-aportar]')
     if (ap) {
       if (!fd.cfg?.simulado) return aviso('Los pagos se habilitan pronto.')
-      const monto = Number(ap.dataset.fdAportar)
-      fdAporteSimulado({ butaca: estado.butaca || 250, monto, anonima: !fd.mostrarme, vos: true, at: Date.now() })
-      aviso(`Así se vería tu aporte de ${fd$(monto)} (simulación: no se cobró nada)`)
-      return
+      const p = ap.dataset.p ? d.proyectos.find(x => x.id === ap.dataset.p) : null
+      return fdMiAporte(Number(ap.dataset.fdAportar), p)
     }
-    if (e.target.closest('[data-fd="marca"]')) {
-      const d = fd.d; if (!d) return
+    const vo = t.closest('[data-fd-votar]')
+    if (vo) {
+      const p = d.proyectos.find(x => x.id === vo.dataset.fdVotar); if (!p || p.yoVote) return
+      // El voto no se guarda: solo cuenta que votaste (como en el Hemiciclo)
+      p.yoVote = true; p.votaron = Math.min(1, p.votaron + 1 / Math.max(1, d.socios))
+      aviso('🗳️ Voto registrado. Es secreto.'); fdRepintarTab(p.id); return
+    }
+    const si = t.closest('[data-fd-sim]')
+    if (si) {
+      const p = d.proyectos.find(x => x.id === si.dataset.p); if (!p) return
+      if (si.dataset.fdSim === 'abrir') { p.estado = 'votacion'; p.votaron = 0.08; p.votaCierra = Date.now() + 48 * 36e5; aviso('Se abrió la votación de socios') }
+      if (si.dataset.fdSim === 'cerrar') {
+        if (p.votaron < FD_QUORUM) p.votaron = 0.46
+        p.votacion = { si: 0.72, part: p.votaron }; p.estado = 'financiando'; p.cierra = Date.now() + 30 * 864e5; p.aportes = p.aportes || []
+        aviso(`✓ Aprobado por los socios (72% Sí). «${p.titulo}» ya junta aportes de todos.`)
+      }
+      if (si.dataset.fdSim === 'marca') {
+        p.marcas.push({ ...FD_MARCAS.orinoco, nivel: 'Aliada', monto: Math.round(p.meta * 0.2), nueva: true })
+        setTimeout(() => { const m = p.marcas.find(x => x.id === 'orinoco'); if (m) m.nueva = false }, 1500)
+        fd.ultimo = { marca: 'Orinoco', monto: Math.round(p.meta * 0.2), at: Date.now() }
+      }
+      fdRepintarTab(p.id); return
+    }
+    if (t.closest('[data-fd-debate]')) return aviso('Simulación: acá se abre la sala de debate de los socios.')
+    const ac = t.closest('[data-fd]')?.dataset.fd
+    if (ac === 'proponer') { fd.formProy = true; $('#fd-proy-form').innerHTML = fdFormProyecto(); setTimeout(() => $('#fd-pf-tit')?.focus(), 30); return }
+    if (ac === 'cancelar-proy') { fd.formProy = false; $('#fd-proy-form').innerHTML = ''; return }
+    if (ac === 'crear-proy') {
+      const tit = ($('#fd-pf-tit').value || '').trim(), meta = Math.max(100, Number($('#fd-pf-meta').value) || 0)
+      if (tit.length < 5) return aviso('Contá en pocas palabras qué querés hacer.', 'error')
+      d.proyectos.unshift({ id: 'p' + Date.now(), titulo: tit, lugar: ($('#fd-pf-lugar').value || '').trim() || 'Sin lugar definido', texto: ($('#fd-pf-txt').value || '').trim() || 'Propuesto por un socio.',
+        meta, estado: 'debate', votaAbre: Date.now() + 48 * 36e5, comentarios: 0, marcas: [], aportes: [], dias: Number($('#fd-pf-dias').value) })
+      fd.formProy = false; $('#fd-proy-form').innerHTML = ''; fdRepintarTab(); aviso('💡 Propuesta publicada. Los socios la debaten 48 horas.'); return
+    }
+    if (ac === 'marca') {
       if (d.marcas.some(m => m.id === 'orinoco')) return aviso('Ya agregaste la marca de ejemplo.')
-      d.marcas.push({ id: 'orinoco', nombre: 'Orinoco', nivel: 'Aliada', monto: 5000, color: '#1d4ed8', color2: '#38bdf8', frase: 'Donde se juntan los ríos.', nueva: true })
+      d.marcas.push({ ...FD_MARCAS.orinoco, nivel: 'Aliada', monto: 5000, nueva: true })
       setTimeout(() => { const m = d.marcas.find(x => x.id === 'orinoco'); if (m) m.nueva = false }, 1500)
-      fd.ultimo = { butaca: 0, monto: 5000, at: Date.now(), marca: 'Orinoco' }
+      fd.ultimo = { marca: 'Orinoco', monto: 5000, at: Date.now() }
       fdActualizar(true)
-      const tk = $('#fd-vivo'); if (tk) tk.innerHTML = '<i></i> <b>Orinoco</b> se sumó como marca aliada · $5.000'
       $('#fd-franja')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   })
-  v.addEventListener('change', e => { if (e.target.id === 'fd-mostrarme') fd.mostrarme = e.target.checked })
-  let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'funding') fdActualizar(false) }, 200) })
+  v.addEventListener('change', e => { if (e.target.classList.contains('fd-mostrarme')) fd.mostrarme = e.target.checked })
+  let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'funding') fdRepintarTab() }, 200) })
 }
 
 // ── Inicio ──────────────────────────────────────────────────────
