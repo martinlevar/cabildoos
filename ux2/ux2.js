@@ -1185,8 +1185,9 @@ function filaBloque(b) {
 }
 
 function heroBloque(b) {
-  return `<div class="b-hero${b.anfitrion_foto ? '' : ' sin-foto'}">
-    ${b.anfitrion_foto ? `<img src="${esc(b.anfitrion_foto)}" alt="">` : ''}
+  const fondo = b.imagen_url || b.anfitrion_foto   // la portada del bloque manda; si no hay, la foto del anfitrión
+  return `<div class="b-hero${fondo ? '' : ' sin-foto'}">
+    ${fondo ? `<img src="${esc(fondo)}" alt="">` : ''}
     <div class="b-info">
       <h3>${esc(b.nombre)}</h3><span class="ve-line"></span>
       <p>${esc(b.lema || '')}</p>
@@ -1347,6 +1348,31 @@ function bqRepintar() {
   if (foco) { const e = document.getElementById(foco.id); if (e) { e.focus({ preventScroll: true }); try { e.setSelectionRange(foco.s, foco.e) } catch (_) {} } }
   const s2 = $('#bq-sala-msgs'); if (s2 && salaPos) s2.scrollTop = salaPos.abajo ? s2.scrollHeight : salaPos.top
 }
+// Portada del bloque y foto del anfitrión: se re-dibujan en el navegador (JPEG nuevo, sin metadatos)
+// y las sube la función "bloques-archivos", que reemplaza la anterior y la borra del depósito.
+// El selector de archivo vive fuera de la vista para que un refresco en vivo no lo pierda.
+function bqElegirFoto(tipo) {
+  if (bq.subiendo) return
+  let inp = $('#bq-f-input')
+  if (!inp) {
+    inp = document.createElement('input'); inp.type = 'file'; inp.id = 'bq-f-input'; inp.accept = 'image/jpeg,image/png,image/webp'; inp.hidden = true
+    document.body.append(inp)
+    inp.addEventListener('change', () => { const f = inp.files?.[0]; inp.value = ''; if (f) bqSubirFoto(inp.dataset.tipo, f) })
+  }
+  inp.dataset.tipo = tipo; inp.click()
+}
+async function bqSubirFoto(tipo, file) {
+  bq.subiendo = tipo; bqRepintar()
+  try {
+    const blob = await prepararImagen(file, tipo === 'foto' ? 800 : 1600)
+    await subirArchivo(tipo, blob)
+    aviso(tipo === 'foto' ? '✓ Foto de perfil actualizada' : '✓ Portada actualizada')
+    bq.subiendo = null
+    await bqRefrescar(true); cargarBloques()
+  } catch (e) { aviso(e.message || 'No se pudo subir la imagen', 'error') }
+  bq.subiendo = null; bqRepintar()
+}
+
 async function bqCargarGente() {
   const [s, m] = await Promise.all([sb.rpc('bloque_solicitudes_listar'), sb.rpc('bloque_miembros_listar')])
   bq.sols = s.error ? [] : (s.data || []); bq.miem = m.error ? [] : (m.data || [])
@@ -1395,16 +1421,21 @@ function pintarMiBloque() {
     tabs.innerHTML = ''; cuerpo.innerHTML = ''; return
   }
   const b = d.bloque, host = d.soy_anfitrion
-  cab.innerHTML = `<header class="card bq-cabecera">
-    ${b.imagen_url ? `<img class="bq-img" src="${esc(b.imagen_url)}" alt="">` : `<span class="bq-img bq-ini">${esc((b.nombre || 'B').charAt(0))}</span>`}
+  // Portada = imagen del bloque (banda ancha arriba). El cuadrado muestra la foto del anfitrión (o la inicial).
+  const cuadro = b.foto_url
+  cab.innerHTML = `<header class="card bq-cabecera ${b.imagen_url ? 'con-portada' : ''}">
+    ${b.imagen_url ? `<div class="bq-portada"><img src="${esc(b.imagen_url)}" alt=""></div>` : ''}
+    <div class="bq-cab-fila">
+    ${cuadro ? `<img class="bq-img" src="${esc(cuadro)}" alt="">` : `<span class="bq-img bq-ini">${esc((b.nombre || 'B').charAt(0))}</span>`}
     <div class="bq-tit">
       <span class="bq-rol ${host ? 'host' : ''}">${host ? '★ Sos el anfitrión' : 'Sos miembro'}</span>
       <h1>${esc(b.nombre)}</h1>
       ${b.lema ? `<p class="bq-lema">${esc(b.lema)}</p>` : ''}
       <div class="bq-meta">
-        ${b.foto_url ? `<img src="${esc(b.foto_url)}" alt="">` : ''}<span>Anfitrión: <b>${esc(b.anfitrion)}</b></span>
+        <span>Anfitrión: <b>${esc(b.anfitrion)}</b></span>
         <span class="bq-punto">·</span><span>👥 <b>${fmtNum(b.miembros)}</b> ${b.miembros === 1 ? 'miembro' : 'miembros'}</span>
       </div>
+    </div>
     </div>
   </header>`
   const n = {
@@ -1517,6 +1548,19 @@ function bqAdmin(d) {
   const c = d.config || {}, b = d.bloque
   const sw = (k, on, t, a) => `<div class="mb-fila"><div><b>${t}</b><small>${a}</small></div><button class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${!!on}" data-bq-sw="${k}" aria-label="${t}"><i></i></button></div>`
   return bqGente(d) + `<div class="bq-admin-grid">
+    <article class="card bq-admin bq-fotos">
+      <h3>Imagen del bloque</h3>
+      <div class="bq-f-cols"><div>
+      <div class="bq-f-portada ${b.imagen_url ? '' : 'vacia'}">${b.imagen_url ? `<img src="${esc(b.imagen_url)}" alt="Portada actual">` : '<span>Sin portada</span>'}
+        <button class="btn bq-f-btn" data-bq-foto="imagen" ${bq.subiendo ? 'disabled' : ''}>${bq.subiendo === 'imagen' ? 'Subiendo…' : b.imagen_url ? '📷 Cambiar portada' : '📷 Subir portada'}</button></div>
+      <small class="bq-f-ayuda">Portada: se ve arriba de todo en tu bloque y en el panel de Bloques. Ideal: horizontal, 1600 × 400.</small>
+      </div>
+      <div class="mb-fila bq-f-perfil">
+        ${b.foto_url ? `<img class="bq-f-av" src="${esc(b.foto_url)}" alt="Tu foto actual">` : `<span class="bq-f-av">${esc((b.anfitrion || 'A').charAt(0))}</span>`}
+        <div><b>Tu foto de perfil</b><small>Es pública: te representa como anfitrión. Cuadrada, que se te vea la cara.</small></div>
+        <button class="btn btn-ghost" data-bq-foto="foto" ${bq.subiendo ? 'disabled' : ''}>${bq.subiendo === 'foto' ? 'Subiendo…' : 'Cambiar'}</button>
+      </div></div>
+    </article>
     <article class="card bq-admin">
       <h3>Configuración del bloque</h3>
       ${sw('aprobacion', c.aprobacion !== false, 'Pedir aprobación para sumarse', 'Cada persona te manda una solicitud y vos decidís. Si lo apagás, cualquiera entra directo.')}
@@ -1680,6 +1724,7 @@ function enlazarMiBloque() {
       if (bq.tab === 'admin') { await bqCargarGente(); if (bq.tab === 'admin') bqRepintar() }
       return
     }
+    const fo = t.closest('[data-bq-foto]'); if (fo) return bqElegirFoto(fo.dataset.bqFoto)
     const so = t.closest('[data-bq-sol]')
     if (so) {
       const ok = so.dataset.ok === '1', s = bq.sols?.find(x => x.id === so.dataset.bqSol)
