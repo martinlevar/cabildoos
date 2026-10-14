@@ -1276,7 +1276,7 @@ function confirmarTexto(titulo, texto, boton, placeholder, max = 300) {
 //  "Miembro del bloque". Las propuestas del bloque no se atan a ninguna butaca (se publican desde la butaca 0).
 //  En vivo: canal privado bloque:<id> (solo miembros) que avisa QUÉ cambió, nunca quién.
 // ══════════════════════════════════════════════════════════════
-const bq = { d: null, error: null, tab: 'comunicados', cargando: false, hilo: null, coms: new Map(), sala: [], salaT: 0, salaN: 0, formDebate: false, sols: null, miem: null, filtro: '', verTodos: false }
+const bq = { lemaBorrador: null, d: null, error: null, tab: 'comunicados', cargando: false, hilo: null, coms: new Map(), sala: [], salaT: 0, salaN: 0, formDebate: false, sols: null, miem: null, filtro: '', verTodos: false }
 const bqRt = { id: null, canal: null, host: null, props: null, ok: false, t: 0, hilos: new Set(), gente: false, poll: 0, n: 0 }
 
 async function bqConectar() {
@@ -1421,10 +1421,9 @@ function pintarMiBloque() {
     tabs.innerHTML = ''; cuerpo.innerHTML = ''; return
   }
   const b = d.bloque, host = d.soy_anfitrion
-  // Portada = imagen del bloque (banda ancha arriba). El cuadrado muestra la foto del anfitrión (o la inicial).
+  // Dentro del bloque no hay portada (la portada solo se ve en el panel de Bloques). El cuadro muestra la foto del anfitrión o la inicial.
   const cuadro = b.foto_url
-  cab.innerHTML = `<header class="card bq-cabecera ${b.imagen_url ? 'con-portada' : ''}">
-    ${b.imagen_url ? `<div class="bq-portada"><img src="${esc(b.imagen_url)}" alt=""></div>` : ''}
+  cab.innerHTML = `<header class="card bq-cabecera">
     <div class="bq-cab-fila">
     ${cuadro ? `<img class="bq-img" src="${esc(cuadro)}" alt="">` : `<span class="bq-img bq-ini">${esc((b.nombre || 'B').charAt(0))}</span>`}
     <div class="bq-tit">
@@ -1549,17 +1548,29 @@ function bqAdmin(d) {
   const sw = (k, on, t, a) => `<div class="mb-fila"><div><b>${t}</b><small>${a}</small></div><button class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${!!on}" data-bq-sw="${k}" aria-label="${t}"><i></i></button></div>`
   return bqGente(d) + `<div class="bq-admin-grid">
     <article class="card bq-admin bq-fotos">
-      <h3>Imagen del bloque</h3>
-      <div class="bq-f-cols"><div>
-      <div class="bq-f-portada ${b.imagen_url ? '' : 'vacia'}">${b.imagen_url ? `<img src="${esc(b.imagen_url)}" alt="Portada actual">` : '<span>Sin portada</span>'}
-        <button class="btn bq-f-btn" data-bq-foto="imagen" ${bq.subiendo ? 'disabled' : ''}>${bq.subiendo === 'imagen' ? 'Subiendo…' : b.imagen_url ? '📷 Cambiar portada' : '📷 Subir portada'}</button></div>
-      <small class="bq-f-ayuda">Portada: se ve arriba de todo en tu bloque y en el panel de Bloques. Ideal: horizontal, 1600 × 400.</small>
+      <h3>Cómo te ven en el panel de Bloques</h3>
+      <div class="bq-f-cols">
+        <div class="bq-f-prev">${heroBloque({ id: b.id, nombre: b.nombre, lema: bq.lemaBorrador ?? b.lema, anfitrion_nombre: b.anfitrion, anfitrion_foto: b.foto_url, imagen_url: b.imagen_url, miembros: b.miembros, ideas: d.ideas.length })}
+          <small class="bq-f-ayuda">Vista previa: así aparece tu bloque en la columna derecha.</small></div>
+        <div class="bq-f-ctrl">
+          <div class="mb-fila bq-f-fila">
+            ${b.imagen_url ? `<img class="bq-f-mini" src="${esc(b.imagen_url)}" alt="">` : '<span class="bq-f-mini vacia">🖼️</span>'}
+            <div><b>Portada</b><small>La imagen grande del panel. Mejor vertical o cuadrada. ${b.imagen_url ? '' : 'Si no subís una, se usa tu foto.'}</small></div>
+            <button class="btn btn-ghost" data-bq-foto="imagen" ${bq.subiendo ? 'disabled' : ''}>${bq.subiendo === 'imagen' ? 'Subiendo…' : b.imagen_url ? 'Cambiar' : 'Subir'}</button>
+          </div>
+          <div class="mb-fila bq-f-fila">
+            ${b.foto_url ? `<img class="bq-f-mini redonda" src="${esc(b.foto_url)}" alt="">` : `<span class="bq-f-mini redonda">${esc((b.anfitrion || 'A').charAt(0))}</span>`}
+            <div><b>Tu foto de perfil</b><small>Es pública: te representa como anfitrión, también dentro del bloque.</small></div>
+            <button class="btn btn-ghost" data-bq-foto="foto" ${bq.subiendo ? 'disabled' : ''}>${bq.subiendo === 'foto' ? 'Subiendo…' : 'Cambiar'}</button>
+          </div>
+          <div class="bq-f-lema">
+            <label for="bq-lema"><b>Frase del bloque</b><small>Aparece debajo del nombre, en el panel y dentro del bloque.</small></label>
+            <div class="mb-input"><input id="bq-lema" maxlength="120" value="${esc(bq.lemaBorrador ?? b.lema ?? '')}" placeholder="Una frase que resuma tu bloque" autocomplete="off">
+              <button class="btn btn-dark" data-bq="lema" ${(bq.lemaBorrador ?? b.lema ?? '') === (b.lema ?? '') ? 'disabled' : ''}>Guardar</button></div>
+            <span class="bq-cont" data-bq-cont="bq-lema">${(bq.lemaBorrador ?? b.lema ?? '').length}/120</span>
+          </div>
+        </div>
       </div>
-      <div class="mb-fila bq-f-perfil">
-        ${b.foto_url ? `<img class="bq-f-av" src="${esc(b.foto_url)}" alt="Tu foto actual">` : `<span class="bq-f-av">${esc((b.anfitrion || 'A').charAt(0))}</span>`}
-        <div><b>Tu foto de perfil</b><small>Es pública: te representa como anfitrión. Cuadrada, que se te vea la cara.</small></div>
-        <button class="btn btn-ghost" data-bq-foto="foto" ${bq.subiendo ? 'disabled' : ''}>${bq.subiendo === 'foto' ? 'Subiendo…' : 'Cambiar'}</button>
-      </div></div>
     </article>
     <article class="card bq-admin">
       <h3>Configuración del bloque</h3>
@@ -1675,6 +1686,12 @@ async function bqAccion(a, el) {
   const d = bq.d
   if (a === 'explorar') { location.hash = '#inicio'; $('.app')?.classList.remove('panel-plegado'); irATab('todos'); return }
   if (a === 'ver-todos') { bq.verTodos = true; bqRepintar(); return }
+  if (a === 'lema') {
+    el.disabled = true
+    const r = await bqRpc('bloque_editar_lema', { p_lema: bqVal('bq-lema') }, '✓ Frase actualizada')
+    if (r !== null) { bq.lemaBorrador = null; await bqRefrescar(true); cargarBloques() } else el.disabled = false
+    return
+  }
   if (a === 'comunicar') {
     const t = bqVal('bq-com-txt'); if (t.length < 2) return aviso('Escribí el comunicado.', 'error')
     if (!await confirmar('¿Enviar el comunicado?', `Les llega a los ${fmtNum(d.bloque.miembros)} miembros del bloque como notificación.`, 'Enviar')) return
@@ -1820,6 +1837,11 @@ function enlazarMiBloque() {
   v.addEventListener('input', e => {
     const c = $(`[data-bq-cont="${e.target.id}"]`); if (c) c.textContent = `${e.target.value.length}/${e.target.maxLength}`
     if (e.target.id === 'bq-g-buscar' && bq.filtro !== e.target.value) { bq.filtro = e.target.value; bqRepintar() }
+    if (e.target.id === 'bq-lema') {
+      bq.lemaBorrador = e.target.value
+      const pv = $('.bq-f-prev .b-info > p'); if (pv) pv.textContent = e.target.value
+      const g = $('[data-bq="lema"]'); if (g) g.disabled = e.target.value.trim() === (bq.d?.bloque?.lema || '')
+    }
     if (e.target.id === 'bq-sala-txt') { e.target.style.height = 'auto'; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px' }
   })
 }
