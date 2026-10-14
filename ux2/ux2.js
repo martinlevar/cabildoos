@@ -1866,7 +1866,7 @@ function enlazarMiBloque() {
 //  Mientras funding.simulado = true todo es una simulación: no se cobra ni se guarda nada.
 // ══════════════════════════════════════════════════════════════
 const fd = { cfg: null, d: null, vivo: 0, n: 0, nuevos: new Set(), mostrarme: true, ultimo: null, tab: 'cabildo', formProy: false }
-const FD_TABS = [['cabildo', 'Fondo del Cabildo'], ['proyectos', 'Proyectos'], ['socios', 'Socios']]
+const FD_TABS = [['cabildo', 'Fondo del Cabildo'], ['proyectos', 'Proyectos'], ['socios', 'Socios'], ['como', '¿Cómo funciona?']]
 const FD_SOCIO = 12, FD_QUORUM = 0.3
 const FD_LOGOS = {
   tepuy: '<svg viewBox="0 0 40 40"><path d="M4 31h32L27 15l-4 6-5-10z" fill="#fff"/><path d="M18 11l5 10-3 4-4-7z" fill="#fff" opacity=".55"/><circle cx="31" cy="9" r="3" fill="#fde68a"/></svg>',
@@ -2017,6 +2017,7 @@ function fdRepintarTab(soloProyecto) {
     box.innerHTML = fdTabProyectos(); return
   }
   if (fd.tab === 'socios') { box.innerHTML = fdTabSocios(); return }
+  if (fd.tab === 'como') { if (!$('.fd-como-hero')) box.innerHTML = fdTabComo(); return }
   if (!$('#fd-franja')) { box.innerHTML = fdTabCabildo(); }
   fdActualizar(false)
 }
@@ -2053,6 +2054,7 @@ function fdTabCabildo() {
     <section class="fd-hero">
       <div class="fd-hero-top">
         <span class="fd-kicker">Ronda fundacional del Cabildo</span>
+        <button class="fd-como-link" data-fd-tab="como">¿Cómo funciona?</button>
         <span class="fd-vivo" id="fd-vivo">${fdTicker()}</span>
       </div>
       <h2 class="fd-titulo">Un Cabildo que se sostiene <em>con su gente.</em></h2>
@@ -2143,7 +2145,7 @@ function fdMiSocio(compacto) {
 }
 function fdTabProyectos() {
   return `<div class="fd-proy-intro">
-      <div><h2>Proyectos del Cabildo</h2><p class="muted">Los socios proponen y deciden en <b>votación secreta</b> qué se financia. Cuando un proyecto se aprueba, abre su propia meta y <b>todos pueden aportar</b>: cualquier butaca y cualquier marca. Si no llega a la meta a tiempo, se devuelve todo.</p></div>
+      <div><h2>Proyectos del Cabildo</h2><p class="muted">Los socios proponen y deciden en <b>votación secreta</b> qué se financia. Cuando un proyecto se aprueba, abre su propia meta y <b>todos pueden aportar</b>: cualquier butaca y cualquier marca. Si no llega a la meta a tiempo, se devuelve todo. <button class="bq-link" data-fd-tab="como">¿Cómo funciona?</button></p></div>
     </div>
     <div id="fd-mi-socio">${fdMiSocio(true)}</div>
     <div id="fd-proy-form">${fd.formProy ? fdFormProyecto() : ''}</div>
@@ -2223,6 +2225,85 @@ function fdTabSocios() {
         <p><span>🤝</span><span><b>Todos pueden aportar</b> a cualquier proyecto, sean socios o no, y también las marcas.</span></p>
         <p><span>🔒</span><span>Ser socio <b>no muestra quién sos</b>, y nadie sabe qué votó cada socio.</span></p></div></article>
     </div>`
+}
+
+// ── Pestaña: ¿Cómo funciona? (para todo público)
+function fdTabComo() {
+  const si = '<span class="fd-si" aria-label="Sí">✓</span>', no = '<span class="fd-no" aria-label="No">—</span>'
+  const fila = (t, a, s, m, nota) => `<tr><th scope="row">${t}${nota ? `<small>${nota}</small>` : ''}</th><td>${a}</td><td>${s}</td><td>${m}</td></tr>`
+  const faq = [
+    ['¿Tengo que ser socio para aportar?', 'No. Cualquier butaca puede aportar, desde $1, al Fondo del Cabildo o a cualquier proyecto. Ser socio solo hace falta para proponer y votar proyectos.'],
+    ['¿Cómo llego a ser socio?', `Sumando ${fd$(FD_SOCIO)} en aportes durante el año. Se suma todo: si aportás $5 al Fondo y $7 a un proyecto, ya sos socio.`],
+    ['¿Cuánto dura ser socio?', `12 meses desde que llegás a ${fd$(FD_SOCIO)}. Después tu acumulado vuelve a $0 y lo renovás aportando de nuevo.`],
+    ['¿Un socio tiene más votos en el Hemiciclo?', 'No. En las votaciones del Hemiciclo cada butaca vale 1 voto, haya aportado o no. Los socios solo deciden qué proyectos se financian.'],
+    ['¿Las marcas pueden decidir algo?', 'No. Las marcas ponen su logo en la franja, pero no proponen ni votan proyectos y no tienen ninguna influencia en las votaciones del Cabildo.'],
+    ['¿Qué pasa si un proyecto no junta la plata a tiempo?', 'Se devuelve todo. Cada persona y cada marca recibe de vuelta lo que aportó.'],
+    ['¿Puedo aportar sin que se vea mi número de butaca?', 'Sí. Al aportar elegís si mostrar tu número en la franja. Si no, aparecés como “Butaca anónima”.'],
+    ['¿Alguien puede saber qué voté en un proyecto?', 'No. La votación de los socios es secreta, igual que en el Hemiciclo: nadie puede saber qué votó cada socio, ni siquiera el Cabildo.'],
+    ['¿Cómo sé en qué se usa la plata?', 'Cada aporte aparece en la franja, cada tramo del Fondo dice qué se paga con él, y cada proyecto financiado publica sus avances en su ficha.'],
+  ]
+  return `<section class="fd-como-hero">
+      <span class="fd-kicker">¿Cómo funciona?</span>
+      <h2 class="fd-titulo">Todos pueden aportar. <em>Los socios deciden</em> qué construir.</h2>
+      <p>Funding es la forma en que el Cabildo se financia con su propia gente, a la vista de todos. Hay tres maneras de participar:</p>
+      <div class="fd-roles">
+        <div class="fd-rol"><span class="fd-rol-ico">🪙</span><b>Aportante</b><em>Cualquier butaca · desde $1</em>
+          <p>Aporta al Fondo del Cabildo o a un proyecto. Su aporte aparece al instante en la franja.</p></div>
+        <span class="fd-rol-flecha" aria-hidden="true">→</span>
+        <div class="fd-rol oro"><span class="fd-rol-ico">★</span><b>Socio</b><em>${fd$(FD_SOCIO)} aportados en el año</em>
+          <p>Además de aportar, propone proyectos, los debate y vota en secreto cuáles se financian.</p></div>
+        <div class="fd-rol marca"><span class="fd-rol-ico">🏷️</span><b>Marca</b><em>Empresas que auspician</em>
+          <p>Pone su logo en su tramo de la franja. No vota ni decide nada.</p></div>
+      </div>
+    </section>
+
+    <h3 class="fd-como-tit">Dos metas, dos propósitos</h3>
+    <div class="fd-dos">
+      <article class="card fd-card"><span class="fd-num">1</span><h3>Fondo del Cabildo</h3>
+        <p>Sostiene la plataforma: servidores, seguridad, la app y auditorías del secreto del voto. Es una sola meta (hoy ${fd$(fd.d?.meta || 30000)}), dividida en tramos que dicen qué se paga con cada uno.</p>
+        <button class="bq-link" data-fd-tab="cabildo">Ver el Fondo →</button></article>
+      <article class="card fd-card"><span class="fd-num">2</span><h3>Proyectos</h3>
+        <p>Cosas concretas que proponen y aprueban los socios: un monumento, una biblioteca, asesoría legal. Cada proyecto aprobado tiene su propia meta y su propia franja.</p>
+        <button class="bq-link" data-fd-tab="proyectos">Ver los proyectos →</button></article>
+    </div>
+
+    <h3 class="fd-como-tit">Cómo nace un proyecto</h3>
+    <ol class="fd-linea">
+      <li><span>💡</span><div><b>1 · Un socio lo propone</b><p>Cuenta qué quiere hacer, dónde, cuánto cuesta y en qué plazo hay que juntarlo.</p><em>Solo socios</em></div></li>
+      <li><span>💬</span><div><b>2 · Se debate 48 horas</b><p>Los socios opinan, preguntan y mejoran la idea.</p><em>Solo socios</em></div></li>
+      <li><span>🗳️</span><div><b>3 · Votación secreta</b><p>Los socios votan Sí o No. Se aprueba si gana el Sí y vota al menos el ${Math.round(FD_QUORUM * 100)}% de los socios. Nadie sabe qué votó cada uno.</p><em>Solo socios</em></div></li>
+      <li><span>🤝</span><div><b>4 · Se abre su meta</b><p>El proyecto tiene su franja propia y <b>todos pueden aportar</b>: cualquier butaca y cualquier marca.</p><em class="todos">Todos</em></div></li>
+      <li><span>✅</span><div><b>5 · Financiado… o devuelto</b><p>Si llega a la meta, se hace y publica sus avances. Si no llega a tiempo, <b>se devuelve todo</b>.</p><em class="todos">Garantía para todos</em></div></li>
+    </ol>
+
+    <h3 class="fd-como-tit">Quién puede qué</h3>
+    <div class="card fd-tabla-wrap"><table class="fd-tabla">
+      <thead><tr><th></th><th>Aportante</th><th class="oro">Socio ★</th><th>Marca</th></tr></thead>
+      <tbody>
+        ${fila('Aportar al Fondo del Cabildo', si, si, si)}
+        ${fila('Aportar a cualquier proyecto', si, si, si)}
+        ${fila('Aparecer en la franja', si, si, si, 'Las butacas, solo si eligen mostrarse')}
+        ${fila('Proponer proyectos', no, si, no)}
+        ${fila('Debatir proyectos', no, si, no)}
+        ${fila('Votar qué proyectos se financian', no, si, no)}
+        ${fila('Votar en el Hemiciclo', si, si, no, 'Siempre 1 butaca = 1 voto')}
+      </tbody></table></div>
+
+    <div class="fd-dos">
+      <article class="card fd-card fd-garantia"><h3>🛡️ Tu aporte está protegido</h3>
+        <div class="fd-lista"><p><span>↩️</span><span>Si un proyecto no llega a su meta a tiempo, <b>se devuelve todo</b>.</span></p>
+        <p><span>👀</span><span><b>Todo está a la vista:</b> cada aporte aparece en la franja y cada tramo dice en qué se usa.</span></p>
+        <p><span>⚖️</span><span><b>La plata no compra votos:</b> ni socios ni marcas tienen más peso en el Hemiciclo.</span></p></div></article>
+      <article class="card fd-card fd-garantia"><h3>🔒 Tu privacidad</h3>
+        <div class="fd-lista"><p><span>🪑</span><span>Tu número de butaca aparece <b>solo si querés</b>. Si no, sos “Butaca anónima”.</span></p>
+        <p><span>🗳️</span><span>En la votación de socios <b>nadie sabe qué votaste</b>, ni siquiera el Cabildo.</span></p>
+        <p><span>★</span><span>Ser socio <b>no muestra quién sos</b>.</span></p></div></article>
+    </div>
+
+    <h3 class="fd-como-tit">Preguntas frecuentes</h3>
+    <div class="card fd-faq">${faq.map(([q, r]) => `<details><summary>${q}</summary><p>${r}</p></details>`).join('')}</div>
+
+    <div class="fd-como-cta"><button class="btn btn-accent" data-fd-tab="cabildo">Aportar al Fondo del Cabildo</button><button class="btn btn-ghost" data-fd-tab="proyectos">Ver los proyectos</button></div>`
 }
 
 function enlazarFunding() {
