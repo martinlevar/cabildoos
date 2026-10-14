@@ -29,14 +29,15 @@ const ICONOS = {
   bloque:       '<circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/>',
   muro:         '<path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/>',
   playroom:     '<path d="M6 9h12a3 3 0 0 1 3 3v3a2 2 0 0 1-3.5 1.3L15 14H9l-2.5 2.3A2 2 0 0 1 3 15v-3a3 3 0 0 1 3-3z"/><path d="M8 11v2M7 12h2M16 12h.01"/>',
+  founding:     '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/><path d="M3 21h18"/>',
 }
 const SECCIONES = [
   ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['bloque', 'Mi bloque'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
   ['propuestas', 'Propuestas'], ['ciudadanos', 'Ciudadanos'], ['estadisticas', 'Estadísticas'],
-  ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
+  ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'], ['founding', 'Founding'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'founding'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -76,6 +77,7 @@ function ruta() {
   else if (mu.abierto) cerrarHiloMuro()
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
+  if (valida === 'founding') entrarFounding(); else if (fd.vivo) salirFounding()
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
@@ -1082,6 +1084,7 @@ async function cargarPortada() {
     if (error) throw error
     pintarPortada(data?.portada)
     ponerAnuncio(data?.anuncio)
+    fdConfig(data?.founding)
   } catch (e) { console.warn('portada:', e) }
 }
 function pintarPortada(p) {
@@ -1115,6 +1118,7 @@ function vigilarPortada() {
   if (estado.user) sb.channel('portada-v2')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, ({ new: n }) => {
       if (n?.key === 'portada') pintarPortada(n.value)
+      if (n?.key === 'founding') fdConfig({ activo: !!n.value?.activo, simulado: n.value?.simulado !== false, meta: Number(n.value?.meta) || 30000 })
       if (n?.key === 'announcement') ponerAnuncio(n.value?.active ? n.value : null)
     }).subscribe()
   setInterval(cargarPortada, 120_000)   // respaldo (y para quien no inició sesión)
@@ -1844,6 +1848,209 @@ function enlazarMiBloque() {
     }
     if (e.target.id === 'bq-sala-txt') { e.target.style.height = 'auto'; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px' }
   })
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FOUNDING — meta de financiación del Cabildo (se activa desde el admin: system_config.founding).
+//  La franja va de $0 a la meta. Cada marca auspiciante ocupa su tramo con su logo; las butacas que aportan
+//  forman un tramo dorado y, en la "lupa" de abajo, aparece cada butaca aportante.
+//  Privacidad: una butaca solo aparece con su número si elige mostrarse; si no, como "Butaca anónima".
+//  Mientras founding.simulado = true todo es una simulación (datos de ejemplo y aportes en vivo ficticios):
+//  no se cobra nada ni se guarda nada.
+// ══════════════════════════════════════════════════════════════
+const fd = { cfg: null, d: null, t: 0, vivo: 0, nuevos: new Set(), mostrarme: true, ultimo: null }
+const FD_LOGOS = {
+  tepuy: '<svg viewBox="0 0 40 40"><path d="M4 31h32L27 15l-4 6-5-10z" fill="#fff"/><path d="M18 11l5 10-3 4-4-7z" fill="#fff" opacity=".55"/><circle cx="31" cy="9" r="3" fill="#fde68a"/></svg>',
+  avila: '<svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="10" ry="14" fill="#fff" transform="rotate(30 20 20)"/><path d="M14 9c6 6 6 16 12 22" stroke="#7c2d12" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>',
+  orinoco: '<svg viewBox="0 0 40 40"><path d="M3 24c6-6 11 6 17 0s11-6 17 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M3 15c6-6 11 6 17 0s11-6 17 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".6"/></svg>',
+}
+const FD_TRAMOS = [
+  [10000, '🛡️', 'Infraestructura y seguridad', 'Servidores, verificación y auditorías de seguridad por 12 meses.'],
+  [20000, '📱', 'App nativa', 'Cabildo en iOS y Android, con notificaciones para cada votación.'],
+  [30000, '🔎', 'Auditoría independiente', 'Una auditoría externa del secreto del voto, publicada completa.'],
+]
+const FD_NIVELES = [
+  ['Fundadora', 10000, 'Logo grande en la franja, en la portada del Founding y en los posts de X del mes.'],
+  ['Aliada', 5000, 'Logo en la franja y en la lista de marcas que auspician.'],
+  ['Amiga', 1000, 'Nombre en la franja y en la lista de marcas.'],
+]
+const fd$ = n => '$' + Math.round(n).toLocaleString('es-VE')
+const fdK = n => n >= 1000 ? '$' + (n / 1000).toLocaleString('es-VE', { maximumFractionDigits: 1 }) + 'K' : fd$(n)
+
+// Datos de ejemplo (siempre los mismos, para que la demo se vea igual cada vez)
+function fdSimular() {
+  let s = 20261014
+  const rnd = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648
+  const montos = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 5, 5, 10, 10, 25]
+  const ahora = Date.now(), aportes = []
+  for (let i = 0; i < 742; i++) {
+    aportes.push({ butaca: 1 + Math.floor(rnd() * 1068), monto: montos[Math.floor(rnd() * montos.length)], anonima: rnd() < 0.28, at: ahora - Math.floor(Math.pow(rnd(), 1.6) * 21 * 864e5) })
+  }
+  aportes.sort((a, b) => b.at - a.at)
+  return {
+    meta: fd.cfg?.meta || 30000, cierra: ahora + 23 * 864e5 + 7 * 36e5,
+    marcas: [
+      { id: 'tepuy', nombre: 'Tepuy', nivel: 'Fundadora', monto: 10000, color: '#0f766e', color2: '#14b8a6', frase: 'Creemos en una Venezuela que decide.' },
+      { id: 'avila', nombre: 'Café Ávila', nivel: 'Amiga', monto: 1500, color: '#9a3412', color2: '#ea580c', frase: 'Cada taza, una conversación.' },
+    ],
+    aportes,
+  }
+}
+const fdTotales = d => {
+  const marcas = d.marcas.reduce((n, m) => n + m.monto, 0), butacas = d.aportes.reduce((n, a) => n + a.monto, 0)
+  return { marcas, butacas, total: marcas + butacas, aportantes: new Set(d.aportes.map(a => a.anonima ? 'a' + a.at : a.butaca)).size }
+}
+
+function fdConfig(cfg) {
+  const antes = fd.cfg
+  fd.cfg = cfg || null
+  if (!fd.cfg?.activo || antes?.simulado !== fd.cfg?.simulado || antes?.meta !== fd.cfg?.meta) { fd.d = null; salirFounding() }
+  const li = $('#nav a[data-sec="founding"]')?.parentElement; if (li) li.hidden = !fd.cfg?.activo
+  if (vistaActual() === 'founding') entrarFounding()
+}
+
+function entrarFounding() {
+  if (fd.cfg?.activo && fd.cfg.simulado && !fd.d) fd.d = fdSimular()
+  if (fd.cfg?.activo && !fd.cfg.simulado) fd.d = { meta: fd.cfg.meta || 30000, cierra: null, marcas: [], aportes: [] }
+  pintarFounding()
+  clearInterval(fd.vivo)
+  if (fd.cfg?.activo && fd.cfg.simulado) fd.vivo = setInterval(() => { if (vistaActual() === 'founding' && document.visibilityState === 'visible') fdAporteSimulado() }, 3200)
+}
+function salirFounding() { clearInterval(fd.vivo); fd.vivo = 0 }
+
+function fdAporteSimulado(propio) {
+  const d = fd.d; if (!d) return
+  const montos = [1, 1, 1, 1, 1, 1, 5, 5, 10, 25]
+  const a = propio || { butaca: 1 + Math.floor(Math.random() * 1068), monto: montos[Math.floor(Math.random() * montos.length)], anonima: Math.random() < 0.25, at: Date.now() }
+  d.aportes.unshift(a); fd.nuevos.add(a); fd.ultimo = a
+  setTimeout(() => fd.nuevos.delete(a), 2600)
+  fdActualizar(true)
+}
+
+// ── Pintado
+function pintarFounding() {
+  const c = $('#fd-cuerpo'); if (!c) return
+  if (!fd.cfg?.activo) { c.innerHTML = `<div class="card au-vacio"><span class="au-vacio-ico"><svg viewBox="0 0 24 24">${ICONOS.founding}</svg></span><h3>Founding no está disponible</h3><p class="muted">Vuelve pronto.</p></div>`; return }
+  if (!fd.d) { entrarFounding(); return }
+  const d = fd.d, sim = fd.cfg.simulado
+  c.innerHTML = `
+    <section class="fd-hero">
+      <div class="fd-hero-top">
+        <span class="fd-kicker">Ronda fundacional del Cabildo</span>
+        ${sim ? '<span class="fd-sim" title="Los montos, marcas y aportes son de ejemplo">● Simulación</span>' : ''}
+        <span class="fd-vivo" id="fd-vivo">${fdTicker()}</span>
+      </div>
+      <h2 class="fd-titulo">Un Cabildo que se sostiene <em>con su gente.</em></h2>
+      <div class="fd-numeros" id="fd-numeros"></div>
+      <div class="fd-franja-wrap" id="fd-franja"></div>
+      <div class="fd-lupa" id="fd-lupa"></div>
+    </section>
+    <div class="fd-grid">
+      <article class="card fd-card fd-aportar">
+        <h3>Aportá con tu butaca</h3>
+        <p class="muted">Tu aporte aparece al instante en la franja. Desde $1.</p>
+        <div class="fd-montos">${[1, 5, 10, 25].map(m => `<button class="fd-monto" data-fd-aportar="${m}">${fd$(m)}</button>`).join('')}</div>
+        <label class="fd-check"><input type="checkbox" id="fd-mostrarme" ${fd.mostrarme ? 'checked' : ''}><span>Mostrar mi número de butaca en la franja <small>Si no, aparecés como “Butaca anónima”.</small></span></label>
+        ${sim ? '<p class="fd-nota">Simulación: los pagos todavía no están habilitados. Tocar un monto muestra cómo se vería tu aporte.</p>' : '<p class="fd-nota">Los pagos se habilitan pronto.</p>'}
+      </article>
+      <article class="card fd-card fd-marcas" id="fd-marcas"></article>
+      <article class="card fd-card fd-tramos" id="fd-tramos"></article>
+    </div>
+    <article class="card fd-card fd-auspiciar">
+      <div><h3>Auspiciar como marca</h3><p class="muted">Las marcas que creen en el Cabildo ocupan su tramo de la franja con su logo. Sin influencia en las votaciones: el voto es secreto y nadie puede comprarlo.</p></div>
+      <div class="fd-niveles">${FD_NIVELES.map(([n, m, t]) => `<div class="fd-nivel"><b>${n}</b><span>${fd$(m)}</span><small>${t}</small></div>`).join('')}</div>
+      ${sim ? '<button class="btn btn-dark" data-fd="marca">Simular una marca nueva</button>' : ''}
+    </article>`
+  fdActualizar(false)
+}
+
+function fdTicker() {
+  const a = fd.ultimo || fd.d?.aportes?.[0]
+  if (!a) return '<i></i> Esperando el primer aporte'
+  return `<i></i> ${a.vos ? '<b>Vos</b> aportaste' : `<b>${a.anonima ? 'Una butaca anónima' : 'Butaca #' + a.butaca}</b> aportó`} ${fd$(a.monto)} · ${a.at > Date.now() - 6e4 ? 'recién' : haceCuanto(new Date(a.at).toISOString())}`
+}
+
+// Actualiza números, franja, lupa y tarjetas sin re-armar la vista (para que las animaciones se vean)
+function fdActualizar(anim) {
+  const d = fd.d; if (!d || !$('#fd-franja')) return
+  const t = fdTotales(d), meta = d.meta, pct = Math.min(100, t.total / meta * 100)
+  const dias = d.cierra ? Math.max(0, Math.ceil((d.cierra - Date.now()) / 864e5)) : null
+  $('#fd-numeros').innerHTML = `
+    <div class="fd-recaudado"><b data-fd-n="${t.total}">${fd$(t.total)}</b><span>recaudados de <strong>${fd$(meta)}</strong></span></div>
+    <div class="fd-stats">
+      <div><b>${pct.toLocaleString('es-VE', { maximumFractionDigits: 1 })}%</b><small>de la meta</small></div>
+      <div><b>${fmtNum(t.aportantes)}</b><small>butacas aportaron</small></div>
+      <div><b>${d.marcas.length}</b><small>${d.marcas.length === 1 ? 'marca auspicia' : 'marcas auspician'}</small></div>
+      ${dias != null ? `<div><b>${dias}</b><small>días restantes</small></div>` : ''}
+    </div>`
+  // Franja (las etiquetas se esconden si el tramo no tiene lugar)
+  const anchoPx = $('#fd-franja').clientWidth || 800, cabe = w => anchoPx * w / 100 >= 116
+  let x = 0
+  const segs = d.marcas.map(m => {
+    const w = m.monto / meta * 100, s = `<div class="fd-seg fd-seg-marca ${cabe(w) ? '' : 'chico'} ${m.nueva ? 'entra' : ''}" style="left:${x}%;width:${w}%;--c1:${m.color};--c2:${m.color2}" title="${esc(m.nombre)} · ${fd$(m.monto)}">
+        <span class="fd-logo">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span><span class="fd-seg-txt"><b>${esc(m.nombre)}</b><small>${fdK(m.monto)}</small></span></div>`
+    x += w; return s
+  }).join('')
+  const wB = t.butacas / meta * 100, xB = x
+  const butacas = `<div class="fd-seg fd-seg-butacas ${anim ? 'pulso' : ''} ${cabe(wB) ? '' : 'chico'}" style="left:${xB}%;width:${wB}%" title="${fmtNum(t.aportantes)} butacas · ${fd$(t.butacas)}"><span class="fd-seg-txt"><b>${fmtNum(t.aportantes)} butacas</b><small>${fdK(t.butacas)}</small></span></div>`
+  $('#fd-franja').innerHTML = `
+    <div class="fd-hitos">${FD_TRAMOS.map(([m, ico, n]) => `<div class="fd-hito ${t.total >= m ? 'ok' : ''}" style="left:${m / meta * 100}%"><span>${t.total >= m ? '✓' : ico}</span><small>${n}</small></div>`).join('')}</div>
+    <div class="fd-franja" role="img" aria-label="${fd$(t.total)} de ${fd$(meta)}: ${d.marcas.map(m => `${m.nombre} ${fd$(m.monto)}`).join(', ')}${d.marcas.length ? ', ' : ''}${fmtNum(t.aportantes)} butacas ${fd$(t.butacas)}">
+      ${segs}${butacas}
+      <div class="fd-cursor" style="left:${pct}%"><span>${fd$(t.total)}</span></div>
+      ${[1, 2].map(k => `<i class="fd-marca-meta" style="left:${k / 3 * 100}%"></i>`).join('')}
+    </div>
+    <div class="fd-escala">${[0, 1, 2, 3].map(k => `<span style="left:${k / 3 * 100}%">${fdK(meta * k / 3)}</span>`).join('')}</div>`
+  // Lupa: el tramo de las butacas, ampliado
+  const recientes = d.aportes.slice(0, window.innerWidth < 640 ? 60 : 140)
+  $('#fd-lupa').innerHTML = `
+    <svg class="fd-embudo" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M${xB} 0 L${Math.min(100, xB + Math.max(wB, 0.6))} 0 L100 40 L0 40 Z"/></svg>
+    <div class="fd-lupa-cuerpo">
+      <header><div><b>La franja de las butacas</b><small>Cada butaca que aporta aparece acá. Las más recientes primero.</small></div>
+        <span>${fmtNum(t.aportantes)} butacas · ${fd$(t.butacas)}</span></header>
+      <div class="fd-muro">${recientes.map(a => `<span class="fd-b m${a.monto >= 25 ? 3 : a.monto >= 5 ? 2 : 1} ${a.anonima ? 'anon' : ''} ${a.vos ? 'vos' : ''} ${fd.nuevos.has(a) ? 'nueva' : ''}" title="${a.anonima ? 'Butaca anónima' : 'Butaca #' + a.butaca} · ${fd$(a.monto)}">${a.vos ? 'Vos' : a.anonima ? '<svg viewBox="0 0 24 24"><rect x="6" y="11" width="12" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/></svg>' : '#' + a.butaca}${a.monto > 1 ? `<em>${fd$(a.monto)}</em>` : ''}</span>`).join('')}
+        ${d.aportes.length > recientes.length ? `<span class="fd-mas">+${fmtNum(d.aportes.length - recientes.length)} aportes</span>` : ''}
+        ${!d.aportes.length ? '<p class="fd-vacio">Todavía no hay aportes. ¡Tu butaca puede ser la primera!</p>' : ''}</div>
+    </div>`
+  // Marcas y tramos
+  $('#fd-marcas').innerHTML = `<h3>Marcas que auspician</h3>
+    ${d.marcas.map(m => `<div class="fd-marca"><span class="fd-marca-logo" style="--c1:${m.color};--c2:${m.color2}">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span>
+      <div><b>${esc(m.nombre)}</b><small>Marca ${m.nivel.toLowerCase()} · ${fd$(m.monto)}</small>${m.frase ? `<p>“${esc(m.frase)}”</p>` : ''}</div></div>`).join('')}
+    <div class="fd-marca vacia"><span class="fd-marca-logo">+</span><div><b>Tu marca acá</b><small>Quedan ${fd$(Math.max(0, meta - t.total))} para completar la meta</small></div></div>`
+  $('#fd-tramos').innerHTML = `<h3>Qué desbloquea cada tramo</h3>
+    ${FD_TRAMOS.map(([m, ico, n, txt], i) => {
+      const desde = i ? FD_TRAMOS[i - 1][0] : 0, p = Math.max(0, Math.min(100, (t.total - desde) / (m - desde) * 100))
+      return `<div class="fd-tramo ${p >= 100 ? 'ok' : p > 0 ? 'en' : ''}"><span>${p >= 100 ? '✓' : ico}</span><div><b>${n} <small>${fdK(m)}</small></b><p>${txt}</p>
+        <div class="fd-tramo-barra"><i style="width:${p}%"></i></div></div></div>`
+    }).join('')}`
+  const tk = $('#fd-vivo'); if (tk) tk.innerHTML = fdTicker()
+  if (anim) { const n = $('#fd-numeros .fd-recaudado b'); n?.classList.remove('sube'); void n?.offsetWidth; n?.classList.add('sube') }
+}
+
+function enlazarFounding() {
+  const v = $('#fd-vista'); if (!v) return
+  v.addEventListener('click', e => {
+    const ap = e.target.closest('[data-fd-aportar]')
+    if (ap) {
+      if (!fd.cfg?.simulado) return aviso('Los pagos se habilitan pronto.')
+      const monto = Number(ap.dataset.fdAportar)
+      fdAporteSimulado({ butaca: estado.butaca || 250, monto, anonima: !fd.mostrarme, vos: true, at: Date.now() })
+      aviso(`Así se vería tu aporte de ${fd$(monto)} (simulación: no se cobró nada)`)
+      return
+    }
+    if (e.target.closest('[data-fd="marca"]')) {
+      const d = fd.d; if (!d) return
+      if (d.marcas.some(m => m.id === 'orinoco')) return aviso('Ya agregaste la marca de ejemplo.')
+      d.marcas.push({ id: 'orinoco', nombre: 'Orinoco', nivel: 'Aliada', monto: 5000, color: '#1d4ed8', color2: '#38bdf8', frase: 'Donde se juntan los ríos.', nueva: true })
+      setTimeout(() => { const m = d.marcas.find(x => x.id === 'orinoco'); if (m) m.nueva = false }, 1500)
+      fd.ultimo = { butaca: 0, monto: 5000, at: Date.now(), marca: 'Orinoco' }
+      fdActualizar(true)
+      const tk = $('#fd-vivo'); if (tk) tk.innerHTML = '<i></i> <b>Orinoco</b> se sumó como marca aliada · $5.000'
+      $('#fd-franja')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  })
+  v.addEventListener('change', e => { if (e.target.id === 'fd-mostrarme') fd.mostrarme = e.target.checked })
+  let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'founding') fdActualizar(false) }, 200) })
 }
 
 // ── Inicio ──────────────────────────────────────────────────────
@@ -5124,7 +5331,7 @@ function enlazarRevelacion() {
 }
 
 async function iniciar() {
-  pintarNav(); actualizarNavBloque(); enlazar(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta()
+  pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFounding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
   vigilarSesion()
