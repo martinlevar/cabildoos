@@ -249,6 +249,7 @@ async function cargarNotificaciones() {
     notifs = data || []
     $('#notif-dot').hidden = !notifs.length
     if (!$('#notif-pop').hidden) pintarNotifs()
+    revisarNotifsBloque()
   } catch (e) {}
 }
 const NOTIF = {
@@ -261,6 +262,17 @@ const NOTIF = {
   bloque_comunicado: ['📣', () => '#bloque/comunicados'],
   bloque_debate:     ['💬', () => '#bloque/debates'],
   bloque_propuesta:  ['🚀', n => n.proposal_id ? `#propuestas/${n.proposal_id}` : '#bloque/propuestas'],
+  bloque_solicitud:  ['🙋', () => '#bloque/admin'],
+  bloque_aceptado:   ['✅', () => '#bloque'],
+  bloque_rechazado:  ['🚪', () => null],
+  bloque_quitado:    ['🚪', () => null],
+}
+// Si llega un aviso de que me aceptaron o me quitaron de un bloque, se actualiza el estado sin recargar
+const notifBloqueVistas = new Set()
+function revisarNotifsBloque() {
+  const nuevas = notifs.filter(n => /^bloque_(aceptado|rechazado|quitado)$/.test(n.type) && !notifBloqueVistas.has(n.id))
+  nuevas.forEach(n => notifBloqueVistas.add(n.id))
+  if (nuevas.length) cargarBloques()
 }
 function pintarNotifs() {
   const pop = $('#notif-pop')
@@ -1138,9 +1150,10 @@ async function cargarPropInicio() {
 // ── Bloques ─────────────────────────────────────────────────────
 async function cargarBloques() {
   try {
-    const { data, error } = await sb.rpc('bloques_listar')
+    const [{ data, error }, reglas] = await Promise.all([sb.rpc('bloques_listar'), sb.rpc('bloques_reglas')])
     if (error) throw error
     estado.bloques = data || []
+    estado.reglas = reglas?.data || {}
   } catch (e) { console.warn('cargarBloques:', e); estado.bloques = [] }
   if (estado.butaca) {
     try { const { data } = await sb.rpc('bloque_mi_estado'); estado.miBloque = data } catch (e) {}
@@ -1152,10 +1165,13 @@ async function cargarBloques() {
 
 const ICON_GRUPO = '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg>'
 
-function botonSumarse(b) {
-  const mio = estado.miBloque?.bloque_id === b.id
-  if (mio) return '<span class="btn btn-ghost" aria-disabled="true">Tu bloque</span>'
-  return `<button class="btn btn-ghost" data-unirme="${b.id}">Sumarse</button>`
+const pideAprobacion = id => estado.reglas?.[id] !== false
+const pedidoPendiente = id => estado.miBloque?.pedido?.estado === 'pendiente' && estado.miBloque.pedido.bloque_id === id
+function botonSumarse(b, grande) {
+  const cl = grande ? 'btn' : 'btn btn-ghost'
+  if (estado.miBloque?.bloque_id === b.id) return `<span class="${cl}" aria-disabled="true">${grande ? 'Ya sos parte de este bloque' : 'Tu bloque'}</span>`
+  if (pedidoPendiente(b.id)) return `<button class="${cl} b-pedido" data-cancelar-pedido="${b.id}" title="Solicitud enviada. Tocá para cancelarla">⏳ ${grande ? 'Solicitud enviada' : 'Pendiente'}</button>`
+  return `<button class="${cl}" data-unirme="${b.id}">${pideAprobacion(b.id) ? 'Pedir sumarme' : grande ? 'Sumarse al bloque' : 'Sumarse'}</button>`
 }
 
 function filaBloque(b) {
@@ -1177,13 +1193,19 @@ function heroBloque(b) {
       <small>Anfitrión del bloque</small><span class="b-host">${esc(b.anfitrion_nombre)}</span>
     </div>
     <div class="b-stats"><span><b>${fmtNum(b.miembros)}</b>Ciudadanos</span><span><b>${fmtNum(b.ideas)}</b>Ideas</span></div>
-    ${estado.miBloque?.bloque_id === b.id
-      ? '<span class="btn" aria-disabled="true">Ya sos parte de este bloque</span>'
-      : `<button class="btn" data-unirme="${b.id}">Sumarse al bloque</button>`}
+    ${botonSumarse(b, true)}
   </div>`
 }
 
 function bannerMiBloque() {
+  const p = estado.miBloque?.pedido
+  if (!soyDeUnBloque() && p) {
+    const pend = p.estado === 'pendiente'
+    return `<div class="bq-pedido ${pend ? '' : 'no'}"><span>${pend ? '⏳' : '🚪'}</span>
+      <div><b>${pend ? `Pediste sumarte a ${esc(p.bloque_nombre)}` : `${esc(p.bloque_nombre)} no aceptó tu solicitud`}</b>
+        <small>${pend ? 'El anfitrión todavía no respondió. Te avisamos cuando lo haga.' : `Podés pedir sumarte a otro bloque${p.reintentar_desde && new Date(p.reintentar_desde) > new Date() ? `, o volver a pedirlo a este desde el ${new Date(p.reintentar_desde).toLocaleDateString('es')}` : ''}.`}</small></div>
+      ${pend ? `<button class="bq-link" data-cancelar-pedido="${p.bloque_id}">Cancelar</button>` : ''}</div>`
+  }
   if (!soyDeUnBloque()) return ''
   const b = estado.bloques.find(x => x.id === estado.miBloque.bloque_id)
   return `<a class="bq-banner" href="#bloque">${b?.imagen_url ? `<img src="${esc(b.imagen_url)}" alt="">` : `<span>${esc((b?.nombre || 'B').charAt(0))}</span>`}
@@ -1212,21 +1234,123 @@ function pintarBloques() {
 async function unirme(id) {
   if (!estado.user) { location.href = APP_ACTUAL; return }
   if (!estado.butaca) { aviso('Necesitás tener butaca para sumarte a un bloque.', 'error'); return }
-  const { error } = await sb.rpc('bloque_unirme', { p_bloque: id })
+  const b = estado.bloques.find(x => x.id === id), nom = b?.nombre || 'el bloque'
+  let msg = null
+  if (pideAprobacion(id)) {
+    const otro = estado.miBloque?.pedido?.estado === 'pendiente' && estado.miBloque.pedido.bloque_id !== id
+    msg = await confirmarTexto(`Pedir sumarte a ${nom}`,
+      `El anfitrión revisa cada solicitud. Va a ver tu alias si lo hiciste público; si no, apareces como "Ciudadano anónimo". Nunca ve tu número de butaca.${otro ? ` Tu solicitud a ${estado.miBloque.pedido.bloque_nombre} se reemplaza por esta.` : ''}`,
+      'Enviar solicitud', 'Presentate en pocas palabras (opcional)', 300)
+    if (msg === null) return
+  }
+  const { data, error } = await sb.rpc('bloque_sumarme', { p_bloque: id, p_mensaje: msg || null })
   if (error) { aviso(error.message, 'error'); return }
-  aviso('¡Te sumaste al bloque!')
+  aviso(data === 'solicitud' ? '📨 Solicitud enviada. Te avisamos cuando el anfitrión responda.' : '¡Te sumaste al bloque!')
   cargarBloques()
+}
+
+async function cancelarPedido() {
+  if (!await confirmar('¿Cancelar tu solicitud?', `Dejás de esperar la respuesta de ${estado.miBloque?.pedido?.bloque_nombre || 'el bloque'}.`, 'Cancelar solicitud', true)) return
+  const { error } = await sb.rpc('bloque_solicitud_cancelar')
+  if (error) return aviso(error.message, 'error')
+  aviso('Solicitud cancelada'); cargarBloques()
+}
+
+// Confirmación con un campo de texto opcional. Devuelve el texto ('' si lo dejó vacío) o null si canceló.
+function confirmarTexto(titulo, texto, boton, placeholder, max = 300) {
+  const ta = document.createElement('textarea')
+  ta.className = 'mc-campo'; ta.rows = 3; ta.maxLength = max; ta.placeholder = placeholder
+  $('#mc-texto').after(ta)
+  const p = confirmar(titulo, texto, boton)
+  setTimeout(() => ta.focus(), 30)
+  return p.then(ok => { const v = ta.value.trim(); ta.remove(); return ok ? v : null })
 }
 
 // ══════════════════════════════════════════════════════════════
 //  MI BLOQUE — el espacio privado de los miembros y el mini admin del anfitrión.
 //  Comunicados (anfitrión → todos) · Debates (los abre el anfitrión) · Sala (charla grupal) · Ideas (de los miembros)
 //  · Propuestas del bloque (salen a Propuestas con el sello del bloque y las mismas reglas que todas).
-//  Privacidad: el anfitrión nunca ve quiénes son los miembros, solo cuántos son. En la sala y en los debates
-//  cada miembro aparece con su alias público o como "Miembro del bloque". Las propuestas del bloque no se
-//  atan a ninguna butaca (se publican desde la butaca 0, "del bloque").
+//  Privacidad: el anfitrión ve a solicitantes y miembros por su alias público o como "Ciudadano anónimo",
+//  nunca por su número de butaca. En la sala y en los debates cada miembro aparece con su alias público o como
+//  "Miembro del bloque". Las propuestas del bloque no se atan a ninguna butaca (se publican desde la butaca 0).
+//  En vivo: canal privado bloque:<id> (solo miembros) que avisa QUÉ cambió, nunca quién.
 // ══════════════════════════════════════════════════════════════
-const bq = { d: null, error: null, tab: 'comunicados', cargando: false, hilo: null, coms: new Map(), sala: [], salaT: 0, formDebate: false }
+const bq = { d: null, error: null, tab: 'comunicados', cargando: false, hilo: null, coms: new Map(), sala: [], salaT: 0, salaN: 0, formDebate: false, sols: null, miem: null, filtro: '', verTodos: false }
+const bqRt = { id: null, canal: null, host: null, props: null, ok: false, t: 0, hilos: new Set(), gente: false, poll: 0, n: 0 }
+
+async function bqConectar() {
+  const b = bq.d?.bloque; if (!b) return bqDesconectar()
+  const host = !!bq.d.soy_anfitrion
+  if (bqRt.id === b.id && !!bqRt.host === host) return
+  bqDesconectar(); bqRt.id = b.id
+  try { await sb.realtime.setAuth() } catch (e) {}
+  const escuchar = topic => sb.channel(topic, { config: { private: true } })
+    .on('broadcast', { event: 'cambio' }, ({ payload }) => bqCambio(payload))
+  bqRt.canal = escuchar('bloque:' + b.id).subscribe(s => { bqRt.ok = s === 'SUBSCRIBED' })
+  if (host) bqRt.host = escuchar('bloque-host:' + b.id).subscribe()
+  // Apoyos de las propuestas del bloque (tabla pública de propuestas)
+  bqRt.props = sb.channel('bloque-props:' + b.id)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'proposals', filter: `bloque_id=eq.${b.id}` }, ({ new: n }) => {
+      const p = bq.d?.propuestas?.find(x => x.id === n.id); if (!p) return
+      Object.assign(p, { likes: n.likes, status: n.status })
+      if (vistaActual() === 'bloque' && bq.tab === 'propuestas') bqRepintar()
+    }).subscribe()
+  // Respaldo por si el canal en vivo se cae: cada 20 s sin conexión, cada 2 min con conexión
+  clearInterval(bqRt.poll)
+  bqRt.poll = setInterval(() => {
+    if (vistaActual() !== 'bloque' || document.visibilityState !== 'visible') return
+    if (!bqRt.ok || ++bqRt.n % 6 === 0) bqRefrescar(true)
+  }, 20_000)
+}
+function bqDesconectar() {
+  ;[bqRt.canal, bqRt.host, bqRt.props].forEach(c => { if (c) sb.removeChannel(c) })
+  Object.assign(bqRt, { id: null, canal: null, host: null, props: null, ok: false })
+  clearInterval(bqRt.poll); bqRt.poll = 0
+}
+function bqCambio(p) {
+  if (!p) return
+  if (p.t === 'sala') { if (vistaActual() === 'bloque' && bq.tab === 'sala') bqCargarSala(); return }
+  if (p.t === 'comentario' && p.idea) bqRt.hilos.add(p.idea)
+  if (p.t === 'solicitud' || p.t === 'miembro') bqRt.gente = true
+  if (vistaActual() !== 'bloque') return   // al volver a la vista se recarga todo
+  clearTimeout(bqRt.t); bqRt.t = setTimeout(() => bqRefrescar(), 300)
+}
+// Recarga silenciosa: actualiza contadores, hilos abiertos y listas sin perder lo que el usuario está escribiendo
+async function bqRefrescar(todo) {
+  if (!bq.d || bq.cargando) return
+  const { data, error } = await sb.rpc('bloque_panel')
+  if (error) {
+    if (/ningún bloque/i.test(error.message || '')) { bq.d = null; bqDesconectar(); aviso('Ya no sos parte de este bloque.'); cargarBloques(); pintarMiBloque() }
+    return
+  }
+  bq.d = data
+  if (bq.hilo && (todo || bqRt.hilos.has(bq.hilo))) {
+    const r = await sb.rpc('bloque_comentarios_listar', { p_idea: bq.hilo }); if (!r.error) bq.coms.set(bq.hilo, r.data || [])
+  }
+  bqRt.hilos.clear()
+  if (bq.d.soy_anfitrion && bq.tab === 'admin' && (todo || bqRt.gente)) await bqCargarGente()
+  bqRt.gente = false
+  if (bq.tab === 'sala' && todo) await bqCargarSala()
+  if (vistaActual() === 'bloque') bqRepintar()
+}
+function bqRepintar() {
+  const v = $('#bq-vista'); if (!v) return
+  const vals = {}, act = document.activeElement
+  $$('#bq-vista input[id], #bq-vista textarea[id], #bq-vista select[id]').forEach(e => { vals[e.id] = e.value })
+  const foco = act?.id && v.contains(act) ? { id: act.id, s: act.selectionStart, e: act.selectionEnd } : null
+  const sala = $('#bq-sala-msgs'), salaPos = sala ? { top: sala.scrollTop, abajo: sala.scrollHeight - sala.scrollTop - sala.clientHeight < 80 } : null
+  pintarMiBloque()
+  for (const [k, val] of Object.entries(vals)) {
+    const e = document.getElementById(k)
+    if (e && e.value !== val) { e.value = val; e.dispatchEvent(new Event('input', { bubbles: true })) }
+  }
+  if (foco) { const e = document.getElementById(foco.id); if (e) { e.focus({ preventScroll: true }); try { e.setSelectionRange(foco.s, foco.e) } catch (_) {} } }
+  const s2 = $('#bq-sala-msgs'); if (s2 && salaPos) s2.scrollTop = salaPos.abajo ? s2.scrollHeight : salaPos.top
+}
+async function bqCargarGente() {
+  const [s, m] = await Promise.all([sb.rpc('bloque_solicitudes_listar'), sb.rpc('bloque_miembros_listar')])
+  bq.sols = s.error ? [] : (s.data || []); bq.miem = m.error ? [] : (m.data || [])
+}
 const BQ_TABS = [['comunicados', 'Comunicados'], ['debates', 'Debates'], ['sala', 'Sala'], ['ideas', 'Ideas'], ['propuestas', 'Propuestas'], ['admin', 'Administrar']]
 const soyDeUnBloque = () => !!estado.miBloque?.bloque_id
 const bqTxt = t => esc(t || '').replace(/\n/g, '<br>')
@@ -1249,8 +1373,10 @@ async function cargarMiBloque(tab) {
   bq.cargando = false
   if (error) { bq.d = null; bq.error = error.message } else { bq.d = data; bq.error = null }
   if (bq.tab === 'admin' && !bq.d?.soy_anfitrion) bq.tab = 'comunicados'
+  if (bq.tab === 'admin' && bq.d) await bqCargarGente()
   pintarMiBloque()
   if (bq.tab === 'sala') bqAbrirSala(); else bqCerrarSala()
+  bqConectar()
 }
 
 function pintarMiBloque() {
@@ -1262,8 +1388,9 @@ function pintarMiBloque() {
   if (bq.cargando) { cab.innerHTML = '<p class="muted">Cargando tu bloque…</p>'; tabs.innerHTML = ''; cuerpo.innerHTML = ''; return }
   const d = bq.d
   if (!d) {
-    cab.innerHTML = `<div class="empty"><div class="e-icon">${ICON_GRUPO}</div><h3>Todavía no estás en un bloque</h3>
-      <p>Sumate a uno desde el panel de Bloques para debatir, proponer ideas y charlar con sus miembros.</p>
+    const ped = estado.miBloque?.pedido?.estado === 'pendiente' ? estado.miBloque.pedido : null
+    cab.innerHTML = `<div class="empty"><div class="e-icon">${ICON_GRUPO}</div><h3>${ped ? `Esperando a ${esc(ped.bloque_nombre)}` : 'Todavía no estás en un bloque'}</h3>
+      <p>${ped ? 'Tu solicitud está pendiente. Cuando el anfitrión la acepte vas a ver acá el espacio del bloque.' : 'Sumate a uno desde el panel de Bloques para debatir, proponer ideas y charlar con sus miembros.'}</p>
       <button class="btn btn-accent" data-bq="explorar">Explorar bloques</button></div>`
     tabs.innerHTML = ''; cuerpo.innerHTML = ''; return
   }
@@ -1285,6 +1412,7 @@ function pintarMiBloque() {
     debates: d.debates.filter(x => x.abierto).length,
     ideas: d.ideas.filter(x => x.estado === 'en_debate').length,
     propuestas: d.en_campana,
+    admin: d.pendientes || 0,
   }
   tabs.innerHTML = BQ_TABS.filter(([k]) => k !== 'admin' || host).map(([k, t]) =>
     `<button role="tab" class="bq-tab ${bq.tab === k ? 'active' : ''}" aria-selected="${bq.tab === k}" data-bq-tab="${k}">${t}${n[k] ? `<span>${n[k]}</span>` : ''}</button>`).join('')
@@ -1388,9 +1516,10 @@ function bqPropuestas(d) {
 function bqAdmin(d) {
   const c = d.config || {}, b = d.bloque
   const sw = (k, on, t, a) => `<div class="mb-fila"><div><b>${t}</b><small>${a}</small></div><button class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${!!on}" data-bq-sw="${k}" aria-label="${t}"><i></i></button></div>`
-  return `<div class="bq-admin-grid">
+  return bqGente(d) + `<div class="bq-admin-grid">
     <article class="card bq-admin">
       <h3>Configuración del bloque</h3>
+      ${sw('aprobacion', c.aprobacion !== false, 'Pedir aprobación para sumarse', 'Cada persona te manda una solicitud y vos decidís. Si lo apagás, cualquiera entra directo.')}
       ${sw('sala', c.sala !== false, 'Sala abierta', 'Los miembros pueden escribir en la sala del bloque. Si la cerrás, solo vos podés escribir.')}
       ${sw('propuestas_miembros', !!c.propuestas_miembros, 'Las ideas de los miembros pueden llegar a Propuestas', 'Cuando una idea junta los apoyos que elijas, sale sola como propuesta del bloque.')}
       <div class="mb-fila ${c.propuestas_miembros ? '' : 'apagada'}"><div><b>Apoyos necesarios</b><small>Entre 2 y 500. Hoy el bloque tiene ${fmtNum(b.miembros)} ${b.miembros === 1 ? 'miembro' : 'miembros'}.</small></div>
@@ -1409,8 +1538,32 @@ function bqAdmin(d) {
         <button class="btn btn-ghost" data-bq-ir="debate">💬 Abrir un debate</button>
         <button class="btn btn-ghost" data-bq-tab="propuestas">🚀 Lanzar una propuesta</button>
       </div>
-      <p class="bq-privado">🔒 Por privacidad no ves quiénes son los miembros, solo cuántos son. Ellos sí te ven a vos: sos la cara pública del bloque.</p>
+      <p class="bq-privado">🔒 Ves a cada persona por su alias público, o como "Ciudadano anónimo" si no lo hizo público. Nunca ves su número de butaca ni cómo vota. Ellos sí te ven a vos: sos la cara pública del bloque.</p>
     </article>
+  </div>`
+}
+
+// ── Solicitudes y miembros (solo anfitrión)
+const bqAvatar = q => `<span class="bq-g-av ${q === 'Ciudadano anónimo' ? 'anon' : ''}" style="${q === 'Ciudadano anónimo' ? '' : `background:${colorDe(null, q)}`}">${q === 'Ciudadano anónimo' ? '?' : esc(q.charAt(0).toUpperCase())}</span>`
+function bqGente(d) {
+  const abierto = d.config?.aprobacion === false
+  if (!bq.sols || !bq.miem) return '<div class="card bq-gente"><p class="muted">Cargando solicitudes y miembros…</p></div>'
+  const sols = bq.sols.length ? `<ul class="bq-g-lista">${bq.sols.map(s => `<li>
+      ${bqAvatar(s.quien)}<div class="bq-g-txt"><b>${esc(s.quien)}</b><small>Pidió sumarse ${haceCuanto(s.created_at)}</small>
+        ${s.mensaje ? `<p>“${esc(s.mensaje)}”</p>` : ''}</div>
+      <div class="bq-g-acc"><button class="btn btn-ghost" data-bq-sol="${s.id}" data-ok="0">Rechazar</button><button class="btn btn-dark" data-bq-sol="${s.id}" data-ok="1">Aceptar</button></div>
+    </li>`).join('')}</ul>`
+    : `<p class="bq-vacio">${abierto ? 'Tu bloque está abierto: la gente entra directo, sin solicitud.' : 'No hay solicitudes pendientes. Cuando alguien pida sumarse lo vas a ver acá al instante.'}</p>`
+  const q = bq.filtro.toLowerCase(), lista = bq.miem.filter(m => !q || m.quien.toLowerCase().includes(q))
+  const vis = bq.verTodos ? lista : lista.slice(0, 30)
+  const miem = bq.miem.length ? `${bq.miem.length > 8 ? `<input class="bq-g-buscar" id="bq-g-buscar" placeholder="Buscar por alias…" value="${esc(bq.filtro)}" autocomplete="off">` : ''}
+    <ul class="bq-g-lista">${vis.map(m => `<li>${bqAvatar(m.quien)}<div class="bq-g-txt"><b>${esc(m.quien)}</b><small>Miembro desde ${new Date(m.desde).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div>
+      <button class="bq-link peligro" data-bq-quitar="${m.id}" data-quien="${esc(m.quien)}">Quitar</button></li>`).join('') || '<li class="bq-vacio">Nadie coincide con la búsqueda.</li>'}</ul>
+    ${lista.length > vis.length ? `<button class="bq-link" data-bq="ver-todos">Ver los ${lista.length} miembros</button>` : ''}`
+    : '<p class="bq-vacio">Todavía no hay miembros además de vos.</p>'
+  return `<div class="bq-admin-grid bq-gente-grid">
+    <article class="card bq-admin bq-gente"><h3>Solicitudes ${bq.sols.length ? `<span class="bq-g-n">${bq.sols.length}</span>` : ''}</h3>${sols}</article>
+    <article class="card bq-admin bq-gente"><h3>Miembros <span class="bq-g-n gris">${fmtNum(bq.miem.length)}</span></h3>${miem}</article>
   </div>`
 }
 
@@ -1442,7 +1595,7 @@ async function bqCargarSala() {
   bq.sala = data || []
   if (bq.sala.map(m => m.id).join() !== antes) bqPintarSala(false)
 }
-function bqAbrirSala() { bqCargarSala().then(() => bqPintarSala(true)); clearInterval(bq.salaT); bq.salaT = setInterval(() => { if (vistaActual() === 'bloque' && bq.tab === 'sala' && document.visibilityState === 'visible') bqCargarSala() }, 6000) }
+function bqAbrirSala() { bqCargarSala().then(() => bqPintarSala(true)); clearInterval(bq.salaT); bq.salaT = setInterval(() => { if (vistaActual() === 'bloque' && bq.tab === 'sala' && document.visibilityState === 'visible' && (!bqRt.ok || ++bq.salaN % 5 === 0)) bqCargarSala() }, 6000) }
 function bqCerrarSala() { clearInterval(bq.salaT); bq.salaT = 0 }
 
 // ── Hilos de comentarios (debates e ideas)
@@ -1477,6 +1630,7 @@ const bqVal = id => ($('#' + id)?.value || '').trim()
 async function bqAccion(a, el) {
   const d = bq.d
   if (a === 'explorar') { location.hash = '#inicio'; $('.app')?.classList.remove('panel-plegado'); irATab('todos'); return }
+  if (a === 'ver-todos') { bq.verTodos = true; bqRepintar(); return }
   if (a === 'comunicar') {
     const t = bqVal('bq-com-txt'); if (t.length < 2) return aviso('Escribí el comunicado.', 'error')
     if (!await confirmar('¿Enviar el comunicado?', `Les llega a los ${fmtNum(d.bloque.miembros)} miembros del bloque como notificación.`, 'Enviar')) return
@@ -1520,7 +1674,27 @@ function enlazarMiBloque() {
   const v = $('#bq-vista'); if (!v) return
   v.addEventListener('click', async e => {
     const t = e.target
-    const tab = t.closest('[data-bq-tab]'); if (tab) { bq.tab = tab.dataset.bqTab; bq.hilo = null; history.replaceState(null, '', '#bloque/' + bq.tab); pintarMiBloque(); bq.tab === 'sala' ? bqAbrirSala() : bqCerrarSala(); return }
+    const tab = t.closest('[data-bq-tab]')
+    if (tab) {
+      bq.tab = tab.dataset.bqTab; bq.hilo = null; history.replaceState(null, '', '#bloque/' + bq.tab); pintarMiBloque(); bq.tab === 'sala' ? bqAbrirSala() : bqCerrarSala()
+      if (bq.tab === 'admin') { await bqCargarGente(); if (bq.tab === 'admin') bqRepintar() }
+      return
+    }
+    const so = t.closest('[data-bq-sol]')
+    if (so) {
+      const ok = so.dataset.ok === '1', s = bq.sols?.find(x => x.id === so.dataset.bqSol)
+      if (!ok && !await confirmar('¿Rechazar la solicitud?', `${s?.quien || 'Esta persona'} no va a entrar al bloque. Puede volver a pedirlo en 7 días.`, 'Rechazar', true)) return
+      $$(`[data-bq-sol="${so.dataset.bqSol}"]`).forEach(b => { b.disabled = true })
+      const r = await bqRpc('bloque_solicitud_responder', { p_id: so.dataset.bqSol, p_aceptar: ok })
+      if (r) aviso(r === 'aceptada' ? `✓ ${s?.quien || 'La persona'} ya es parte del bloque` : r === 'ocupado' ? 'Esa persona ya se sumó a otro bloque' : 'Solicitud rechazada')
+      return bqRefrescar(true)
+    }
+    const qu = t.closest('[data-bq-quitar]')
+    if (qu) {
+      if (!await confirmar('¿Quitar del bloque?', `${qu.dataset.quien} deja de ser miembro y le llega un aviso. Queda libre para sumarse a otro bloque sin esperar.`, 'Quitar', true)) return
+      if (await bqRpc('bloque_miembro_quitar', { p_id: qu.dataset.bqQuitar }, 'Miembro quitado')) bqRefrescar(true)
+      return
+    }
     if (t.closest('[data-bq-ir="debate"]')) { bq.tab = 'debates'; bq.formDebate = true; history.replaceState(null, '', '#bloque/debates'); pintarMiBloque(); bqCerrarSala(); setTimeout(() => $('#bq-deb-tit')?.focus(), 30); return }
     const a = t.closest('[data-bq]'); if (a) return bqAccion(a.dataset.bq, a)
     const h = t.closest('[data-bq-hilo]'); if (h) return abrirHiloBloque(h.dataset.bqHilo)
@@ -1574,6 +1748,15 @@ function enlazarMiBloque() {
       return
     }
     const sw = t.closest('[data-bq-sw]')
+    if (sw && sw.dataset.bqSw === 'aprobacion') {
+      const on = bq.d.config.aprobacion === false, pend = bq.sols?.length || 0
+      if (!await confirmar(on ? '¿Pedir aprobación para sumarse?' : '¿Abrir el bloque a todos?',
+        on ? 'Desde ahora cada persona te manda una solicitud y vos decidís quién entra.'
+           : `Cualquier butaca va a poder sumarse directo.${pend ? ` Las ${pend} solicitudes pendientes entran solas.` : ''}`, 'Confirmar')) return
+      const r = await bqRpc('bloque_config_aprobacion', { p_on: on }, '✓ Guardado')
+      if (r !== null) { if (r > 0) aviso(`✓ Entraron ${r} ${r === 1 ? 'persona' : 'personas'} que estaban esperando`); bqRefrescar(true) }
+      return
+    }
     if (sw) {
       const c = { sala: bq.d.config.sala !== false, propuestas_miembros: !!bq.d.config.propuestas_miembros, umbral: Number(bq.d.config.umbral) || 10 }
       c[sw.dataset.bqSw] = !c[sw.dataset.bqSw]
@@ -1591,6 +1774,7 @@ function enlazarMiBloque() {
   })
   v.addEventListener('input', e => {
     const c = $(`[data-bq-cont="${e.target.id}"]`); if (c) c.textContent = `${e.target.value.length}/${e.target.maxLength}`
+    if (e.target.id === 'bq-g-buscar' && bq.filtro !== e.target.value) { bq.filtro = e.target.value; bqRepintar() }
     if (e.target.id === 'bq-sala-txt') { e.target.style.height = 'auto'; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px' }
   })
 }
@@ -1625,6 +1809,7 @@ function enlazar() {
   $$('.tab').forEach(t => t.addEventListener('click', () => irATab(t.dataset.tab)))
   $('#bloques-body').addEventListener('click', e => {
     const u = e.target.closest('[data-unirme]'); if (u) return unirme(u.dataset.unirme)
+    if (e.target.closest('[data-cancelar-pedido]')) return cancelarPedido()
     const g = e.target.closest('[data-tab-go]'); if (g) irATab(g.dataset.tabGo)
   })
   // Redibujar el hemiciclo cuando cambia el tamaño de su caja (ventana o columnas plegadas)
