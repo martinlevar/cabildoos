@@ -29,15 +29,15 @@ const ICONOS = {
   bloque:       '<circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/>',
   muro:         '<path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/>',
   playroom:     '<path d="M6 9h12a3 3 0 0 1 3 3v3a2 2 0 0 1-3.5 1.3L15 14H9l-2.5 2.3A2 2 0 0 1 3 15v-3a3 3 0 0 1 3-3z"/><path d="M8 11v2M7 12h2M16 12h.01"/>',
-  founding:     '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/><path d="M3 21h18"/>',
+  funding:     '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/><path d="M3 21h18"/>',
 }
 const SECCIONES = [
   ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['bloque', 'Mi bloque'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
   ['propuestas', 'Propuestas'], ['ciudadanos', 'Ciudadanos'], ['estadisticas', 'Estadísticas'],
-  ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'], ['founding', 'Founding'],
+  ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'], ['funding', 'Funding'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'founding'])   // secciones ya rediseñadas
+const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding'])   // secciones ya rediseñadas
 
 function pintarNav() {
   $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
@@ -77,7 +77,7 @@ function ruta() {
   else if (mu.abierto) cerrarHiloMuro()
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
-  if (valida === 'founding') entrarFounding(); else if (fd.vivo) salirFounding()
+  if (valida === 'funding') entrarFunding(); else if (fd.vivo) salirFunding()
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
@@ -1084,7 +1084,7 @@ async function cargarPortada() {
     if (error) throw error
     pintarPortada(data?.portada)
     ponerAnuncio(data?.anuncio)
-    fdConfig(data?.founding)
+    fdConfig(data?.funding)
   } catch (e) { console.warn('portada:', e) }
 }
 function pintarPortada(p) {
@@ -1118,7 +1118,7 @@ function vigilarPortada() {
   if (estado.user) sb.channel('portada-v2')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, ({ new: n }) => {
       if (n?.key === 'portada') pintarPortada(n.value)
-      if (n?.key === 'founding') fdConfig({ activo: !!n.value?.activo, simulado: n.value?.simulado !== false, meta: Number(n.value?.meta) || 30000 })
+      if (n?.key === 'funding') fdConfig({ activo: !!n.value?.activo, simulado: n.value?.simulado !== false, meta: Number(n.value?.meta) || 30000 })
       if (n?.key === 'announcement') ponerAnuncio(n.value?.active ? n.value : null)
     }).subscribe()
   setInterval(cargarPortada, 120_000)   // respaldo (y para quien no inició sesión)
@@ -1851,11 +1851,11 @@ function enlazarMiBloque() {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  FOUNDING — meta de financiación del Cabildo (se activa desde el admin: system_config.founding).
+//  FOUNDING — meta de financiación del Cabildo (se activa desde el admin: system_config.funding).
 //  La franja va de $0 a la meta. Cada marca auspiciante ocupa su tramo con su logo; las butacas que aportan
 //  forman un tramo dorado y, en la "lupa" de abajo, aparece cada butaca aportante.
 //  Privacidad: una butaca solo aparece con su número si elige mostrarse; si no, como "Butaca anónima".
-//  Mientras founding.simulado = true todo es una simulación (datos de ejemplo y aportes en vivo ficticios):
+//  Mientras funding.simulado = true todo es una simulación (datos de ejemplo y aportes en vivo ficticios):
 //  no se cobra nada ni se guarda nada.
 // ══════════════════════════════════════════════════════════════
 const fd = { cfg: null, d: null, t: 0, vivo: 0, nuevos: new Set(), mostrarme: true, ultimo: null }
@@ -1870,7 +1870,7 @@ const FD_TRAMOS = [
   [30000, '🔎', 'Auditoría independiente', 'Una auditoría externa del secreto del voto, publicada completa.'],
 ]
 const FD_NIVELES = [
-  ['Fundadora', 10000, 'Logo grande en la franja, en la portada del Founding y en los posts de X del mes.'],
+  ['Fundadora', 10000, 'Logo grande en la franja, en la página de Funding y en los posts de X del mes.'],
   ['Aliada', 5000, 'Logo en la franja y en la lista de marcas que auspician.'],
   ['Amiga', 1000, 'Nombre en la franja y en la lista de marcas.'],
 ]
@@ -1904,19 +1904,19 @@ const fdTotales = d => {
 function fdConfig(cfg) {
   const antes = fd.cfg
   fd.cfg = cfg || null
-  if (!fd.cfg?.activo || antes?.simulado !== fd.cfg?.simulado || antes?.meta !== fd.cfg?.meta) { fd.d = null; salirFounding() }
-  const li = $('#nav a[data-sec="founding"]')?.parentElement; if (li) li.hidden = !fd.cfg?.activo
-  if (vistaActual() === 'founding') entrarFounding()
+  if (!fd.cfg?.activo || antes?.simulado !== fd.cfg?.simulado || antes?.meta !== fd.cfg?.meta) { fd.d = null; salirFunding() }
+  const li = $('#nav a[data-sec="funding"]')?.parentElement; if (li) li.hidden = !fd.cfg?.activo
+  if (vistaActual() === 'funding') entrarFunding()
 }
 
-function entrarFounding() {
+function entrarFunding() {
   if (fd.cfg?.activo && fd.cfg.simulado && !fd.d) fd.d = fdSimular()
   if (fd.cfg?.activo && !fd.cfg.simulado) fd.d = { meta: fd.cfg.meta || 30000, cierra: null, marcas: [], aportes: [] }
-  pintarFounding()
+  pintarFunding()
   clearInterval(fd.vivo)
-  if (fd.cfg?.activo && fd.cfg.simulado) fd.vivo = setInterval(() => { if (vistaActual() === 'founding' && document.visibilityState === 'visible') fdAporteSimulado() }, 3200)
+  if (fd.cfg?.activo && fd.cfg.simulado) fd.vivo = setInterval(() => { if (vistaActual() === 'funding' && document.visibilityState === 'visible') fdAporteSimulado() }, 3200)
 }
-function salirFounding() { clearInterval(fd.vivo); fd.vivo = 0 }
+function salirFunding() { clearInterval(fd.vivo); fd.vivo = 0 }
 
 function fdAporteSimulado(propio) {
   const d = fd.d; if (!d) return
@@ -1928,10 +1928,10 @@ function fdAporteSimulado(propio) {
 }
 
 // ── Pintado
-function pintarFounding() {
+function pintarFunding() {
   const c = $('#fd-cuerpo'); if (!c) return
-  if (!fd.cfg?.activo) { c.innerHTML = `<div class="card au-vacio"><span class="au-vacio-ico"><svg viewBox="0 0 24 24">${ICONOS.founding}</svg></span><h3>Founding no está disponible</h3><p class="muted">Vuelve pronto.</p></div>`; return }
-  if (!fd.d) { entrarFounding(); return }
+  if (!fd.cfg?.activo) { c.innerHTML = `<div class="card au-vacio"><span class="au-vacio-ico"><svg viewBox="0 0 24 24">${ICONOS.funding}</svg></span><h3>Funding no está disponible</h3><p class="muted">Vuelve pronto.</p></div>`; return }
+  if (!fd.d) { entrarFunding(); return }
   const d = fd.d, sim = fd.cfg.simulado
   c.innerHTML = `
     <section class="fd-hero">
@@ -2027,7 +2027,7 @@ function fdActualizar(anim) {
   if (anim) { const n = $('#fd-numeros .fd-recaudado b'); n?.classList.remove('sube'); void n?.offsetWidth; n?.classList.add('sube') }
 }
 
-function enlazarFounding() {
+function enlazarFunding() {
   const v = $('#fd-vista'); if (!v) return
   v.addEventListener('click', e => {
     const ap = e.target.closest('[data-fd-aportar]')
@@ -2050,7 +2050,7 @@ function enlazarFounding() {
     }
   })
   v.addEventListener('change', e => { if (e.target.id === 'fd-mostrarme') fd.mostrarme = e.target.checked })
-  let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'founding') fdActualizar(false) }, 200) })
+  let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'funding') fdActualizar(false) }, 200) })
 }
 
 // ── Inicio ──────────────────────────────────────────────────────
@@ -5331,7 +5331,7 @@ function enlazarRevelacion() {
 }
 
 async function iniciar() {
-  pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFounding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta()
+  pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFunding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
   vigilarSesion()
