@@ -6170,7 +6170,7 @@ function enlazarRevelacion() {
 }
 
 async function iniciar() {
-  pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFunding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta()
+  pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFunding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta(); iniciarA2()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
   vigilarSesion()
@@ -6193,4 +6193,132 @@ async function iniciar() {
   setInterval(cargarVotacion, 60_000)
   setInterval(() => { if (vistaActual() === 'inicio') { cargarPropInicio(); cargarMuro() } }, 90_000)   // refresca votos y estado de la sesión
 }
+
+// ══════════════════════════════════════════════════════════════
+//  APP EN LA PANTALLA DE INICIO (solo celulares)
+//  · Nunca aparece dentro de la app ya instalada (display-mode standalone / navigator.standalone).
+//  · Android (Chrome/Edge): botón "Instalar" que abre el instalador del sistema (beforeinstallprompt).
+//    Si el navegador no lo ofrece (Samsung, Firefox…), muestra los pasos del menú.
+//  · iPhone: pasos con el botón Compartir → "Agregar a inicio" (Safari no permite un botón directo).
+//  · Dentro de Instagram, Facebook, TikTok…: pide abrir en el navegador, porque ahí no se puede agregar.
+//  · "Ya lo agregué" o abrir la app instalada → no vuelve a aparecer. "Ahora no" → 7 días, máximo 3 veces.
+//  Todo se recuerda solo en este navegador.
+// ══════════════════════════════════════════════════════════════
+const A2 = { clave: 'ux2_a2hs_v1', evento: null, plat: null, abierto: false, intentos: 0 }
+const a2Leer = () => { try { return JSON.parse(localStorage.getItem(A2.clave) || '{}') || {} } catch (e) { return {} } }
+const a2Guardar = o => { try { localStorage.setItem(A2.clave, JSON.stringify({ ...a2Leer(), ...o })) } catch (e) {} }
+const a2EsApp = () => ['standalone', 'fullscreen', 'minimal-ui'].some(m => matchMedia(`(display-mode: ${m})`).matches) || navigator.standalone === true
+
+function a2Plataforma() {
+  const ua = navigator.userAgent || ''
+  const ios = /iPhone|iPod/.test(ua), android = /Android/.test(ua) && /Mobile/.test(ua)
+  if (!ios && !android) return null
+  const apps = [['Instagram', /Instagram/], ['Facebook', /FBAN|FBAV|FB_IAB|FBIOS/], ['TikTok', /musical_ly|BytedanceWebview|TikTok/], ['LinkedIn', /LinkedInApp/],
+    ['X', /Twitter/], ['Snapchat', /Snapchat/], ['Line', /\bLine\//], ['la app de Google', /\bGSA\//]]
+  const inapp = (apps.find(([, re]) => re.test(ua)) || [])[0] || null
+  const nav = ios ? (/CriOS/.test(ua) ? 'chrome' : /FxiOS/.test(ua) ? 'firefox' : /EdgiOS/.test(ua) ? 'edge' : /OPiOS|OPT\//.test(ua) ? 'otro' : 'safari')
+    : (/SamsungBrowser/.test(ua) ? 'samsung' : /Firefox/.test(ua) ? 'firefox' : 'chrome')
+  return { so: ios ? 'ios' : 'android', nav, inapp }
+}
+
+const A2_ICO = {
+  compartir: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>',
+  mas: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>',
+  puntos: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>',
+  menu: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+  mira: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+}
+const a2Paso = (ico, t, s) => `<li><span class="a2-ico">${A2_ICO[ico]}</span><span><b>${t}</b>${s ? `<small>${s}</small>` : ''}</span></li>`
+
+function a2Cuerpo() {
+  const p = A2.plat
+  if (p.inapp) return `<p class="a2-aviso">Estás viendo el Cabildo dentro de <b>${esc(p.inapp)}</b>, y desde ahí no se puede agregar a tu inicio.</p>
+    <ol class="a2-pasos">${a2Paso(p.so === 'ios' ? 'puntos' : 'puntos', `Tocá ${p.so === 'ios' ? '<i>···</i> o el ícono de brújula' : '<i>⋮</i>'}`, 'Arriba o abajo de la pantalla')}
+      ${a2Paso('mira', `Elegí <i>Abrir en ${p.so === 'ios' ? 'Safari' : 'el navegador'}</i>`, 'Ahí vas a ver estos pasos para agregarlo')}</ol>
+    <div class="a2-acc"><button class="btn btn-dark" data-a2="copiar">Copiar enlace</button><button class="btn btn-ghost" data-a2="luego">Ahora no</button></div>`
+  if (p.so === 'android' && A2.evento) return `<ul class="a2-ventajas"><li>Se abre al instante, a pantalla completa</li><li>Sin buscar la página cada vez</li><li>No ocupa casi nada de espacio</li></ul>
+    <div class="a2-acc"><button class="btn btn-dark a2-instalar" data-a2="instalar">Instalar la app</button><button class="btn btn-ghost" data-a2="luego">Ahora no</button></div>`
+  let pasos
+  if (p.so === 'ios') pasos = p.nav === 'safari'
+    ? a2Paso('compartir', 'Tocá <i>Compartir</i>', 'En la barra de Safari. Si no lo ves, tocá primero <i>···</i>') + a2Paso('mas', 'Elegí <i>Agregar a inicio</i>', 'Deslizá hacia abajo en la lista si no aparece') + a2Paso('ok', 'Tocá <i>Agregar</i>', 'Listo: el Cabildo queda en tu pantalla de inicio')
+    : a2Paso('compartir', 'Tocá <i>Compartir</i>', p.nav === 'firefox' ? 'En el menú <i>☰</i> de Firefox' : 'Arriba a la derecha, junto a la dirección') + a2Paso('mas', 'Elegí <i>Agregar a inicio</i>', 'Si no aparece, abrí esta página en Safari') + a2Paso('ok', 'Tocá <i>Agregar</i>', 'Listo: el Cabildo queda en tu pantalla de inicio')
+  else pasos = p.nav === 'samsung'
+    ? a2Paso('menu', 'Tocá el menú <i>☰</i>', 'Abajo a la derecha') + a2Paso('mas', 'Elegí <i>Agregar página a</i> → <i>Pantalla de inicio</i>', '') + a2Paso('ok', 'Tocá <i>Agregar</i>', 'Listo: el Cabildo queda en tu pantalla de inicio')
+    : a2Paso('puntos', 'Tocá el menú <i>⋮</i>', 'Arriba a la derecha del navegador') + a2Paso('mas', 'Elegí <i>Instalar app</i> o <i>Agregar a pantalla de inicio</i>', '') + a2Paso('ok', 'Confirmá con <i>Instalar</i>', 'Listo: el Cabildo queda en tu pantalla de inicio')
+  return `<ol class="a2-pasos">${pasos}</ol>
+    <div class="a2-acc"><button class="btn btn-dark" data-a2="hecho">Ya lo agregué</button><button class="btn btn-ghost" data-a2="luego">Ahora no</button></div>`
+}
+
+function a2Pintar() {
+  let el = $('#a2')
+  if (!el) {
+    el = document.createElement('div'); el.id = 'a2'; el.className = 'a2'
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'a2-t')
+    document.body.appendChild(el)
+  }
+  el.innerHTML = `<div class="a2-box">
+    <button class="a2-x" data-a2="luego" aria-label="Cerrar">✕</button>
+    <div class="a2-cab"><img src="/ux2/iconos/icono-192.png" alt="" width="56" height="56">
+      <div><h2 id="a2-t">Llevá el Cabildo en tu celular</h2><p>Agregalo a tu pantalla de inicio y abrilo como una app, con un toque.</p></div></div>
+    ${a2Cuerpo()}</div>`
+  return el
+}
+
+function a2Abrir() {
+  if (A2.abierto || a2EsApp()) return
+  A2.abierto = true
+  const el = a2Pintar(); el.hidden = false
+  requestAnimationFrame(() => el.classList.add('ver'))
+  setTimeout(() => { const box = el.querySelector('.a2-box'); box?.setAttribute('tabindex', '-1'); box?.focus({ preventScroll: true }) }, 350)
+}
+function a2Cerrar(motivo) {
+  const el = $('#a2'); if (!el || !A2.abierto) return
+  A2.abierto = false; el.classList.remove('ver'); setTimeout(() => { el.hidden = true }, 300)
+  if (motivo === 'hecho') a2Guardar({ hecho: true, at: Date.now() })
+  if (motivo === 'luego') { const s = a2Leer(); a2Guardar({ veces: (s.veces || 0) + 1, hasta: Date.now() + 7 * 864e5 }) }
+}
+
+// ¿Corresponde mostrarlo ahora? (celular, fuera de la app, no lo hizo, no lo pospuso)
+function a2Corresponde() {
+  if (!A2.plat || a2EsApp()) return false
+  const s = a2Leer()
+  return !s.hecho && !(s.hasta > Date.now()) && (s.veces || 0) < 3
+}
+// Espera a que no haya otro diálogo abierto (voto, lección, revelación, Nerdocrasy…)
+function a2Programar(ms) {
+  setTimeout(() => {
+    if (!a2Corresponde()) return
+    const ocupado = document.querySelector('.modal:not([hidden]), .rv:not([hidden]), .nd:not([hidden]), .mon:not([hidden]), #fd-full, #fd-rev, #modal-conf:not([hidden])')
+    if (ocupado || document.visibilityState !== 'visible') { if (++A2.intentos < 30) a2Programar(6000); return }
+    a2Abrir()
+  }, ms)
+}
+
+function iniciarA2() {
+  A2.plat = a2Plataforma()
+  if (a2EsApp()) { a2Guardar({ hecho: true, at: Date.now(), via: 'app' }); return }   // abrió la app instalada
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); A2.evento = e; if (A2.abierto) a2Pintar() })
+  window.addEventListener('appinstalled', () => { a2Guardar({ hecho: true, at: Date.now(), via: 'instalada' }); a2Cerrar() })
+  if (!A2.plat) return
+  // Android/Chrome: si la app ya está instalada en este teléfono, no molestar
+  navigator.getInstalledRelatedApps?.().then(l => { if (l?.length) a2Guardar({ hecho: true, via: 'detectada' }) }).catch(() => {})
+  document.addEventListener('click', async e => {
+    const a = e.target.closest('[data-a2]')?.dataset.a2
+    if (!a && e.target.id === 'a2') return a2Cerrar('luego')
+    if (a === 'luego' || a === 'hecho') return a2Cerrar(a)
+    if (a === 'instalar' && A2.evento) {
+      const ev = A2.evento; A2.evento = null
+      try { ev.prompt(); const r = await ev.userChoice; if (r?.outcome === 'accepted') return a2Cerrar('hecho') } catch (err) {}
+      a2Pintar()   // si lo canceló, quedan los pasos manuales
+    }
+    if (a === 'copiar') {
+      try { await navigator.clipboard.writeText(location.origin + '/ux2/'); aviso('Enlace copiado. Pegalo en Safari o Chrome.') }
+      catch (err) { aviso('Copiá la dirección de esta página y abrila en el navegador.') }
+    }
+  })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && A2.abierto) a2Cerrar('luego') })
+  if (a2Corresponde()) a2Programar(4000)
+}
+
 iniciar()

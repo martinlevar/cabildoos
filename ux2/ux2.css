@@ -2660,3 +2660,36 @@ span.bq-f-mini.redonda { background: var(--accent); color: #fff; font-weight: 90
 .fd-muro-wrap header > div:first-child { flex: 1 1 380px; }
 .fd-full-f { width: 100%; }
 .fd-full { height: calc(100vh / var(--zoom)); }
+
+/* ═══ App en la pantalla de inicio (solo celulares) ═══ */
+.a2 { position: fixed; inset: 0; z-index: 95; display: flex; align-items: flex-end; justify-content: center; background: rgba(10,12,30,0); transition: background .3s; }
+.a2[hidden] { display: none; }
+.a2.ver { background: rgba(10,12,30,.5); }
+.a2-box { position: relative; width: min(520px, 100%); max-height: 92vh; overflow-y: auto; background: var(--surface); color: var(--ink);
+  border-radius: 24px 24px 0 0; padding: 22px 20px calc(18px + env(safe-area-inset-bottom)); box-shadow: 0 -12px 40px rgba(0,0,0,.25);
+  transform: translateY(100%); transition: transform .35s cubic-bezier(.2, .9, .3, 1); }
+.a2.ver .a2-box { transform: none; }
+.a2-box:focus { outline: none; }
+.a2-box::before { content: ''; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; border-radius: 99px; background: var(--line); transform: translateX(-50%); }
+.a2-x { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); font-size: 15px; }
+.a2-cab { display: flex; gap: 14px; align-items: center; padding-right: 30px; margin: 6px 0 16px; }
+.a2-cab img { width: 56px; height: 56px; border-radius: 14px; flex: none; box-shadow: 0 4px 14px rgba(4,12,30,.3); }
+.a2-cab h2 { margin: 0 0 4px; font-size: 19px; letter-spacing: -.02em; line-height: 1.2; }
+.a2-cab p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.a2-pasos { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 10px; counter-reset: a2; }
+.a2-pasos li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); counter-increment: a2; position: relative; }
+.a2-pasos li::after { content: counter(a2); position: absolute; top: -6px; left: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; }
+.a2-ico { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); color: var(--accent); }
+.a2-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.a2-ico svg circle { fill: currentColor; stroke: none; }
+.a2-pasos b { display: block; font-size: 15px; font-weight: 700; }
+.a2-pasos small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.35; }
+.a2-pasos i { font-style: normal; font-weight: 800; color: var(--accent); }
+.a2-ventajas { margin: 0 0 16px; padding: 0; list-style: none; display: grid; gap: 8px; }
+.a2-ventajas li { display: flex; gap: 10px; align-items: center; font-size: 14.5px; color: var(--ink-2); }
+.a2-ventajas li::before { content: '✓'; width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--green-bg); color: var(--green); font-weight: 900; font-size: 12px; }
+.a2-aviso { margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: var(--accent-bg); font-size: 14px; line-height: 1.45; }
+.a2-acc { display: grid; gap: 8px; }
+.a2-acc .btn { width: 100%; justify-content: center; padding: 14px; font-size: 15px; }
+.a2-instalar { font-size: 16px !important; }
+@media (prefers-reduced-motion: reduce) { .a2, .a2-box { transition: none; } }
