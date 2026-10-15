@@ -2462,3 +2462,47 @@ span.bq-f-mini.redonda { background: var(--accent); color: #fff; font-weight: 90
   .fd-garantia { margin-top: 0; } .fd-dos .fd-garantia:first-child { margin-top: 26px; }
   .fd-tabla { font-size: 13px; } .fd-tabla th, .fd-tabla td { padding: 10px 6px; }
 }
+
+/* ── El Muro del Cabildo ── */
+.fd-muro-wrap header small { max-width: 560px; }
+.fd-muro-wrap header > span { color: #c7cbe8; font-weight: 600; }
+.fd-muro-wrap header > span b { color: #f5b942; }
+.fd-muro-lienzo { position: relative; border-radius: 10px; overflow: hidden; background: #0a0d26; border: 1px solid rgba(255,255,255,.1); line-height: 0; }
+#fd-muro-canvas { display: block; width: 100%; height: auto; aspect-ratio: 96 / 40; cursor: crosshair; touch-action: manipulation; }
+.fd-fantasma { position: absolute; pointer-events: none; display: grid; place-items: center; line-height: 1; background: var(--c); opacity: .9; outline: 2px solid #fff; box-shadow: 0 0 0 4px rgba(34,197,94,.6), 0 0 18px rgba(255,255,255,.6); animation: fd-fant 1s ease-in-out infinite alternate; }
+.fd-fantasma.ocupado { box-shadow: 0 0 0 4px rgba(239,68,68,.8); opacity: .55; }
+@keyframes fd-fant { to { opacity: .6; } }
+.fd-mio { position: absolute; pointer-events: none; outline: 2px solid #fff; outline-offset: 1px; box-shadow: 0 0 12px 2px rgba(255,255,255,.7); animation: fd-mio 2s ease-in-out infinite; }
+.fd-mio.nueva { animation: fd-pop 1.4s cubic-bezier(.2,.8,.2,1), fd-mio 2s ease-in-out 1.4s infinite; }
+.fd-mio.destello { outline: none; box-shadow: 0 0 16px 6px rgba(245,185,66,.9); animation: fd-dest 1.6s ease-out forwards; }
+@keyframes fd-mio { 50% { box-shadow: 0 0 20px 5px rgba(255,255,255,.9); } }
+@keyframes fd-dest { from { opacity: 1; transform: scale(2.2); } to { opacity: 0; transform: scale(1); } }
+.fd-muro-tip { position: absolute; z-index: 3; pointer-events: none; line-height: 1.3; background: #fff; color: #121747; border-radius: 10px; padding: 7px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.35); min-width: 150px; }
+.fd-muro-tip b { display: block; font-size: 13px; } .fd-muro-tip small { font-size: 11.5px; color: #5b6082; }
+.fd-editor { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 12px 22px; margin-top: 14px; align-items: end; }
+.fd-ed-grupo small { display: block; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #aeb3d6; margin-bottom: 6px; }
+.fd-ed-tam { display: flex; gap: 6px; }
+.fd-ed-tam button { display: grid; justify-items: center; gap: 2px; padding: 7px 9px 6px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,.15); color: #fff; min-width: 56px; }
+.fd-ed-tam button.on { border-color: #f5b942; background: rgba(245,185,66,.16); }
+.fd-ed-tam i { width: calc(var(--w) * 4px + 2px); height: calc(var(--w) * 4px + 2px); background: #f5b942; border-radius: 2px; margin-bottom: 3px; }
+.fd-ed-tam b { font-size: 13px; } .fd-ed-tam span { font-size: 10.5px; color: #aeb3d6; }
+.fd-ed-col, .fd-ed-sym { display: grid; grid-template-columns: repeat(6, 26px); gap: 5px; }
+.fd-ed-col button { width: 26px; height: 26px; border-radius: 7px; background: var(--c); border: 2px solid transparent; }
+.fd-ed-col button.on { border-color: #fff; box-shadow: 0 0 0 2px #f5b942; }
+.fd-ed-sym button { width: 26px; height: 26px; border-radius: 7px; font-size: 15px; display: grid; place-items: center; background: rgba(255,255,255,.07); border: 1.5px solid transparent; }
+.fd-ed-sym button.on { border-color: #f5b942; background: rgba(245,185,66,.18); }
+.fd-ed-acc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.fd-ed-prev { width: 52px; height: 52px; border-radius: 8px; display: grid; place-items: center; font-size: 30px; background: var(--c); box-shadow: 0 0 0 2px rgba(255,255,255,.8); flex: none; }
+.fd-ed-lugar { background: rgba(255,255,255,.1); color: #fff; border: 1.5px solid rgba(255,255,255,.25); }
+.fd-ed-lugar.on { border-color: #22c55e; background: rgba(34,197,94,.2); animation: fd-fant 1s ease-in-out infinite alternate; }
+@media (max-width: 1100px) { .fd-editor { grid-template-columns: auto minmax(0, 1fr); } .fd-ed-acc { grid-column: 1 / -1; justify-content: flex-start; } }
+@media (max-width: 640px) {
+  .fd-editor { grid-template-columns: minmax(0, 1fr); }
+  .fd-ed-tam button { flex: 1; min-width: 0; }
+  .fd-ed-col, .fd-ed-sym { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .fd-ed-col button, .fd-ed-sym button { width: 100%; height: auto; aspect-ratio: 1; font-size: 13px; }
+  .fd-ed-acc .btn { flex: 1 1 100%; }
+}
+.fd-muro-wrap header > span { flex: none; white-space: nowrap; }
+@media (max-width: 640px) { .fd-muro-wrap header > span { white-space: normal; } }
+.fd-muro-wrap header > span b { display: inline; font-size: inherit; }

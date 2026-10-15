@@ -1940,6 +1940,7 @@ function fdSimular() {
     ],
   }
 }
+const fdMuroDe = d => { fdMuroArmar(d, fdRnd(777)); return d }
 const fdAjustar = d => { d.proyectos.filter(p => p.ajustarMeta).forEach(p => { p.meta = Math.floor(fdTotales(p).total / 100) * 100 }); return d }
 const fdTotales = d => {
   const marcas = (d.marcas || []).reduce((n, m) => n + m.monto, 0), butacas = (d.aportes || []).reduce((n, a) => n + a.monto, 0)
@@ -1957,8 +1958,8 @@ function fdConfig(cfg) {
 
 function entrarFunding(arg) {
   if (arg && FD_TABS.some(([k]) => k === arg)) fd.tab = arg
-  if (fd.cfg?.activo && !fd.d) fd.d = fd.cfg.simulado ? fdAjustar(fdSimular())
-    : { meta: fd.cfg.meta || 30000, cierra: null, marcas: [], aportes: [], socios: 0, yo: { aportado: 0, socioHasta: null }, proyectos: [] }
+  if (fd.cfg?.activo && !fd.d) fd.d = fd.cfg.simulado ? fdMuroDe(fdAjustar(fdSimular()))
+    : fdMuroDe({ meta: fd.cfg.meta || 30000, cierra: null, marcas: [], aportes: [], socios: 0, yo: { aportado: 0, socioHasta: null }, proyectos: [] })
   pintarFunding()
   clearInterval(fd.vivo)
   if (fd.cfg?.activo && fd.cfg.simulado) fd.vivo = setInterval(() => { if (vistaActual() === 'funding' && document.visibilityState === 'visible') fdTick() }, 3200)
@@ -1973,8 +1974,11 @@ function fdTick() {
   if (p && ++fd.n % 3 === 0) { fdSumarAProyecto(p, a); return }
   fdSumarAlFondo(a)
 }
-function fdSumarAlFondo(a) {
+function fdSumarAlFondo(a, pos) {
   const d = fd.d; if (!d) return
+  a.color = a.color || FD_COLORES[Math.floor(Math.random() * FD_COLORES.length)]
+  a.sym = a.sym || FD_SIMBOLOS[Math.floor(Math.random() * FD_SIMBOLOS.length)]
+  if (d.muro) fdUbicar(d, a, pos)
   d.aportes.unshift(a); fd.nuevos.add(a); fd.ultimo = a
   setTimeout(() => fd.nuevos.delete(a), 2600)
   if (fd.tab === 'cabildo') fdActualizar(true); else fdRepintarTab()
@@ -1990,12 +1994,142 @@ function fdSumarAProyecto(p, a) {
 // Mi aporte (simulado): suma a mi acumulado del año y, al llegar a $12, me hace socio por 12 meses
 function fdMiAporte(monto, p) {
   const d = fd.d, yo = d.yo, eraSocio = fdSoySocio()
-  const a = { butaca: estado.butaca || 250, monto, anonima: !fd.mostrarme, vos: true, at: Date.now() }
+  const a = { butaca: estado.butaca || 250, monto, anonima: !fd.mostrarme, vos: true, at: Date.now(), color: fd.sel.color, sym: fd.sel.sym }
   yo.aportado += monto
   if (!eraSocio && yo.aportado >= FD_SOCIO) { yo.socioHasta = Date.now() + 365 * 864e5; d.socios++ }
-  if (p) fdSumarAProyecto(p, a); else fdSumarAlFondo(a)
+  if (p) fdSumarAProyecto(p, a); else { fdSumarAlFondo(a, fd.sel.pos); fd.sel.pos = null; fd.sel.eligiendo = false; const ed = $('.fd-muro-wrap'); if (ed) { ed.outerHTML = fdMuroHTML(); fdMuroDibujar() } }
   if (!eraSocio && fdSoySocio()) { aviso('★ ¡Ya sos socio del Cabildo! Ahora podés proponer y votar proyectos.'); const f = fd.formProy && $('#fd-pf-tit') ? null : 1; if (f) pintarFunding(); else fdRepintarTab() }
-  else aviso(`Así se vería tu aporte de ${fd$(monto)}${p ? ` a «${p.titulo}»` : ''} (simulación: no se cobró nada)`)
+  else aviso(p ? `Así se vería tu aporte de ${fd$(monto)} a «${p.titulo}» (simulación: no se cobró nada)` : `🧱 Ya tenés tu lugar en el Muro del Cabildo (simulación: no se cobró nada)`)
+}
+
+// ══ El Muro del Cabildo ══
+// Como "The Million Dollar Homepage": cada aporte al Fondo gana un lugar para siempre en el muro.
+// Tamaño según el aporte ($1 = 1 casillero, $5 = 2×2, $10 = 3×3, $25 = 5×5). Quien aporta elige color,
+// símbolo y dónde va. Sin texto libre ni imágenes: solo colores y símbolos de una lista (nada que moderar).
+// El muro muestra la butaca solo si eligió mostrarse; si no, "Butaca anónima".
+const FD_MURO = { cols: 96, rows: 40 }
+const FD_COLORES = ['#f5b942', '#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#ec4899', '#14b8a6', '#f97316', '#facc15', '#f8fafc', '#0ea5e9', '#84cc16']
+const FD_SIMBOLOS = ['🇻🇪', '⭐', '❤️', '🕊️', '✊', '🌎', '🔥', '📚', '🌻', '⚡', '🎶', '🏔️']
+const FD_TAMANOS = [[1, 1], [5, 2], [10, 3], [25, 5]]
+const fdTam = monto => monto >= 25 ? 5 : monto >= 10 ? 3 : monto >= 5 ? 2 : 1
+fd.sel = { monto: 5, color: '#f5b942', sym: '🇻🇪', pos: null, eligiendo: false }
+
+function fdMuroArmar(d, rnd) {
+  d.muro = { occ: new Int32Array(FD_MURO.cols * FD_MURO.rows).fill(-1), bloques: [], ocupados: 0 }
+  // del más viejo al más nuevo; los grandes se ubican primero para que entren
+  const orden = [...d.aportes].reverse()
+  orden.filter(a => fdTam(a.monto) > 1).concat(orden.filter(a => fdTam(a.monto) === 1)).forEach(a => {
+    a.color = a.color || FD_COLORES[Math.floor(rnd() * FD_COLORES.length)]
+    a.sym = a.sym || FD_SIMBOLOS[Math.floor(rnd() * FD_SIMBOLOS.length)]
+    fdUbicar(d, a, null, rnd)
+  })
+}
+function fdLibre(d, x, y, w) {
+  if (x < 0 || y < 0 || x + w > FD_MURO.cols || y + w > FD_MURO.rows) return false
+  for (let j = y; j < y + w; j++) for (let i = x; i < x + w; i++) if (d.muro.occ[j * FD_MURO.cols + i] !== -1) return false
+  return true
+}
+// Ubica un aporte: en el lugar pedido si está libre; si no, en uno libre (al azar o el más cercano al pedido)
+function fdUbicar(d, a, pos, rnd = Math.random) {
+  const w = fdTam(a.monto), C = FD_MURO.cols, R = FD_MURO.rows
+  let lugar = pos && fdLibre(d, pos.x, pos.y, w) ? pos : null
+  if (!lugar && pos) { // el más cercano a donde quería
+    let mejor = null, dist = 1e9
+    for (let y = 0; y <= R - w; y++) for (let x = 0; x <= C - w; x++) { const dd = (x - pos.x) ** 2 + (y - pos.y) ** 2; if (dd < dist && fdLibre(d, x, y, w)) { dist = dd; mejor = { x, y } } }
+    lugar = mejor
+  }
+  for (let k = 0; !lugar && k < 500; k++) { const x = Math.floor(rnd() * (C - w + 1)), y = Math.floor(rnd() * (R - w + 1)); if (fdLibre(d, x, y, w)) lugar = { x, y } }
+  if (!lugar) for (let y = 0; !lugar && y <= R - w; y++) for (let x = 0; x <= C - w; x++) if (fdLibre(d, x, y, w)) { lugar = { x, y }; break }
+  if (!lugar) return false   // el muro está lleno
+  const idx = d.muro.bloques.push(a) - 1
+  a.cel = { x: lugar.x, y: lugar.y, w }
+  for (let j = lugar.y; j < lugar.y + w; j++) for (let i = lugar.x; i < lugar.x + w; i++) d.muro.occ[j * C + i] = idx
+  d.muro.ocupados += w * w
+  return true
+}
+
+function fdMuroHTML() {
+  const s = fd.sel
+  return `<div class="fd-lupa-cuerpo fd-muro-wrap">
+    <header><div><b>El Muro del Cabildo</b><small>Aportá desde $1 y ganá tu lugar para siempre. Elegí tu color, tu símbolo y dónde va.</small></div>
+      <span id="fd-muro-n"></span></header>
+    <div class="fd-muro-lienzo" id="fd-muro-lienzo">
+      <canvas id="fd-muro-canvas" aria-label="Muro del Cabildo: cada casillero es una butaca que aportó"></canvas>
+      <div class="fd-fantasma" id="fd-fantasma" hidden></div>
+      <div class="fd-muro-tip" id="fd-muro-tip" hidden></div>
+    </div>
+    <div class="fd-editor" id="fd-editor">${fdEditorHTML()}</div>
+  </div>`
+}
+
+function fdEditorHTML() {
+  const s = fd.sel
+  return `      <div class="fd-ed-grupo"><small>Tamaño</small><div class="fd-ed-tam">${FD_TAMANOS.map(([m, w]) => `<button class="${s.monto === m ? 'on' : ''}" data-fd-tam="${m}"><i style="--w:${w}"></i><b>${fd$(m)}</b><span>${w}×${w}</span></button>`).join('')}</div></div>
+      <div class="fd-ed-grupo"><small>Color</small><div class="fd-ed-col">${FD_COLORES.map(c => `<button class="${s.color === c ? 'on' : ''}" data-fd-col="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}</div></div>
+      <div class="fd-ed-grupo"><small>Símbolo</small><div class="fd-ed-sym">${FD_SIMBOLOS.map(y => `<button class="${s.sym === y ? 'on' : ''}" data-fd-sym="${y}">${y}</button>`).join('')}</div></div>
+      <div class="fd-ed-acc">
+        <span class="fd-ed-prev" style="--c:${s.color}">${s.sym}</span>
+        <button class="btn fd-ed-lugar ${s.eligiendo ? 'on' : ''}" data-fd="elegir-lugar">${s.eligiendo ? 'Tocá un lugar libre del muro' : s.pos ? '📍 Lugar elegido · cambiar' : '📍 Elegir dónde va'}</button>
+        <button class="btn btn-accent" data-fd="muro-aportar">Aportar ${fd$(s.monto)} y ocupar mi lugar</button>
+      </div>`
+}
+
+function fdMuroDibujar() {
+  const cv = $('#fd-muro-canvas'), d = fd.d; if (!cv || !d?.muro) return
+  // El lienzo ocupa el 100 % del ancho (CSS); se dibuja a la resolución real de la pantalla
+  const W = cv.getBoundingClientRect().width || cv.parentElement.clientWidth, cel = W / FD_MURO.cols, H = cel * FD_MURO.rows, dpr = window.devicePixelRatio || 1
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr)
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H)
+  const gap = cel > 6 ? 1 : 0.5
+  g.fillStyle = 'rgba(255,255,255,.055)'
+  for (let y = 0; y < FD_MURO.rows; y++) for (let x = 0; x < FD_MURO.cols; x++) if (d.muro.occ[y * FD_MURO.cols + x] === -1) g.fillRect(x * cel + gap / 2, y * cel + gap / 2, cel - gap, cel - gap)
+  g.textAlign = 'center'; g.textBaseline = 'middle'
+  for (const a of d.muro.bloques) {
+    const { x, y, w } = a.cel, px = x * cel + gap / 2, py = y * cel + gap / 2, lado = w * cel - gap
+    g.fillStyle = a.color; g.fillRect(px, py, lado, lado)
+    if (w > 1 && lado >= 14) { g.font = `${Math.floor(lado * 0.62)}px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif`; g.fillText(a.sym, px + lado / 2, py + lado / 2 + lado * 0.04) }
+  }
+  // mis lugares, resaltados
+  $$('#fd-muro-lienzo .fd-mio').forEach(e => e.remove())
+  d.muro.bloques.filter(a => a.vos).forEach(a => {
+    const e = document.createElement('div'); e.className = 'fd-mio' + (fd.nuevos.has(a) ? ' nueva' : '')
+    Object.assign(e.style, { left: a.cel.x * cel + 'px', top: a.cel.y * cel + 'px', width: a.cel.w * cel + 'px', height: a.cel.w * cel + 'px' })
+    $('#fd-muro-lienzo').appendChild(e)
+  })
+  // destellos de los aportes recién llegados
+  d.muro.bloques.filter(a => fd.nuevos.has(a) && !a.vos).forEach(a => {
+    const e = document.createElement('div'); e.className = 'fd-mio destello'
+    Object.assign(e.style, { left: a.cel.x * cel + 'px', top: a.cel.y * cel + 'px', width: a.cel.w * cel + 'px', height: a.cel.w * cel + 'px' })
+    $('#fd-muro-lienzo').appendChild(e); setTimeout(() => e.remove(), 1600)
+  })
+  const cap = FD_MURO.cols * FD_MURO.rows, n = $('#fd-muro-n')
+  if (n) n.innerHTML = `${fmtNum(d.muro.bloques.length)} aportes · <b>${fmtNum(cap - d.muro.ocupados)}</b> lugares libres`
+  fdFantasma()
+}
+// Fantasma: muestra dónde iría tu lugar (verde si está libre, rojo si no)
+function fdFantasma(ev) {
+  const f = $('#fd-fantasma'), cv = $('#fd-muro-canvas'), s = fd.sel; if (!f || !cv) return
+  const r = cv.getBoundingClientRect(), cel = r.width / FD_MURO.cols, w = fdTam(s.monto)
+  let pos = s.pos
+  if (ev && s.eligiendo) { pos = { x: Math.min(FD_MURO.cols - w, Math.max(0, Math.floor((ev.clientX - r.left) / cel - w / 2 + .5))), y: Math.min(FD_MURO.rows - w, Math.max(0, Math.floor((ev.clientY - r.top) / cel - w / 2 + .5))) } }
+  if (!pos || (!s.eligiendo && !s.pos)) { f.hidden = true; return }
+  f.hidden = false; f.className = 'fd-fantasma' + (fdLibre(fd.d, pos.x, pos.y, w) ? '' : ' ocupado')
+  Object.assign(f.style, { left: pos.x * cel + 'px', top: pos.y * cel + 'px', width: w * cel + 'px', height: w * cel + 'px', '--c': s.color })
+  f.textContent = w > 1 ? s.sym : ''
+  f.style.fontSize = Math.floor(w * cel * 0.6) + 'px'
+  return pos
+}
+function fdMuroTip(ev) {
+  const tip = $('#fd-muro-tip'), cv = $('#fd-muro-canvas'), d = fd.d; if (!tip || !cv) return
+  if (fd.sel.eligiendo) { tip.hidden = true; return fdFantasma(ev) }
+  const r = cv.getBoundingClientRect(), cel = r.width / FD_MURO.cols
+  const x = Math.floor((ev.clientX - r.left) / cel), y = Math.floor((ev.clientY - r.top) / cel)
+  const i = x >= 0 && y >= 0 && x < FD_MURO.cols && y < FD_MURO.rows ? d.muro.occ[y * FD_MURO.cols + x] : -1
+  if (i === -1) { tip.innerHTML = '<b>Lugar libre</b><small>Aportá y puede ser tuyo</small>' }
+  else { const a = d.muro.bloques[i]; tip.innerHTML = `<b>${a.vos ? 'Vos' : a.anonima ? 'Butaca anónima' : 'Butaca #' + a.butaca} ${a.sym}</b><small>${fd$(a.monto)} · ${a.at > Date.now() - 6e4 ? 'recién' : haceCuanto(new Date(a.at).toISOString())}</small>` }
+  tip.hidden = false
+  const lx = ev.clientX - r.left, ly = ev.clientY - r.top
+  tip.style.left = Math.min(lx + 14, r.width - 170) + 'px'; tip.style.top = Math.max(0, ly - 52) + 'px'
 }
 
 // ── Pintado
@@ -2065,7 +2199,7 @@ function fdTabCabildo() {
     <div class="fd-grid">
       <article class="card fd-card fd-aportar">
         <h3>Aportá con tu butaca</h3>
-        <p class="muted">Tu aporte aparece al instante en la franja. Desde $1.</p>
+        <p class="muted">Desde $1. Tu aporte aparece al instante en la franja y te da tu lugar en el <b>Muro del Cabildo</b>.</p>
         <div class="fd-montos">${[1, 5, 10, 25].map(m => `<button class="fd-monto" data-fd-aportar="${m}">${fd$(m)}</button>`).join('')}</div>
         <div id="fd-socio-mini">${fdSocioMini()}</div>
         <label class="fd-check"><input type="checkbox" class="fd-mostrarme" ${fd.mostrarme ? 'checked' : ''}><span>Mostrar mi número de butaca en la franja <small>Si no, aparecés como “Butaca anónima”.</small></span></label>
@@ -2107,16 +2241,10 @@ function fdActualizar(anim) {
     <div class="fd-hitos">${FD_TRAMOS.map(([m, ico, n]) => `<div class="fd-hito ${t.total >= m ? 'ok' : ''}" style="left:${m / meta * 100}%"><span>${t.total >= m ? '✓' : ico}</span><small>${n}</small></div>`).join('')}</div>
     ${f.html}
     <div class="fd-escala">${[0, 1, 2, 3].map(k => `<span style="left:${k / 3 * 100}%">${fdK(meta * k / 3)}</span>`).join('')}</div>`
-  const recientes = d.aportes.slice(0, window.innerWidth < 640 ? 60 : 140)
-  $('#fd-lupa').innerHTML = `
-    <svg class="fd-embudo" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M${f.xB} 0 L${Math.min(100, f.xB + Math.max(f.wB, 0.6))} 0 L100 40 L0 40 Z"/></svg>
-    <div class="fd-lupa-cuerpo">
-      <header><div><b>La franja de las butacas</b><small>Cada butaca que aporta aparece acá. Las más recientes primero.</small></div>
-        <span>${fmtNum(t.aportantes)} butacas · ${fd$(t.butacas)}</span></header>
-      <div class="fd-muro">${recientes.map(fdFicha).join('')}
-        ${d.aportes.length > recientes.length ? `<span class="fd-mas">+${fmtNum(d.aportes.length - recientes.length)} aportes</span>` : ''}
-        ${!d.aportes.length ? '<p class="fd-vacio">Todavía no hay aportes. ¡Tu butaca puede ser la primera!</p>' : ''}</div>
-    </div>`
+  const emb = `<svg class="fd-embudo" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M${f.xB} 0 L${Math.min(100, f.xB + Math.max(f.wB, 0.6))} 0 L100 40 L0 40 Z"/></svg>`
+  if (!$('#fd-muro-canvas')) $('#fd-lupa').innerHTML = `<div id="fd-embudo">${emb}</div>${fdMuroHTML()}`
+  else $('#fd-embudo').innerHTML = emb
+  fdMuroDibujar()
   $('#fd-marcas').innerHTML = `<h3>Marcas que auspician</h3>
     ${d.marcas.map(m => `<div class="fd-marca"><span class="fd-marca-logo" style="--c1:${m.color};--c2:${m.color2}">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span>
       <div><b>${esc(m.nombre)}</b><small>Marca ${m.nivel.toLowerCase()} · ${fd$(m.monto)}</small>${m.frase ? `<p>“${esc(m.frase)}”</p>` : ''}</div></div>`).join('')}
@@ -2232,6 +2360,7 @@ function fdTabComo() {
   const si = '<span class="fd-si" aria-label="Sí">✓</span>', no = '<span class="fd-no" aria-label="No">—</span>'
   const fila = (t, a, s, m, nota) => `<tr><th scope="row">${t}${nota ? `<small>${nota}</small>` : ''}</th><td>${a}</td><td>${s}</td><td>${m}</td></tr>`
   const faq = [
+    ['¿Qué gano por aportar?', 'Tu lugar para siempre en el Muro del Cabildo: elegís color, símbolo y dónde va. Cuanto más aportás, más grande es ($1 = 1 casillero, $5 = 2×2, $10 = 3×3, $25 = 5×5). Y si sumás $12 en el año, además sos socio.'],
     ['¿Tengo que ser socio para aportar?', 'No. Cualquier butaca puede aportar, desde $1, al Fondo del Cabildo o a cualquier proyecto. Ser socio solo hace falta para proponer y votar proyectos.'],
     ['¿Cómo llego a ser socio?', `Sumando ${fd$(FD_SOCIO)} en aportes durante el año. Se suma todo: si aportás $5 al Fondo y $7 a un proyecto, ya sos socio.`],
     ['¿Cuánto dura ser socio?', `12 meses desde que llegás a ${fd$(FD_SOCIO)}. Después tu acumulado vuelve a $0 y lo renovás aportando de nuevo.`],
@@ -2248,7 +2377,7 @@ function fdTabComo() {
       <p>Funding es la forma en que el Cabildo se financia con su propia gente, a la vista de todos. Hay tres maneras de participar:</p>
       <div class="fd-roles">
         <div class="fd-rol"><span class="fd-rol-ico">🪙</span><b>Aportante</b><em>Cualquier butaca · desde $1</em>
-          <p>Aporta al Fondo del Cabildo o a un proyecto. Su aporte aparece al instante en la franja.</p></div>
+          <p>Aporta al Fondo del Cabildo o a un proyecto y gana su lugar para siempre en el <b>Muro del Cabildo</b>.</p></div>
         <span class="fd-rol-flecha" aria-hidden="true">→</span>
         <div class="fd-rol oro"><span class="fd-rol-ico">★</span><b>Socio</b><em>${fd$(FD_SOCIO)} aportados en el año</em>
           <p>Además de aportar, propone proyectos, los debate y vota en secreto cuáles se financian.</p></div>
@@ -2342,6 +2471,19 @@ function enlazarFunding() {
       fdRepintarTab(p.id); return
     }
     if (t.closest('[data-fd-debate]')) return aviso('Simulación: acá se abre la sala de debate de los socios.')
+    // Muro: tamaño, color, símbolo y lugar
+    const ed = () => { const e = $('#fd-editor'); if (e) e.innerHTML = fdEditorHTML(); fdFantasma() }
+    const tm = t.closest('[data-fd-tam]'); if (tm) { fd.sel.monto = Number(tm.dataset.fdTam); if (fd.sel.pos && !fdLibre(d, fd.sel.pos.x, fd.sel.pos.y, fdTam(fd.sel.monto))) fd.sel.pos = null; return ed() }
+    const co = t.closest('[data-fd-col]'); if (co) { fd.sel.color = co.dataset.fdCol; return ed() }
+    const sy = t.closest('[data-fd-sym]'); if (sy) { fd.sel.sym = sy.dataset.fdSym; return ed() }
+    if (t.closest('[data-fd="elegir-lugar"]')) { fd.sel.eligiendo = !fd.sel.eligiendo; ed(); if (fd.sel.eligiendo) $('#fd-muro-lienzo')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return }
+    if (t.id === 'fd-muro-canvas' && fd.sel.eligiendo) {
+      const pos = fdFantasma(e)
+      if (pos && fdLibre(d, pos.x, pos.y, fdTam(fd.sel.monto))) { fd.sel.pos = pos; fd.sel.eligiendo = false; ed(); aviso('📍 Lugar elegido. Ahora tocá “Aportar” para quedártelo.') }
+      else aviso('Ese lugar ya está ocupado. Probá con otro.', 'error')
+      return
+    }
+    if (t.closest('[data-fd="muro-aportar"]')) { if (!fd.cfg?.simulado) return aviso('Los pagos se habilitan pronto.'); return fdMiAporte(fd.sel.monto) }
     const ac = t.closest('[data-fd]')?.dataset.fd
     if (ac === 'proponer') { fd.formProy = true; $('#fd-proy-form').innerHTML = fdFormProyecto(); setTimeout(() => $('#fd-pf-tit')?.focus(), 30); return }
     if (ac === 'cancelar-proy') { fd.formProy = false; $('#fd-proy-form').innerHTML = ''; return }
@@ -2362,6 +2504,8 @@ function enlazarFunding() {
     }
   })
   v.addEventListener('change', e => { if (e.target.classList.contains('fd-mostrarme')) fd.mostrarme = e.target.checked })
+  v.addEventListener('mousemove', e => { if (e.target.id === 'fd-muro-canvas') fdMuroTip(e) })
+  v.addEventListener('mouseout', e => { if (e.target.id === 'fd-muro-canvas') { const tip = $('#fd-muro-tip'); if (tip) tip.hidden = true; if (fd.sel.eligiendo && !fd.sel.pos) $('#fd-fantasma').hidden = true } })
   let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'funding') fdRepintarTab() }, 200) })
 }
 
