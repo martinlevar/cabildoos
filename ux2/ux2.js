@@ -3658,9 +3658,12 @@ async function abrirPropuesta(id) {
       : `<p class="muted mp-nota-c">Para comentar necesitás tu butaca verificada.</p>`}`
   m.hidden = false
   if (location.hash !== '#propuestas/' + id) history.replaceState(null, '', '#propuestas/' + id)
+  cargarComentariosProp(id)
+}
+async function cargarComentariosProp(id) {
   const { data } = await sb.from('proposal_comments').select('id, from_seat, text, created_at').eq('proposal_id', id).order('created_at', { ascending: true }).limit(200)
   if (pr.abierta !== id) return
-  const box = $('#mp-coments')
+  const box = $('#mp-coments'); if (!box) return
   box.innerHTML = (data || []).length ? data.map(c => {
     const perf = perfiles.get(c.from_seat), al = perf?.show_alias && perf.alias ? perf.alias : null
     return `<div class="mp-c"><b>${c.from_seat === estado.butaca ? 'Vos' : esc(al || 'Ciudadano anónimo')} <span>#${c.from_seat} · ${haceCuanto(c.created_at)}</span></b><p>${esc(c.text)}</p></div>`
@@ -6281,6 +6284,7 @@ async function iniciar() {
   if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques(), cargarPropInicio(), cargarPortada()])
   iniciarPresencia()
+  iniciarTiempoReal()
   if (vistaActual() === 'butaca') cargarMiButaca()
   if (vistaActual() === 'propuestas' && pr.d) pintarPropuestas()   // ya con alias públicos cargados
   setInterval(cargarVotacion, 60_000)
@@ -6439,5 +6443,107 @@ function iniciarA2() {
   a2Accesos()
   if (a2Visible() && !a2Leer().fase) a2Programar(4000)
 }
+
+
+// ══════════════════════════════════════════════════════════════
+//  TIEMPO REAL GENERAL (sin refrescar la página)
+//  · Canal público "v2-publico": la base avisa QUÉ cambió (votaciones, votos, butacas, propuestas,
+//    comentarios, Muro, bloques, presencia, portada) — nunca quién ni datos personales — y acá se
+//    recarga lo que corresponde por las vías normales (que respetan la privacidad).
+//  · Canal propio (con sesión): notificaciones, mensajes y solicitudes de seguimiento.
+//  · Al volver a la pestaña, o si el canal se cayó y vuelve, se refresca todo.
+//  Los avisos se agrupan (debounce) para no recargar 50 veces si llegan 50 votos juntos.
+// ══════════════════════════════════════════════════════════════
+const rt = { pub: null, mio: null, t: {}, caido: false, oculto: 0 }
+const rtLuego = (k, fn, ms) => { clearTimeout(rt.t[k]); rt.t[k] = setTimeout(() => { try { fn() } catch (e) { console.warn('rt', k, e) } }, ms) }
+
+async function rtListaDebates() {   // solo la lista (no reabre el hilo que la persona está leyendo)
+  try {
+    const { data } = await sb.from('questions').select('id, text, category, ends_at, status').in('status', ['activa', 'cerrada']).order('ends_at', { ascending: false }).limit(30)
+    if (!data) return
+    dbt.lista = data.sort((a, b) => (dbAbierto(b) - dbAbierto(a)) || (new Date(b.ends_at) - new Date(a.ends_at)))
+    pintarListaDebates()
+    if (dbt.q) { const n = data.find(x => x.id === dbt.q.id); if (n) dbt.q = { ...dbt.q, ...n } }
+  } catch (e) {}
+}
+
+function rtCambio(p) {
+  const v = vistaActual()
+  switch (p.t) {
+    case 'votaciones':
+      rtLuego('vot', () => {
+        cargarVotacion()
+        if (v === 'votaciones') cargarVotaciones()
+        if (v === 'debates') rtListaDebates()
+        if (v === 'estadisticas') cargarEstadisticas()
+      }, 500); break
+    case 'votos':
+      rtLuego('votos', () => { cargarVotacion(); if (v === 'votaciones') cargarVotaciones() }, 1200); break
+    case 'butacas':
+      rtLuego('butacas', () => {
+        cargarHemiciclo()
+        Promise.resolve(estado.perfilesListos).then(() => {
+          if (vistaActual() === 'ciudadanos') pintarCiudadanos()
+          if (vistaActual() === 'propuestas' && pr.d) pintarPropuestas()
+        })
+        if (v === 'estadisticas') cargarEstadisticas()
+      }, 1500); break
+    case 'propuestas':
+      rtLuego('prop-ini', cargarPropInicio, 800)
+      if (!estado.user && pr.d) rtLuego('prop', refrescarPropuestas, 800)   // con sesión ya llega por su propio canal
+      if (p.op === 'DELETE' && pr.d) rtLuego('prop', refrescarPropuestas, 800)
+      break
+    case 'comentarios':
+      if (pr.abierta && pr.abierta === p.id) rtLuego('coment', () => cargarComentariosProp(p.id), 300)
+      if (pr.d) rtLuego('prop', refrescarPropuestas, 1500)
+      break
+    case 'muro': case 'muro_resp':
+      if (estado.user) rtLuego('muro-ini', cargarMuro, 800)
+      if (!mu.cargado) break
+      if (p.t === 'muro' && p.op === 'UPDATE' && p.likes != null) {   // un "me gusta": se actualiza en el lugar
+        const post = mu.posts.find(x => x.id === p.id)
+        if (post && post.likes_count !== p.likes) { post.likes_count = p.likes; if (vistaActual() === 'muro') pintarMuroDia(); if (mu.abierto === p.id) pintarHiloMuro() }
+      } else if (p.op === 'DELETE') rtLuego('muro', cargarMuroDia, 600)   // borrados de posts o respuestas
+      break
+    case 'bloques': rtLuego('bloques', cargarBloques, 800); break
+    case 'presencia': rtLuego('pres', cargarPresencia, 600); break
+    case 'portada': rtLuego('portada', cargarPortada, 800); break
+  }
+}
+
+function rtTodo() {   // después de volver a la pestaña o de reconectar
+  cargarVotacion(); cargarPropInicio(); cargarBloques(); cargarPresencia(); cargarHemiciclo()
+  if (estado.user) { cargarMuro(); cargarSocial(); if (estado.butaca) cargarNotificaciones() }
+  const v = vistaActual()
+  if (v === 'votaciones') cargarVotaciones()
+  if (v === 'debates') rtListaDebates()
+  if (v === 'propuestas' && pr.d) refrescarPropuestas()
+  if (v === 'muro' && mu.cargado) cargarMuroDia()
+  if (v === 'estadisticas') cargarEstadisticas()
+  if (pr.abierta) cargarComentariosProp(pr.abierta)
+}
+
+function rtEstado(st) {
+  if (st === 'SUBSCRIBED') { if (rt.caido) { rt.caido = false; rtTodo() } }
+  else if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT' || st === 'CLOSED') rt.caido = true
+}
+
+function iniciarTiempoReal() {
+  if (!rt.pub) rt.pub = sb.channel('v2-publico').on('broadcast', { event: 'cambio' }, ({ payload }) => rtCambio(payload || {})).subscribe(rtEstado)
+  // Lo mío: notificaciones, mensajes y seguimientos (la base solo me manda filas que puedo ver)
+  if (!rt.mio && estado.user && estado.butaca) {
+    const yo = estado.butaca
+    rt.mio = sb.channel('v2-mio-' + yo)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `to_seat=eq.${yo}` }, () => rtLuego('notif', cargarNotificaciones, 300))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `to_seat=eq.${yo}` }, () => rtLuego('social', () => { cargarSocial().then(() => { if (vistaActual() === 'ciudadanos') pintarCiudadanos() }) }, 500))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'follows', filter: `to_seat=eq.${yo}` }, () => rtLuego('social', () => { cargarSocial().then(() => { if (vistaActual() === 'ciudadanos') pintarCiudadanos() }) }, 500))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'follows', filter: `from_seat=eq.${yo}` }, () => rtLuego('social', () => { cargarSocial().then(() => { if (vistaActual() === 'ciudadanos') pintarCiudadanos() }) }, 500))
+      .subscribe(rtEstado)
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') rt.oculto = Date.now()
+  else if (rt.oculto && Date.now() - rt.oculto > 20_000) { rt.oculto = 0; rtTodo() }
+})
 
 iniciar()
