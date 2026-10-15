@@ -2506,3 +2506,81 @@ span.bq-f-mini.redonda { background: var(--accent); color: #fff; font-weight: 90
 .fd-muro-wrap header > span { flex: none; white-space: nowrap; }
 @media (max-width: 640px) { .fd-muro-wrap header > span { white-space: normal; } }
 .fd-muro-wrap header > span b { display: inline; font-size: inherit; }
+
+/* ── Fundadores del Cabildo ── */
+.fd-tier { display: inline-block; font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; background: rgba(148,163,184,.2); color: #94a3b8; vertical-align: middle; }
+.fd-tier.poco { background: rgba(34,197,94,.18); color: #16a34a; }
+.fd-tier.raro { background: rgba(59,130,246,.2); color: #3b82f6; }
+.fd-tier.leyenda { background: linear-gradient(135deg, #f5b942, #f59e0b); color: #3b2800; }
+.fd-muro-tip { display: flex; gap: 8px; align-items: center; min-width: 210px; }
+.fd-muro-tip img { width: 40px; height: 40px; image-rendering: pixelated; border-radius: 6px; flex: none; }
+.fd-fantasma img { width: 100%; height: 100%; image-rendering: pixelated; }
+.fd-ed-yo { min-width: 0; }
+.fd-ed-av { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; border-radius: 12px; border: 1.5px solid rgba(245,185,66,.5); background: rgba(245,185,66,.1); color: #fff; text-align: left; }
+.fd-ed-av img { width: 46px; height: 46px; image-rendering: pixelated; border-radius: 8px; }
+.fd-ed-av span { display: grid; } .fd-ed-av b { font-size: 15px; } .fd-ed-av small { font-size: 11.5px; color: #c7cbe8; margin: 0; letter-spacing: 0; text-transform: none; font-weight: 600; }
+.fd-ed-av.sorpresa { border-style: dashed; }
+.fd-ed-q { width: 46px; height: 46px; border-radius: 8px; display: grid !important; place-items: center; font-size: 24px; font-weight: 900; color: #f5b942; background: repeating-linear-gradient(45deg, rgba(245,185,66,.18) 0 6px, rgba(245,185,66,.06) 6px 12px); }
+.fd-editor { grid-template-columns: auto auto minmax(0, 1fr); }
+
+/* revelado / ficha */
+.fd-rev { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(4,6,20,.78); backdrop-filter: blur(6px); animation: ap-sube .25s; }
+.fd-rev-caja { position: relative; width: min(720px, 100%); max-height: calc(100vh - 32px); overflow: auto; border-radius: 24px; padding: 26px; color: #fff; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 6px 26px;
+  background: radial-gradient(120% 90% at 20% 0%, #26307a 0%, #121747 50%, #070915 100%); box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+.fd-rev-caja > small, .fd-rev-caja > h2 { grid-column: 1 / -1; }
+.fd-rev-caja h2 { margin: 2px 0 12px; font-size: clamp(24px, 3.4vw, 34px); letter-spacing: -.03em; font-weight: 900; }
+.fd-rev-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 10px; color: #c7cbe8; background: rgba(255,255,255,.08); }
+.fd-rev-arte { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 3px rgba(255,255,255,.15), 0 20px 50px rgba(0,0,0,.4); align-self: start; }
+.fd-rev-arte.socio { box-shadow: 0 0 0 4px #f5b942, 0 0 40px rgba(245,185,66,.45); }
+.fd-rev-arte canvas { display: block; width: 100%; aspect-ratio: 1; image-rendering: pixelated; background: #0b0f2e; }
+.fd-rev.revelando .fd-rev-arte { animation: fd-brillo 1.2s ease-in-out infinite alternate; }
+@keyframes fd-brillo { from { box-shadow: 0 0 0 3px rgba(245,185,66,.4), 0 0 20px rgba(245,185,66,.3); } to { box-shadow: 0 0 0 3px rgba(245,185,66,.9), 0 0 60px rgba(245,185,66,.7); } }
+.fd-rev-datos { transition: opacity .5s, transform .5s; }
+.fd-rev.revelando .fd-rev-datos { opacity: 0; transform: translateY(8px); }
+.fd-rev-uno { margin-left: 8px; font-size: 13px; font-weight: 800; color: #f5b942; }
+.fd-rev-datos dl { margin: 14px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.fd-rev-datos dl div { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 7px 10px; }
+.fd-rev-datos dt { font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #aeb3d6; }
+.fd-rev-datos dd { margin: 2px 0 0; font-size: 14px; font-weight: 700; }
+.fd-rev-meta { margin: 0 0 6px; font-size: 13px; color: #d7dbf5; }
+.fd-rev-meta b { color: #f5b942; }
+.fd-rev-nota { margin: 0 0 14px; font-size: 12.5px; color: #aeb3d6; }
+.fd-rev-acc { display: flex; gap: 8px; flex-wrap: wrap; }
+.fd-rev-acc .btn-ghost { color: #fff; border-color: rgba(255,255,255,.25); background: transparent; }
+
+/* el Libro */
+.fd-libro-hero { border-radius: 24px; padding: 26px 28px; color: #fff; margin-bottom: 14px; background: radial-gradient(120% 90% at 80% 0%, #3b2f12 0%, #161342 45%, #070915 100%); }
+.fd-libro-hero .fd-titulo { margin: 10px 0 8px; }
+.fd-libro-hero > p { margin: 0 0 16px; color: #d7dbf5; font-size: 15px; max-width: 720px; line-height: 1.5; }
+.fd-sello { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+.fd-sello > span { font-size: 22px; }
+.fd-sello div { display: grid; gap: 3px; min-width: 0; }
+.fd-sello b { font-size: 13.5px; }
+.fd-sello code { font-size: 13px; color: #f5b942; word-break: break-all; }
+.fd-sello small { font-size: 12px; color: #aeb3d6; line-height: 1.45; }
+.fd-lib-filtros { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.fd-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.fd-chips button { height: 34px; padding: 0 12px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--muted); background: var(--surface); border: 1.5px solid var(--line); }
+.fd-chips button.on { color: var(--ink); border-color: #f5b942; background: rgba(245,185,66,.14); }
+.fd-lib-filtros select, .fd-lib-filtros input { height: 36px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 13.5px; padding: 0 10px; }
+.fd-lib-filtros input { width: 150px; }
+.fd-libro { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.fd-carta { display: grid; justify-items: center; gap: 3px; padding: 8px 8px 10px; border-radius: 14px; background: var(--surface); border: 1.5px solid var(--line); text-align: center; transition: transform .15s, box-shadow .15s; }
+.fd-carta:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.12); }
+.fd-carta img { width: 100%; aspect-ratio: 1; image-rendering: pixelated; border-radius: 9px; margin-bottom: 4px; }
+.fd-carta b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.fd-carta small { font-size: 11.5px; color: var(--muted); }
+.fd-carta.socio img { box-shadow: 0 0 0 3px #f5b942; }
+.fd-carta.vos { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }
+.fd-carta.vos small { color: var(--accent); font-weight: 800; }
+.fd-mas-lib { grid-column: 1 / -1; justify-self: center; }
+@media (max-width: 1100px) { .fd-editor { grid-template-columns: auto minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .fd-rev-caja { grid-template-columns: minmax(0, 1fr); padding: 20px 16px; }
+  .fd-rev-arte { width: min(240px, 70vw); justify-self: center; }
+  .fd-libro-hero { padding: 20px 16px; border-radius: 20px; }
+  .fd-libro { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .fd-lib-filtros input { width: 100%; }
+  .fd-editor { grid-template-columns: minmax(0, 1fr); }
+}
+.fd-rev-caja > small { padding-right: 44px; }

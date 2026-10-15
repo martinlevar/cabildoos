@@ -1866,7 +1866,7 @@ function enlazarMiBloque() {
 //  Mientras funding.simulado = true todo es una simulación: no se cobra ni se guarda nada.
 // ══════════════════════════════════════════════════════════════
 const fd = { cfg: null, d: null, vivo: 0, n: 0, nuevos: new Set(), mostrarme: true, ultimo: null, tab: 'cabildo', formProy: false }
-const FD_TABS = [['cabildo', 'Fondo del Cabildo'], ['proyectos', 'Proyectos'], ['socios', 'Socios'], ['como', '¿Cómo funciona?']]
+const FD_TABS = [['cabildo', 'Fondo del Cabildo'], ['fundadores', 'Fundadores'], ['proyectos', 'Proyectos'], ['socios', 'Socios'], ['como', '¿Cómo funciona?']]
 const FD_SOCIO = 12, FD_QUORUM = 0.3
 const FD_LOGOS = {
   tepuy: '<svg viewBox="0 0 40 40"><path d="M4 31h32L27 15l-4 6-5-10z" fill="#fff"/><path d="M18 11l5 10-3 4-4-7z" fill="#fff" opacity=".55"/><circle cx="31" cy="9" r="3" fill="#fde68a"/></svg>',
@@ -1940,7 +1940,7 @@ function fdSimular() {
     ],
   }
 }
-const fdMuroDe = d => { fdMuroArmar(d, fdRnd(777)); return d }
+const fdMuroDe = d => { fdFundadoresArmar(d, fdRnd(4242)); fdMuroArmar(d, fdRnd(777)); return d }
 const fdAjustar = d => { d.proyectos.filter(p => p.ajustarMeta).forEach(p => { p.meta = Math.floor(fdTotales(p).total / 100) * 100 }); return d }
 const fdTotales = d => {
   const marcas = (d.marcas || []).reduce((n, m) => n + m.monto, 0), butacas = (d.aportes || []).reduce((n, a) => n + a.monto, 0)
@@ -1978,6 +1978,7 @@ function fdSumarAlFondo(a, pos) {
   const d = fd.d; if (!d) return
   a.color = a.color || FD_COLORES[Math.floor(Math.random() * FD_COLORES.length)]
   a.sym = a.sym || FD_SIMBOLOS[Math.floor(Math.random() * FD_SIMBOLOS.length)]
+  fdRegistrar(d, a)
   if (d.muro) fdUbicar(d, a, pos)
   d.aportes.unshift(a); fd.nuevos.add(a); fd.ultimo = a
   setTimeout(() => fd.nuevos.delete(a), 2600)
@@ -1993,13 +1994,14 @@ function fdSumarAProyecto(p, a) {
 
 // Mi aporte (simulado): suma a mi acumulado del año y, al llegar a $12, me hace socio por 12 meses
 function fdMiAporte(monto, p) {
-  const d = fd.d, yo = d.yo, eraSocio = fdSoySocio()
+  const d = fd.d, yo = d.yo, eraSocio = fdSoySocio(), sinFundador = !p && !fdMiFundador()
   const a = { butaca: estado.butaca || 250, monto, anonima: !fd.mostrarme, vos: true, at: Date.now(), color: fd.sel.color, sym: fd.sel.sym }
   yo.aportado += monto
   if (!eraSocio && yo.aportado >= FD_SOCIO) { yo.socioHasta = Date.now() + 365 * 864e5; d.socios++ }
   if (p) fdSumarAProyecto(p, a); else { fdSumarAlFondo(a, fd.sel.pos); fd.sel.pos = null; fd.sel.eligiendo = false; const ed = $('.fd-muro-wrap'); if (ed) { ed.outerHTML = fdMuroHTML(); fdMuroDibujar() } }
+  if (sinFundador && fdMiFundador()) fdVerFundador(fdMiFundador(), true)
   if (!eraSocio && fdSoySocio()) { aviso('★ ¡Ya sos socio del Cabildo! Ahora podés proponer y votar proyectos.'); const f = fd.formProy && $('#fd-pf-tit') ? null : 1; if (f) pintarFunding(); else fdRepintarTab() }
-  else aviso(p ? `Así se vería tu aporte de ${fd$(monto)} a «${p.titulo}» (simulación: no se cobró nada)` : `🧱 Ya tenés tu lugar en el Muro del Cabildo (simulación: no se cobró nada)`)
+  else if (!sinFundador || p) aviso(p ? `Así se vería tu aporte de ${fd$(monto)} a «${p.titulo}» (simulación: no se cobró nada)` : `🧱 Sumaste otro lugar en el Muro del Cabildo (simulación: no se cobró nada)`)
 }
 
 // ══ El Muro del Cabildo ══
@@ -2051,7 +2053,7 @@ function fdUbicar(d, a, pos, rnd = Math.random) {
 function fdMuroHTML() {
   const s = fd.sel
   return `<div class="fd-lupa-cuerpo fd-muro-wrap">
-    <header><div><b>El Muro del Cabildo</b><small>Aportá desde $1 y ganá tu lugar para siempre. Elegí tu color, tu símbolo y dónde va.</small></div>
+    <header><div><b>El Muro de los Fundadores</b><small>Aportá desde $1: recibís tu Fundador (un avatar único) y su lugar para siempre en el muro. Elegí el tamaño y dónde va.</small></div>
       <span id="fd-muro-n"></span></header>
     <div class="fd-muro-lienzo" id="fd-muro-lienzo">
       <canvas id="fd-muro-canvas" aria-label="Muro del Cabildo: cada casillero es una butaca que aportó"></canvas>
@@ -2065,10 +2067,8 @@ function fdMuroHTML() {
 function fdEditorHTML() {
   const s = fd.sel
   return `      <div class="fd-ed-grupo"><small>Tamaño</small><div class="fd-ed-tam">${FD_TAMANOS.map(([m, w]) => `<button class="${s.monto === m ? 'on' : ''}" data-fd-tam="${m}"><i style="--w:${w}"></i><b>${fd$(m)}</b><span>${w}×${w}</span></button>`).join('')}</div></div>
-      <div class="fd-ed-grupo"><small>Color</small><div class="fd-ed-col">${FD_COLORES.map(c => `<button class="${s.color === c ? 'on' : ''}" data-fd-col="${c}" style="--c:${c}" aria-label="Color ${c}"></button>`).join('')}</div></div>
-      <div class="fd-ed-grupo"><small>Símbolo</small><div class="fd-ed-sym">${FD_SIMBOLOS.map(y => `<button class="${s.sym === y ? 'on' : ''}" data-fd-sym="${y}">${y}</button>`).join('')}</div></div>
+      <div class="fd-ed-grupo fd-ed-yo"><small>Tu Fundador</small>${fdMiFundador() ? `<button class="fd-ed-av" data-fd-ficha="${fdMiFundador().butaca}"><img src="${fdUrl(fdAvatar(fdMiFundador().seed))}" alt=""><span><b>${fdNum(fdMiFundador().num)}</b><small>Ver ficha</small></span></button>` : '<div class="fd-ed-av sorpresa"><span class="fd-ed-q">?</span><span><b>Sorpresa</b><small>Se revela con tu primer aporte</small></span></div>'}</div>
       <div class="fd-ed-acc">
-        <span class="fd-ed-prev" style="--c:${s.color}">${s.sym}</span>
         <button class="btn fd-ed-lugar ${s.eligiendo ? 'on' : ''}" data-fd="elegir-lugar">${s.eligiendo ? 'Tocá un lugar libre del muro' : s.pos ? '📍 Lugar elegido · cambiar' : '📍 Elegir dónde va'}</button>
         <button class="btn btn-accent" data-fd="muro-aportar">Aportar ${fd$(s.monto)} y ocupar mi lugar</button>
       </div>`
@@ -2083,11 +2083,11 @@ function fdMuroDibujar() {
   const gap = cel > 6 ? 1 : 0.5
   g.fillStyle = 'rgba(255,255,255,.055)'
   for (let y = 0; y < FD_MURO.rows; y++) for (let x = 0; x < FD_MURO.cols; x++) if (d.muro.occ[y * FD_MURO.cols + x] === -1) g.fillRect(x * cel + gap / 2, y * cel + gap / 2, cel - gap, cel - gap)
-  g.textAlign = 'center'; g.textBaseline = 'middle'
+  g.imageSmoothingEnabled = false
   for (const a of d.muro.bloques) {
-    const { x, y, w } = a.cel, px = x * cel + gap / 2, py = y * cel + gap / 2, lado = w * cel - gap
-    g.fillStyle = a.color; g.fillRect(px, py, lado, lado)
-    if (w > 1 && lado >= 14) { g.font = `${Math.floor(lado * 0.62)}px "Noto Color Emoji","Apple Color Emoji","Segoe UI Emoji",sans-serif`; g.fillText(a.sym, px + lado / 2, py + lado / 2 + lado * 0.04) }
+    const { x, y, w } = a.cel, px = x * cel + gap / 2, py = y * cel + gap / 2, lado = w * cel - gap, f = d.fund.get(a.butaca)
+    if (f) g.drawImage(fdAvatar(f.seed).cv, px, py, lado, lado); else { g.fillStyle = a.color; g.fillRect(px, py, lado, lado) }
+    if (f && (f.socio || (f.vos && fdSoySocio())) && lado >= 12) { g.strokeStyle = '#f5b942'; g.lineWidth = Math.max(1.5, lado / 14); g.strokeRect(px + g.lineWidth / 2, py + g.lineWidth / 2, lado - g.lineWidth, lado - g.lineWidth) }
   }
   // mis lugares, resaltados
   $$('#fd-muro-lienzo .fd-mio').forEach(e => e.remove())
@@ -2115,7 +2115,8 @@ function fdFantasma(ev) {
   if (!pos || (!s.eligiendo && !s.pos)) { f.hidden = true; return }
   f.hidden = false; f.className = 'fd-fantasma' + (fdLibre(fd.d, pos.x, pos.y, w) ? '' : ' ocupado')
   Object.assign(f.style, { left: pos.x * cel + 'px', top: pos.y * cel + 'px', width: w * cel + 'px', height: w * cel + 'px', '--c': s.color })
-  f.textContent = w > 1 ? s.sym : ''
+  const mio = fdMiFundador()
+  f.innerHTML = mio ? `<img src="${fdUrl(fdAvatar(mio.seed))}" alt="">` : (w > 1 ? '?' : '')
   f.style.fontSize = Math.floor(w * cel * 0.6) + 'px'
   return pos
 }
@@ -2126,10 +2127,195 @@ function fdMuroTip(ev) {
   const x = Math.floor((ev.clientX - r.left) / cel), y = Math.floor((ev.clientY - r.top) / cel)
   const i = x >= 0 && y >= 0 && x < FD_MURO.cols && y < FD_MURO.rows ? d.muro.occ[y * FD_MURO.cols + x] : -1
   if (i === -1) { tip.innerHTML = '<b>Lugar libre</b><small>Aportá y puede ser tuyo</small>' }
-  else { const a = d.muro.bloques[i]; tip.innerHTML = `<b>${a.vos ? 'Vos' : a.anonima ? 'Butaca anónima' : 'Butaca #' + a.butaca} ${a.sym}</b><small>${fd$(a.monto)} · ${a.at > Date.now() - 6e4 ? 'recién' : haceCuanto(new Date(a.at).toISOString())}</small>` }
+  else { const a = d.muro.bloques[i], f = d.fund.get(a.butaca), av = f && fdAvatar(f.seed)
+    tip.innerHTML = `${f ? `<img src="${fdUrl(av)}" alt="">` : ''}<div><b>${f ? 'Fundador ' + fdNum(f.num) : ''}${f ? ` <span class="fd-tier ${av.tier[2]}">${av.tier[0]}</span>` : ''}</b><small>${a.vos ? 'Vos' : a.anonima ? 'Butaca anónima' : 'Butaca #' + a.butaca} · aportó ${fd$(a.monto)} · ${a.at > Date.now() - 6e4 ? 'recién' : haceCuanto(new Date(a.at).toISOString())}</small></div>` }
   tip.hidden = false
   const lx = ev.clientX - r.left, ly = ev.clientY - r.top
-  tip.style.left = Math.min(lx + 14, r.width - 170) + 'px'; tip.style.top = Math.max(0, ly - 52) + 'px'
+  tip.style.left = Math.min(lx + 14, r.width - 250) + 'px'; tip.style.top = Math.max(0, ly - 52) + 'px'
+}
+
+// ══ Fundadores del Cabildo ══
+// Quien aporta al Fondo anual recibe su Fundador: un avatar pixel art 24×24 único, numerado por orden de
+// llegada (#0001 = el primero) y de la edición del año. Decisiones de Martín (15/10/2026):
+//  · Registro propio del Cabildo + sello: cada año se publica la huella (SHA-256) del Libro en Bitcoin
+//    con un sello de tiempo gratuito. Sin NFT, sin billeteras, sin exponer quién pagó.
+//  · Sorpresa y uno por butaca y edición: los rasgos salen de la butaca (en la versión real, de un HMAC
+//    del token de la butaca), no de lo que se paga. Aportar más no da más chances de uno raro.
+//  · No se transfiere ni se vende: es un reconocimiento cívico.
+// Rasgos sin símbolos partidarios ni caricaturas; pieles diversas. Los socios suman un marco dorado.
+const FD_ED = 2026
+const FD_R = {
+  Fondo: [['Azul Caribe', '#6a8cc0', 30], ['Arena', '#e8c27a', 22], ['Rojo', '#d0655d', 18], ['Verde Selva', '#6fae7e', 18], ['Noche de Tepuy', 'noche', 8], ['Tricolor', 'tricolor', 4]],
+  Tipo: [['Ciudadano', 0, 90], ['Jaguar', 1, 6], ['Guacamaya', 2, 3], ['Espíritu del Tepuy', 3, 1]],
+  Pelo: [['Corto', 30], ['Rizado', 18], ['Afro', 12], ['Largo', 16], ['Moño', 10], ['Calvo', 8], ['Mohicano', 6]],
+  Ojos: [['Normales', 60], ['Lentes', 18], ['Lentes de sol', 15], ['Lentes 3D', 4], ['Antifaz', 3]],
+  Boca: [['Seria', 40], ['Sonrisa', 32], ['Bigote', 14], ['Barba', 14]],
+  Cabeza: [['Ninguno', 55], ['Gorra tricolor', 12], ['Sombrero llanero', 12], ['Cintillo', 9], ['Corona de orquídeas', 7], ['Audífonos', 5]],
+  Accesorio: [['Ninguno', 70], ['Pin del Cabildo', 15], ['Arete de oro', 10], ['Ocho estrellas', 5]],
+}
+const FD_PIELES = ['#f3d2b3', '#e0ac85', '#c68b5e', '#8d5a3b', '#5a3825'], FD_COLPELO = ['#1d1410', '#3b2414', '#6b4423', '#c9a24e', '#9a9a9a', '#b5402e']
+const FD_ROPA = ['#2f5fb3', '#1f2937', '#cf3a3a', '#f6c445', '#3f7d4e', '#ffffff']
+const FD_TIER = [['Común', 1200, 'comun'], ['Poco común', 6000, 'poco'], ['Raro', 55000, 'raro'], ['Legendario', Infinity, 'leyenda']]   // ≈ 60 % · 25 % · 12 % · 4 %
+fd.av = new Map()
+fd.lib = { tipo: 'Todos', orden: 'num', q: '', n: 96 }
+
+function fdSemilla(str) { // xmur3 + mulberry32: mismo texto → mismo avatar, siempre
+  let h = 1779033703 ^ str.length
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19 }
+  return () => { h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); let t = (h ^= h >>> 16) >>> 0
+    t += 0x6D2B79F5; let r = Math.imul(t ^ t >>> 15, t | 1); r ^= r + Math.imul(r ^ r >>> 7, r | 61); return ((r ^ r >>> 14) >>> 0) / 4294967296 }
+}
+const fdElegir = (r, lista) => { let x = r() * lista.reduce((n, i) => n + i[i.length - 1], 0); for (const i of lista) { x -= i[i.length - 1]; if (x <= 0) return i } return lista[lista.length - 1] }
+
+function fdAvatar(seed) {
+  if (fd.av.has(seed)) return fd.av.get(seed)
+  const r = fdSemilla(seed), cv = document.createElement('canvas'); cv.width = cv.height = 24
+  const g = cv.getContext('2d'), R = (x0, y0, x1, y1, c) => { g.fillStyle = c; g.fillRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1) }, P = (x, y, c) => R(x, y, x, y, c)
+  const fondo = fdElegir(r, FD_R.Fondo), tipo = fdElegir(r, FD_R.Tipo), ras = { Fondo: fondo[0], Tipo: tipo[0] }
+  if (fondo[1] === 'noche') {
+    R(0, 0, 23, 23, '#1d2350'); for (let i = 0; i < 9; i++) P(Math.floor(r() * 24), Math.floor(r() * 12), '#fff6c2')
+    g.fillStyle = '#2c3a6e'; g.beginPath(); [[0, 24], [0, 17], [5, 14], [9, 16], [14, 13], [19, 16], [24, 15], [24, 24]].forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.fill()
+  } else if (fondo[1] === 'tricolor') {
+    R(0, 0, 23, 7, '#f6c445'); R(0, 8, 23, 15, '#2f5fb3'); R(0, 16, 23, 23, '#cf3a3a'); [[7, 9], [9, 8], [11, 8], [12, 8], [14, 8], [16, 9]].forEach(([x, y]) => P(x, y, '#ffffff'))
+  } else R(0, 0, 23, 23, fondo[1])
+  let piel = FD_PIELES[Math.floor(r() * FD_PIELES.length)]
+  if (tipo[1] === 1) piel = '#d99a2b'; if (tipo[1] === 2) piel = '#d8352c'; if (tipo[1] === 3) piel = '#9fe0d0'
+  const osc = '#' + [1, 3, 5].map(i => Math.max(0, parseInt(piel.slice(i, i + 2), 16) - 40).toString(16).padStart(2, '0')).join('')
+  R(4, 21, 19, 23, FD_ROPA[Math.floor(r() * FD_ROPA.length)]); R(9, 18, 14, 21, piel)
+  R(7, 6, 16, 18, piel); R(8, 5, 15, 5, piel); R(6, 9, 6, 15, piel); R(17, 9, 17, 15, piel)
+  for (let y = 6; y < 19; y++) P(16, y, osc)
+  if (tipo[1] === 1) { [[8, 8], [14, 7], [10, 15], [15, 12], [9, 12], [13, 16]].forEach(([x, y]) => P(x, y, '#3a2410')); R(7, 4, 8, 5, piel); R(15, 4, 16, 5, piel); P(11, 14, '#3a2410'); P(12, 14, '#3a2410') }
+  if (tipo[1] === 2) { R(13, 11, 17, 13, '#f3e9d2'); P(17, 13, '#222'); R(7, 3, 9, 6, '#2f5fb3'); R(10, 2, 12, 5, '#f6c445') }
+  if (tipo[1] === 3) for (let y = 6; y < 19; y += 3) P(8, y, '#ffffff')
+  const pelo = tipo[1] === 0 ? fdElegir(r, FD_R.Pelo) : ['—'], cp = FD_COLPELO[Math.floor(r() * FD_COLPELO.length)]
+  if (pelo[0] === 'Corto') { R(7, 4, 16, 6, cp); P(7, 7, cp); P(16, 7, cp) }
+  else if (pelo[0] === 'Rizado') { for (let x = 6; x < 18; x += 2) R(x, 3, x + 1, 5, cp); R(6, 6, 6, 9, cp); R(17, 6, 17, 9, cp) }
+  else if (pelo[0] === 'Afro') { R(4, 1, 19, 6, cp); R(4, 7, 6, 13, cp); R(17, 7, 19, 13, cp) }
+  else if (pelo[0] === 'Largo') { R(6, 4, 17, 6, cp); R(5, 7, 6, 19, cp); R(17, 7, 18, 19, cp) }
+  else if (pelo[0] === 'Moño') { R(7, 4, 16, 6, cp); R(10, 1, 13, 3, cp) }
+  else if (pelo[0] === 'Mohicano') R(10, 0, 13, 6, cp)
+  if (tipo[1] === 0) ras.Pelo = pelo[0]
+  const ojos = fdElegir(r, FD_R.Ojos); ras.Ojos = ojos[0]
+  if (ojos[0] === 'Normales') { P(9, 10, '#1b1b1b'); P(14, 10, '#1b1b1b'); P(9, 9, '#ffffff'); P(14, 9, '#ffffff') }
+  else if (ojos[0] === 'Lentes') { R(8, 9, 10, 11, '#222'); R(13, 9, 15, 11, '#222'); P(9, 10, '#bfe3ff'); P(14, 10, '#bfe3ff'); R(11, 10, 12, 10, '#222') }
+  else if (ojos[0] === 'Lentes de sol') { R(7, 9, 16, 9, '#111'); R(8, 10, 10, 11, '#111'); R(13, 10, 15, 11, '#111') }
+  else if (ojos[0] === 'Lentes 3D') { R(7, 9, 16, 9, '#eee'); R(8, 10, 10, 11, '#e63946'); R(13, 10, 15, 11, '#3a86ff') }
+  else if (ojos[0] === 'Antifaz') { R(7, 9, 16, 11, '#111'); P(9, 10, '#fff'); P(14, 10, '#fff') }
+  const boca = fdElegir(r, FD_R.Boca); ras.Boca = tipo[1] === 2 ? 'Pico' : boca[0]
+  if (tipo[1] !== 2) {
+    if (boca[0] === 'Seria') R(10, 15, 13, 15, '#6b2b2b')
+    else if (boca[0] === 'Sonrisa') { R(10, 15, 13, 15, '#6b2b2b'); P(9, 14, '#6b2b2b'); P(14, 14, '#6b2b2b') }
+    else if (boca[0] === 'Bigote') { R(9, 14, 14, 14, cp); R(10, 16, 13, 16, '#6b2b2b') }
+    else if (boca[0] === 'Barba') { R(7, 15, 16, 18, cp); R(10, 15, 13, 15, '#6b2b2b') }
+  }
+  const cab = fdElegir(r, FD_R.Cabeza); ras.Cabeza = cab[0]
+  if (cab[0] === 'Gorra tricolor') { R(7, 3, 16, 3, '#f6c445'); R(7, 4, 16, 4, '#2f5fb3'); R(7, 5, 18, 5, '#cf3a3a') }
+  else if (cab[0] === 'Sombrero llanero') { R(4, 5, 19, 5, '#c8a96a'); R(7, 1, 16, 4, '#c8a96a'); R(7, 4, 16, 4, '#5a3a1e') }
+  else if (cab[0] === 'Cintillo') R(7, 6, 16, 6, '#e63946')
+  else if (cab[0] === 'Corona de orquídeas') [7, 10, 13, 16].forEach(x => { P(x, 4, '#c77dff'); P(x, 5, '#f5e663') })
+  else if (cab[0] === 'Audífonos') { R(5, 8, 6, 12, '#222'); R(17, 8, 18, 12, '#222'); R(6, 3, 17, 3, '#222') }
+  const acc = fdElegir(r, FD_R.Accesorio); ras.Accesorio = acc[0]
+  if (acc[0] === 'Pin del Cabildo') R(6, 21, 7, 22, '#f5b942')
+  else if (acc[0] === 'Arete de oro') { P(6, 13, '#f5b942'); P(6, 14, '#f5b942') }
+  else if (acc[0] === 'Ocho estrellas') for (let x = 5; x < 19; x += 2) P(x, 22, '#ffffff')
+  // rareza = producto de las probabilidades de cada rasgo
+  let p = 1
+  for (const k of ['Fondo', 'Tipo', 'Ojos', 'Boca', 'Cabeza', 'Accesorio']) {
+    const l = FD_R[k], it = l.find(i => i[0] === ras[k]); if (!it) continue
+    p *= it[it.length - 1] / l.reduce((n, i) => n + i[i.length - 1], 0)
+  }
+  const uno = Math.round(1 / p), tier = tipo[1] === 3 ? FD_TIER[3] : FD_TIER.find(t => uno < t[1])
+  const av = { cv, ras, uno, tier, url: null }
+  fd.av.set(seed, av); return av
+}
+const fdUrl = av => av.url || (av.url = av.cv.toDataURL())
+const fdNum = n => '#' + String(n).padStart(4, '0')
+
+// Libro: un Fundador por butaca, numerado por orden de su primer aporte al Fondo en la edición
+function fdRegistrar(d, a) {
+  if (d.fund.has(a.butaca)) return null
+  const f = { num: d.fund.size + 1, butaca: a.butaca, anonima: a.anonima, at: a.at, vos: !!a.vos, seed: `${FD_ED}-butaca-${a.butaca}`, socio: false }
+  d.fund.set(a.butaca, f); return f
+}
+function fdFundadoresArmar(d, rnd) {
+  d.fund = new Map()
+  const yo = estado.butaca || 250
+  d.aportes.forEach(a => { if (!a.vos && a.butaca === yo) a.butaca = yo % 1068 + 1 })   // en la demo, "vos" todavía no aportaste
+  ;[...d.aportes].sort((a, b) => a.at - b.at).forEach(a => fdRegistrar(d, a))
+  const lista = [...d.fund.values()]
+  for (let i = 0; i < Math.min(d.socios, lista.length); i++) lista[Math.floor(rnd() * lista.length)].socio = true
+}
+const fdMiFundador = () => fd.d?.fund?.get(estado.butaca || 250) || null
+
+// Revelado (y ficha): los píxeles aparecen de a poco y después los rasgos
+function fdVerFundador(f, revelar) {
+  const av = fdAvatar(f.seed)
+  $('#fd-rev')?.remove()
+  const m = document.createElement('div'); m.id = 'fd-rev'; m.className = 'fd-rev' + (revelar ? ' revelando' : ''); m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true')
+  m.innerHTML = `<div class="fd-rev-caja">
+    <button class="fd-rev-x" data-fd-rev="cerrar" aria-label="Cerrar">✕</button>
+    <small class="fd-kicker">Fundadores del Cabildo · Edición ${FD_ED}</small>
+    <h2>${revelar ? `¡Sos el Fundador ${fdNum(f.num)}!` : `Fundador ${fdNum(f.num)}`}</h2>
+    <div class="fd-rev-arte ${f.socio || (f.vos && fdSoySocio()) ? 'socio' : ''}"><canvas width="24" height="24" id="fd-rev-cv"></canvas></div>
+    <div class="fd-rev-datos">
+      <span class="fd-tier ${av.tier[2]}">${av.tier[0]}</span><span class="fd-rev-uno">1 de cada ${fmtNum(av.uno)}</span>
+      <dl>${Object.entries(av.ras).map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+      <p class="fd-rev-meta">${f.vos ? 'Tu butaca' : f.anonima ? 'Butaca anónima' : 'Butaca #' + f.butaca} · desde el ${new Date(f.at).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}${f.socio || (f.vos && fdSoySocio()) ? ' · <b>★ Socio</b>' : ''}</p>
+      <p class="fd-rev-nota">Queda para siempre en el Libro de Fundadores. Es tuyo: no se vende ni se transfiere.</p>
+      <div class="fd-rev-acc">${revelar ? '<button class="btn btn-accent" data-fd-rev="libro">Verme en el Libro</button>' : ''}<button class="btn btn-ghost" data-fd-rev="cerrar">${revelar ? 'Seguir' : 'Cerrar'}</button></div>
+    </div></div>`
+  document.body.appendChild(m)
+  const g = $('#fd-rev-cv').getContext('2d')
+  if (!revelar || matchMedia('(prefers-reduced-motion: reduce)').matches) { g.drawImage(av.cv, 0, 0); m.classList.remove('revelando'); return }
+  const px = [...Array(576).keys()].sort(() => Math.random() - .5), datos = av.cv.getContext('2d').getImageData(0, 0, 24, 24).data
+  let i = 0
+  const paso = () => {
+    for (let k = 0; k < 20 && i < 576; k++, i++) { const p = px[i], o = p * 4; g.fillStyle = `rgb(${datos[o]},${datos[o + 1]},${datos[o + 2]})`; g.fillRect(p % 24, Math.floor(p / 24), 1, 1) }
+    if (i < 576) requestAnimationFrame(paso); else setTimeout(() => m.classList.remove('revelando'), 150)
+  }
+  requestAnimationFrame(paso)
+}
+
+// ── Pestaña: Fundadores (el Libro)
+function fdTabFundadores() {
+  const d = fd.d, lista = [...d.fund.values()], mio = fdMiFundador()
+  const leyendas = lista.filter(f => fdAvatar(f.seed).tier[2] === 'leyenda').length
+  return `<section class="fd-libro-hero">
+      <span class="fd-kicker">Libro de Fundadores · Edición ${FD_ED}</span>
+      <h2 class="fd-titulo">Quien sostiene el Cabildo <em>queda para siempre.</em></h2>
+      <p>Cada butaca que aporta al Fondo del año recibe su Fundador: un avatar único, numerado por orden de llegada. Sale sorpresa y no depende de cuánto aportes.</p>
+      <div class="fd-stats"><div><b>${fmtNum(lista.length)}</b><small>fundadores</small></div><div><b>${leyendas}</b><small>legendarios</small></div>
+        <div><b>${mio ? fdNum(mio.num) : '—'}</b><small>${mio ? 'tu número' : 'todavía no sos fundador'}</small></div></div>
+      <div class="fd-sello"><span>🔏</span><div><b>Huella del Libro (SHA-256)</b><code id="fd-huella">calculando…</code>
+        <small>Cada 1° de enero esta huella se sella en Bitcoin con un sello de tiempo gratuito. Así cualquiera puede comprobar que el Libro nunca se modificó, sin billeteras ni NFT.${fd.cfg.simulado ? ' (Simulación: el sello real empieza con los pagos.)' : ''}</small></div></div>
+    </section>
+    ${mio ? '' : `<div class="fd-yo"><span class="fd-yo-ico">?</span><div><b>Tu Fundador te está esperando</b><small>Con tu primer aporte al Fondo, desde $1, se revela tu avatar y tu número.</small></div><button class="btn btn-accent" data-fd-tab="cabildo">Aportar al Fondo</button></div>`}
+    <div class="fd-lib-filtros">
+      <div class="fd-chips">${['Todos', ...FD_R.Tipo.map(t => t[0])].map(t => `<button class="${fd.lib.tipo === t ? 'on' : ''}" data-fd-lib-tipo="${t}">${t}</button>`).join('')}</div>
+      <select id="fd-lib-orden" aria-label="Ordenar"><option value="num" ${fd.lib.orden === 'num' ? 'selected' : ''}>Por número</option><option value="raros" ${fd.lib.orden === 'raros' ? 'selected' : ''}>Más raros primero</option></select>
+      <input id="fd-lib-q" placeholder="Buscar #número" value="${esc(fd.lib.q)}" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="fd-libro" id="fd-libro"></div>`
+}
+function fdPintarLibro() {
+  const box = $('#fd-libro'); if (!box) return
+  let lista = [...fd.d.fund.values()]
+  if (fd.lib.tipo !== 'Todos') lista = lista.filter(f => fdAvatar(f.seed).ras.Tipo === fd.lib.tipo)
+  const q = fd.lib.q.replace(/\D/g, ''); if (q) lista = lista.filter(f => String(f.num).includes(String(Number(q))))
+  lista.sort(fd.lib.orden === 'raros' ? (a, b) => fdAvatar(b.seed).uno - fdAvatar(a.seed).uno : (a, b) => a.num - b.num)
+  const mio = fdMiFundador(); if (mio && fd.lib.orden === 'num' && !q && fd.lib.tipo === 'Todos') lista = [mio, ...lista.filter(f => f !== mio)]
+  const vis = lista.slice(0, fd.lib.n)
+  box.innerHTML = vis.length ? vis.map(f => { const av = fdAvatar(f.seed); return `<button class="fd-carta ${f.vos ? 'vos' : ''} ${f.socio || (f.vos && fdSoySocio()) ? 'socio' : ''}" data-fd-ficha="${f.butaca}">
+      <img src="${fdUrl(av)}" alt="Fundador ${fdNum(f.num)}" loading="lazy"><b>${fdNum(f.num)}</b><span class="fd-tier ${av.tier[2]}">${av.tier[0]}</span>
+      <small>${f.vos ? 'Vos' : f.anonima ? 'Anónima' : 'Butaca #' + f.butaca}</small></button>` }).join('')
+    + (lista.length > vis.length ? `<button class="btn btn-ghost fd-mas-lib" data-fd="mas-libro">Ver más (${fmtNum(lista.length - vis.length)})</button>` : '')
+    : '<p class="bq-vacio">No hay fundadores con ese filtro.</p>'
+}
+async function fdHuella() {
+  const el = $('#fd-huella'); if (!el) return
+  const txt = JSON.stringify([...fd.d.fund.values()].sort((a, b) => a.num - b.num).map(f => [FD_ED, f.num, f.seed, f.at]))
+  try { const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt)); el.textContent = [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join('').replace(/^(.{16}).*(.{16})$/, '$1…$2') }
+  catch (e) { el.textContent = 'no disponible en este navegador' }
 }
 
 // ── Pintado
@@ -2152,6 +2338,7 @@ function fdRepintarTab(soloProyecto) {
   }
   if (fd.tab === 'socios') { box.innerHTML = fdTabSocios(); return }
   if (fd.tab === 'como') { if (!$('.fd-como-hero')) box.innerHTML = fdTabComo(); return }
+  if (fd.tab === 'fundadores') { if (!$('#fd-libro')) { box.innerHTML = fdTabFundadores(); fdPintarLibro(); fdHuella() } return }
   if (!$('#fd-franja')) { box.innerHTML = fdTabCabildo(); }
   fdActualizar(false)
 }
@@ -2360,7 +2547,10 @@ function fdTabComo() {
   const si = '<span class="fd-si" aria-label="Sí">✓</span>', no = '<span class="fd-no" aria-label="No">—</span>'
   const fila = (t, a, s, m, nota) => `<tr><th scope="row">${t}${nota ? `<small>${nota}</small>` : ''}</th><td>${a}</td><td>${s}</td><td>${m}</td></tr>`
   const faq = [
-    ['¿Qué gano por aportar?', 'Tu lugar para siempre en el Muro del Cabildo: elegís color, símbolo y dónde va. Cuanto más aportás, más grande es ($1 = 1 casillero, $5 = 2×2, $10 = 3×3, $25 = 5×5). Y si sumás $12 en el año, además sos socio.'],
+    ['¿Qué gano por aportar?', `Tu Fundador: un avatar pixel art único, numerado por orden de llegada (el #0001 es el primero que aportó), que queda para siempre en el Libro de Fundadores ${FD_ED}. Además ocupa su lugar en el Muro: cuanto más aportás, más grande se ve ($1 = 1 casillero, $5 = 2×2, $10 = 3×3, $25 = 5×5). Y si sumás $12 en el año, sos socio y tu Fundador lleva marco dorado.`],
+    ['¿Si aporto más, mi Fundador es más raro?', 'No. Tu Fundador sale sorpresa y depende de tu butaca, no de cuánto aportes. Es uno por butaca y por edición: aportar de nuevo no te da otro. Así nadie puede comprar rareza.'],
+    ['¿Puedo vender o regalar mi Fundador?', 'No. Es un reconocimiento por sostener el Cabildo, no una inversión: queda en tu butaca para siempre.'],
+    ['¿Es un NFT?', 'No. Vive en el Cabildo y cada año la huella del Libro se sella en Bitcoin con un sello de tiempo gratuito, para que cualquiera pueda comprobar que nunca se modificó. No hace falta billetera, no hay comisiones y nadie puede ver quién pagó.'],
     ['¿Tengo que ser socio para aportar?', 'No. Cualquier butaca puede aportar, desde $1, al Fondo del Cabildo o a cualquier proyecto. Ser socio solo hace falta para proponer y votar proyectos.'],
     ['¿Cómo llego a ser socio?', `Sumando ${fd$(FD_SOCIO)} en aportes durante el año. Se suma todo: si aportás $5 al Fondo y $7 a un proyecto, ya sos socio.`],
     ['¿Cuánto dura ser socio?', `12 meses desde que llegás a ${fd$(FD_SOCIO)}. Después tu acumulado vuelve a $0 y lo renovás aportando de nuevo.`],
@@ -2377,7 +2567,7 @@ function fdTabComo() {
       <p>Funding es la forma en que el Cabildo se financia con su propia gente, a la vista de todos. Hay tres maneras de participar:</p>
       <div class="fd-roles">
         <div class="fd-rol"><span class="fd-rol-ico">🪙</span><b>Aportante</b><em>Cualquier butaca · desde $1</em>
-          <p>Aporta al Fondo del Cabildo o a un proyecto y gana su lugar para siempre en el <b>Muro del Cabildo</b>.</p></div>
+          <p>Aporta al Fondo del Cabildo y recibe su <b>Fundador</b>: un avatar único y numerado que queda para siempre en el Libro y en el Muro.</p></div>
         <span class="fd-rol-flecha" aria-hidden="true">→</span>
         <div class="fd-rol oro"><span class="fd-rol-ico">★</span><b>Socio</b><em>${fd$(FD_SOCIO)} aportados en el año</em>
           <p>Además de aportar, propone proyectos, los debate y vota en secreto cuáles se financian.</p></div>
@@ -2412,6 +2602,7 @@ function fdTabComo() {
         ${fila('Aportar al Fondo del Cabildo', si, si, si)}
         ${fila('Aportar a cualquier proyecto', si, si, si)}
         ${fila('Aparecer en la franja', si, si, si, 'Las butacas, solo si eligen mostrarse')}
+        ${fila('Recibir tu Fundador (avatar único)', si, si, no, 'Socios con marco dorado')}
         ${fila('Proponer proyectos', no, si, no)}
         ${fila('Debatir proyectos', no, si, no)}
         ${fila('Votar qué proyectos se financian', no, si, no)}
@@ -2483,6 +2674,9 @@ function enlazarFunding() {
       else aviso('Ese lugar ya está ocupado. Probá con otro.', 'error')
       return
     }
+    const fi = t.closest('[data-fd-ficha]'); if (fi) { const f = d.fund.get(Number(fi.dataset.fdFicha)); if (f) fdVerFundador(f, false); return }
+    const lt = t.closest('[data-fd-lib-tipo]'); if (lt) { fd.lib.tipo = lt.dataset.fdLibTipo; fd.lib.n = 96; $$('[data-fd-lib-tipo]').forEach(b => b.classList.toggle('on', b === lt)); return fdPintarLibro() }
+    if (t.closest('[data-fd="mas-libro"]')) { fd.lib.n += 96; return fdPintarLibro() }
     if (t.closest('[data-fd="muro-aportar"]')) { if (!fd.cfg?.simulado) return aviso('Los pagos se habilitan pronto.'); return fdMiAporte(fd.sel.monto) }
     const ac = t.closest('[data-fd]')?.dataset.fd
     if (ac === 'proponer') { fd.formProy = true; $('#fd-proy-form').innerHTML = fdFormProyecto(); setTimeout(() => $('#fd-pf-tit')?.focus(), 30); return }
@@ -2503,7 +2697,19 @@ function enlazarFunding() {
       $('#fd-franja')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   })
-  v.addEventListener('change', e => { if (e.target.classList.contains('fd-mostrarme')) fd.mostrarme = e.target.checked })
+  v.addEventListener('change', e => {
+    if (e.target.classList.contains('fd-mostrarme')) fd.mostrarme = e.target.checked
+    if (e.target.id === 'fd-lib-orden') { fd.lib.orden = e.target.value; fd.lib.n = 96; fdPintarLibro() }
+  })
+  v.addEventListener('input', e => { if (e.target.id === 'fd-lib-q') { fd.lib.q = e.target.value; fd.lib.n = 96; fdPintarLibro() } })
+  // Ficha / revelado del Fundador (se abre encima de todo)
+  const cerrarFicha = () => $('#fd-rev')?.remove()
+  document.addEventListener('click', e => {
+    const r = e.target.closest('[data-fd-rev]')
+    if (r?.dataset.fdRev === 'cerrar' || e.target.id === 'fd-rev') return cerrarFicha()
+    if (r?.dataset.fdRev === 'libro') { cerrarFicha(); fd.tab = 'fundadores'; fd.lib = { tipo: 'Todos', orden: 'num', q: '', n: 96 }; history.replaceState(null, '', '#funding/fundadores'); pintarFunding(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarFicha() })
   v.addEventListener('mousemove', e => { if (e.target.id === 'fd-muro-canvas') fdMuroTip(e) })
   v.addEventListener('mouseout', e => { if (e.target.id === 'fd-muro-canvas') { const tip = $('#fd-muro-tip'); if (tip) tip.hidden = true; if (fd.sel.eligiendo && !fd.sel.pos) $('#fd-fantasma').hidden = true } })
   let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'funding') fdRepintarTab() }, 200) })
