@@ -1873,9 +1873,12 @@ const FD_LOGOS = {
   avila: '<svg viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="10" ry="14" fill="#fff" transform="rotate(30 20 20)"/><path d="M14 9c6 6 6 16 12 22" stroke="#7c2d12" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>',
   orinoco: '<svg viewBox="0 0 40 40"><path d="M3 24c6-6 11 6 17 0s11-6 17 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M3 15c6-6 11 6 17 0s11-6 17 0" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".6"/></svg>',
 }
+const FD_BASE = (document.currentScript?.src || '/ux2/ux2.js').replace(/ux2\.js.*$/, '')
+const fdLogo = m => m.logo ? `<img src="${FD_BASE + m.logo}" alt="${esc(m.nombre)}">` : (FD_LOGOS[m.id] || FD_LOGOS.orinoco)
 const FD_MARCAS = {
-  tepuy: { id: 'tepuy', nombre: 'Tepuy', color: '#0f766e', color2: '#14b8a6', frase: 'Creemos en una Venezuela que decide.' },
-  avila: { id: 'avila', nombre: 'Café Ávila', color: '#9a3412', color2: '#ea580c', frase: 'Cada taza, una conversación.' },
+  // Marcas de ejemplo de la simulación (logos en ux2/marcas/). Sin frases: no se les atribuye nada que no dijeron.
+  airtm: { id: 'airtm', nombre: 'Airtm', logo: 'marcas/airtm.jpg', color: '#0b0b12', color2: '#3b2f7a' },
+  frescolita: { id: 'frescolita', nombre: 'Frescolita', logo: 'marcas/frescolita.jpg', color: '#d9184a', color2: '#f0476f' },
   orinoco: { id: 'orinoco', nombre: 'Orinoco', color: '#1d4ed8', color2: '#38bdf8', frase: 'Donde se juntan los ríos.' },
 }
 const FD_TRAMOS = [
@@ -1915,7 +1918,7 @@ function fdSimular() {
   const marca = (id, nivel, monto) => ({ ...FD_MARCAS[id], nivel, monto })
   return {
     meta: fd.cfg?.meta || 30000, cierra: ahora + 23 * 864e5 + 7 * 36e5,
-    marcas: [marca('tepuy', 'Fundadora', 10000), marca('avila', 'Amiga', 1500)],
+    marcas: [marca('airtm', 'Fundadora', 10000), marca('frescolita', 'Amiga', 1500)],
     aportes: fdAportes(rnd, 742, 21, chicos),
     socios: 214,
     yo: { aportado: 7, socioHasta: null },
@@ -1923,7 +1926,7 @@ function fdSimular() {
       { id: 'monumento', titulo: 'Monumento a los presos políticos', lugar: 'Plaza Altamira, Caracas', estado: 'financiando',
         texto: 'Una escultura en homenaje a quienes estuvieron presos por pensar distinto, con sus nombres grabados y un código QR a sus historias.',
         meta: 5000, cierra: ahora + 12 * 864e5, votacion: { si: 0.78, part: 0.64 }, comentarios: 57,
-        marcas: [marca('avila', 'Amiga', 1000)], aportes: fdAportes(rnd, 380, 9, [1, 1, 1, 1, 5, 5, 10, 25]) },
+        marcas: [marca('frescolita', 'Amiga', 1000)], aportes: fdAportes(rnd, 380, 9, [1, 1, 1, 1, 5, 5, 10, 25]) },
       { id: 'biblioteca', titulo: 'Biblioteca digital de la Constitución', lugar: 'En línea, para todo el país', estado: 'votacion',
         texto: 'Una edición anotada y gratuita de la Constitución, con audio y lenguaje sencillo, para escuelas y liceos.',
         meta: 3000, votaCierra: ahora + 20 * 36e5, votaron: 0.41, comentarios: 34, marcas: [], aportes: [] },
@@ -1933,7 +1936,7 @@ function fdSimular() {
       { id: 'mural', titulo: 'Mural de la libertad', lugar: 'Maracaibo', estado: 'financiado',
         texto: 'Un mural de 40 metros pintado por artistas zulianos sobre la historia de la lucha democrática.',
         meta: 2500, votacion: { si: 0.84, part: 0.58 }, comentarios: 41, nota: 'Financiado en 9 días. Los artistas empiezan a pintar el 2 de noviembre.',
-        marcas: [marca('tepuy', 'Amiga', 500)], aportes: fdAportes(rnd, 236, 30, [1, 1, 5, 5, 10, 10, 25]), ajustarMeta: true },
+        marcas: [marca('airtm', 'Amiga', 500)], aportes: fdAportes(rnd, 236, 30, [1, 1, 5, 5, 10, 10, 25]), ajustarMeta: true },
       { id: 'radio', titulo: 'Radio comunitaria', lugar: 'Mérida', estado: 'devuelto',
         texto: 'Una radio por internet con programas hechos por los vecinos.',
         meta: 6000, votacion: { si: 0.61, part: 0.37 }, comentarios: 18, devuelto: { monto: 1240, aportantes: 96 }, marcas: [], aportes: [] },
@@ -1964,7 +1967,7 @@ function entrarFunding(arg) {
   clearInterval(fd.vivo)
   if (fd.cfg?.activo && fd.cfg.simulado) fd.vivo = setInterval(() => { if (vistaActual() === 'funding' && document.visibilityState === 'visible') fdTick() }, 3200)
 }
-function salirFunding() { clearInterval(fd.vivo); fd.vivo = 0 }
+function salirFunding() { clearInterval(fd.vivo); fd.vivo = 0; fdCerrarFull() }
 
 // Aportes en vivo de la simulación: al fondo y, cada tanto, al proyecto que se está financiando
 function fdTick() {
@@ -2054,7 +2057,7 @@ function fdMuroHTML() {
   const s = fd.sel
   return `<div class="fd-lupa-cuerpo fd-muro-wrap">
     <header><div><b>El Muro de los Fundadores</b><small>Aportá desde $1: recibís tu Fundador (un avatar único) y su lugar para siempre en el muro. Elegí el tamaño y dónde va.</small></div>
-      <span id="fd-muro-n"></span></header>
+      <div class="fd-muro-der"><span id="fd-muro-n"></span><button class="fd-expand" data-fd="full" title="Ver el muro en pantalla completa" aria-label="Ver el muro en pantalla completa"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg> Pantalla completa</button></div></header>
     <div class="fd-muro-lienzo" id="fd-muro-lienzo">
       <canvas id="fd-muro-canvas" aria-label="Muro del Cabildo: cada casillero es una butaca que aportó"></canvas>
       <div class="fd-fantasma" id="fd-fantasma" hidden></div>
@@ -2074,12 +2077,15 @@ function fdEditorHTML() {
       </div>`
 }
 
-function fdMuroDibujar() {
-  const cv = $('#fd-muro-canvas'), d = fd.d; if (!cv || !d?.muro) return
-  // El lienzo ocupa el 100 % del ancho (CSS); se dibuja a la resolución real de la pantalla
-  const W = cv.getBoundingClientRect().width || cv.parentElement.clientWidth, cel = W / FD_MURO.cols, H = cel * FD_MURO.rows, dpr = window.devicePixelRatio || 1
-  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr)
-  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H)
+// Dibuja el muro en un lienzo (el de la página o el de pantalla completa)
+function fdPintarMuro(cv, cont) {
+  const d = fd.d; if (!cv || !cont || !d?.muro) return
+  // Se trabaja en píxeles CSS (los marcos se posicionan así) y se dibuja a la resolución real de la pantalla
+  // (la página usa zoom en escritorio: getBoundingClientRect devuelve el tamaño ya escalado).
+  const W = cv.clientWidth || cont.clientWidth, cel = W / FD_MURO.cols, H = cel * FD_MURO.rows
+  const k = (cv.getBoundingClientRect().width || W) / W * (window.devicePixelRatio || 1)
+  cv.width = Math.round(W * k); cv.height = Math.round(H * k)
+  const g = cv.getContext('2d'); g.setTransform(k, 0, 0, k, 0, 0); g.clearRect(0, 0, W, H)
   const gap = cel > 6 ? 1 : 0.5
   g.fillStyle = 'rgba(255,255,255,.055)'
   for (let y = 0; y < FD_MURO.rows; y++) for (let x = 0; x < FD_MURO.cols; x++) if (d.muro.occ[y * FD_MURO.cols + x] === -1) g.fillRect(x * cel + gap / 2, y * cel + gap / 2, cel - gap, cel - gap)
@@ -2089,29 +2095,66 @@ function fdMuroDibujar() {
     if (f) g.drawImage(fdAvatar(f.seed).cv, px, py, lado, lado); else { g.fillStyle = a.color; g.fillRect(px, py, lado, lado) }
     if (f && (f.socio || (f.vos && fdSoySocio())) && lado >= 12) { g.strokeStyle = '#f5b942'; g.lineWidth = Math.max(1.5, lado / 14); g.strokeRect(px + g.lineWidth / 2, py + g.lineWidth / 2, lado - g.lineWidth, lado - g.lineWidth) }
   }
-  // mis lugares, resaltados
-  $$('#fd-muro-lienzo .fd-mio').forEach(e => e.remove())
-  d.muro.bloques.filter(a => a.vos).forEach(a => {
-    const e = document.createElement('div'); e.className = 'fd-mio' + (fd.nuevos.has(a) ? ' nueva' : '')
-    Object.assign(e.style, { left: a.cel.x * cel + 'px', top: a.cel.y * cel + 'px', width: a.cel.w * cel + 'px', height: a.cel.w * cel + 'px' })
-    $('#fd-muro-lienzo').appendChild(e)
-  })
-  // destellos de los aportes recién llegados
-  d.muro.bloques.filter(a => fd.nuevos.has(a) && !a.vos).forEach(a => {
-    const e = document.createElement('div'); e.className = 'fd-mio destello'
-    Object.assign(e.style, { left: a.cel.x * cel + 'px', top: a.cel.y * cel + 'px', width: a.cel.w * cel + 'px', height: a.cel.w * cel + 'px' })
-    $('#fd-muro-lienzo').appendChild(e); setTimeout(() => e.remove(), 1600)
-  })
+  const marco = (a, cls) => { const e = document.createElement('div'); e.className = cls
+    Object.assign(e.style, { left: a.cel.x * cel + 'px', top: a.cel.y * cel + 'px', width: a.cel.w * cel + 'px', height: a.cel.w * cel + 'px' }); cont.appendChild(e); return e }
+  cont.querySelectorAll('.fd-mio').forEach(e => e.remove())
+  d.muro.bloques.filter(a => a.vos).forEach(a => marco(a, 'fd-mio' + (fd.nuevos.has(a) ? ' nueva' : '')))          // tus lugares
+  d.muro.bloques.filter(a => fd.nuevos.has(a) && !a.vos).forEach(a => { const e = marco(a, 'fd-mio destello'); setTimeout(() => e.remove(), 1600) })   // los que acaban de llegar
+}
+function fdMuroDibujar() {
+  const d = fd.d; if (!d?.muro) return
+  fdPintarMuro($('#fd-muro-canvas'), $('#fd-muro-lienzo'))
   const cap = FD_MURO.cols * FD_MURO.rows, n = $('#fd-muro-n')
   if (n) n.innerHTML = `${fmtNum(d.muro.bloques.length)} aportes · <b>${fmtNum(cap - d.muro.ocupados)}</b> lugares libres`
   fdFantasma()
+  if ($('#fd-full')) fdPintarFull()
 }
+
+// ── Muro en pantalla completa: todo el muro grande + los últimos Fundadores, en vivo
+function fdAbrirFull() {
+  const d = fd.d; if (!d?.muro || $('#fd-full')) return
+  const m = document.createElement('div'); m.id = 'fd-full'; m.className = 'fd-full'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Muro de los Fundadores en pantalla completa')
+  m.innerHTML = `<header class="fd-full-cab">
+      <div><small class="fd-kicker">Edición ${FD_ED}</small><h2>El Muro de los Fundadores</h2></div>
+      <div class="fd-full-stats" id="fd-full-stats"></div>
+      <span class="fd-vivo" id="fd-full-vivo"></span>
+      <button class="fd-full-x" data-fd-full="cerrar" aria-label="Salir de pantalla completa">✕</button>
+    </header>
+    <div class="fd-full-cuerpo">
+      <div class="fd-full-lienzo" id="fd-full-lienzo"><canvas id="fd-full-canvas"></canvas><div class="fd-muro-tip" id="fd-full-tip" hidden></div></div>
+      <aside class="fd-full-lado"><b>Últimos fundadores</b><div id="fd-full-ult"></div></aside>
+    </div>
+    <footer class="fd-full-pie">Pasá el cursor por el muro para ver a cada Fundador · Borde dorado = socio · Cada aporte desde $1 queda para siempre</footer>`
+  document.body.appendChild(m); document.body.style.overflow = 'hidden'
+  m.requestFullscreen?.().catch(() => {})
+  requestAnimationFrame(fdPintarFull)
+}
+function fdCerrarFull() {
+  const m = $('#fd-full'); if (!m) return
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+  m.remove(); document.body.style.overflow = ''
+}
+function fdPintarFull() {
+  const d = fd.d, m = $('#fd-full'); if (!m || !d?.muro) return
+  // el lienzo entra entero en la pantalla, respetando la proporción 96:40
+  const cont = $('#fd-full-lienzo'), cv = $('#fd-full-canvas'), caja = cont.parentElement   // medidas en píxeles CSS
+  const ladoW = $('.fd-full-lado').offsetWidth ? $('.fd-full-lado').offsetWidth + 16 : 0
+  const W = Math.min(caja.clientWidth - ladoW, caja.clientHeight * FD_MURO.cols / FD_MURO.rows)
+  cont.style.width = Math.max(240, W) + 'px'
+  fdPintarMuro(cv, cont)
+  const lista = [...d.fund.values()], cap = FD_MURO.cols * FD_MURO.rows
+  $('#fd-full-stats').innerHTML = `<span><b>${fmtNum(lista.length)}</b> fundadores</span><span><b>${fmtNum(lista.filter(f => fdAvatar(f.seed).tier[2] === 'leyenda').length)}</b> legendarios</span><span><b>${fmtNum(d.muro.bloques.length)}</b> aportes</span><span><b>${fmtNum(cap - d.muro.ocupados)}</b> lugares libres</span>`
+  $('#fd-full-vivo').innerHTML = fdTicker()
+  $('#fd-full-ult').innerHTML = lista.sort((a, b) => b.num - a.num).slice(0, 14).map(f => { const av = fdAvatar(f.seed); return `<button class="fd-full-f ${f.vos ? 'vos' : ''}" data-fd-ficha="${f.butaca}">
+      <img src="${fdUrl(av)}" alt=""><span><b>${fdNum(f.num)}</b><small>${f.vos ? 'Vos' : f.anonima ? 'Anónima' : 'Butaca #' + f.butaca}</small></span><i class="fd-tier ${av.tier[2]}">${av.tier[0]}</i></button>` }).join('')
+}
+
 // Fantasma: muestra dónde iría tu lugar (verde si está libre, rojo si no)
 function fdFantasma(ev) {
   const f = $('#fd-fantasma'), cv = $('#fd-muro-canvas'), s = fd.sel; if (!f || !cv) return
-  const r = cv.getBoundingClientRect(), cel = r.width / FD_MURO.cols, w = fdTam(s.monto)
+  const r = cv.getBoundingClientRect(), z = r.width / cv.clientWidth || 1, cel = cv.clientWidth / FD_MURO.cols, w = fdTam(s.monto)
   let pos = s.pos
-  if (ev && s.eligiendo) { pos = { x: Math.min(FD_MURO.cols - w, Math.max(0, Math.floor((ev.clientX - r.left) / cel - w / 2 + .5))), y: Math.min(FD_MURO.rows - w, Math.max(0, Math.floor((ev.clientY - r.top) / cel - w / 2 + .5))) } }
+  if (ev && s.eligiendo) { pos = { x: Math.min(FD_MURO.cols - w, Math.max(0, Math.floor((ev.clientX - r.left) / z / cel - w / 2 + .5))), y: Math.min(FD_MURO.rows - w, Math.max(0, Math.floor((ev.clientY - r.top) / z / cel - w / 2 + .5))) } }
   if (!pos || (!s.eligiendo && !s.pos)) { f.hidden = true; return }
   f.hidden = false; f.className = 'fd-fantasma' + (fdLibre(fd.d, pos.x, pos.y, w) ? '' : ' ocupado')
   Object.assign(f.style, { left: pos.x * cel + 'px', top: pos.y * cel + 'px', width: w * cel + 'px', height: w * cel + 'px', '--c': s.color })
@@ -2120,18 +2163,17 @@ function fdFantasma(ev) {
   f.style.fontSize = Math.floor(w * cel * 0.6) + 'px'
   return pos
 }
-function fdMuroTip(ev) {
-  const tip = $('#fd-muro-tip'), cv = $('#fd-muro-canvas'), d = fd.d; if (!tip || !cv) return
-  if (fd.sel.eligiendo) { tip.hidden = true; return fdFantasma(ev) }
-  const r = cv.getBoundingClientRect(), cel = r.width / FD_MURO.cols
-  const x = Math.floor((ev.clientX - r.left) / cel), y = Math.floor((ev.clientY - r.top) / cel)
+function fdMuroTip(ev, cv = $('#fd-muro-canvas'), tip = $('#fd-muro-tip')) {
+  const d = fd.d; if (!tip || !cv) return
+  if (fd.sel.eligiendo && cv.id === 'fd-muro-canvas') { tip.hidden = true; return fdFantasma(ev) }
+  const r = cv.getBoundingClientRect(), z = r.width / cv.clientWidth || 1, cel = cv.clientWidth / FD_MURO.cols
+  const lx = (ev.clientX - r.left) / z, ly = (ev.clientY - r.top) / z, x = Math.floor(lx / cel), y = Math.floor(ly / cel)
   const i = x >= 0 && y >= 0 && x < FD_MURO.cols && y < FD_MURO.rows ? d.muro.occ[y * FD_MURO.cols + x] : -1
   if (i === -1) { tip.innerHTML = '<b>Lugar libre</b><small>Aportá y puede ser tuyo</small>' }
   else { const a = d.muro.bloques[i], f = d.fund.get(a.butaca), av = f && fdAvatar(f.seed)
     tip.innerHTML = `${f ? `<img src="${fdUrl(av)}" alt="">` : ''}<div><b>${f ? 'Fundador ' + fdNum(f.num) : ''}${f ? ` <span class="fd-tier ${av.tier[2]}">${av.tier[0]}</span>` : ''}</b><small>${a.vos ? 'Vos' : a.anonima ? 'Butaca anónima' : 'Butaca #' + a.butaca} · aportó ${fd$(a.monto)} · ${a.at > Date.now() - 6e4 ? 'recién' : haceCuanto(new Date(a.at).toISOString())}</small></div>` }
   tip.hidden = false
-  const lx = ev.clientX - r.left, ly = ev.clientY - r.top
-  tip.style.left = Math.min(lx + 14, r.width - 250) + 'px'; tip.style.top = Math.max(0, ly - 52) + 'px'
+  tip.style.left = Math.min(lx + 14, cv.clientWidth - 250) + 'px'; tip.style.top = Math.max(0, ly - 52) + 'px'
 }
 
 // ══ Fundadores del Cabildo ══
@@ -2264,7 +2306,7 @@ function fdVerFundador(f, revelar) {
       <p class="fd-rev-nota">Queda para siempre en el Libro de Fundadores. Es tuyo: no se vende ni se transfiere.</p>
       <div class="fd-rev-acc">${revelar ? '<button class="btn btn-accent" data-fd-rev="libro">Verme en el Libro</button>' : ''}<button class="btn btn-ghost" data-fd-rev="cerrar">${revelar ? 'Seguir' : 'Cerrar'}</button></div>
     </div></div>`
-  document.body.appendChild(m)
+  ;($('#fd-full') || document.body).appendChild(m)   // dentro de la pantalla completa si está abierta
   const g = $('#fd-rev-cv').getContext('2d')
   if (!revelar || matchMedia('(prefers-reduced-motion: reduce)').matches) { g.drawImage(av.cv, 0, 0); m.classList.remove('revelando'); return }
   const px = [...Array(576).keys()].sort(() => Math.random() - .5), datos = av.cv.getContext('2d').getImageData(0, 0, 24, 24).data
@@ -2357,7 +2399,7 @@ function fdFranja({ meta, marcas, butacas, aportantes, anchoPx, alta, anim }) {
   let x = 0
   const segs = marcas.map(m => {
     const w = Math.min(100 - x, m.monto / meta * 100), s = `<div class="fd-seg fd-seg-marca ${cabe(w) ? '' : 'chico'} ${m.nueva ? 'entra' : ''}" style="left:${x}%;width:${w}%;--c1:${m.color};--c2:${m.color2}" title="${esc(m.nombre)} · ${fd$(m.monto)}">
-        <span class="fd-logo">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span><span class="fd-seg-txt"><b>${esc(m.nombre)}</b><small>${fdK(m.monto)}</small></span></div>`
+        <span class="fd-logo">${fdLogo(m)}</span><span class="fd-seg-txt"><b>${esc(m.nombre)}</b><small>${fdK(m.monto)}</small></span></div>`
     x += w; return s
   }).join('')
   const wB = Math.min(100 - x, butacas / meta * 100)
@@ -2433,8 +2475,8 @@ function fdActualizar(anim) {
   else $('#fd-embudo').innerHTML = emb
   fdMuroDibujar()
   $('#fd-marcas').innerHTML = `<h3>Marcas que auspician</h3>
-    ${d.marcas.map(m => `<div class="fd-marca"><span class="fd-marca-logo" style="--c1:${m.color};--c2:${m.color2}">${FD_LOGOS[m.id] || FD_LOGOS.orinoco}</span>
-      <div><b>${esc(m.nombre)}</b><small>Marca ${m.nivel.toLowerCase()} · ${fd$(m.monto)}</small>${m.frase ? `<p>“${esc(m.frase)}”</p>` : ''}</div></div>`).join('')}
+    ${d.marcas.map(m => `<div class="fd-marca"><span class="fd-marca-logo" style="--c1:${m.color};--c2:${m.color2}">${fdLogo(m)}</span>
+      <div><b>${esc(m.nombre)}</b><small>Marca ${m.nivel.toLowerCase()} · ${fd$(m.monto)}</small>${m.frase ? `<p>“${esc(m.frase)}”</p>` : ''}${fd.cfg?.simulado ? '<em class="fd-ej">Ejemplo de la simulación</em>' : ''}</div></div>`).join('')}
     <div class="fd-marca vacia"><span class="fd-marca-logo">+</span><div><b>Tu marca acá</b><small>Quedan ${fd$(Math.max(0, meta - t.total))} para completar la meta</small></div></div>`
   $('#fd-tramos').innerHTML = `<h3>Qué desbloquea cada tramo</h3>
     ${FD_TRAMOS.map(([m, ico, n, txt], i) => {
@@ -2677,6 +2719,7 @@ function enlazarFunding() {
     const fi = t.closest('[data-fd-ficha]'); if (fi) { const f = d.fund.get(Number(fi.dataset.fdFicha)); if (f) fdVerFundador(f, false); return }
     const lt = t.closest('[data-fd-lib-tipo]'); if (lt) { fd.lib.tipo = lt.dataset.fdLibTipo; fd.lib.n = 96; $$('[data-fd-lib-tipo]').forEach(b => b.classList.toggle('on', b === lt)); return fdPintarLibro() }
     if (t.closest('[data-fd="mas-libro"]')) { fd.lib.n += 96; return fdPintarLibro() }
+    if (t.closest('[data-fd="full"]')) return fdAbrirFull()
     if (t.closest('[data-fd="muro-aportar"]')) { if (!fd.cfg?.simulado) return aviso('Los pagos se habilitan pronto.'); return fdMiAporte(fd.sel.monto) }
     const ac = t.closest('[data-fd]')?.dataset.fd
     if (ac === 'proponer') { fd.formProy = true; $('#fd-proy-form').innerHTML = fdFormProyecto(); setTimeout(() => $('#fd-pf-tit')?.focus(), 30); return }
@@ -2709,7 +2752,16 @@ function enlazarFunding() {
     if (r?.dataset.fdRev === 'cerrar' || e.target.id === 'fd-rev') return cerrarFicha()
     if (r?.dataset.fdRev === 'libro') { cerrarFicha(); fd.tab = 'fundadores'; fd.lib = { tipo: 'Todos', orden: 'num', q: '', n: 96 }; history.replaceState(null, '', '#funding/fundadores'); pintarFunding(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   })
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarFicha() })
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('#fd-rev')) cerrarFicha(); else fdCerrarFull() } })
+  // Pantalla completa (vive fuera de la vista): cerrar, fichas y globos
+  document.addEventListener('click', e => {
+    if (e.target.closest('[data-fd-full="cerrar"]')) return fdCerrarFull()
+    const fi = e.target.closest('#fd-full [data-fd-ficha]'); if (fi) { const f = fd.d?.fund.get(Number(fi.dataset.fdFicha)); if (f) fdVerFundador(f, false) }
+  })
+  document.addEventListener('mousemove', e => { if (e.target.id === 'fd-full-canvas') fdMuroTip(e, e.target, $('#fd-full-tip')) })
+  document.addEventListener('mouseout', e => { if (e.target.id === 'fd-full-canvas') { const t = $('#fd-full-tip'); if (t) t.hidden = true } })
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && $('#fd-full')) setTimeout(fdPintarFull, 60) })
+  window.addEventListener('resize', () => { if ($('#fd-full')) fdPintarFull() })
   v.addEventListener('mousemove', e => { if (e.target.id === 'fd-muro-canvas') fdMuroTip(e) })
   v.addEventListener('mouseout', e => { if (e.target.id === 'fd-muro-canvas') { const tip = $('#fd-muro-tip'); if (tip) tip.hidden = true; if (fd.sel.eligiendo && !fd.sel.pos) $('#fd-fantasma').hidden = true } })
   let rz = 0; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (vistaActual() === 'funding') fdRepintarTab() }, 200) })
