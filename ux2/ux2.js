@@ -1014,28 +1014,121 @@ async function confirmarVoto() {
   if (!q || !voto) return
   if (!abierta(q)) { aviso('La votación ya cerró.', 'error'); pasoVoto(); return }
   const btn = $('#mv-confirmar'); btn.setAttribute('aria-disabled', 'true'); btn.textContent = 'Sellando…'
-  // Sello: nonce aleatorio + SHA-256(voto:nonce), igual que la versión actual
+  // Sello: sal aleatoria + SHA-256(voto:sal), calculado en este navegador (igual que la versión actual)
   const arr = new Uint8Array(32); crypto.getRandomValues(arr)
   const nonce = [...arr].map(b => b.toString(16).padStart(2, '0')).join('')
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${voto}:${nonce}`))
   const hash = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
-  const { data, error } = await sb.rpc('cast_vote', { p_question_id: q.id, p_vote_hash: hash, p_vote_plain: voto, p_nonce: nonce })
-  const err = error?.message || (data && data.ok === false ? data.error : null)
+  // El voto se envía YA; la ceremonia corre mientras tanto y solo termina bien si el servidor lo confirmó
+  const envio = sb.rpc('cast_vote', { p_question_id: q.id, p_vote_hash: hash, p_vote_plain: voto, p_nonce: nonce })
+    .then(({ data, error }) => error?.message || (data && data.ok === false ? data.error : null), e => e?.message || 'Sin conexión')
+  const err = await ceremoniaVoto({ q, voto, hash, nonce, envio })
   if (err) { aviso(err, 'error'); pasoVoto(); return }
-  // Igual que la versión actual: el comprobante queda solo en este navegador
-  try {
+  try {   // Igual que la versión actual: el comprobante queda solo en este navegador
     const guardados = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
     guardados[q.id] = { voto, nonce, hash, ts: Date.now() }
     localStorage.setItem('cabildoos_votos', JSON.stringify(guardados))
   } catch (e) {}
   vMisVotos.add(q.id)
   $('#mv-cuerpo').innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
-    <h3>¡Voto sellado!</h3><p>Votaste <b>${OPC[voto][0]}</b>. Los resultados se publican al cerrar la votación.</p>
+    <h3>¡Voto sellado y enviado!</h3><p>Votaste <b>${OPC[voto][0]}</b>. Los resultados se publican al cerrar la votación.</p>
     <code title="Comprobante">Comprobante: ${hash}</code>
     <button class="btn btn-dark" id="mv-listo">Listo</button></div>`
   $('#mv-listo').onclick = cerrarVoto
   cargarVotacion()
   if (location.hash === '#votaciones') pintarVotaciones()
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VOTO SELLADO (la imagen de la versión actual + el sobre)
+//  1. Terminal "Generando voto privado": tu voto, sal y SHA-256 reales, que se forman en pantalla.
+//  2. El sello entra a un sobre que se cierra y se lacra.
+//  3. Urna: el sobre cae, ✓ y "Voto emitido" — solo si el servidor confirmó.
+//  Unos 5 segundos. Devuelve null si el voto llegó, o el mensaje de error.
+// ══════════════════════════════════════════════════════════════
+const VS_HEX = '0123456789abcdef'
+const vsEspera = ms => new Promise(r => setTimeout(r, ms))
+const vsHexAzar = n => Array.from({ length: n }, () => VS_HEX[Math.random() * 16 | 0]).join('')
+function vsCascada(el, final, ms) {   // los caracteres "caen" hasta fijar el valor real, de izquierda a derecha
+  return new Promise(res => {
+    const t0 = performance.now()
+    const paso = t => {
+      if (!document.contains(el)) return res()
+      const k = Math.min(1, (t - t0) / ms), fijos = Math.floor(final.length * k)
+      el.textContent = final.slice(0, fijos) + vsHexAzar(final.length - fijos)
+      if (k < 1) requestAnimationFrame(paso); else res()
+    }
+    requestAnimationFrame(paso)
+  })
+}
+const vvSobre = cod => `<svg class="vv-sobre-svg" viewBox="0 0 120 86" aria-hidden="true">
+  <rect x="2" y="12" width="116" height="72" rx="8" class="vv-s-cuerpo"/>
+  <path d="M2 82 L48 46 M118 82 L72 46" class="vv-s-pliegue"/>
+  <path d="M4 14 L60 52 L116 14" class="vv-s-boca"/>
+  <path d="M4 14 L60 52 L116 14 Z" class="vv-s-solapa"/>
+  <circle cx="60" cy="52" r="11" class="vv-s-lacre"/>
+  <text x="60" y="55.5" text-anchor="middle" class="vv-s-cod">${cod}</text></svg>`
+
+function ceremoniaVoto({ q, voto, hash, nonce, envio }) {
+  return new Promise(async resolver => {
+    const rapido = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const T = ms => vsEspera(rapido ? Math.min(ms, 120) : ms)
+    const nombre = { si: 'SÍ', no: 'NO', abs: 'ABSTENCIÓN' }, badge = { si: '✓ Votaste SÍ', no: '✓ Votaste NO', abs: '✓ Te abstuviste' }
+    const el = document.createElement('div')
+    el.className = 'vv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Sellando tu voto')
+    el.innerHTML = `
+      <div class="vv-sha">
+        <div class="vv-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h2>Generando voto privado</h2>
+        <p class="vv-sub">Sello criptográfico SHA-256</p>
+        <div class="vv-term">
+          <div><span>Tu voto</span><b class="vv-voto ${voto}">${nombre[voto]}</b></div>
+          <div><span>Sal</span><code class="vv-nonce">—</code></div>
+          <div><span>SHA-256</span><code class="vv-hash">—</code></div>
+        </div>
+        <div class="vv-barra"><i></i></div>
+        <div class="vv-sobre-zona"><div class="vv-sobre">${vvSobre(hash.slice(0, 4))}</div></div>
+        <div class="vv-hecho"><span><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sellado en un sobre sin tu nombre ni tu butaca</span></div>
+      </div>
+      <div class="vv-urna">
+        <div class="vv-escena">
+          <div class="vv-caida">${vvSobre(hash.slice(0, 4))}</div>
+          <svg class="vv-caja" viewBox="0 0 110 88" aria-hidden="true"><rect x="5" y="28" width="100" height="56" rx="8" fill="#1a1f3c"/><rect x="36" y="24" width="38" height="8" rx="4" fill="#0d1220"/><rect x="38" y="26" width="34" height="4" rx="2" fill="#060c1a"/><rect x="12" y="36" width="86" height="2" rx="1" fill="rgba(255,255,255,.08)"/>
+            <g fill="rgba(255,255,255,.45)">${[0, 1, 2, 3, 4, 5, 6].map(k => { const a = Math.PI - k * Math.PI / 6; return `<circle cx="${(55 + 17 * Math.cos(a)).toFixed(1)}" cy="${(74 - 17 * Math.sin(a)).toFixed(1)}" r="2.4"/>` }).join('')}${[0, 1, 2, 3, 4].map(k => { const a = Math.PI - k * Math.PI / 4; return `<circle cx="${(55 + 9.5 * Math.cos(a)).toFixed(1)}" cy="${(74 - 9.5 * Math.sin(a)).toFixed(1)}" r="2.4" ${k === 2 ? 'fill="#f76a1e"' : ''}/>` }).join('')}</g></svg>
+          <div class="vv-onda"></div>
+        </div>
+        <div class="vv-ok-zona">
+          <div class="vv-check"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="vv-badge ${voto}">${badge[voto]}</div>
+          <h2>Voto emitido</h2>
+          <p class="vv-u-sub">Tu participación quedó registrada en el Cabildo</p>
+          <div class="vv-cita">Tu butaca queda anotada como que participó y tu voto se suma al total, por separado. Nunca se guarda qué votó cada butaca: solo vos sabés qué elegiste.</div>
+          <p class="vv-nota">Comprobante en este dispositivo: <code>${hash.slice(0, 12)}…</code> · Los resultados se publican al cerrar la votación</p>
+          <button class="vv-btn" type="button">Volver</button>
+        </div>
+        <div class="vv-err-zona"><h2>No se pudo enviar tu voto</h2><p class="vv-err-msg"></p><button class="vv-btn vv-volver" type="button">Volver</button></div>
+      </div>`
+    document.body.appendChild(el)
+    const $v = s => el.querySelector(s)
+    const cerrar = r => { el.classList.remove('ver'); setTimeout(() => el.remove(), 350); resolver(r) }
+    requestAnimationFrame(() => el.classList.add('ver'))
+    // 1 · Terminal: sal y SHA-256 reales (≈1,4 s)
+    await T(250)
+    $v('.vv-barra i').style.transitionDuration = (rapido ? 100 : 1300) + 'ms'; $v('.vv-barra i').style.width = '100%'
+    await vsCascada($v('.vv-nonce'), nonce, rapido ? 60 : 550)
+    await vsCascada($v('.vv-hash'), hash, rapido ? 60 : 750)
+    // 2 · Sobre (≈1,2 s)
+    el.classList.add('sobre'); await T(400)
+    el.classList.add('cerrado'); await T(400)
+    el.classList.add('lacrado'); await T(650)
+    // 3 · Urna: espera la confirmación real
+    el.classList.add('urna')
+    const [err] = await Promise.all([envio, T(380)])   // que la urna se vea antes de que caiga el sobre
+    if (err) { el.classList.add('error'); $v('.vv-err-msg').textContent = err; $v('.vv-volver').onclick = () => cerrar(err); $v('.vv-volver').focus(); return }
+    el.classList.add('cae')
+    $v('.vv-ok-zona .vv-btn').onclick = () => cerrar(null)
+    setTimeout(() => $v('.vv-ok-zona .vv-btn')?.focus({ preventScroll: true }), rapido ? 50 : 1500)
+  })
 }
 
 // ── Muro del día ────────────────────────────────────────────────
