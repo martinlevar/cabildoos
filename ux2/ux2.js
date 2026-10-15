@@ -3144,10 +3144,15 @@ function entrarAlCanal(id) {
       dbt.msgs.push(m); agregarMensaje(m)
     })
     .on('broadcast', { event: 'hand' }, ({ payload: p }) => {
-      if (!p) return
-      if (p.type === 'hand_up' && !dbt.cola.find(e => e.seat === p.seat)) {
-        dbt.cola.push({ seat: p.seat, raisedAt: p.raisedAt || Date.now() }); dbt.cola.sort((a, b) => a.raisedAt - b.raisedAt)
-      } else if (p.type === 'hand_down') dbt.cola = dbt.cola.filter(e => e.seat !== p.seat)
+      // Lo que llega por este canal lo puede mandar cualquiera: solo se aceptan números de butaca
+      // válidos y una hora creíble (nadie puede "colarse" adelante con una hora vieja).
+      const seat = Number(p?.seat), ahora = Date.now()
+      if (!Number.isInteger(seat) || seat <= 0 || seat > 1e6 || seat === estado.butaca) return
+      if (p.type === 'hand_up' && !dbt.cola.find(e => e.seat === seat)) {
+        if (dbt.cola.length >= 200) return
+        const t = Number(p.raisedAt)
+        dbt.cola.push({ seat, raisedAt: Number.isFinite(t) && t > ahora - 5000 && t <= ahora + 2000 ? t : ahora }); dbt.cola.sort((a, b) => a.raisedAt - b.raisedAt)
+      } else if (p.type === 'hand_down') dbt.cola = dbt.cola.filter(e => e.seat !== seat)
       evaluarCola(); pintarMano()
     })
     .subscribe()
@@ -3236,7 +3241,7 @@ function pintarMano() {
   else est.textContent = 'Levantá la mano para hablar'
   const cola = $('#db-cola')
   if (cola) cola.innerHTML = dbt.cola.slice(0, 10).map((e, i) =>
-    `<span class="${e.seat === estado.butaca ? 'yo' : i < DB_DIRECTO ? 'habla' : ''}">${i < DB_DIRECTO ? '🎙' : '✋'} #${e.seat}</span>`).join('')
+    `<span class="${e.seat === estado.butaca ? 'yo' : i < DB_DIRECTO ? 'habla' : ''}">${i < DB_DIRECTO ? '🎙' : '✋'} #${esc(e.seat)}</span>`).join('')
 }
 
 function evaluarCola() {
@@ -4400,16 +4405,17 @@ function unirseSala() {
       pintarPresencia()
     })
     .on('broadcast', { event: 'reaction' }, ({ payload: p }) => {
-      if (p && AU_EMOJIS.includes(p.emoji)) flotarReaccion(p.emoji, Number(p.seat) > 0 ? auNombre(Number(p.seat)) : 'Invitado')
+      if (p && AU_EMOJIS.includes(p.emoji)) flotarReaccion(p.emoji, Number.isInteger(Number(p.seat)) && Number(p.seat) > 0 ? auNombre(Number(p.seat)) : 'Invitado')
     })
     .on('broadcast', { event: 'aud_chat' }, ({ payload: p }) => {
       const seat = Number(p?.seat); const text = limpiar(p?.text).slice(0, 280).trim()
       if (!(seat > 0) || !text) return
-      agregarChat({ seat, text, at: Number(p.at) || Date.now() })
+      if (!Number.isInteger(seat) || seat > 1e6) return
+      agregarChat({ seat, text, at: Date.now() })
     })
     .on('broadcast', { event: 'aud_hand' }, ({ payload: p }) => {
-      const seat = Number(p?.seat); if (!(seat > 0)) return
-      if (p.action === 'raise') { if (!au.manos.some(m => m.seat === seat)) au.manos.push({ seat, at: Number(p.at) || Date.now() }) }
+      const seat = Number(p?.seat); if (!Number.isInteger(seat) || seat <= 0 || seat > 1e6) return
+      if (p.action === 'raise') { if (!au.manos.some(m => m.seat === seat) && au.manos.length < 200) au.manos.push({ seat, at: Date.now() }) }
       else au.manos = au.manos.filter(m => m.seat !== seat)
       au.manos.sort((a, b) => a.at - b.at)
       pintarManos()
@@ -4456,7 +4462,7 @@ function pintarAuditorio() {
       <div class="au-tapa"></div>
       <button class="au-sonido" id="au-sonido" title="Activar sonido">${auIconoSonido(true)}<span>Activar sonido</span></button>
     </div>`
-  else if (link) {
+  else if (link && /^https:\/\/[^\s"'<>]+$/.test(link)) {
     const donde = /meet\.google/.test(link) ? 'Google Meet' : /zoom\.us/.test(link) ? 'Zoom' : null
     escenario = `<div class="au-video au-externo"><div>
       <span class="au-ico-grande">📹</span><h3>${donde ? 'Sesión en ' + donde : 'Sesión en vivo'}</h3>
