@@ -2693,3 +2693,25 @@ span.bq-f-mini.redonda { background: var(--accent); color: #fff; font-weight: 90
 .a2-acc .btn { width: 100%; justify-content: center; padding: 14px; font-size: 15px; }
 .a2-instalar { font-size: 16px !important; }
 @media (prefers-reduced-motion: reduce) { .a2, .a2-box { transition: none; } }
+/* Botón flotante "Usar el Cabildo como app" (etapa 2) */
+.a2-flota { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 35; display: flex; align-items: stretch;
+  max-width: 460px; margin: 0 auto; border-radius: 18px; background: #0B1230; color: #fff; box-shadow: 0 10px 30px rgba(4,8,30,.35), 0 0 0 1px rgba(255,255,255,.08) inset;
+  transform: translateY(calc(100% + 30px)); transition: transform .4s cubic-bezier(.2, .9, .3, 1.1); }
+.a2-flota.ver { transform: none; }
+.a2-flota[hidden] { display: none; }
+.a2-flota-ir { flex: 1; display: flex; align-items: center; gap: 12px; padding: 10px 6px 10px 12px; text-align: left; color: inherit; min-width: 0; }
+.a2-flota-ir img { width: 36px; height: 36px; border-radius: 10px; flex: none; }
+.a2-flota-ir span { display: grid; gap: 1px; min-width: 0; }
+.a2-flota-ir b { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a2-flota-ir small { font-size: 12px; opacity: .7; }
+.a2-flota-x { width: 46px; flex: none; color: rgba(255,255,255,.65); font-size: 15px; border-left: 1px solid rgba(255,255,255,.1); border-radius: 0 18px 18px 0; }
+body.a2-con-flota .app { padding-bottom: 76px; }
+/* Botón "App" del encabezado (etapa 3) */
+.a2-hd { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 11px 0 8px; border-radius: 99px; background: #0B1230; color: #fff;
+  font-size: 13px; font-weight: 800; flex: none; }
+.a2-hd[hidden] { display: none; }
+.a2-hd svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+[data-theme="dark"] .a2-hd, [data-theme="dark"] .a2-flota { background: #4f46e5; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .a2-hd, :root:not([data-theme="light"]) .a2-flota { background: #4f46e5; } }
+@media (prefers-reduced-motion: reduce) { .a2-flota { transition: none; } }
+@media (max-width: 374px) { .a2-hd { width: 32px; padding: 0; justify-content: center; } .a2-hd span { display: none; } }

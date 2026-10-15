@@ -6201,7 +6201,9 @@ async function iniciar() {
 //    Si el navegador no lo ofrece (Samsung, Firefox…), muestra los pasos del menú.
 //  · iPhone: pasos con el botón Compartir → "Agregar a inicio" (Safari no permite un botón directo).
 //  · Dentro de Instagram, Facebook, TikTok…: pide abrir en el navegador, porque ahí no se puede agregar.
-//  · "Ya lo agregué" o abrir la app instalada → no vuelve a aparecer. "Ahora no" → 7 días, máximo 3 veces.
+//  · Mientras siga usando la web en el celular, siempre tiene cómo pasar a la app:
+//    ventana (una vez) → botón flotante → si lo cierra, botón "App" en el encabezado.
+//  · Abrir la app instalada (o instalarla desde Android) apaga todo en ese navegador.
 //  Todo se recuerda solo en este navegador.
 // ══════════════════════════════════════════════════════════════
 const A2 = { clave: 'ux2_a2hs_v1', evento: null, plat: null, abierto: false, intentos: 0 }
@@ -6247,7 +6249,7 @@ function a2Cuerpo() {
     ? a2Paso('menu', 'Tocá el menú <i>☰</i>', 'Abajo a la derecha') + a2Paso('mas', 'Elegí <i>Agregar página a</i> → <i>Pantalla de inicio</i>', '') + a2Paso('ok', 'Tocá <i>Agregar</i>', 'Listo: el Cabildo queda en tu pantalla de inicio')
     : a2Paso('puntos', 'Tocá el menú <i>⋮</i>', 'Arriba a la derecha del navegador') + a2Paso('mas', 'Elegí <i>Instalar app</i> o <i>Agregar a pantalla de inicio</i>', '') + a2Paso('ok', 'Confirmá con <i>Instalar</i>', 'Listo: el Cabildo queda en tu pantalla de inicio')
   return `<ol class="a2-pasos">${pasos}</ol>
-    <div class="a2-acc"><button class="btn btn-dark" data-a2="hecho">Ya lo agregué</button><button class="btn btn-ghost" data-a2="luego">Ahora no</button></div>`
+    <div class="a2-acc"><button class="btn btn-dark" data-a2="hecho">Listo, ya lo agregué</button><button class="btn btn-ghost" data-a2="luego">Ahora no</button></div>`
 }
 
 function a2Pintar() {
@@ -6267,7 +6269,7 @@ function a2Pintar() {
 
 function a2Abrir() {
   if (A2.abierto || a2EsApp()) return
-  A2.abierto = true
+  A2.abierto = true; a2Accesos()
   const el = a2Pintar(); el.hidden = false
   requestAnimationFrame(() => el.classList.add('ver'))
   setTimeout(() => { const box = el.querySelector('.a2-box'); box?.setAttribute('tabindex', '-1'); box?.focus({ preventScroll: true }) }, 350)
@@ -6275,20 +6277,37 @@ function a2Abrir() {
 function a2Cerrar(motivo) {
   const el = $('#a2'); if (!el || !A2.abierto) return
   A2.abierto = false; el.classList.remove('ver'); setTimeout(() => { el.hidden = true }, 300)
-  if (motivo === 'hecho') a2Guardar({ hecho: true, at: Date.now() })
-  if (motivo === 'luego') { const s = a2Leer(); a2Guardar({ veces: (s.veces || 0) + 1, hasta: Date.now() + 7 * 864e5 }) }
+  if (motivo === 'hecho') a2Guardar({ marcado: Date.now() })
+  // La primera vez que se cierra la ventana, pasa a la etapa del botón flotante
+  if (!a2Leer().fase) a2Guardar({ fase: 'flotante' })
+  a2Accesos()
 }
 
-// ¿Corresponde mostrarlo ahora? (celular, fuera de la app, no lo hizo, no lo pospuso)
-function a2Corresponde() {
-  if (!A2.plat || a2EsApp()) return false
-  const s = a2Leer()
-  return !s.hecho && !(s.hasta > Date.now()) && (s.veces || 0) < 3
+// Etapas mientras use la web en el celular:
+//   1. ventana grande (automática, una vez)  →  2. botón flotante "Usar como app"
+//   3. si cierra el flotante (✕) → queda un botón "App" chico en el encabezado, siempre disponible.
+// Dentro de la app instalada no aparece nada.
+const a2Visible = () => !!A2.plat && !a2EsApp() && !a2Leer().instalada
+
+function a2Accesos() {
+  const s = a2Leer(), ok = a2Visible()
+  const flota = ok && s.fase === 'flotante' && !A2.abierto
+  let f = $('#a2-flota')
+  if (flota && !f) {
+    f = document.createElement('div'); f.id = 'a2-flota'; f.className = 'a2-flota'
+    f.innerHTML = `<button class="a2-flota-ir" data-a2="abrir"><img src="/ux2/iconos/icono-192.png" alt="" width="28" height="28"><span><b>Usar el Cabildo como app</b><small>Agregalo a tu pantalla de inicio</small></span></button>
+      <button class="a2-flota-x" data-a2="no-flota" aria-label="No me interesa">✕</button>`
+    document.body.appendChild(f)
+    requestAnimationFrame(() => f.classList.add('ver'))
+  }
+  if (f) { f.hidden = !flota; if (flota) requestAnimationFrame(() => f.classList.add('ver')) }
+  document.body.classList.toggle('a2-con-flota', flota)
+  const hd = $('#a2-hd'); if (hd) hd.hidden = !(ok && s.fase === 'header')
 }
-// Espera a que no haya otro diálogo abierto (voto, lección, revelación, Nerdocrasy…)
+
 function a2Programar(ms) {
   setTimeout(() => {
-    if (!a2Corresponde()) return
+    if (!a2Visible() || a2Leer().fase || A2.abierto) return
     const ocupado = document.querySelector('.modal:not([hidden]), .rv:not([hidden]), .nd:not([hidden]), .mon:not([hidden]), #fd-full, #fd-rev, #modal-conf:not([hidden])')
     if (ocupado || document.visibilityState !== 'visible') { if (++A2.intentos < 30) a2Programar(6000); return }
     a2Abrir()
@@ -6297,19 +6316,25 @@ function a2Programar(ms) {
 
 function iniciarA2() {
   A2.plat = a2Plataforma()
-  if (a2EsApp()) { a2Guardar({ hecho: true, at: Date.now(), via: 'app' }); return }   // abrió la app instalada
+  if (a2EsApp()) { a2Guardar({ instalada: true, at: Date.now(), via: 'app' }); return }   // está usando la app instalada
+  // Si un navegador quedó marcado como "instalada" pero vuelve a usarse como web, la marca vence en 30 días
+  const s0 = a2Leer(); if (s0.instalada && s0.via !== 'app' && Date.now() - (s0.at || 0) > 30 * 864e5) a2Guardar({ instalada: false })
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); A2.evento = e; if (A2.abierto) a2Pintar() })
-  window.addEventListener('appinstalled', () => { a2Guardar({ hecho: true, at: Date.now(), via: 'instalada' }); a2Cerrar() })
+  window.addEventListener('appinstalled', () => { a2Guardar({ instalada: true, at: Date.now(), via: 'instalada' }); a2Cerrar(); a2Accesos() })
   if (!A2.plat) return
-  // Android/Chrome: si la app ya está instalada en este teléfono, no molestar
-  navigator.getInstalledRelatedApps?.().then(l => { if (l?.length) a2Guardar({ hecho: true, via: 'detectada' }) }).catch(() => {})
+  navigator.getInstalledRelatedApps?.().then(l => { if (l?.length) { a2Guardar({ instalada: true, at: Date.now(), via: 'detectada' }); a2Accesos() } }).catch(() => {})
+  // compatibilidad con la versión anterior del aviso
+  if (!s0.fase && (s0.hecho || s0.veces)) a2Guardar({ fase: 'flotante' })
   document.addEventListener('click', async e => {
+    if (e.target.closest('#a2-hd')) return a2Abrir()
     const a = e.target.closest('[data-a2]')?.dataset.a2
     if (!a && e.target.id === 'a2') return a2Cerrar('luego')
+    if (a === 'abrir') return a2Abrir()
+    if (a === 'no-flota') { a2Guardar({ fase: 'header' }); const f = $('#a2-flota'); f?.classList.remove('ver'); setTimeout(a2Accesos, 250); aviso('Listo. Si cambiás de idea, tocá "App" arriba.'); return }
     if (a === 'luego' || a === 'hecho') return a2Cerrar(a)
     if (a === 'instalar' && A2.evento) {
       const ev = A2.evento; A2.evento = null
-      try { ev.prompt(); const r = await ev.userChoice; if (r?.outcome === 'accepted') return a2Cerrar('hecho') } catch (err) {}
+      try { ev.prompt(); const r = await ev.userChoice; if (r?.outcome === 'accepted') { a2Guardar({ instalada: true, at: Date.now(), via: 'instalada' }); return a2Cerrar('hecho') } } catch (err) {}
       a2Pintar()   // si lo canceló, quedan los pasos manuales
     }
     if (a === 'copiar') {
@@ -6318,7 +6343,8 @@ function iniciarA2() {
     }
   })
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && A2.abierto) a2Cerrar('luego') })
-  if (a2Corresponde()) a2Programar(4000)
+  a2Accesos()
+  if (a2Visible() && !a2Leer().fase) a2Programar(4000)
 }
 
 iniciar()
