@@ -178,7 +178,7 @@ async function buscar(q) {
   // locales (instantáneo): secciones y lecciones de Aprendé
   const nq = norm(q)
   const secciones = SECCIONES.filter(([id, l]) => LISTAS.has(id) && norm(l).includes(nq)).slice(0, 3).map(([id, l]) => ({ g: 'Ir a', ico: `<svg viewBox="0 0 24 24">${ICONOS[id]}</svg>`, t: marcar(l, q), href: '#' + id }))
-  const lecciones = (typeof LECCIONES !== 'undefined' ? LECCIONES : []).filter(l => norm(l.titulo + ' ' + l.sub + ' ' + l.pasos.map(p => p.t).join(' ')).includes(nq)).slice(0, 2)
+  const lecciones = (typeof LECCIONES !== 'undefined' ? apLecs() : []).filter(l => norm(l.titulo + ' ' + l.sub + ' ' + l.pasos.map(p => p.t).join(' ')).includes(nq)).slice(0, 2)
     .map(l => ({ g: 'Aprendé', ico: l.ico, t: marcar(l.titulo, q), s: 'Lección · ' + esc(l.sub), href: '#aprende/' + l.id }))
   pintarBusqueda(q, [...secciones, ...lecciones], true)
   try {
@@ -1957,6 +1957,9 @@ function fdConfig(cfg) {
   if (!fd.cfg?.activo || antes?.simulado !== fd.cfg?.simulado || antes?.meta !== fd.cfg?.meta) { fd.d = null; salirFunding() }
   const li = $('#nav a[data-sec="funding"]')?.parentElement; if (li) li.hidden = !fd.cfg?.activo
   if (vistaActual() === 'funding') entrarFunding()
+  if (vistaActual() === 'aprende' && $('#modal-leccion')?.hidden) {   // la lección de Funding depende de esta configuración
+    pintarAprende(); const id = location.hash.startsWith('#aprende/') ? location.hash.slice(9) : ''; if (id) abrirLeccion(id)
+  }
 }
 
 function entrarFunding(arg) {
@@ -5159,7 +5162,63 @@ const ESCENAS = {
     ${['👏', '🔥', '❤️', '✊', '💯'].map((e, i) => `<text x="${200 + i * 60}" y="270" font-size="30" text-anchor="middle" class="a-flotar" ${dl(i * .5)}>${e}</text>`).join('')}`),
   play: () => sv(`<g class="a-pop"><rect x="150" y="50" width="340" height="260" rx="24" fill="#0b0e1d"/>${tx(320, 104, 'NIVEL', 13, 'blanco', 800, 'opacity=".6" letter-spacing="3"')}<text x="320" y="158" font-size="52" font-weight="900" fill="#fff" text-anchor="middle" class="a-nivel"></text>
     <rect x="190" y="200" width="120" height="80" rx="16" fill="#fff" opacity=".08"/><rect x="330" y="200" width="120" height="80" rx="16" fill="#fff" opacity=".08"/>${tx(250, 252, '✕', 36, 'blanco', 300)}${tx(390, 252, '○', 36, 'blanco', 300)}</g>`),
+  // ── Bloques: qué ve el anfitrión cuando pedís sumarte ──
+  bpedir: () => sv(`${aPer(105, 196, 1.3, AC.teal, 'class="a-pop"')}${tx(105, 228, 'Vos', 16, 'tinta', 900, 'class="a-fade"')}
+    <g class="a-pop" ${dl(.3)}>${aChip(105, 276, 'Butaca #250', AC.oro)}</g>${aTacha(105, 274, 1.1, dl(1.2))}
+    ${aFlecha(182, 170, 244, 170, `class="a-fade" ${dl(.6)}`)}
+    <g class="a-pop" ${dl(.8)}>${aCaja(425, 172, 340, 214)}${txi(275, 96, 'SOLICITUDES', 13, 'tenue', 900, 'letter-spacing="2"')}
+      <circle cx="292" cy="142" r="18" fill="${AC.violeta}"/>${tx(292, 149, 'A', 17, 'blanco', 900)}${txi(320, 138, 'Ayn Rand', 16, 'tinta', 900)}${txi(320, 158, '“¡Hola! Me sumo”', 12, 'tenue', 600)}
+      <rect x="482" y="124" width="92" height="34" rx="11" fill="${AC.verde}"/>${tx(528, 146, 'Aceptar', 13, 'blanco', 900)}
+      <path d="M275 184H575" class="corte" opacity=".4"/>
+      <circle cx="292" cy="214" r="18" fill="${AC.gris}"/>${tx(292, 221, '?', 17, 'blanco', 900)}${txi(320, 210, 'Ciudadano anónimo', 13, 'tinta', 900)}${txi(320, 230, 'sin presentación', 12, 'tenue', 600)}
+      <rect x="482" y="196" width="92" height="34" rx="11" fill="${AC.verde}"/>${tx(528, 218, 'Aceptar', 13, 'blanco', 900)}</g>
+    <g class="a-pop" ${dl(2)}><rect x="478" y="120" width="100" height="42" rx="13" class="papel" stroke="${AC.verde}" stroke-width="3"/>${tx(528, 147, '✓ Adentro', 14, 'verde', 900)}</g>
+    ${tx(320, 330, 'Ve tu alias o “Ciudadano anónimo”, nunca tu butaca', 16, 'tenue', 800, `class="a-fade" ${dl(2.3)}`)}`),
+  // ── Funding ──
+  ffondo: () => sv(`${tx(320, 48, 'Meta del año: $30.000', 24, 'tinta', 900, 'class="a-fade"')}
+    <clipPath id="ap-clip-fondo"><rect x="40" y="130" width="560" height="48" rx="24"/></clipPath>
+    <rect x="40" y="130" width="560" height="48" rx="24" class="suave"/>
+    <g clip-path="url(#ap-clip-fondo)"><g class="a-crecer" ${dl(.2)}><rect x="40" y="130" width="187" height="48" fill="${AC.violeta}"/>${tx(133, 160, 'Marca', 16, 'blanco', 900)}</g>
+      <g class="a-crecer" ${dl(1)}><rect x="227" y="130" width="150" height="48" fill="${AC.oro}"/>${tx(302, 160, 'Butacas', 16, 'tinta', 900)}</g></g>
+    ${[[227, '$10K', 'Seguridad'], [413, '$20K', 'App'], [598, '$30K', 'Auditoría']].map(([x, m, t], i) => `<g class="a-fade" ${dl(.6 + i * .2)}><path d="M${x} 186v12" class="corte"/>${tx(Math.min(x, 580), 222, m, 15, 'tinta', 900)}${tx(Math.min(x, 580), 242, t, 13, 'tenue', 700)}</g>`).join('')}
+    ${[250, 300, 350].map((x, i) => `<g class="a-caer" ${dl(1.8 + i * .7)}><circle cx="${x}" cy="108" r="15" fill="${AC.oro}" class="borde" stroke-width="2.5"/>${tx(x, 113, '$1', 12, 'tinta', 900)}</g>`).join('')}
+    ${tx(320, 300, 'Aporta cualquiera, desde $1', 18, 'tinta', 800, `class="a-fade" ${dl(1.4)}`)}${tx(320, 328, 'Las marcas también aportan, pero no votan ni deciden', 15, 'tenue', 700, `class="a-fade" ${dl(1.7)}`)}`),
+  ffundador: () => {
+    const c = (x, y, w, s, num, op, d, oro) => { const av = apAvatar(s), img = w - 20
+      return `<g class="a-pop" ${dl(d)} opacity="${op}"><rect x="${x}" y="${y}" width="${w}" height="${w + 62}" rx="16" class="papel borde" stroke-width="3" ${oro ? `stroke="${AC.oro}" stroke-width="5"` : ''}/>
+        ${av.url ? `<image href="${av.url}" x="${x + 10}" y="${y + 10}" width="${img}" height="${img}"/>` : ''}${tx(x + w / 2, y + w + 26, num, w > 120 ? 22 : 17, 'tinta', 900)}${tx(x + w / 2, y + w + 48, av.tier, 13, oro ? 'oro' : 'tenue', 800)}</g>` }
+    return sv(`${c(64, 92, 120, '2026-butaca-418', '#0418', .6, .2)}${c(456, 92, 120, '2026-butaca-611', '#0611', .6, .4)}${c(244, 40, 152, '2026-butaca-250', '#0532', 1, .9, true)}
+      ${[[232, 52], [408, 78], [236, 230]].map(([x, y], i) => `<text x="${x}" y="${y}" font-size="22" text-anchor="middle" class="a-latir" fill="${AC.oro}" style="fill:${AC.oro}">✦</text>`).join('')}
+      ${tx(320, 336, 'Uno por butaca · sorpresa · no se vende', 16, 'tenue', 800, `class="a-fade" ${dl(1.6)}`)}`) },
+  fmuro: () => {
+    const W = 26, H = 9, L = 22, x0 = 34, y0 = 54, ocup = new Set(), out = [], col = ['#cfe0ff', '#d6f5e5', '#ffe3cc', '#eadcff', '#ffd6d6', '#fff1bf']
+    const bloques = [[2, 1, 3, 'a'], [8, 4, 2, 'b'], [13, 0, 2, 'c'], [18, 3, 3, 'd'], [22, 0, 2, 'e'], [5, 6, 2, 'f'], [15, 6, 2, 'g']], mio = [10, 1, 3]
+    ;[...bloques, [...mio, 'vos']].forEach(([cx, cy, s]) => { for (let i = 0; i < s; i++) for (let j = 0; j < s; j++) ocup.add((cx + i) + ',' + (cy + j)) })
+    for (let cy = 0; cy < H; cy++) for (let cx = 0; cx < W; cx++) { if (ocup.has(cx + ',' + cy)) continue
+      const h = Math.abs(Math.sin((cx * 31 + cy * 17) * 12.9898) * 43758.5453) % 1
+      out.push(`<rect x="${x0 + cx * L}" y="${y0 + cy * L}" width="${L - 3}" height="${L - 3}" rx="3" ${h < .48 ? `fill="${col[Math.floor(h * 100) % col.length]}" class="a-fade" ${dl((h * 3).toFixed(2))}` : 'class="suave" opacity=".55"'}/>`) }
+    bloques.forEach(([cx, cy, s, k], i) => { const av = apAvatar('muro-' + k)
+      out.push(`<g class="a-pop" ${dl((.3 + i * .15).toFixed(2))}>${av.url ? `<image href="${av.url}" x="${x0 + cx * L}" y="${y0 + cy * L}" width="${s * L - 3}" height="${s * L - 3}"/>` : ''}</g>`) })
+    const av = apAvatar('2026-butaca-250'), [mx, my, ms] = mio
+    out.push(`<g class="a-pop" ${dl(1.6)}><rect x="${x0 + mx * L - 4}" y="${y0 + my * L - 4}" width="${ms * L + 5}" height="${ms * L + 5}" rx="6" fill="none" stroke="${AC.oro}" stroke-width="4"/>${av.url ? `<image href="${av.url}" x="${x0 + mx * L}" y="${y0 + my * L}" width="${ms * L - 3}" height="${ms * L - 3}"/>` : ''}</g>`)
+    out.push(`<g class="a-pop" ${dl(2)}>${aChip(x0 + mx * L + ms * L / 2, 34, 'Tu lugar', AC.oro)}</g>`)
+    return sv(`${out.join('')}${tx(320, 284, '$1 = un casillero · $25 = un bloque grande', 17, 'tinta', 800, `class="a-fade" ${dl(1)}`)}${tx(320, 314, 'Queda para siempre', 15, 'tenue', 700, `class="a-fade" ${dl(1.3)}`)}`) },
+  fsocio: () => { const av = apAvatar('2026-butaca-250')
+    return sv(`${[['+$5', 110], ['+$5', 210], ['+$2', 300]].map(([t, x], i) => `<g class="a-pop" ${dl(.2 + i * .45)}><circle cx="${x}" cy="84" r="28" fill="${AC.oro}" class="borde" stroke-width="3"/>${tx(x, 90, t, 16, 'tinta', 900)}</g>`).join('')}
+    <clipPath id="ap-clip-socio"><rect x="60" y="150" width="320" height="34" rx="17"/></clipPath><rect x="60" y="150" width="320" height="34" rx="17" class="suave"/>
+    <g clip-path="url(#ap-clip-socio)">${[[60, 133], [193, 133], [326, 54]].map(([x, w], i) => `<rect x="${x}" y="150" width="${w}" height="34" fill="${AC.oro}" class="a-crecer" ${dl(.4 + i * .45)}/>`).join('')}</g>
+    ${tx(220, 222, '$12 en el año', 20, 'tinta', 900, `class="a-fade" ${dl(1.6)}`)}${tx(220, 248, 'sumando todos tus aportes', 14, 'tenue', 700, `class="a-fade" ${dl(1.7)}`)}
+    ${aFlecha(394, 167, 438, 167, `class="a-fade" ${dl(1.8)}`)}
+    <g class="a-pop" ${dl(2)}><rect x="452" y="72" width="140" height="140" rx="16" class="papel" stroke="${AC.oro}" stroke-width="6"/>${av.url ? `<image href="${av.url}" x="464" y="84" width="116" height="116"/>` : ''}</g>
+    <g class="a-pop" ${dl(2.3)}>${aChip(522, 244, '★ Socio', AC.oro)}</g>
+    ${tx(320, 312, 'Por 12 meses proponés y votás proyectos, en secreto', 16, 'tenue', 800, `class="a-fade" ${dl(2.6)}`)}`) },
+  fproy: () => sv(`${[['Propuesta', '💡', 70, AC.oro], ['Debate 48 h', '💬', 195, AC.teal], ['Votan socios', '🗳️', 320, AC.violeta], ['Financiando', '💛', 445, AC.azul], ['Financiado', '✅', 570, AC.verde]].map(([t, e, x, c], i) => `<g class="a-pop" ${dl(i * .4)}><circle cx="${x}" cy="150" r="40" fill="${c}" class="borde" stroke-width="3"/><text x="${x}" y="163" font-size="34" text-anchor="middle">${e}</text>${tx(x, 218, t, 14)}</g>${i < 4 ? aFlecha(x + 46, 150, x + 78, 150, `class="a-fade" ${dl(i * .4 + .25)}`) : ''}`).join('')}
+    <circle cx="70" cy="92" r="9" fill="${AC.rojo}" class="a-viaje"/>
+    ${aFlecha(445, 232, 445, 270, `class="a-fade" ${dl(2)}`)}<g class="a-pop" ${dl(2.2)}>${aChip(400, 300, '↩ Si no llega, se devuelve todo', AC.rojo)}</g>`),
 }
+// Avatar de Fundador para las escenas (si Funding no está cargado, la escena igual se dibuja)
+function apAvatar(seed) { try { const av = fdAvatar(seed); return { url: fdUrl(av), tier: av.tier[0] } } catch (e) { return { url: '', tier: '' } } }
+const txi = (x, y, s, size = 16, cls = 'tinta', w = 800, extra = '') => `<text x="${x}" y="${y}" class="${cls}" font-size="${size}" font-weight="${w}" text-anchor="start" ${extra}>${s}</text>`
 
 // ── Lecciones ──
 const LECCIONES = [
@@ -5198,18 +5257,28 @@ const LECCIONES = [
     { esc: 'puna', t: 'Una a la vez', p: 'Cada butaca puede tener <b>una propuesta en carrera</b>. Cuando termina, podés lanzar otra. Elegí tu mejor idea.' }],
     quiz: { q: 'Tu propuesta llegó a 14 apoyos en 48 horas. ¿Qué pasa?', o: [['Vence: no llegó a la meta', 1], ['Pasa igual a votación', 0], ['Se extiende sola otra semana', 0]], e: 'La meta es 20 apoyos en 48 horas. Si no llega, vence y podés lanzar otra.' } },
   { id: 'bloques', titulo: 'Bloques', sub: 'Organizarse', color: AC.violeta, ico: '🚩', ir: ['#inicio', 'Ver bloques'], pasos: [
-    { esc: 'bque', t: '¿Qué es un bloque?', p: 'Un grupo de ciudadanos que se junta alrededor de ideas comunes, con un <b>anfitrión</b> que lo lidera. El anfitrión es público; los miembros, no.' },
-    { esc: 'bsumar', t: 'Sumarte a uno', p: 'Podés estar en <b>un bloque a la vez</b>. Si te vas a otro, esperás <b>30 días</b>. Igual seguís votando todo lo del Cabildo.' },
-    { esc: 'bcrear', t: 'Crear tu propio bloque', p: 'Para ser anfitrión mostrás tu <b>nombre real</b> y verificás tu identidad otra vez con tu DNI. El DNI queda guardado bajo llave y se borra si el bloque cierra.' },
-    { esc: 'badentro', t: 'Adentro del bloque', p: 'Los miembros proponen ideas y las debaten entre ellos. <b>El anfitrión decide</b> qué impulsa el bloque.' }],
-    quiz: { q: '¿Se sabe quiénes son los miembros de un bloque?', o: [['No, solo el anfitrión es público', 1], ['Sí, hay una lista pública', 0], ['Solo se ven sus alias', 0]], e: 'Los miembros son anónimos. Solo se ve cuántos son.' } },
+    { esc: 'bque', t: '¿Qué es un bloque?', p: 'Un grupo de ciudadanos que se junta alrededor de ideas comunes, con un <b>anfitrión</b> que lo lidera. El anfitrión muestra su nombre real; los miembros siguen siendo <b>anónimos</b> para el público, que solo ve cuántos son.' },
+    { esc: 'bpedir', t: 'Pedir sumarte', p: 'Tocás <b>“Pedir sumarme”</b> y, si querés, escribís una presentación. El anfitrión te ve con tu <b>alias</b> si lo hiciste público, o como <b>“Ciudadano anónimo”</b>, y decide si entrás. <b>Nunca ve tu número de butaca</b> ni qué votás. Si el bloque está abierto a todos, entrás directo. Probalo 👇', sim: 'sumarme' },
+    { esc: 'bsumar', t: 'Un bloque a la vez', p: 'Podés estar en <b>un bloque a la vez</b>. Si te vas a otro, esperás <b>30 días</b>. Si el anfitrión te quita, quedás libre <b>sin esperar</b>. Y siempre seguís votando todo lo del Cabildo.' },
+    { esc: 'badentro', t: 'Adentro, todo en vivo', p: 'Comunicados del anfitrión, debates, una sala para charlar e ideas que los miembros apoyan. <b>Todo se actualiza solo</b>, sin recargar. Si el anfitrión lo habilita, una idea con suficientes apoyos sale como <b>propuesta del bloque</b>; si no, <b>el anfitrión decide</b> qué impulsar.' },
+    { esc: 'bcrear', t: 'Crear tu propio bloque', p: 'Para ser anfitrión mostrás tu <b>nombre real</b> y verificás tu identidad otra vez con tu DNI, que queda bajo llave y se borra si el bloque cierra. Desde <b>Administrar</b> elegís si pedís aprobación, aceptás o quitás miembros, y cambiás tu foto, la portada y la frase del bloque.' }],
+    quiz: { q: 'Pedís sumarte a un bloque. ¿Qué ve el anfitrión?', o: [['Mi alias si es público, o “Ciudadano anónimo”', 1], ['Mi número de butaca', 0], ['Mi nombre real', 0]], e: 'El anfitrión decide quién entra, pero nunca ve tu butaca ni cómo votás.' } },
   { id: 'comunidad', titulo: 'Muro, Ciudadanos, Auditorio y Playroom', sub: 'Lo demás', color: AC.teal, ico: '🎟️', ir: ['#playroom', 'Ir al Playroom'], pasos: [
     { esc: 'muro', t: 'El Muro del día', p: 'Cada butaca puede dejar <b>una opinión por día</b> (hasta 280 caracteres). Los demás la leen, le dan me gusta y responden. A las 3:00 de Venezuela empieza un Muro nuevo.' },
     { esc: 'cseguir', t: 'Seguí a otras butacas', p: 'En <b>Ciudadanos</b> podés seguir a otras butacas. Si aceptan tu solicitud, pueden mandarse mensajes.' },
     { esc: 'aud', t: 'El Auditorio', p: 'Sesiones <b>en vivo</b>: mirás, reaccionás y podés pedir la palabra en el chat de la sala.' },
     { esc: 'play', t: 'El Playroom', p: '<b>Nerdocrasy</b>: 90 niveles de preguntas sobre democracia. Un error y empezás de nuevo. ¿Hasta dónde llegás?' }],
     quiz: { q: '¿Cuándo podés mandarle un mensaje a otra butaca?', o: [['Cuando acepta que la sigas', 1], ['Siempre, a cualquiera', 0], ['Nunca', 0]], e: 'Primero mandás una solicitud de seguimiento; si la acepta, pueden escribirse.' } },
+  { id: 'funding', titulo: 'Funding', sub: 'Sostener el Cabildo', color: AC.oro, ico: '💛', ir: ['#funding', 'Ir a Funding'], si: () => !!fd.cfg?.activo, pasos: [
+    { esc: 'ffondo', t: 'El Cabildo se sostiene entre todos', p: 'En <b>Funding</b> hay una meta anual para mantener el Cabildo: infraestructura y seguridad, una app nativa y una auditoría independiente. Cualquiera puede aportar <b>desde $1</b>. Las <b>marcas</b> también aportan y su logo aparece en la franja, pero <b>no votan ni deciden</b>.' },
+    { esc: 'ffundador', t: 'Tu Fundador, para siempre', p: 'Con tu primer aporte al Fondo recibís tu <b>Fundador</b>: un avatar pixel único, numerado por orden de llegada. Es <b>sorpresa</b> y sale de tu butaca: aportar más <b>no lo hace más raro</b>. No se vende ni se transfiere, y queda en el <b>Libro de Fundadores</b>, sellado cada año en Bitcoin para probar que nadie lo alteró.' },
+    { esc: 'fmuro', t: 'Tu lugar en el Muro', p: 'Cada aporte ocupa un lugar en el <b>Muro de los Fundadores</b>, como un mosaico: $1 es un casillero y $25 un bloque grande. Vos elegís dónde va. Si tu butaca no se muestra, aparece como <b>“Anónima”</b>.' },
+    { esc: 'fsocio', t: 'Socios: los que deciden los proyectos', p: 'Si tus aportes suman <b>$12 en el año</b>, sos <b>socio</b> por 12 meses: proponés proyectos y los votás <b>en secreto</b>. Votar en el Cabildo sigue siendo gratis para todos: <b>1 butaca = 1 voto</b>, aportes o no. Probalo 👇', sim: 'socio' },
+    { esc: 'fproy', t: 'Proyectos: o se logran, o se devuelve', p: 'Un proyecto nace como propuesta de un socio, se debate <b>48 horas</b> y lo votan los socios. Si se aprueba, aportan todos (también las marcas) hasta llegar a la meta. <b>Si no llega, se devuelve todo.</b>' }],
+    quiz: { q: 'Aportaste a un proyecto y no llegó a su meta. ¿Qué pasa con tu aporte?', o: [['Se me devuelve', 1], ['Queda para el Cabildo', 0], ['Pasa a otro proyecto', 0]], e: 'Los proyectos son todo o nada: si no llegan a la meta, se devuelve cada aporte.' } },
 ]
+// Lecciones visibles (Funding solo aparece cuando está activado desde el admin)
+const apLecs = () => LECCIONES.filter(l => !l.si || l.si())
 
 const FAQ = [
   ['¿Alguien puede saber qué voté?', 'No. El Cabildo anota que tu butaca participó y suma tu voto al total, por separado. Qué votó cada butaca no se guarda en ningún lado.'],
@@ -5220,8 +5289,12 @@ const FAQ = [
   ['¿Puedo cambiar mi voto?', 'No. Hay un voto por butaca y por pregunta, y es definitivo.'],
   ['¿Qué pasa si mi propuesta no llega a 20 apoyos?', 'Vence a las 48 horas. Podés lanzar otra cuando quieras.'],
   ['¿Tengo que mostrar mi nombre?', 'No. Tu butaca es anónima. Solo los anfitriones de bloques muestran su nombre real, porque lo eligen.'],
-  ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Si cambiás de bloque, esperás 30 días.'],
+  ['¿El anfitrión de un bloque sabe quién soy?', 'No. Cuando pedís sumarte ve tu alias si lo hiciste público, o “Ciudadano anónimo”, y tu presentación si escribiste una. Nunca ve tu número de butaca ni qué votás.'],
+  ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Si cambiás de bloque, esperás 30 días. Si el anfitrión te quita, quedás libre enseguida.'],
   ['¿Qué guardan de mí?', 'Tu email (para entrar) y tu butaca. No guardamos tu nombre ni tu número de documento, y las fotos de la verificación se borran.'],
+  ['¿Tengo que aportar para votar?', 'No. Votar, proponer y debatir en el Cabildo es gratis para todas las butacas. Ser socio solo sirve para decidir qué proyectos se financian.', () => !!fd.cfg?.activo],
+  ['¿Si aporto más, mi Fundador es más raro?', 'No. Tu Fundador sale de tu butaca, no de cuánto aportás. Hay uno por butaca y por año, y no se vende ni se transfiere.', () => !!fd.cfg?.activo],
+  ['¿Las marcas deciden algo?', 'No. Las marcas aportan y su logo aparece en la franja, pero no votan ni deciden proyectos.', () => !!fd.cfg?.activo],
 ]
 
 // ── Estado y progreso (solo en este navegador) ──
@@ -5231,16 +5304,16 @@ const apGuardar = () => { try { localStorage.setItem('ux2_aprende_v1', JSON.stri
 
 function pintarAprende() {
   const c = $('#ap-cuerpo'); if (!c) return
-  const n = ap.hechas.size, total = LECCIONES.length, sig = LECCIONES.find(l => !ap.hechas.has(l.id))
+  const lecs = apLecs(), n = lecs.filter(l => ap.hechas.has(l.id)).length, total = lecs.length, sig = lecs.find(l => !ap.hechas.has(l.id))
   const pct = n / total, R = 34, C = 2 * Math.PI * R
   c.innerHTML = `
   <section class="ap-hero">
     <div class="ap-hero-txt">
       <span class="ap-tag">Aprendé · para principiantes</span>
       <h1>El Cabildo, explicado <em>sin vueltas</em></h1>
-      <p>${total} lecciones cortas, con dibujos y prácticas. En 15 minutos sabés votar, proponer y organizarte.</p>
+      <p>${total} lecciones cortas, con dibujos y prácticas. En 15 minutos sabés votar, proponer${fd.cfg?.activo ? ', organizarte y sostener el Cabildo' : ' y organizarte'}.</p>
       <div class="ap-hero-acc">
-        <button class="btn btn-dark ap-empezar" data-leccion="${(sig || LECCIONES[0]).id}">${n === 0 ? '▶ Empezar' : sig ? `▶ Seguir: ${esc(sig.titulo)}` : '↻ Repasar'}</button>
+        <button class="btn btn-dark ap-empezar" data-leccion="${(sig || lecs[0]).id}">${n === 0 ? '▶ Empezar' : sig ? `▶ Seguir: ${esc(sig.titulo)}` : '↻ Repasar'}</button>
         <div class="ap-prog" title="${n} de ${total} lecciones">
           <svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="${R}" class="ap-prog-pista"/><circle cx="40" cy="40" r="${R}" class="ap-prog-arco" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}" transform="rotate(-90 40 40)"/></svg>
           <b>${n}/${total}</b>
@@ -5252,7 +5325,7 @@ function pintarAprende() {
   </section>
 
   <ol class="ap-ruta">
-    ${LECCIONES.map((l, i) => `<li class="ap-lec ${ap.hechas.has(l.id) ? 'hecha' : ''} ${sig?.id === l.id ? 'siguiente' : ''}" style="--c:${l.color}">
+    ${lecs.map((l, i) => `<li class="ap-lec ${ap.hechas.has(l.id) ? 'hecha' : ''} ${sig?.id === l.id ? 'siguiente' : ''}" style="--c:${l.color}">
       <button data-leccion="${l.id}">
         <span class="ap-num">${ap.hechas.has(l.id) ? '✓' : i + 1}</span>
         <span class="ap-ico">${l.ico}</span>
@@ -5263,13 +5336,13 @@ function pintarAprende() {
 
   <section class="card ap-faq">
     <h2>Preguntas rápidas</h2>
-    ${FAQ.map(([q, r]) => `<details><summary>${esc(q)}</summary><p>${esc(r)}</p></details>`).join('')}
+    ${FAQ.filter(f => !f[2] || f[2]()).map(([q, r]) => `<details><summary>${esc(q)}</summary><p>${esc(r)}</p></details>`).join('')}
   </section>`
 }
 
 // ── Lección ──
 function abrirLeccion(id) {
-  const l = LECCIONES.find(x => x.id === id); if (!l) return
+  const l = apLecs().find(x => x.id === id); if (!l) return
   ap.lec = l; ap.paso = 0; ap.sim = {}
   $('#modal-leccion').hidden = false; document.body.style.overflow = 'hidden'
   pintarLeccion()
@@ -5288,7 +5361,7 @@ function pintarLeccion() {
   const total = l.pasos.length + 1, enQuiz = ap.paso >= l.pasos.length, p = l.pasos[ap.paso]
   box.style.setProperty('--c', l.color)
   box.innerHTML = `
-    <header class="ap-l-cab"><span class="ap-l-ico">${l.ico}</span><div><small>Lección ${LECCIONES.indexOf(l) + 1} de ${LECCIONES.length}</small><h2 id="ap-l-titulo">${esc(l.titulo)}</h2></div></header>
+    <header class="ap-l-cab"><span class="ap-l-ico">${l.ico}</span><div><small>Lección ${apLecs().indexOf(l) + 1} de ${apLecs().length}</small><h2 id="ap-l-titulo">${esc(l.titulo)}</h2></div></header>
     <div class="ap-pasos" role="progressbar" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${ap.paso + 1}">${Array.from({ length: total }, (_, i) => `<i class="${i < ap.paso ? 'ok' : i === ap.paso ? 'act' : ''}"></i>`).join('')}</div>
     ${enQuiz ? quizHTML(l) : `
     ${p.esc ? `<div class="ap-escena" key="${ap.paso}">${ESCENAS[p.esc]()}</div>` : ''}
@@ -5318,8 +5391,8 @@ function responderQuiz(btn) {
   if (!ok) { btn.classList.add('mal'); btn.disabled = true; res.hidden = false; res.className = 'ap-res mal'; res.innerHTML = '<b>Casi.</b> Probá con otra opción.'; return }
   $$('.ap-op').forEach(b => b.disabled = true); btn.classList.add('bien')
   const nueva = !ap.hechas.has(l.id); ap.hechas.add(l.id); apGuardar()
-  const sig = LECCIONES[LECCIONES.indexOf(l) + 1]
-  const todas = ap.hechas.size === LECCIONES.length
+  const lecs = apLecs(), sig = lecs[lecs.indexOf(l) + 1]
+  const todas = lecs.every(x => ap.hechas.has(x.id))
   res.hidden = false; res.className = 'ap-res bien'
   res.innerHTML = `<div class="ap-confeti" aria-hidden="true">${Array.from({ length: 18 }, (_, i) => `<i style="--x:${(Math.sin(i * 2.4) * 160).toFixed(0)}px;--r:${i * 47}deg;--c:${[AC.oro, AC.azul, AC.verde, AC.rojo, AC.violeta][i % 5]}"></i>`).join('')}</div>
     <b>¡Correcto!</b> ${esc(l.quiz.e)}
@@ -5341,6 +5414,16 @@ function simHTML(tipo) {
   if (tipo === 'propuesta') return `<div class="sim-prop"><div class="sim-prop-arco" id="sim-arco">${arcoButacas(3, 20, 'grande')}</div>
     <div class="sim-prop-datos"><b id="sim-apoyos">3 / 20 apoyos</b><span id="sim-reloj">⏳ 47:59:59</span></div>
     <button class="btn btn-dark" id="sim-apoyar">🔥 Simular apoyos</button><p class="sim-nota" id="sim-prop-nota">Tocá varias veces: cada toque es otra butaca apoyando.</p></div>`
+  if (tipo === 'sumarme') return `<div class="sim-sumar"><div class="sim-sumar-yo">
+      <label class="sim-sw"><input type="checkbox" id="sim-sum-alias" checked><span></span> Mi alias “Ayn Rand” es público</label>
+      <textarea id="sim-sum-msg" rows="2" maxlength="300" placeholder="Presentación (opcional)">¡Hola! Me interesa el bloque.</textarea>
+      <button class="btn btn-dark" id="sim-sum-pedir">Pedir sumarme</button></div>
+    <div class="sim-sumar-host"><small>ASÍ TE VE EL ANFITRIÓN</small><div id="sim-sum-vista"></div></div></div>
+    <p class="sim-nota" id="sim-sum-nota">Cambiá el interruptor o la presentación y mirá qué le llega al anfitrión.</p>`
+  if (tipo === 'socio') return `<div class="sim-socio"><div class="sim-socio-barra"><i id="sim-soc-fill"></i><span>$12</span></div>
+    <div class="sim-socio-datos"><b id="sim-soc-n">$0 de $12 en el año</b><span id="sim-soc-est">Todavía no sos socio</span></div>
+    <div class="sim-socio-btns">${[1, 5, 10].map(m => `<button class="btn btn-dark" data-sim-aporte="${m}">+ $${m}</button>`).join('')}</div>
+    <p class="sim-nota" id="sim-soc-nota">Sumá aportes, aunque sean chicos: cuenta el total del año.</p></div>`
   if (tipo === 'mano') return `<div class="sim-mano"><div class="sim-cola" id="sim-cola"></div><button class="db-mano" id="sim-mano-btn">✋</button><p class="sim-nota" id="sim-mano-nota">Hay 4 personas en la fila. Levantá la mano.</p></div>`
   return ''
 }
@@ -5350,7 +5433,17 @@ function iniciarSim(tipo) {
     ap.sim.cola = [12, 77, 403, 9]; ap.sim.yo = false; pintarCola()
     ap.sim.t = setInterval(() => { if (ap.sim.cola.length && ap.sim.yo) { ap.sim.cola.shift(); pintarCola() } }, 1600)
   }
+  if (tipo === 'sumarme') { ap.sim.pedido = 0; simSumarVista() }
+  if (tipo === 'socio') ap.sim.plata = 0
   if (tipo === 'propuesta') { ap.sim.n = 3; ap.sim.seg = 48 * 3600 - 1; ap.sim.t = setInterval(() => { ap.sim.seg = Math.max(0, ap.sim.seg - 977); const h = Math.floor(ap.sim.seg / 3600), m = Math.floor(ap.sim.seg % 3600 / 60), s = ap.sim.seg % 60; const r = $('#sim-reloj'); if (r) r.textContent = `⏳ ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; if (!ap.sim.seg && ap.sim.n < 20) { clearInterval(ap.sim.t); $('#sim-prop-nota').innerHTML = '⌛ <b>Se acabó el tiempo.</b> La propuesta venció. Volvé a intentarlo con “Atrás” y “Siguiente”.'; $('#sim-apoyar').disabled = true } }, 100) }
+}
+function simSumarVista() {
+  const el = $('#sim-sum-vista'); if (!el) return
+  const alias = $('#sim-sum-alias')?.checked, msg = ($('#sim-sum-msg')?.value || '').trim()
+  const est = ap.sim.pedido === 2 ? '<em class="ok">✓ Aceptado</em>' : ap.sim.pedido === 1 ? '<em>⏳ Revisando…</em>' : '<em class="nada">Todavía no pediste</em>'
+  el.innerHTML = `<div class="sim-sumar-fila ${ap.sim.pedido ? '' : 'tenue'}"><span class="sim-av" style="${alias ? '' : 'background:#9aa0b5'}">${alias ? 'A' : '?'}</span>
+    <div><b>${alias ? 'Ayn Rand' : 'Ciudadano anónimo'}</b><small>${msg ? '“' + esc(msg) + '”' : 'Sin presentación'}</small></div>${est}</div>
+    <p class="sim-sumar-no">🚫 No ve: tu butaca #${estado.butaca || 250} ni tus votos</p>`
 }
 function pintarCola() {
   const el = $('#sim-cola'); if (!el) return
@@ -5397,12 +5490,38 @@ function enlazarAprende() {
       else if (ap.sim.n >= 15) $('#sim-prop-nota').innerHTML = `🔥 ¡Faltan <b>${20 - ap.sim.n}</b>!`
       return
     }
+    if (e.target.closest('#sim-sum-pedir')) {
+      if (ap.sim.pedido) return
+      const btn = $('#sim-sum-pedir'); ap.sim.pedido = 1; btn.textContent = '⏳ Pendiente'; btn.disabled = true
+      $('#sim-sum-alias').disabled = $('#sim-sum-msg').disabled = true; simSumarVista()
+      $('#sim-sum-nota').textContent = 'Tu solicitud le llegó al anfitrión…'
+      ap.sim.t = setTimeout(() => { if (!$('#sim-sum-vista')) return; ap.sim.pedido = 2; simSumarVista(); btn.textContent = '✓ Sos miembro'
+        $('#sim-sum-nota').innerHTML = '🎉 <b>¡Te aceptó!</b> Entraste al bloque, y el anfitrión nunca supo cuál es tu butaca.' }, 1800)
+      return
+    }
+    const ap$ = e.target.closest('[data-sim-aporte]')
+    if (ap$) {
+      const antes = ap.sim.plata; ap.sim.plata += +ap$.dataset.simAporte
+      $('#sim-soc-fill').style.width = Math.min(100, ap.sim.plata / 12 * 100) + '%'
+      $('#sim-soc-n').textContent = `$${ap.sim.plata} de $12 en el año`
+      const nota = $('#sim-soc-nota')
+      if (ap.sim.plata >= 12) {
+        const hasta = new Date(); hasta.setFullYear(hasta.getFullYear() + 1)
+        $('#sim-soc-est').innerHTML = `<b class="sim-socio-ok">★ Socio hasta ${hasta.toLocaleDateString('es', { month: 'short', year: 'numeric' })}</b>`
+        $('.sim-socio').classList.add('socio')
+        nota.innerHTML = antes < 12 ? '🎉 <b>¡Sos socio!</b> Ahora proponés y votás proyectos en secreto. En el Cabildo tu voto vale lo mismo que antes: 1 butaca = 1 voto.'
+          : 'Aportar más ayuda al Cabildo, pero <b>no te da más votos</b> ni un Fundador más raro.'
+      } else { $('#sim-soc-est').textContent = `Te faltan $${12 - ap.sim.plata}`; nota.textContent = 'Sumá aportes, aunque sean chicos: cuenta el total del año.' }
+      return
+    }
     if (e.target.closest('#sim-mano-btn')) {
       if (ap.sim.yo) return
       ap.sim.yo = true; e.target.closest('#sim-mano-btn').classList.add('ready'); pintarCola(); return
     }
   })
+  m.addEventListener('input', e => { if (e.target.matches('#sim-sum-alias, #sim-sum-msg')) simSumarVista() })
   m.addEventListener('change', e => {
+    if (e.target.id === 'sim-sum-alias') simSumarVista()
     if (e.target.id === 'sim-alias-on') {
       const on = e.target.checked
       $('#sim-alias-nombre').textContent = on ? 'Ayn Rand' : 'Ciudadano anónimo'

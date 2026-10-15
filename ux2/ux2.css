@@ -1360,6 +1360,11 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .ap-svg .a-mecha { transform-box: fill-box; transform-origin: left; animation: ap-mecha 6s linear infinite; }
 .ap-svg .a-viaje { animation: ap-viaje 4s ease-in-out infinite; }
 .ap-svg .a-contar { animation: pulse 1.6s infinite; }
+.ap-svg image { image-rendering: pixelated; }
+.ap-svg .a-crecer { transform-box: fill-box; transform-origin: left; animation: ap-crecer 1.1s cubic-bezier(.2, .8, .3, 1) var(--d, 0s) both; }
+.ap-svg .a-caer { transform-box: fill-box; transform-origin: center; animation: ap-caer 2.4s ease-in var(--d, 0s) infinite both; }
+@keyframes ap-crecer { from { transform: scaleX(0); } }
+@keyframes ap-caer { 0% { transform: translateY(-40px); opacity: 0; } 20% { opacity: 1; } 60% { transform: translateY(50px); opacity: 1; } 70%, 100% { transform: translateY(58px); opacity: 0; } }
 @keyframes ap-pop { from { opacity: 0; transform: scale(.4); } }
 @keyframes ap-fade { from { opacity: 0; } }
 @keyframes ap-salir { to { opacity: .35; } }
@@ -1413,6 +1418,35 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .sim-prop-datos b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .sim-prop-datos span { font-variant-numeric: tabular-nums; color: var(--red); font-weight: 700; }
 .sim-prop .btn { justify-self: start; }
+/* Simulador: pedir sumarte a un bloque */
+.sim-sumar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.sim-sumar-yo { display: grid; gap: 10px; }
+.sim-sumar-yo textarea { width: 100%; resize: none; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+.sim-sumar-yo .btn { justify-self: start; }
+.sim-sumar-host { padding: 12px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); display: grid; gap: 10px; }
+.sim-sumar-host > small { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--muted); }
+.sim-sumar-fila { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; transition: opacity .2s; }
+.sim-sumar-fila.tenue { opacity: .55; }
+.sim-sumar-fila .sim-av { grid-row: span 2; }
+.sim-sumar-fila div { display: grid; gap: 2px; min-width: 0; }
+.sim-sumar-fila small { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.sim-sumar-fila em { grid-column: 2; font-style: normal; font-size: 12.5px; font-weight: 800; color: var(--orange, #c98a12); }
+.sim-sumar-fila em.ok { color: var(--green); } .sim-sumar-fila em.nada { color: var(--muted); font-weight: 600; }
+.sim-sumar-no { margin: 0; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 12.5px; color: var(--muted); }
+/* Simulador: llegar a socio */
+.sim-socio { display: grid; gap: 12px; }
+.sim-socio-barra { position: relative; height: 22px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.sim-socio-barra i { position: absolute; inset: 0 auto 0 0; width: 0; background: #f2b33d; border-radius: 99px; transition: width .5s cubic-bezier(.2, .9, .3, 1.1); }
+.sim-socio-barra span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; font-weight: 900; color: var(--ink); }
+.sim-socio-datos { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.sim-socio-datos b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.sim-socio-datos span { color: var(--muted); font-size: 14px; }
+.sim-socio-ok { color: #a06d00; animation: ap-pop-txt .6s; display: inline-block; font-size: 15px; }
+.sim-socio.socio .sim-socio-barra { box-shadow: 0 0 0 3px #f2b33d55; }
+.sim-socio-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.sim-socio .sim-nota { margin: 0; }
+[data-theme="dark"] .sim-socio-ok { color: #f2b33d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sim-socio-ok { color: #f2b33d; } }
 .sim-mano { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; }
 .sim-cola { display: flex; flex-wrap: wrap; gap: 6px; }
 .sim-cola span { font-size: 13px; padding: 5px 10px; border-radius: 99px; background: var(--surface-2); color: var(--ink-2); transition: all .3s; }
@@ -1459,6 +1493,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .sim-dentro { grid-template-columns: 1fr; }
   .sim-corte { justify-self: center; transform: rotate(90deg); }
   .sim-prop { grid-template-columns: 1fr; }
+  .sim-sumar { grid-template-columns: 1fr; }
   .sim-prop-arco { grid-row: auto; max-width: 220px; }
   .ap-quiz h3 { font-size: 20px; }
 }
