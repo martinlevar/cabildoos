@@ -25,12 +25,13 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // ─── Proxy /sb/* → Supabase ───
-    if (url.pathname.startsWith('/sb/')) {
-      const upstream = new URL(env.SUPABASE_URL);
-      upstream.pathname = url.pathname.replace(/^\/sb/, '');
-      upstream.search = url.search;
-      return fetch(upstream.toString(), request);
+    // ─── /sb/* desactivado ───
+    // Era un proxy abierto a Supabase que nadie usa: cualquiera podía pasar por acá cualquier ruta y método,
+    // y Supabase veía la IP de Cloudflare (se perdía el límite de intentos por IP en registro y login).
+    // Si algún día hace falta (por ejemplo, si bloquean supabase.co en Venezuela), rehacerlo con una lista
+    // cerrada de rutas y reenviando la IP real.
+    if (url.pathname === '/sb' || url.pathname.startsWith('/sb/')) {
+      return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }
 
     // ─── Static assets ───

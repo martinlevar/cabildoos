@@ -800,8 +800,8 @@ function tickVotacion() {
 }
 
 // ── Votaciones ──────────────────────────────────────────────────
-// Mismo mecanismo de voto secreto que la versión actual: se sella con un código al azar (nonce) y su hash.
-// El voto se guarda con un token anónimo calculado en el servidor; nunca viaja la identidad.
+// Voto secreto: cast_vote anota que la butaca participó (vote_seats) y suma 1 al contador de la opción (vote_tally),
+// por separado. No se guarda qué votó cada butaca, ni en la base ni en el dispositivo. El sello SHA-256 es solo visual.
 let vPreguntas = [], vResultados = new Map(), vMisVotos = new Set(), vFiltro = 'abiertas'
 const OPC = { si: ['Sí', '✓'], no: ['No', '✕'], abs: ['Abstención', '—'] }
 const abierta = q => q.status === 'activa' && new Date(q.ends_at) > new Date()
@@ -999,7 +999,7 @@ async function pasoVoto() {
       <button class="opcion ${k}${mvEleccion === k ? ' elegida' : ''}" data-op="${k}"><span class="o-ico">${OPC[k][1]}</span>${OPC[k][0]}</button>`).join('')}
     </div>
     <div class="mv-nota"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-      <span>Tu voto es secreto y definitivo: se sella con un código único y no se puede cambiar.</span></div>
+      <span>Tu voto es secreto y definitivo: no se guarda qué elegiste y no se puede cambiar.</span></div>
     <div class="mv-acciones">
       <button class="btn btn-ghost" id="mv-cancelar">Cancelar</button>
       <button class="btn btn-dark" id="mv-confirmar" ${mvEleccion ? '' : 'aria-disabled="true"'}>${mvEleccion ? 'Confirmar: ' + OPC[mvEleccion][0] : 'Elegí una opción'}</button>
@@ -1019,20 +1019,16 @@ async function confirmarVoto() {
   const nonce = [...arr].map(b => b.toString(16).padStart(2, '0')).join('')
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${voto}:${nonce}`))
   const hash = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
-  // El voto se envía YA; la ceremonia corre mientras tanto y solo termina bien si el servidor lo confirmó
-  const envio = sb.rpc('cast_vote', { p_question_id: q.id, p_vote_hash: hash, p_vote_plain: voto, p_nonce: nonce })
+  // El voto se envía YA; la ceremonia corre mientras tanto y solo termina bien si el servidor lo confirmó.
+  // La sal y el hash son solo del sello visual: no se envían ni se guardan en ningún lado.
+  const envio = sb.rpc('cast_vote', { p_question_id: q.id, p_vote_hash: null, p_vote_plain: voto, p_nonce: null })
     .then(({ data, error }) => error?.message || (data && data.ok === false ? data.error : null), e => e?.message || 'Sin conexión')
   const err = await ceremoniaVoto({ q, voto, hash, nonce, envio })
   if (err) { aviso(err, 'error'); pasoVoto(); return }
-  try {   // Igual que la versión actual: el comprobante queda solo en este navegador
-    const guardados = JSON.parse(localStorage.getItem('cabildoos_votos') || '{}')
-    guardados[q.id] = { voto, nonce, hash, ts: Date.now() }
-    localStorage.setItem('cabildoos_votos', JSON.stringify(guardados))
-  } catch (e) {}
+  // Qué votaste no se guarda en este dispositivo: si alguien toma el teléfono, no puede verlo.
   vMisVotos.add(q.id)
   $('#mv-cuerpo').innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
-    <h3>¡Voto sellado y enviado!</h3><p>Votaste <b>${OPC[voto][0]}</b>. Los resultados se publican al cerrar la votación.</p>
-    <code title="Comprobante">Comprobante: ${hash}</code>
+    <h3>¡Voto enviado!</h3><p>Tu participación quedó registrada. Los resultados se publican al cerrar la votación.</p>
     <button class="btn btn-dark" id="mv-listo">Listo</button></div>`
   $('#mv-listo').onclick = cerrarVoto
   cargarVotacion()
@@ -1088,7 +1084,7 @@ function ceremoniaVoto({ q, voto, hash, nonce, envio }) {
         </div>
         <div class="vv-barra"><i></i></div>
         <div class="vv-sobre-zona"><div class="vv-sobre">${vvSobre(hash.slice(0, 4))}</div></div>
-        <div class="vv-hecho"><span><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Sellado en un sobre sin tu nombre ni tu butaca</span></div>
+        <div class="vv-hecho"><span><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Tu voto va al total sin tu nombre ni tu butaca</span></div>
       </div>
       <div class="vv-urna">
         <div class="vv-escena">
@@ -1102,8 +1098,8 @@ function ceremoniaVoto({ q, voto, hash, nonce, envio }) {
           <div class="vv-badge ${voto}">${badge[voto]}</div>
           <h2>Voto emitido</h2>
           <p class="vv-u-sub">Tu participación quedó registrada en el Cabildo</p>
-          <div class="vv-cita">Tu butaca queda anotada como que participó y tu voto se suma al total, por separado. Nunca se guarda qué votó cada butaca: solo vos sabés qué elegiste.</div>
-          <p class="vv-nota">Comprobante en este dispositivo: <code>${hash.slice(0, 12)}…</code> · Los resultados se publican al cerrar la votación</p>
+          <div class="vv-cita">Tu butaca queda anotada como que participó y tu voto se suma al total, por separado. Cabildo no guarda qué votó cada butaca, ni en el servidor ni en este teléfono.</div>
+          <p class="vv-nota">Los resultados se publican al cerrar la votación</p>
           <button class="vv-btn" type="button">Volver</button>
         </div>
         <div class="vv-err-zona"><h2>No se pudo enviar tu voto</h2><p class="vv-err-msg"></p><button class="vv-btn vv-volver" type="button">Volver</button></div>
@@ -2676,7 +2672,7 @@ function fdTabSocios() {
       <article class="card fd-card"><h3>Lo que no cambia</h3>
         <div class="fd-lista"><p><span>⚖️</span><span>En el <b>Hemiciclo</b> cada butaca vale <b>1 voto</b>, aporte o no aporte.</span></p>
         <p><span>🤝</span><span><b>Todos pueden aportar</b> a cualquier proyecto, sean socios o no, y también las marcas.</span></p>
-        <p><span>🔒</span><span>Ser socio <b>no muestra quién sos</b>, y nadie sabe qué votó cada socio.</span></p></div></article>
+        <p><span>🔒</span><span>Ser socio <b>no muestra quién sos</b>, y no se guarda qué votó cada socio.</span></p></div></article>
     </div>`
 }
 
@@ -2696,7 +2692,7 @@ function fdTabComo() {
     ['¿Las marcas pueden decidir algo?', 'No. Las marcas ponen su logo en la franja, pero no proponen ni votan proyectos y no tienen ninguna influencia en las votaciones del Cabildo.'],
     ['¿Qué pasa si un proyecto no junta la plata a tiempo?', 'Se devuelve todo. Cada persona y cada marca recibe de vuelta lo que aportó.'],
     ['¿Puedo aportar sin que se vea mi número de butaca?', 'Sí. Al aportar elegís si mostrar tu número en la franja. Si no, aparecés como “Butaca anónima”.'],
-    ['¿Alguien puede saber qué voté en un proyecto?', 'No. La votación de los socios es secreta, igual que en el Hemiciclo: nadie puede saber qué votó cada socio, ni siquiera el Cabildo.'],
+    ['¿Alguien puede saber qué voté en un proyecto?', 'No. La votación de los socios es secreta, igual que en el Hemiciclo: el Cabildo no guarda qué votó cada socio, solo suma al total.'],
     ['¿Cómo sé en qué se usa la plata?', 'Cada aporte aparece en la franja, cada tramo del Fondo dice qué se paga con él, y cada proyecto financiado publica sus avances en su ficha.'],
   ]
   return `<section class="fd-como-hero">
@@ -2754,7 +2750,7 @@ function fdTabComo() {
         <p><span>⚖️</span><span><b>La plata no compra votos:</b> ni socios ni marcas tienen más peso en el Hemiciclo.</span></p></div></article>
       <article class="card fd-card fd-garantia"><h3>🔒 Tu privacidad</h3>
         <div class="fd-lista"><p><span>🪑</span><span>Tu número de butaca aparece <b>solo si querés</b>. Si no, sos “Butaca anónima”.</span></p>
-        <p><span>🗳️</span><span>En la votación de socios <b>nadie sabe qué votaste</b>, ni siquiera el Cabildo.</span></p>
+        <p><span>🗳️</span><span>En la votación de socios <b>no se guarda qué votaste</b>: solo suma al total.</span></p>
         <p><span>★</span><span>Ser socio <b>no muestra quién sos</b>.</span></p></div></article>
     </div>
 
@@ -5206,7 +5202,7 @@ const ESCENAS = {
     <g class="a-candado"><rect x="286" y="160" width="68" height="56" rx="10" fill="${AC.oro}" class="borde" stroke-width="3"/><path d="M298 160v-16a22 22 0 0 1 44 0v16" fill="none" class="borde" stroke-width="7"/></g>
     ${tx(320, 330, 'Mientras está abierta, solo se ve cuántos votaron', 16, 'tenue', 700, `class="a-fade" ${dl(.8)}`)}`),
   snadie: () => sv(`${[['🕵️', 120], ['👩‍💼', 250], ['🏛️', 390], ['🤖', 520]].map(([e, x], i) => `<g class="a-pop" ${dl(i * .2)}><circle cx="${x}" cy="150" r="46" class="papel borde" stroke-width="3"/><text x="${x}" y="166" font-size="44" text-anchor="middle">${e}</text></g>${aTacha(x + 34, 116, 1, dl(.9 + i * .2))}`).join('')}
-    ${tx(320, 260, 'Nadie puede ver qué votaste', 24, 'tinta', 900, `class="a-fade" ${dl(1.8)}`)}${tx(320, 292, 'ni otro ciudadano, ni un admin, ni el propio Cabildo', 16, 'tenue', 700, `class="a-fade" ${dl(2)}`)}`),
+    ${tx(320, 260, 'Qué votaste no se guarda', 24, 'tinta', 900, `class="a-fade" ${dl(1.8)}`)}${tx(320, 292, 'ni en el servidor ni en tu teléfono: solo suma al total', 16, 'tenue', 700, `class="a-fade" ${dl(2)}`)}`),
   duno: () => sv(`<g class="a-pop"><rect x="60" y="110" width="200" height="140" rx="18" class="papel borde" stroke-width="3"/>${tx(160, 150, 'VOTACIÓN', 13, 'azul', 900, 'letter-spacing="2"')}<rect x="84" y="166" width="152" height="12" rx="6" class="suave"/><rect x="84" y="188" width="110" height="12" rx="6" class="suave"/>${tx(160, 232, '🗳️', 26)}</g>
     ${aFlecha(272, 180, 330, 180, `class="a-fade" ${dl(.4)}`)}
     ${aBurbuja(350, 70, 210, 'Yo creo que sí, porque…', false, `class="a-pop" ${dl(.7)}`)}${aBurbuja(400, 126, 200, 'Pero pensá en…', true, `class="a-pop" ${dl(1.1)}`)}${aBurbuja(350, 182, 230, 'Buen punto, aunque…', false, `class="a-pop" ${dl(1.5)}`)}${aBurbuja(420, 238, 170, '¡Coincido!', true, `class="a-pop" ${dl(1.9)}`)}
@@ -5343,10 +5339,10 @@ const LECCIONES = [
   { id: 'secreto', titulo: 'Tu voto es secreto', sub: 'De verdad', color: AC.violeta, ico: '🔒', ir: ['#votaciones', 'Ver resultados'], pasos: [
     { esc: 'surna', t: 'La urna no sabe quién sos', p: 'Cuando votás pasan dos cosas por separado: se anota que tu butaca <b>participó</b>, y se suma 1 al <b>contador</b> de tu opción. Nunca se guarda qué votó cada butaca.' },
     { esc: 'scandado', t: 'Los resultados, al cerrar', p: 'Mientras la votación está abierta solo se ve <b>cuántos</b> votaron, no qué ganó. Así nadie se deja llevar por la mayoría.' },
-    { esc: 'snadie', t: 'Nadie puede saber qué votaste', p: 'Ni otro ciudadano, ni un administrador, ni el propio Cabildo. Simplemente <b>ese dato no existe</b>.' },
+    { esc: 'snadie', t: 'Qué votaste no se guarda', p: 'Ni en el servidor ni en tu teléfono. Ningún ciudadano ni administrador puede consultarlo, porque <b>ese dato no se guarda en ningún lado</b>.' },
     { esc: 'revela', t: 'La revelación', p: 'Cuando la votación cierra, el hemiciclo <b>enciende las butacas que votaron</b>, todas del <b>mismo color</b>: se ve que esa butaca participó, pero nunca qué votó. El resultado aparece solo en los <b>totales</b> de abajo.' },
     { esc: 'cerradas', t: 'Todas quedan guardadas', p: 'En <b>Votaciones → Cerradas</b> se acumulan todas las votaciones. Las que todavía no viste tienen el botón naranja <b>✦ Revelación</b>; las que ya viste muestran su resultado.' }],
-    quiz: { q: 'En la revelación tu butaca se enciende. ¿Qué significa?', o: [['Que voté, pero no qué voté', 1], ['Que voté Sí', 0], ['Que gané la votación', 0]], e: 'Todas las butacas que votaron se encienden del mismo color. Qué votó cada una no se sabe: ese dato no existe.' } },
+    quiz: { q: 'En la revelación tu butaca se enciende. ¿Qué significa?', o: [['Que voté, pero no qué voté', 1], ['Que voté Sí', 0], ['Que gané la votación', 0]], e: 'Todas las butacas que votaron se encienden del mismo color. Qué votó cada una no se guarda en ningún lado.' } },
   { id: 'debates', titulo: 'Debates', sub: 'Argumentos, no gritos', color: AC.teal, ico: '💬', ir: ['#debates', 'Ir a Debates'], pasos: [
     { esc: 'duno', t: 'Un debate por cada votación', p: 'Mientras una votación está abierta, su debate también. Leé qué piensan los demás antes de votar.' },
     { esc: 'dmano', t: 'Levantá la mano ✋', p: 'Para hablar, levantás la mano. Hasta <b>3 personas</b> hablan a la vez; el resto espera su turno en la fila.', sim: 'mano' },
@@ -6266,6 +6262,7 @@ function enlazarRevelacion() {
 }
 
 async function iniciar() {
+  try { localStorage.removeItem('cabildoos_votos') } catch (e) {}   // borra votos que versiones anteriores guardaban en el teléfono
   pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFunding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta(); iniciarA2()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
