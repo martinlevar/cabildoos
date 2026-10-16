@@ -5005,15 +5005,11 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 .intro-ui {
   position: absolute; inset: 0;
   pointer-events: none;
-  /* Capa propia por encima del canvas animado: en algunos Android (Chrome) el canvas se pintaba
-     ENCIMA del texto y del botón "Crear usuario"; solo se veían los elementos con backdrop-filter. */
-  z-index: 2;
-  transform: translateZ(0);
+  z-index: 2;   /* texto y botones siempre por encima del canvas animado */
 }
 #intro { isolation: isolate; }
 #intro-canvas { z-index: 0; }
 .intro-glow { z-index: 1; }
-.intro-hero, .intro-flag-pill, .intro-title, .intro-subtitle, .intro-btn-primary { will-change: transform, opacity; }
 /* Pill de Venezuela — siempre visible arriba derecha */
 .intro-flag-pill {
   position: absolute; top: 22px; right: 28px;
