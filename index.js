@@ -9599,6 +9599,10 @@ function showToast(msg, duration = 2800) {
 //  INTRO SCREEN — hemiciclo animado sobre fondo azul
 // ══════════════════════════════════════════════════════════════
 let _introRaf = null
+// Cuando la revelación termina, el canvas pasa a "quieto": redibuja ~10 veces por segundo (solo late
+// "mi butaca") y se pausa mientras está abierto el login/registro. En algunos Android con poca memoria
+// gráfica, redibujar a 60 fps con brillos dejaba el texto y los botones de la página sin dibujar.
+let _introQuieto = false, _introUltimo = 0
 let _introRevealTimer = null
 let _introSeats = []
 let _introFrame = 0
@@ -9662,6 +9666,7 @@ function _introRevealComplete() {
   // Revelación completa — mostrar hero y dejar los dots vivos (sin re-ciclar)
   const hero = document.getElementById('intro-hero')
   if (hero) hero.classList.add('visible')
+  setTimeout(() => { _introQuieto = true }, 1500)
 }
 
 function _introAssignAndReveal() {
@@ -9713,7 +9718,13 @@ const _IVOTE_GLOW = {
 
 function _introDrawFrame() {
   if (!_introCtx || !_introCv) return
-  _introFrame++
+  if (_introQuieto) {
+    const ahora = performance.now()
+    const tapado = document.getElementById('auth-overlay')?.classList.contains('open')
+    if (tapado || ahora - _introUltimo < 100) { _introRaf = requestAnimationFrame(_introDrawFrame); return }
+    _introUltimo = ahora
+    _introFrame += 6   // mantiene la velocidad del latido aunque se dibuje menos seguido
+  } else _introFrame++
   const W = _introCv.width, H = _introCv.height
   const ctx = _introCtx
 
@@ -9771,6 +9782,7 @@ function _startIntroAnim(canvasId = 'intro-canvas', triggerReveal = false) {
     if (s.vote !== 'me') { s.vote = 'neutral'; s.revealed = false; s.glow = 0 }
   })
   _introFrame = 0
+  _introQuieto = false
   _introRaf = requestAnimationFrame(_introDrawFrame)
   if (triggerReveal) setTimeout(_introAssignAndReveal, 800)
 }
