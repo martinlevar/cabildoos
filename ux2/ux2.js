@@ -3570,6 +3570,7 @@ function tarjetaPropuesta(p) {
       <span class="pr-cat">${esc(p.cat || 'General')}</span>
       <span class="pr-autor ${p.bloque_id ? 'pr-bloque' : ''}">${p.bloque_id ? '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg>' : ''}${esc(autorDe(p))}</span>
       ${vive && p.apoyos_hora > 0 ? `<span class="pr-fuego" title="Apoyos en la última hora">+${p.apoyos_hora} en la última hora</span>` : ''}
+      <button class="pr-coment" data-abrir="${p.id}" aria-label="Ver comentarios (${p.comentarios || 0})"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>${p.comentarios || 0}</button>
     </header>
     <button class="pr-texto" data-abrir="${p.id}">${esc(p.text)}</button>
     <div class="pr-medio">
@@ -3580,8 +3581,7 @@ function tarjetaPropuesta(p) {
       <div class="pr-plazo"><span>Se apaga en</span><b data-fin="${esc(p.expires_at)}">${fmtResta(restaMs(p))}</b></div>` : estado_}
     <footer class="pr-pie">
       ${vive ? botonApoyo(p) : ''}
-      <button class="pr-mini" data-abrir="${p.id}" aria-label="Ver comentarios"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>${p.comentarios || 0}</button>
-      <button class="pr-mini" data-compartir="${p.id}" aria-haspopup="menu"><svg viewBox="0 0 24 24"><path d="M8 12h8M14 6l6 6-6 6"/></svg>Compartir</button>
+      <button class="pr-x" data-compartir="${p.id}" aria-label="Compartir en X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L1.8 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><span>Compartir</span></button>
     </footer>
   </article>`
 }
@@ -3618,49 +3618,15 @@ function momentoMeta(p) {
   pintarPropuestas()
 }
 
-// Compartir: menú chico con "Publicar en X" (abre el compositor de X en la cuenta de la persona,
-// sin API ni permisos), "Copiar enlace" y, si el dispositivo lo tiene, el menú nativo de compartir.
-function compartirDatos(id) {
+// Compartir en X: abre el compositor de X con el post ya escrito, en la cuenta de la persona
+// (sin API ni permisos). La persona lo revisa y lo publica ella.
+function compartir(id) {
   const p = pr.d?.propuestas?.find(x => x.id === id)
   const url = `${location.origin}/ux2/#propuestas/${id}`
   const frase = p ? (p.text.length > 190 ? p.text.slice(0, 187).trimEnd() + '…' : p.text) : ''
   const texto = p ? `Apoyá esta propuesta en el Cabildo de Venezuela: “${frase}”` : 'Propuesta en el Cabildo de Venezuela'
-  return { url, texto }
-}
-function cerrarMenuCompartir() { document.querySelector('.cmp-menu')?.remove(); document.removeEventListener('pointerdown', cmpFuera, true); document.removeEventListener('keydown', cmpEsc) }
-function cmpFuera(e) { if (!e.target.closest('.cmp-menu, [data-compartir]')) cerrarMenuCompartir() }
-function cmpEsc(e) { if (e.key === 'Escape') cerrarMenuCompartir() }
-function compartir(id, btn) {
-  const abierto = document.querySelector('.cmp-menu')
-  if (abierto) { const mismo = abierto.dataset.para === id; cerrarMenuCompartir(); if (mismo) return }
-  const { url, texto } = compartirDatos(id)
-  const m = document.createElement('div')
-  m.className = 'cmp-menu'; m.dataset.para = id; m.setAttribute('role', 'menu')
-  m.innerHTML = `
-    <button role="menuitem" data-cmp="x"><svg viewBox="0 0 24 24" class="cmp-x"><path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L1.8 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg>Publicar en X</button>
-    <button role="menuitem" data-cmp="copiar"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>Copiar enlace</button>
-    ${navigator.share ? '<button role="menuitem" data-cmp="mas"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Más opciones</button>' : ''}`
-  document.body.appendChild(m)
-  const r = btn?.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight
-  if (r) {
-    const izq = Math.max(8, Math.min(r.right - w, innerWidth - w - 8))
-    const arriba = r.bottom + 6 + h > innerHeight - 8 ? r.top - h - 6 : r.bottom + 6
-    m.style.left = izq + 'px'; m.style.top = Math.max(8, arriba) + 'px'
-  }
-  m.addEventListener('click', async e => {
-    const b = e.target.closest('[data-cmp]'); if (!b) return
-    cerrarMenuCompartir()
-    if (b.dataset.cmp === 'x') {
-      const q = new URLSearchParams({ text: texto, url, via: 'cabildoven' })
-      window.open('https://x.com/intent/post?' + q, '_blank', 'noopener,noreferrer')
-    } else if (b.dataset.cmp === 'copiar') {
-      try { await navigator.clipboard.writeText(`${texto} ${url}`); aviso('Enlace copiado. Pegalo donde quieras.') } catch (e) { aviso('No se pudo copiar el enlace.', 'error') }
-    } else {
-      try { await navigator.share({ title: 'Cabildo de Venezuela', text: texto, url }) } catch (e) {}
-    }
-  })
-  document.addEventListener('pointerdown', cmpFuera, true); document.addEventListener('keydown', cmpEsc)
-  m.querySelector('button')?.focus({ preventScroll: true })
+  const q = new URLSearchParams({ text: texto, url, via: 'cabildoven' })
+  window.open('https://x.com/intent/post?' + q, '_blank', 'noopener,noreferrer')
 }
 
 // ── Detalle con comentarios ──
@@ -3681,7 +3647,7 @@ async function abrirPropuesta(id) {
       <div class="pr-cuenta"><b data-n>${p.likes}</b><small>de ${meta} butacas</small><span data-faltan>${faltanTxt(p)}</span></div>
       ${vive ? `<div class="mecha" style="--resto:${Math.max(0, restaMs(p) / ((pr.d.horas || 48) * 3600e3)).toFixed(4)};--cal:${calor(p).toFixed(2)}"><i></i></div>
         <div class="pr-plazo"><span>Se apaga en</span><b data-fin="${esc(p.expires_at)}">${fmtResta(restaMs(p))}</b></div>` : ''}
-      <div class="pr-pie">${vive ? botonApoyo(p) : ''}<button class="pr-mini" data-compartir="${p.id}"><svg viewBox="0 0 24 24"><path d="M8 12h8M14 6l6 6-6 6"/></svg>Compartir</button></div>
+      <div class="pr-pie">${vive ? botonApoyo(p) : ''}<button class="pr-x" data-compartir="${p.id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L1.8 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><span>Compartir en X</span></button></div>
     </div>
     <h3 class="mp-sub">Conversación</h3>
     <div class="mp-coments" id="mp-coments"><p class="muted">Cargando…</p></div>
@@ -3781,7 +3747,7 @@ function enlazarPropuestas() {
     const t = e.target.closest('[data-apoyar],[data-abrir],[data-compartir],[data-prfiltro],[data-prorden]')
     if (!t) return
     if (t.dataset.apoyar) return apoyar(t.dataset.apoyar, t)
-    if (t.dataset.compartir !== undefined && t.dataset.compartir) return compartir(t.dataset.compartir, t)
+    if (t.dataset.compartir !== undefined && t.dataset.compartir) return compartir(t.dataset.compartir)
     if (t.dataset.abrir) return abrirPropuesta(t.dataset.abrir)
     if (t.dataset.prfiltro) { pr.filtro = t.dataset.prfiltro; return pintarPropuestas() }
     if (t.dataset.prorden) { pr.orden = t.dataset.prorden; return pintarPropuestas() }
