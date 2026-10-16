@@ -11803,15 +11803,88 @@ function _showMaintenance(val) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  CUENTA REGRESIVA v2 — system_config.countdown = { active, objetivo, inicio }
+//  Pantalla completa con la estética de la v2. ?ver-countdown la fuerza para probar.
+// ══════════════════════════════════════════════════════════════
+let _cdVal = null, _cdTimer = null, _cdSeats = null, _cdEncendidos = -1, _cdDia = 'lunes'
+
+function _cdAsientos() {
+  if (_cdSeats) return _cdSeats
+  const svg = document.getElementById('cd-hemi-svg'); if (!svg) return []
+  const out = []
+  ;[118, 146, 174, 202, 230, 258].forEach((r, fila) => {
+    const n = Math.round(Math.PI * r / 23)
+    for (let k = 0; k < n; k++) {
+      const a = Math.PI - (Math.PI * (k + 0.5)) / n
+      out.push({ x: (300 + r * Math.cos(a)).toFixed(1), y: (282 - r * Math.sin(a)).toFixed(1), a, fila })
+    }
+  })
+  out.sort((p, q) => q.a - p.a || p.fila - q.fila)
+  const NS = 'http://www.w3.org/2000/svg'
+  _cdSeats = out.map(p => { const c = document.createElementNS(NS, 'circle'); c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', '8.2'); svg.appendChild(c); return c })
+  return _cdSeats
+}
+
+function _cdTick() {
+  const v = _cdVal || {}
+  const fin = Date.parse(v.objetivo), ini = Date.parse(v.inicio)
+  if (isNaN(fin)) return
+  const ahora = Date.now(), resta = Math.max(0, fin - ahora)
+  const s = Math.floor(resta / 1000)
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), sg = s % 60
+  const dos = n => String(n).padStart(2, '0')
+  const pon = (id, t) => { const el = document.getElementById(id); if (el && el.textContent !== t) el.textContent = t }
+  pon('cd-d', dos(d)); pon('cd-h', dos(h)); pon('cd-m', dos(m)); pon('cd-s', dos(sg))
+  pon('cd-dl', d === 1 ? 'día' : 'días'); pon('cd-hl', h === 1 ? 'hora' : 'horas')
+  const reloj = document.getElementById('cd-reloj'); if (reloj) reloj.setAttribute('aria-label', `Faltan ${d} días, ${h} horas y ${m} minutos`)
+  const prog = !isNaN(ini) && fin > ini ? Math.min(1, Math.max(0, (ahora - ini) / (fin - ini))) : (resta ? 0 : 1)
+  pon('cd-pct', Math.floor(prog * 100) + '%')
+  const seats = _cdAsientos(), enc = Math.round(prog * seats.length)
+  if (enc !== _cdEncendidos) {
+    _cdEncendidos = enc
+    seats.forEach((c, i) => { c.classList.toggle('on', i < enc); c.classList.toggle('yo', i === enc - 1 && prog < 1) })
+  }
+  const listo = resta <= 0
+  pon('cd-titulo', listo ? 'El nuevo Cabildo ya abrió' : 'El nuevo Cabildo abre el ' + _cdDia)
+  const cuenta = document.getElementById('cd-cuenta'), boton = document.getElementById('cd-listo')
+  if (cuenta) cuenta.hidden = listo
+  if (boton) boton.hidden = !listo
+}
+
+function _showCountdown(val) {
+  const ov = document.getElementById('cd-overlay'); if (!ov) return
+  _cdVal = val || null
+  const forzar = /[?&]ver-countdown\b/.test(location.search)
+  // En dev y en v2 no se aplica (como el mantenimiento), salvo con ?ver-countdown
+  const hostLibre = location.hostname === 'dev.cabildodevenezuela.com' || location.hostname === 'v2.cabildodevenezuela.com'
+  const activo = !!(val && (val.active || forzar) && !isNaN(Date.parse(val.objetivo)) && (!hostLibre || forzar))
+  if (!activo) {
+    ov.hidden = true; document.documentElement.classList.remove('cd-activo')
+    if (_cdTimer) { clearInterval(_cdTimer); _cdTimer = null }
+    return
+  }
+  const f = new Date(Date.parse(val.objetivo))
+  const fechaTxt = f.toLocaleDateString('es-VE', { timeZone: 'America/Caracas', weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, x => x.toUpperCase()) +
+    ' · ' + f.toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false }) + ' hora de Caracas'
+  const fe = document.getElementById('cd-fecha'); if (fe) fe.textContent = fechaTxt
+  _cdDia = f.toLocaleDateString('es-VE', { timeZone: 'America/Caracas', weekday: 'long' })
+  _cdEncendidos = -1
+  ov.hidden = false; document.documentElement.classList.add('cd-activo')
+  _cdTick()
+  if (!_cdTimer) _cdTimer = setInterval(() => { if (!document.hidden) _cdTick() }, 1000)
+}
+
 async function _checkSystemConfig() {
   try {
     const { data, error } = await sb
       .from('system_config')
       .select('key, value')
-      .in('key', ['maintenance_mode', 'announcement', 'playroom_active'])
+      .in('key', ['maintenance_mode', 'announcement', 'playroom_active', 'countdown'])
     if (error || !data) return
     for (const row of data) {
       if (row.key === 'maintenance_mode') _showMaintenance(row.value)
+      if (row.key === 'countdown')        _showCountdown(row.value)
       if (row.key === 'announcement')     _showAnnouncement(row.value)
       if (row.key === 'playroom_active')  _updatePlayroomBtn(row.value)
     }
@@ -11825,6 +11898,7 @@ function _initSystemConfigRealtime() {
     }, ({ new: row }) => {
       if (!row) return
       if (row.key === 'maintenance_mode') _showMaintenance(row.value)
+      if (row.key === 'countdown')        _showCountdown(row.value)
       if (row.key === 'announcement')     _showAnnouncement(row.value)
       if (row.key === 'playroom_active')  _updatePlayroomBtn(row.value)
     })
