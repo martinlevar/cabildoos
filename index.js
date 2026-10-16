@@ -1096,7 +1096,24 @@ const following = followingConfirmed
 let hoveredSeat = null
 let t0 = Date.now()
 
+// El hemiciclo principal se dibujaba 60 veces por segundo para siempre, aunque estuviera oculto
+// (pantalla de inicio, login, otra sección). En Android con poca memoria gráfica eso dejaba la página
+// sin dibujar. Ahora: oculto → no dibuja; quieto → ~15 por segundo (alcanza para el latido de tu
+// butaca); moviendo la cámara o pasando el mouse → a velocidad normal.
+let _drawUltimo = 0, _drawHover = null
+function _hemiVisible() {
+  if (document.hidden || !canvas.offsetWidth) return false
+  const sc = canvas.closest('.screen')
+  if (sc && !sc.classList.contains('active')) return false
+  return !document.getElementById('auth-overlay')?.classList.contains('open')
+}
 function draw() {
+  if (!_hemiVisible()) { setTimeout(() => requestAnimationFrame(draw), 300); return }
+  const ahora = performance.now()
+  const moviendo = Math.abs(cam.tx - cam.x) > 0.05 || Math.abs(cam.ty - cam.y) > 0.05 ||
+                   Math.abs(cam.ts - cam.scale) > 0.0005 || hoveredSeat !== _drawHover
+  if (!moviendo && ahora - _drawUltimo < 66) { requestAnimationFrame(draw); return }
+  _drawUltimo = ahora; _drawHover = hoveredSeat
   lerpCam()
   const W = canvas.width, H = canvas.height
   const t = Date.now()
