@@ -6754,6 +6754,22 @@ async function rtListaDebates() {   // solo la lista (no reabre el hilo que la p
   } catch (e) {}
 }
 
+// Segunda capa contra avisos falsos o en avalancha: solo tipos conocidos, con forma válida,
+// y si llegan demasiados en poco tiempo se ignoran y se hace UNA recarga al final.
+const RT_TIPOS = new Set(['votaciones', 'votos', 'butacas', 'propuestas', 'comentarios', 'muro', 'muro_resp', 'bloques', 'presencia', 'portada', 'esc'])
+const rtFlujo = { n: 0, desde: 0, frenado: false }
+function rtRecibir(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p) || !RT_TIPOS.has(p.t)) return
+  if (p.t === 'esc' && !EZC_CANALES.some(([id]) => id === p.c) && p.c !== 'ayuda') return
+  const ahora = Date.now()
+  if (ahora - rtFlujo.desde > 10_000) { rtFlujo.desde = ahora; rtFlujo.n = 0 }
+  if (++rtFlujo.n > 80) {                       // más de 80 avisos en 10 s: algo raro → una sola recarga al rato
+    if (!rtFlujo.frenado) { rtFlujo.frenado = true; setTimeout(() => { rtFlujo.frenado = false; rtTodo() }, 15_000) }
+    return
+  }
+  rtCambio(p)
+}
+
 function rtCambio(p) {
   const v = vistaActual()
   switch (p.t) {
@@ -6818,7 +6834,8 @@ function rtEstado(st) {
 }
 
 function iniciarTiempoReal() {
-  if (!rt.pub) rt.pub = sb.channel('v2-publico').on('broadcast', { event: 'cambio' }, ({ payload }) => rtCambio(payload || {})).subscribe(rtEstado)
+  // Canal PRIVADO de solo lectura: solo la base puede emitir (los navegadores no pueden mandar avisos falsos)
+  if (!rt.pub) rt.pub = sb.channel('v2-publico', { config: { private: true } }).on('broadcast', { event: 'cambio' }, ({ payload }) => rtRecibir(payload)).subscribe(rtEstado)
   // Lo mío: notificaciones, mensajes y seguimientos (la base solo me manda filas que puedo ver)
   if (!rt.mio && estado.user && estado.butaca) {
     const yo = estado.butaca
