@@ -30,21 +30,30 @@ const ICONOS = {
   muro:         '<path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/>',
   playroom:     '<path d="M6 9h12a3 3 0 0 1 3 3v3a2 2 0 0 1-3.5 1.3L15 14H9l-2.5 2.3A2 2 0 0 1 3 15v-3a3 3 0 0 1 3-3z"/><path d="M8 11v2M7 12h2M16 12h.01"/>',
   funding:     '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/><path d="M3 21h18"/>',
+  escalinatas: '<path d="M3 20h18M6 16h15M9 12h12M12 8h9M15 4h6"/>',
 }
 const SECCIONES = [
   ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['bloque', 'Mi bloque'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
   ['propuestas', 'Propuestas'], ['ciudadanos', 'Ciudadanos'], ['estadisticas', 'Estadísticas'],
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'], ['funding', 'Funding'],
+  ['escalinatas', 'Escalinatas'],
 ]
 
-const LISTAS = new Set(['inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding'])   // secciones ya rediseñadas
+const LISTAS = new Set(['escalinatas', 'inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding'])   // secciones ya rediseñadas
 
+// Sin butaca, las Escalinatas van segundas y marcadas: es el lugar desde donde se sube al Cabildo.
+const sinButaca = () => !!(estado.user && !estado.butaca)
 function pintarNav() {
-  $('#nav').innerHTML = SECCIONES.map(([id, label]) => `
-    <li><a href="#${id}" data-sec="${id}" title="${label}">
+  const lista = sinButaca()
+    ? [SECCIONES[0], SECCIONES.find(([id]) => id === 'escalinatas'), ...SECCIONES.filter(([id]) => id !== 'inicio' && id !== 'escalinatas')]
+    : SECCIONES
+  $('#nav').innerHTML = lista.map(([id, label]) => `
+    <li><a href="#${id}" data-sec="${id}" title="${label}" ${id === 'escalinatas' && sinButaca() ? 'class="nav-ezc"' : ''}>
       <svg viewBox="0 0 24 24">${ICONOS[id]}</svg><span>${label}</span>
-      ${LISTAS.has(id) ? '' : '<span class="soon-tag">pronto</span>'}
+      ${LISTAS.has(id) ? (id === 'escalinatas' && sinButaca() ? '<span class="nav-tag">estás acá</span>' : '') : '<span class="soon-tag">pronto</span>'}
     </a></li>`).join('')
+  const sec = (location.hash || '#inicio').slice(1).split('/')[0]
+  $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === sec))
 }
 
 function ruta() {
@@ -78,6 +87,7 @@ function ruta() {
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
   if (valida === 'funding') entrarFunding(arg); else if (fd.vivo) salirFunding()
+  if (valida === 'escalinatas') entrarEscalinatas()
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
@@ -6262,11 +6272,228 @@ function enlazarRevelacion() {
   if (window.ResizeObserver) new ResizeObserver(() => { if (rv.abierto && rv.r) rvTamano() }).observe($('#rv-escena'))
 }
 
+// ══════════════════════════════════════════════════════════════
+//  LAS ESCALINATAS — la antesala del Cabildo
+//  Para quienes se registraron con su email y todavía no tienen butaca:
+//  charlan, piden ayuda con la verificación y desde acá suben al Cabildo.
+//  · Nombres sin datos: "Escalinata #N" (sin butaca) o la butaca de siempre (de visita).
+//    El nombre de las Escalinatas no queda unido a la butaca que se consiga después.
+//  · Los mensajes duran 24 h. Límites, links y teléfonos se controlan en el servidor.
+//  · Se ocultan con 3 reportes de butacas (o 6 con al menos uno de una butaca).
+// ══════════════════════════════════════════════════════════════
+const EZC_CANALES = [['general', 'general'], ['economia', 'economía'], ['elecciones', 'elecciones'], ['cultura', 'cultura'], ['diaspora', 'diáspora']]
+const EZC_PASOS = ['Documento', 'Gestos', 'Selfie con documento', 'Revisión']
+const EZC_FAQ = [
+  ['doc', '¿Por qué piden mi documento?', 'Para que cada persona tenga una sola butaca. Así nadie puede votar dos veces ni inflar una votación.'],
+  ['guardan', '¿Qué guardan de mí?', 'Tu email para entrar y tu butaca. No se guarda tu nombre ni tu número de documento, y las fotos de la verificación se borran.'],
+  ['secreto', '¿Mi voto es secreto?', 'Sí. Se anota que tu butaca participó y tu voto se suma al total, por separado. No se guarda qué votó cada butaca.'],
+  ['tarda', '¿Cuánto tarda?', 'Completar los pasos lleva unos minutos. Después una persona del equipo revisa tu verificación.'],
+]
+const ICO_EZC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M6 16h15M9 12h12M12 8h9M15 4h6"/></svg>'
+const ezc = { d: null, cargando: false, error: null, tab: 'charla', canal: 'general', msgs: {}, faq: null, rep: null, enviando: false, borrador: '', n: 0, abajo: true }
+const ezcCanalActual = () => ezc.tab === 'ayuda' ? 'ayuda' : ezc.canal
+
+// En qué paso quedó la verificación (dato que ya guarda el verificador: ultimo_paso / status)
+function ezcPaso(v) {
+  if (!v) return { i: 0, txt: 'Todavía no empezaste. Tené a mano tu cédula o pasaporte: son unos minutos.', btn: 'Empezar mi verificación' }
+  if (v.status === 'aprobado') return { i: 4, txt: 'Tu verificación está aprobada. Recargá la página para entrar con tu butaca.', btn: null }
+  if (v.status === 'pendiente_revision' || v.paso === 'enviado') return { i: 3, txt: 'Ya enviaste todo. Una persona del equipo está revisando tu verificación.', btn: null }
+  if (v.status === 'rechazado') return { i: 0, txt: 'Tu verificación no fue aprobada. Podés intentarlo de nuevo con fotos más claras.', btn: 'Intentar de nuevo' }
+  if (v.paso === 'documento_sin_detalle' || v.paso === 'documento_fallido') return { i: 0, txt: 'No pudimos leer bien tu documento. Probá con buena luz, sin reflejos y con el documento entero en la foto.', btn: 'Reintentar' }
+  if (v.paso === 'documento') return { i: 1, txt: 'Tu documento ya está validado. Te falta el paso de los gestos frente a la cámara.', btn: 'Seguir donde quedé' }
+  if (/liveness|gesto/.test(v.paso || '')) return { i: 2, txt: 'Te falta la selfie sosteniendo tu documento.', btn: 'Seguir donde quedé' }
+  return { i: 1, txt: 'Quedaste a mitad de camino. Retomá tu verificación cuando quieras.', btn: 'Seguir donde quedé' }
+}
+
+async function entrarEscalinatas() {
+  if (!estado.cargado) return pintarEscalinatas()        // iniciar() vuelve a llamar con la sesión lista
+  if (!estado.user) return pintarEscalinatas()
+  if (!ezc.d) { ezc.cargando = true; pintarEscalinatas() }
+  const { data, error } = await sb.rpc('escalinatas_entrar')
+  ezc.cargando = false
+  if (error) ezc.error = error.message; else { ezc.d = data; ezc.error = null }
+  pintarEscalinatas()
+  cargarMensajesEzc()
+}
+
+async function cargarMensajesEzc() {
+  if (!estado.user || !ezc.d) return
+  const canal = ezcCanalActual(), n = ++ezc.n
+  const { data, error } = await sb.rpc('escalinatas_mensajes', { p_canal: canal })
+  if (n !== ezc.n) return
+  ezc.msgs[canal] = error ? { error: error.message } : { lista: Array.isArray(data) ? data : [] }
+  pintarMensajesEzc()
+}
+
+function ezcCamino(d) {
+  const visita = d.yo.tipo === 'butaca'
+  return `<div class="card ezc-camino">
+    <ol class="ezc-pasos" aria-label="Tu camino">
+      <li class="hecho"><span class="ezc-nodo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span>Registro</li>
+      <li class="actual" aria-current="step"><span class="ezc-nodo"><i></i></span>${visita ? 'De visita' : 'Escalinatas'}</li>
+      <li class="${visita ? 'hecho' : ''}"><span class="ezc-nodo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 20V10M10 20V10M14 20V10M18 20V10M3 10l9-6 9 6"/></svg></span>Cabildo</li>
+    </ol>
+    <p>${visita
+      ? 'Acá esperan los que todavía no tienen butaca. Respondé dudas en <b>Ayuda</b> y ayudalos a subir.'
+      : 'Desde acá mirás y charlás. Para <b>votar, proponer y debatir</b>, subí al Cabildo verificando tu identidad.'}</p>
+    <div class="ezc-camino-pie">
+      <span class="ezc-cifras"><b>${fmtNum(d.esperando)}</b> esperan en las Escalinatas · <b>${fmtNum(d.subieron_semana)}</b> subieron esta semana</span>
+      ${visita ? '<a class="btn btn-ghost" href="#inicio">Volver al Cabildo</a>' : `<a class="btn btn-dark" href="${APP_ACTUAL}">${ICO_EZC}Subir al Cabildo</a>`}
+    </div>
+  </div>`
+}
+
+function ezcLado(d) {
+  const faq = `<div class="ezc-faq">
+      <b class="ezc-lado-tit">Preguntas frecuentes</b>
+      ${EZC_FAQ.map(([id, q, r]) => `<div class="ezc-faq-it ${ezc.faq === id ? 'abierta' : ''}">
+        <button type="button" data-ezc-faq="${id}" aria-expanded="${ezc.faq === id}">${esc(q)}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        ${ezc.faq === id ? `<p>${esc(r)}</p>` : ''}</div>`).join('')}
+    </div>`
+  if (d.yo.tipo === 'butaca') return `<div class="card ezc-lado">
+      <b class="ezc-lado-tit">Cómo ayudar</b>
+      <ul class="ezc-tips">
+        <li>Contá cómo fue tu verificación y en qué te trabaste.</li>
+        <li>Nunca pidas ni aceptes fotos de documentos por el chat.</li>
+        <li>Si ves spam o insultos, reportalo: con 3 reportes de butacas se oculta.</li>
+      </ul>${faq}</div>`
+  const p = ezcPaso(d.verificacion)
+  return `<div class="card ezc-lado">
+    <div class="ezc-verif-cab"><b class="ezc-lado-tit">Tu verificación</b><span class="muted">${p.i >= 4 ? 'Completa' : `Paso ${p.i + 1} de 4`}</span></div>
+    <div class="ezc-barras">${EZC_PASOS.map((n, i) => `<div class="${i < p.i ? 'hecho' : i === p.i ? 'actual' : ''}"><i></i><span>${n}</span></div>`).join('')}</div>
+    <p class="ezc-verif-txt">${esc(p.txt)}</p>
+    ${p.btn ? `<a class="btn btn-dark ezc-verif-btn" href="${APP_ACTUAL}">${esc(p.btn)}</a>` : ''}
+    ${p.i === 0 ? `<ul class="ezc-tips"><li>Tu cédula o pasaporte vigente</li><li>Un lugar con buena luz</li><li>Unos minutos y la cámara del teléfono</li></ul>` : ''}
+    ${faq}</div>`
+}
+
+function pintarEscalinatas() {
+  const v = $('#ezc-vista'); if (!v) return
+  const cab = `<header class="view-head"><div><h1>Las Escalinatas</h1><p>Afuera del Cabildo, mientras subís.</p></div></header>`
+  if (!estado.cargado || (ezc.cargando && !ezc.d)) { v.innerHTML = cab + '<p class="muted">Cargando…</p>'; return }
+  if (!estado.user) {
+    v.innerHTML = cab + `<div class="empty"><div class="e-icon">${ICO_EZC}</div><h3>Las Escalinatas son para quienes tienen cuenta</h3>
+      <p>Creá tu cuenta con tu email, charlá con otros venezolanos y subí al Cabildo cuando te verifiques.</p>
+      <a class="btn btn-dark" href="${APP_ACTUAL}">Crear cuenta o iniciar sesión</a></div>`
+    return
+  }
+  if (!ezc.d) { v.innerHTML = cab + `<div class="empty"><h3>No se pudieron abrir las Escalinatas</h3><p>${esc(ezc.error || 'Probá de nuevo en un momento.')}</p><button class="btn btn-ghost" data-ezc-reintentar>Reintentar</button></div>`; return }
+  const d = ezc.d, canal = ezcCanalActual(), sil = d.silenciado_hasta && new Date(d.silenciado_hasta) > new Date()
+  const nombreCanal = (EZC_CANALES.find(c => c[0] === ezc.canal) || ['', ''])[1]
+  v.innerHTML = cab + `<div class="ezc-grid">
+    ${ezcCamino(d)}
+    <section class="card ezc-sala" aria-label="Sala de charla">
+      <div class="ezc-tabs" role="tablist">
+        <button role="tab" type="button" data-ezc-tab="charla" aria-selected="${ezc.tab === 'charla'}" class="${ezc.tab === 'charla' ? 'on' : ''}">Charla</button>
+        <button role="tab" type="button" data-ezc-tab="ayuda" aria-selected="${ezc.tab === 'ayuda'}" class="${ezc.tab === 'ayuda' ? 'on' : ''}">Ayuda<span class="ezc-larga"> para verificarte</span></button>
+      </div>
+      ${ezc.tab === 'charla' ? `<div class="ezc-canales">${EZC_CANALES.map(([id, n]) => `<button type="button" data-ezc-canal="${id}" class="${ezc.canal === id ? 'on' : ''}" aria-pressed="${ezc.canal === id}">#${n}</button>`).join('')}</div>` : ''}
+      <ol class="ezc-msgs" id="ezc-msgs" aria-live="polite"><li class="muted ezc-vacio">Cargando…</li></ol>
+      <form class="ezc-escribir" id="ezc-form">
+        <p class="ezc-aviso" id="ezc-aviso" role="status" ${sil ? '' : 'hidden'}>${sil ? 'Por ahora no podés escribir en las Escalinatas.' : ''}</p>
+        <div class="ezc-fila">
+          <label class="sr-only" for="ezc-txt">Escribí un mensaje</label>
+          <input id="ezc-txt" maxlength="280" autocomplete="off" ${sil ? 'disabled' : ''} placeholder="${canal === 'ayuda' ? 'Contá en qué paso te trabaste…' : `Escribí en #${esc(nombreCanal)}…`}">
+          <button class="btn btn-dark ezc-enviar" type="submit" aria-label="Enviar" ${sil ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        </div>
+        <p class="ezc-nota">Hablás como <b class="${d.yo.tipo === 'butaca' ? 'but' : 'esc'}">${esc(d.yo.nombre)}</b>. Sin links ni teléfonos. Nunca compartas tu documento por el chat.</p>
+      </form>
+    </section>
+    ${ezcLado(d)}
+  </div>`
+  const inp = $('#ezc-txt'); if (inp) inp.value = ezc.borrador
+  ezc.abajo = true
+  pintarMensajesEzc()
+}
+
+function ezcMensajeHtml(m) {
+  if (m.oculto) return `<li class="ezc-m ezc-oculto">Mensaje oculto por reportes de ciudadanos.</li>`
+  const clase = m.tipo === 'equipo' ? 'equipo' : m.mio ? 'mio' : m.tipo
+  const etq = m.fijado ? 'fijado' : m.mio ? 'vos' : m.tipo === 'butaca' ? 'con butaca' : ''
+  const av = m.tipo === 'equipo' ? 'CV' : (m.num ?? '·')
+  const rep = m.mio || m.tipo === 'equipo' ? ''
+    : m.reportado ? '<span class="ezc-rep-ok">Reportado</span>'
+    : ezc.rep === m.id ? `<span class="ezc-rep-conf"><button type="button" data-ezc-rep-si="${esc(m.id)}">Reportar</button><button type="button" data-ezc-rep-no>Cancelar</button></span>`
+    : `<button type="button" class="ezc-rep" data-ezc-rep="${esc(m.id)}" aria-label="Reportar este mensaje" title="Reportar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg></button>`
+  return `<li class="ezc-m ${clase} ${m.fijado ? 'fijado' : ''}">
+    <span class="ezc-av" aria-hidden="true">${esc(String(av))}</span>
+    <div class="ezc-m-cuerpo">
+      <div class="ezc-m-cab"><b>${esc(m.nombre)}</b>${etq ? `<span class="ezc-etq">${etq}</span>` : ''}${m.fijado ? '' : `<time datetime="${esc(m.at)}">${haceCuanto(m.at)}</time>`}</div>
+      <p>${esc(m.texto)}</p>
+    </div>${rep}</li>`
+}
+
+function pintarMensajesEzc() {
+  const ol = $('#ezc-msgs'); if (!ol) return
+  const st = ezc.msgs[ezcCanalActual()]
+  if (!st) { ol.innerHTML = '<li class="muted ezc-vacio">Cargando…</li>'; return }
+  if (st.error) { ol.innerHTML = `<li class="muted ezc-vacio">${esc(st.error)}</li>`; return }
+  const abajo = ezc.abajo || ol.scrollHeight - ol.scrollTop - ol.clientHeight < 90
+  const fij = st.lista.filter(m => m.fijado), resto = st.lista.filter(m => !m.fijado)
+  ol.innerHTML = fij.map(ezcMensajeHtml).join('')
+    + '<li class="ezc-sep" aria-hidden="true"><span>Los mensajes se borran a las 24 h</span></li>'
+    + (resto.length ? resto.map(ezcMensajeHtml).join('') : `<li class="muted ezc-vacio">${ezcCanalActual() === 'ayuda' ? 'Contá en qué paso de la verificación te trabaste y te ayudamos.' : 'Todavía no hay mensajes en este canal. ¡Saludá!'}</li>`)
+  if (abajo) ol.scrollTop = ol.scrollHeight
+  ezc.abajo = false
+}
+
+function ezcAviso(t) {
+  const a = $('#ezc-aviso'); if (!a) return
+  a.textContent = t; a.hidden = !t
+  clearTimeout(ezcAviso.t); if (t) ezcAviso.t = setTimeout(() => { a.hidden = true }, 4500)
+}
+
+async function ezcEnviar() {
+  const inp = $('#ezc-txt'); if (!inp || ezc.enviando) return
+  const t = limpiar(inp.value)
+  if (!t) return
+  ezc.enviando = true; $('.ezc-enviar')?.setAttribute('aria-disabled', 'true')
+  const canal = ezcCanalActual()
+  const { error } = await sb.rpc('escalinatas_enviar', { p_canal: canal, p_texto: t })
+  ezc.enviando = false; $('.ezc-enviar')?.removeAttribute('aria-disabled')
+  if (error) return ezcAviso(error.message)
+  ezcAviso(''); inp.value = ''; ezc.borrador = ''; ezc.abajo = true
+  cargarMensajesEzc()
+}
+
+async function ezcReportar(id) {
+  ezc.rep = null
+  const { data, error } = await sb.rpc('escalinatas_reportar', { p_id: id })
+  if (error) { ezcAviso(error.message); return pintarMensajesEzc() }
+  const m = ezc.msgs[ezcCanalActual()]?.lista?.find(x => x.id === id)
+  if (m) { m.reportado = true; if (data?.oculto) m.oculto = true }
+  pintarMensajesEzc()
+  aviso('Gracias. Si otras butacas también lo reportan, se oculta para todos.')
+}
+
+function enlazarEscalinatas() {
+  const v = $('#ezc-vista'); if (!v) return
+  v.addEventListener('click', e => {
+    const t = e.target.closest('[data-ezc-tab],[data-ezc-canal],[data-ezc-faq],[data-ezc-rep],[data-ezc-rep-si],[data-ezc-rep-no],[data-ezc-reintentar]')
+    if (!t) return
+    if (t.dataset.ezcTab) { if (ezc.tab !== t.dataset.ezcTab) { ezc.tab = t.dataset.ezcTab; ezc.rep = null; pintarEscalinatas(); cargarMensajesEzc() } return }
+    if (t.dataset.ezcCanal) { if (ezc.canal !== t.dataset.ezcCanal) { ezc.canal = t.dataset.ezcCanal; ezc.rep = null; pintarEscalinatas(); cargarMensajesEzc() } return }
+    if (t.dataset.ezcFaq) { ezc.faq = ezc.faq === t.dataset.ezcFaq ? null : t.dataset.ezcFaq; const lado = $('.ezc-lado', v); if (lado && ezc.d) lado.outerHTML = ezcLado(ezc.d); return }
+    if (t.dataset.ezcRep) { ezc.rep = t.dataset.ezcRep; return pintarMensajesEzc() }
+    if (t.dataset.ezcRepSi) return ezcReportar(t.dataset.ezcRepSi)
+    if (t.hasAttribute('data-ezc-rep-no')) { ezc.rep = null; return pintarMensajesEzc() }
+    if (t.hasAttribute('data-ezc-reintentar')) return entrarEscalinatas()
+  })
+  v.addEventListener('submit', e => { if (e.target.id === 'ezc-form') { e.preventDefault(); ezcEnviar() } })
+  v.addEventListener('input', e => { if (e.target.id === 'ezc-txt') ezc.borrador = e.target.value })
+}
+
 async function iniciar() {
   try { localStorage.removeItem('cabildoos_votos') } catch (e) {}   // borra votos que versiones anteriores guardaban en el teléfono
-  pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFunding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta(); iniciarA2()
+  pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFunding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarEscalinatas(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta(); iniciarA2()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
+  if (sinButaca()) {
+    pintarNav(); actualizarNavBloque()
+    // Primera vez en la sesión sin butaca y sin sección elegida → a las Escalinatas
+    try { if (!location.hash && !sessionStorage.getItem('ux2_ezc_auto')) { sessionStorage.setItem('ux2_ezc_auto', '1'); location.hash = '#escalinatas' } } catch (e) {}
+  }
+  if (vistaActual() === 'escalinatas') entrarEscalinatas()
   vigilarSesion()
   vigilarPortada()
   au.usuarioListo = true
@@ -6506,6 +6733,7 @@ function rtCambio(p) {
     case 'bloques': rtLuego('bloques', cargarBloques, 800); break
     case 'presencia': rtLuego('pres', cargarPresencia, 600); break
     case 'portada': rtLuego('portada', cargarPortada, 800); break
+    case 'esc': if (vistaActual() === 'escalinatas' && p.c === ezcCanalActual()) rtLuego('esc', cargarMensajesEzc, 350); break
   }
 }
 
@@ -6518,6 +6746,7 @@ function rtTodo() {   // después de volver a la pestaña o de reconectar
   if (v === 'propuestas' && pr.d) refrescarPropuestas()
   if (v === 'muro' && mu.cargado) cargarMuroDia()
   if (v === 'estadisticas') cargarEstadisticas()
+  if (v === 'escalinatas') entrarEscalinatas()
   if (pr.abierta) cargarComentariosProp(pr.abierta)
 }
 
