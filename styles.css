@@ -7625,3 +7625,9 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
   #mu-modal-close { background: rgba(255,255,255,.08); }
   #mu-modal-close:hover { background: rgba(255,255,255,.14); }
 }
+
+
+/* Android con poca memoria gráfica: sin desenfoque en la pantalla de inicio ni detrás del login
+   (sobre un fondo oscuro casi no se nota y es lo más caro de dibujar). */
+#intro *, #intro-hero a { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+#auth-overlay { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: rgba(4,12,30,.94) !important; }
