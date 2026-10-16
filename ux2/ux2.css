@@ -2794,3 +2794,12 @@ body.a2-con-flota .app { padding-bottom: 76px; }
 @keyframes vv-sube { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes vv-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .vv *, .vv { transition-duration: .01s !important; animation-duration: .01s !important; animation-delay: 0s !important; } }
+
+/* Menú de compartir (propuestas) */
+.cmp-menu { position: fixed; z-index: 400; min-width: 190px; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 32px rgba(18,22,46,.18); display: flex; flex-direction: column; animation: cmp-in .14s ease-out; }
+.cmp-menu button { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; font-size: 14px; font-weight: 600; color: var(--ink); text-align: left; }
+.cmp-menu button:hover, .cmp-menu button:focus-visible { background: var(--surface-2); outline: none; }
+.cmp-menu svg { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cmp-menu svg.cmp-x, .cmp-menu svg circle { fill: currentColor; stroke: none; }
+@keyframes cmp-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .cmp-menu { animation: none; } }
