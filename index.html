@@ -48,7 +48,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
@@ -2036,6 +2036,47 @@
     </div>
     <div class="notif-panel-body" id="notif-list"></div>
   </div>
+</div>
+
+<!-- ══ CUENTA REGRESIVA v2 (se prende desde admin → Sistema) ══ -->
+<div id="cd-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="cd-titulo">
+  <div class="cd-tricolor" aria-hidden="true"><i></i><i></i><i></i></div>
+  <header class="cd-top">
+    <div class="cd-marca">
+      <span class="cd-logo"><img src="/logo-cabildo.jpg" alt="Cabildo de Venezuela"></span>
+      <span class="cd-marca-txt"><b>Cabildo de Venezuela</b><small>Generación Independencia 2026</small></span>
+    </div>
+    <span class="cd-pill">cabildoOS v2</span>
+  </header>
+  <section class="cd-centro">
+    <div class="cd-hemi">
+      <svg id="cd-hemi-svg" viewBox="0 0 600 300" aria-hidden="true"></svg>
+      <div class="cd-hemi-pct"><b id="cd-pct">0%</b><small>del hemiciclo encendido</small></div>
+    </div>
+    <div class="cd-textos">
+      <h1 id="cd-titulo">El nuevo Cabildo abre el lunes</h1>
+      <p>Estamos terminando de preparar la versión 2: un hemiciclo renovado, propuestas que podés compartir en X y las Escalinatas, la antesala para quienes todavía no tienen su butaca.</p>
+    </div>
+    <div id="cd-cuenta">
+      <div class="cd-reloj" role="timer" id="cd-reloj">
+        <div class="cd-b"><span id="cd-d">00</span><small id="cd-dl">días</small></div>
+        <div class="cd-b"><span id="cd-h">00</span><small id="cd-hl">horas</small></div>
+        <div class="cd-b"><span id="cd-m">00</span><small>minutos</small></div>
+        <div class="cd-b"><span id="cd-s">00</span><small>segundos</small></div>
+      </div>
+      <p class="cd-fecha"><b id="cd-fecha"></b> · la cuenta es la misma estés donde estés</p>
+    </div>
+    <a id="cd-listo" class="cd-entrar" href="/" hidden>Ya abrió: entrá al nuevo Cabildo
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </section>
+  <footer class="cd-pie">
+    <span>Mientras tanto, seguinos</span>
+    <a class="cd-x" href="https://x.com/cabildoven" target="_blank" rel="noopener">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      @cabildoven
+    </a>
+  </footer>
 </div>
 
 <!-- ══ MANTENIMIENTO OVERLAY ══ -->
