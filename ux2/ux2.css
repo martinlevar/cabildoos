@@ -2931,3 +2931,47 @@ body.a2-con-flota .app { padding-bottom: 76px; }
   .ezc-canales { padding: 10px 12px 2px; }
 }
 @media (prefers-reduced-motion: reduce) { .ezc-pasos .actual .ezc-nodo { animation: none; } }
+
+/* ── Modo Escalinatas: sin butaca, solo el chat ── */
+html.modo-ezc .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 64px minmax(0, 1fr); grid-template-areas: "top" "main"; height: calc(100dvh / var(--zoom, 1)); min-height: 0; }
+html.modo-ezc .sidebar, html.modo-ezc .panel, html.modo-ezc .footer, html.modo-ezc .scrim, html.modo-ezc .menu-btn,
+html.modo-ezc .buscador, html.modo-ezc .bus-movil, html.modo-ezc .clock, html.modo-ezc .hd-menu:has(#btn-notif),
+html.modo-ezc .topbar a[href="#ciudadanos/mensajes"], html.modo-ezc .a2-flota { display: none !important; }
+html.modo-ezc .topbar { position: static; }
+html.modo-ezc .main { padding: 22px 24px; display: flex; justify-content: center; min-height: 0; overflow: hidden; }
+html.modo-ezc .main > .view[data-view="escalinatas"] { width: 100%; max-width: 860px; height: 100%; min-height: 0; }
+html.modo-ezc .main > .view:not([data-view="escalinatas"]) { display: none !important; }
+.ezc-solo { height: 100%; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.ezc-solo-cab { display: flex; align-items: center; gap: 14px; padding: 18px 20px 6px; }
+.ezc-solo-ico { width: 46px; height: 46px; border-radius: 13px; background: var(--accent-bg); color: var(--accent); display: grid; place-items: center; flex: none; }
+.ezc-solo-ico svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.ezc-solo-tit { flex: 1; min-width: 0; }
+.ezc-solo-tit h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; line-height: 1.1; }
+.ezc-solo-tit p { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+.ezc-solo-tit b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.ezc-solo-subir { flex: none; }
+.ezc-solo-bajada { margin: 0; padding: 4px 20px 12px; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+.ezc-solo .ezc-msgs { flex: 1; height: auto; min-height: 0; overflow-anchor: none; }
+.ezc-solo-ayuda { display: grid; gap: 10px; padding-bottom: 4px; }
+.ezc-solo-verif { padding: 12px 14px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); display: grid; gap: 10px; }
+.ezc-solo-verif-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ezc-solo-verif-pie .btn { flex: none; }
+.ezc-solo-faq { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.ezc-solo-faq button { flex: none; height: 34px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.ezc-solo-faq button.on { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.ezc-solo-faq-r { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-2); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); }
+@media (max-width: 640px) {
+  html.modo-ezc .app { grid-template-rows: 60px minmax(0, 1fr); }
+  html.modo-ezc .main { padding: 0; }
+  html.modo-ezc .main > .view[data-view="escalinatas"] { max-width: none; }
+  .ezc-solo { border-radius: 0; border: 0; box-shadow: none; }
+  .ezc-solo-cab { padding: 12px 14px 4px; gap: 10px; }
+  .ezc-solo-ico { width: 38px; height: 38px; border-radius: 11px; }
+  .ezc-solo-ico svg { width: 21px; height: 21px; }
+  .ezc-solo-tit h1 { font-size: 19px; }
+  .ezc-solo-tit p { font-size: 12px; }
+  .ezc-solo-subir { height: 38px; padding: 0 12px; font-size: 13px; }
+  .ezc-solo-bajada { padding: 2px 14px 8px; font-size: 13px; }
+  .ezc-solo-verif-pie { flex-direction: column; align-items: stretch; }
+  .ezc-solo .ezc-escribir { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}

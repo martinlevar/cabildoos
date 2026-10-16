@@ -43,6 +43,15 @@ const LISTAS = new Set(['escalinatas', 'inicio', 'votaciones', 'butaca', 'bloque
 
 // Sin butaca, las Escalinatas van segundas y marcadas: es el lugar desde donde se sube al Cabildo.
 const sinButaca = () => !!(estado.user && !estado.butaca)
+// Modo Escalinatas: quien tiene cuenta pero no butaca ve SOLO el chat (sin menú, sin panel, sin el resto del Cabildo).
+// La clase se pone antes de pintar (index.html) con lo recordado de la visita anterior, y se confirma al cargar la sesión.
+const modoEscalinatas = () => document.documentElement.classList.contains('modo-ezc')
+function aplicarModoEscalinatas() {
+  const on = sinButaca()
+  document.documentElement.classList.toggle('modo-ezc', on)
+  try { if (on) localStorage.setItem('ux2_modo_ezc', '1'); else localStorage.removeItem('ux2_modo_ezc') } catch (e) {}
+  return on
+}
 function pintarNav() {
   const lista = sinButaca()
     ? [SECCIONES[0], SECCIONES.find(([id]) => id === 'escalinatas'), ...SECCIONES.filter(([id]) => id !== 'inicio' && id !== 'escalinatas')]
@@ -57,7 +66,8 @@ function pintarNav() {
 }
 
 function ruta() {
-  const [sec, arg] = (location.hash || '#inicio').slice(1).split('/')
+  let [sec, arg] = (location.hash || '#inicio').slice(1).split('/')
+  if (modoEscalinatas() && sec !== 'escalinatas') { history.replaceState(null, '', '#escalinatas'); sec = 'escalinatas'; arg = undefined }
   if (sec === 'monitor') {              // monitor del Hemiciclo: también se abre encima
     if (rv.abierto) cerrarRevelacion()
     if (!vistaActual() || vistaActual() === 'pronto') { $$('.view').forEach(v => { v.hidden = v.dataset.view !== 'inicio' }); $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === 'inicio')) }
@@ -6380,6 +6390,8 @@ function pintarEscalinatas() {
   if (!ezc.d) { v.innerHTML = cab + `<div class="empty"><h3>No se pudieron abrir las Escalinatas</h3><p>${esc(ezc.error || 'Probá de nuevo en un momento.')}</p><button class="btn btn-ghost" data-ezc-reintentar>Reintentar</button></div>`; return }
   const d = ezc.d, canal = ezcCanalActual(), sil = d.silenciado_hasta && new Date(d.silenciado_hasta) > new Date()
   const nombreCanal = (EZC_CANALES.find(c => c[0] === ezc.canal) || ['', ''])[1]
+  ezc.cabecera = ''
+  if (modoEscalinatas()) return pintarEscalinatasSolo(v, d, canal, sil, nombreCanal)
   v.innerHTML = cab + `<div class="ezc-grid">
     ${ezcCamino(d)}
     <section class="card ezc-sala" aria-label="Sala de charla">
@@ -6406,6 +6418,54 @@ function pintarEscalinatas() {
   pintarMensajesEzc()
 }
 
+// Solo el chat, centrado: la sala ocupa la pantalla (celular) o una "tablet" en el centro (computadora)
+function ezcEscribirHtml(d, canal, sil, nombreCanal) {
+  return `<form class="ezc-escribir" id="ezc-form">
+      <p class="ezc-aviso" id="ezc-aviso" role="status" ${sil ? '' : 'hidden'}>${sil ? 'Por ahora no podés escribir en las Escalinatas.' : ''}</p>
+      <div class="ezc-fila">
+        <label class="sr-only" for="ezc-txt">Escribí un mensaje</label>
+        <input id="ezc-txt" maxlength="280" autocomplete="off" enterkeyhint="send" ${sil ? 'disabled' : ''} placeholder="${canal === 'ayuda' ? 'Contá en qué paso te trabaste…' : `Escribí en #${esc(nombreCanal)}…`}">
+        <button class="btn btn-dark ezc-enviar" type="submit" aria-label="Enviar" ${sil ? 'disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </div>
+      <p class="ezc-nota">Hablás como <b class="${d.yo.tipo === 'butaca' ? 'but' : 'esc'}">${esc(d.yo.nombre)}</b>. Sin links ni teléfonos. Nunca compartas tu documento por el chat.</p>
+    </form>`
+}
+function pintarEscalinatasSolo(v, d, canal, sil, nombreCanal) {
+  const p = ezcPaso(d.verificacion)
+  // En Ayuda, la verificación y las preguntas van arriba DENTRO del scroll de mensajes (en el celular no tapan la charla)
+  ezc.cabecera = ezc.tab === 'ayuda' ? `<li class="ezc-solo-ayuda">
+      <div class="ezc-solo-verif">
+        <div class="ezc-verif-cab"><b class="ezc-lado-tit">Tu verificación</b><span class="muted">${p.i >= 4 ? 'Completa' : `Paso ${p.i + 1} de 4`}</span></div>
+        <div class="ezc-barras">${EZC_PASOS.map((n, i) => `<div class="${i < p.i ? 'hecho' : i === p.i ? 'actual' : ''}"><i></i><span>${n}</span></div>`).join('')}</div>
+        <div class="ezc-solo-verif-pie"><p class="ezc-verif-txt">${esc(p.txt)}</p>${p.btn ? `<a class="btn btn-dark" href="${APP_ACTUAL}">${esc(p.btn)}</a>` : ''}</div>
+      </div>
+      <div class="ezc-solo-faq">${EZC_FAQ.map(([id, q]) => `<button type="button" data-ezc-faq="${id}" aria-expanded="${ezc.faq === id}" class="${ezc.faq === id ? 'on' : ''}">${esc(q)}</button>`).join('')}</div>
+      ${ezc.faq ? `<p class="ezc-solo-faq-r">${esc((EZC_FAQ.find(f => f[0] === ezc.faq) || [])[2] || '')}</p>` : ''}
+    </li>` : ''
+  const canales = ezc.tab === 'ayuda' ? '' : `<div class="ezc-canales">${EZC_CANALES.map(([id, n]) => `<button type="button" data-ezc-canal="${id}" class="${ezc.canal === id ? 'on' : ''}" aria-pressed="${ezc.canal === id}">#${n}</button>`).join('')}</div>`
+  v.innerHTML = `<section class="card ezc-solo" aria-label="Las Escalinatas">
+    <header class="ezc-solo-cab">
+      <span class="ezc-solo-ico" aria-hidden="true">${ICO_EZC}</span>
+      <div class="ezc-solo-tit">
+        <h1>Las Escalinatas</h1>
+        <p><b>${fmtNum(d.esperando)}</b> esperan · <b>${fmtNum(d.subieron_semana)}</b> subieron esta semana</p>
+      </div>
+      <a class="btn btn-dark ezc-solo-subir" href="${APP_ACTUAL}">Subir al Cabildo</a>
+    </header>
+    <p class="ezc-solo-bajada">Desde acá charlás y te ayudamos a verificarte. Con tu butaca vas a poder <b>votar, proponer y debatir</b>.</p>
+    <div class="ezc-tabs" role="tablist">
+      <button role="tab" type="button" data-ezc-tab="charla" aria-selected="${ezc.tab === 'charla'}" class="${ezc.tab === 'charla' ? 'on' : ''}">Charla</button>
+      <button role="tab" type="button" data-ezc-tab="ayuda" aria-selected="${ezc.tab === 'ayuda'}" class="${ezc.tab === 'ayuda' ? 'on' : ''}">Ayuda<span class="ezc-larga"> para verificarte</span></button>
+    </div>
+    ${canales}
+    <ol class="ezc-msgs" id="ezc-msgs" aria-live="polite">${ezc.cabecera}<li class="muted ezc-vacio">Cargando…</li></ol>
+    ${ezcEscribirHtml(d, canal, sil, nombreCanal)}
+  </section>`
+  const inp = $('#ezc-txt'); if (inp) inp.value = ezc.borrador
+  ezc.abajo = ezc.tab !== 'ayuda'          // en Ayuda se arranca arriba, mostrando tu verificación
+  pintarMensajesEzc()
+}
+
 function ezcMensajeHtml(m) {
   if (m.oculto) return `<li class="ezc-m ezc-oculto">Mensaje oculto por reportes de ciudadanos.</li>`
   const clase = m.tipo === 'equipo' ? 'equipo' : m.mio ? 'mio' : m.tipo
@@ -6425,15 +6485,16 @@ function ezcMensajeHtml(m) {
 
 function pintarMensajesEzc() {
   const ol = $('#ezc-msgs'); if (!ol) return
-  const st = ezc.msgs[ezcCanalActual()]
-  if (!st) { ol.innerHTML = '<li class="muted ezc-vacio">Cargando…</li>'; return }
-  if (st.error) { ol.innerHTML = `<li class="muted ezc-vacio">${esc(st.error)}</li>`; return }
+  const st = ezc.msgs[ezcCanalActual()], cab = ezc.cabecera || ''
+  if (!st) { ol.innerHTML = cab + '<li class="muted ezc-vacio">Cargando…</li>'; return }
+  if (st.error) { ol.innerHTML = cab + `<li class="muted ezc-vacio">${esc(st.error)}</li>`; return }
+  const arriba = ol.scrollTop
   const abajo = ezc.abajo || ol.scrollHeight - ol.scrollTop - ol.clientHeight < 90
   const fij = st.lista.filter(m => m.fijado), resto = st.lista.filter(m => !m.fijado)
-  ol.innerHTML = fij.map(ezcMensajeHtml).join('')
+  ol.innerHTML = cab + fij.map(ezcMensajeHtml).join('')
     + '<li class="ezc-sep" aria-hidden="true"><span>Los mensajes se borran a las 24 h</span></li>'
     + (resto.length ? resto.map(ezcMensajeHtml).join('') : `<li class="muted ezc-vacio">${ezcCanalActual() === 'ayuda' ? 'Contá en qué paso de la verificación te trabaste y te ayudamos.' : 'Todavía no hay mensajes en este canal. ¡Saludá!'}</li>`)
-  if (abajo) ol.scrollTop = ol.scrollHeight
+  ol.scrollTop = abajo ? ol.scrollHeight : arriba
   ezc.abajo = false
 }
 
@@ -6473,7 +6534,11 @@ function enlazarEscalinatas() {
     if (!t) return
     if (t.dataset.ezcTab) { if (ezc.tab !== t.dataset.ezcTab) { ezc.tab = t.dataset.ezcTab; ezc.rep = null; pintarEscalinatas(); cargarMensajesEzc() } return }
     if (t.dataset.ezcCanal) { if (ezc.canal !== t.dataset.ezcCanal) { ezc.canal = t.dataset.ezcCanal; ezc.rep = null; pintarEscalinatas(); cargarMensajesEzc() } return }
-    if (t.dataset.ezcFaq) { ezc.faq = ezc.faq === t.dataset.ezcFaq ? null : t.dataset.ezcFaq; const lado = $('.ezc-lado', v); if (lado && ezc.d) lado.outerHTML = ezcLado(ezc.d); return }
+    if (t.dataset.ezcFaq) {
+      ezc.faq = ezc.faq === t.dataset.ezcFaq ? null : t.dataset.ezcFaq
+      if (modoEscalinatas()) { const sc = $('#ezc-msgs')?.scrollTop || 0; pintarEscalinatas(); const ol = $('#ezc-msgs'); if (ol) ol.scrollTop = sc; return }
+      const lado = $('.ezc-lado', v); if (lado && ezc.d) lado.outerHTML = ezcLado(ezc.d); return
+    }
     if (t.dataset.ezcRep) { ezc.rep = t.dataset.ezcRep; return pintarMensajesEzc() }
     if (t.dataset.ezcRepSi) return ezcReportar(t.dataset.ezcRepSi)
     if (t.hasAttribute('data-ezc-rep-no')) { ezc.rep = null; return pintarMensajesEzc() }
@@ -6488,12 +6553,9 @@ async function iniciar() {
   pintarNav(); actualizarNavBloque(); fdConfig(null); enlazar(); enlazarFunding(); enlazarMiButaca(); enlazarDebates(); enlazarPropuestas(); enlazarCiudadanos(); enlazarCrearBloque(); enlazarEstadisticas(); enlazarAuditorio(); enlazarPlayroom(); enlazarAprende(); enlazarMuro(); enlazarEscalinatas(); enlazarRevelacion(); enlazarMonitor(); enlazarMiBloque(); enlazarHeader(); enlazarBuscador(); ruta(); iniciarA2()
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
-  if (sinButaca()) {
-    pintarNav(); actualizarNavBloque()
-    // Primera vez en la sesión sin butaca y sin sección elegida → a las Escalinatas
-    try { if (!location.hash && !sessionStorage.getItem('ux2_ezc_auto')) { sessionStorage.setItem('ux2_ezc_auto', '1'); location.hash = '#escalinatas' } } catch (e) {}
-  }
-  if (vistaActual() === 'escalinatas') entrarEscalinatas()
+  const habiaModo = modoEscalinatas()
+  if (aplicarModoEscalinatas() || habiaModo) { pintarNav(); ruta() }       // ruta() ya abre la sala
+  else if (vistaActual() === 'escalinatas') entrarEscalinatas()
   vigilarSesion()
   vigilarPortada()
   au.usuarioListo = true

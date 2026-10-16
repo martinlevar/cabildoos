@@ -22,6 +22,8 @@
 <script>
   // Tema antes de pintar (evita parpadeo). Solo preferencia visual de este navegador.
   try { const t = localStorage.getItem('ux2_tema'); if (t) document.documentElement.dataset.theme = t } catch (e) {}
+  // Sin butaca → solo las Escalinatas (se confirma al cargar la sesión)
+  try { if (localStorage.getItem('ux2_modo_ezc') === '1') document.documentElement.classList.add('modo-ezc') } catch (e) {}
 </script>
 </head>
 <body>
