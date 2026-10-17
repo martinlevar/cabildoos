@@ -2975,3 +2975,35 @@ html.modo-ezc .main > .view:not([data-view="escalinatas"]) { display: none !impo
   .ezc-solo-verif-pie { flex-direction: column; align-items: stretch; }
   .ezc-solo .ezc-escribir { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
+
+/* ══ Ajustes de celular (informe móvil 17/10) ══ */
+/* Las ventanas nunca más anchas que la pantalla (MOB-25) */
+.modal { grid-template-columns: minmax(0, 1fr); }
+.modal-box { max-width: 100%; min-width: 0; }
+/* Propuestas: enlaces mal escritos se marcan con aviso visible (MOB-21) */
+.ml-link.ml-mal, #ml-video.ml-mal { border-color: var(--red) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent); }
+.ml-err { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--red) 10%, var(--surface)); color: var(--red); font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+/* Columnas que no se estiran por contenido ancho (Auditorio y Debates: «Enviar» cortado, MOB-30/31) */
+@media (max-width: 1080px) { .au-wrap { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) { .db-wrap { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  /* Nada se sale de costado: así el header fijo no se va con el scroll (MOB-07) */
+  html, body { overflow-x: clip; }
+  /* Pestañas: se desplazan de costado en vez de salirse de la pantalla (MOB-23/24) */
+  .seg { display: flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; overscroll-behavior-x: contain; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg-btn { flex: none; white-space: nowrap; padding: 8px 12px; scroll-snap-align: start; }
+  .pr-barra { min-width: 0; }
+  .pr-barra > .seg { flex: 1 1 100%; }
+  /* Notificaciones y menú de usuario: dentro de la pantalla, debajo del header (MOB-04) */
+  .hd-pop, .notif-pop { position: fixed; left: 10px; right: 10px; top: calc(var(--top) + 6px); width: auto; max-width: none; max-height: calc(100dvh - var(--top) - 20px); overflow-y: auto; }
+  /* Solicitudes: Aceptar / Rechazar debajo del nombre, a lo ancho (MOB-26) */
+  .ci-fila:has([data-aceptar]) { flex-wrap: wrap; }
+  .ci-fila:has([data-aceptar]) .ci-fila-txt { flex: 1 1 calc(100% - 60px); }
+  .ci-fila:has([data-aceptar]) .btn { flex: 1 1 0; height: 40px; padding: 0 12px; }
+  /* Auditorio: el campo ocupa la fila y «Enviar» va abajo a lo ancho, con el contador adentro (MOB-30) */
+  .au-compo-fila { flex-wrap: wrap; }
+  .au-compo textarea { flex: 1 1 calc(100% - 56px); }
+  .au-compo #au-enviar { flex: 1 1 100%; }
+  .modal { padding: 10px; }
+}
