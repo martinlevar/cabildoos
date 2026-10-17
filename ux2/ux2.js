@@ -5,7 +5,7 @@
 'use strict'
 
 const sb = window.supabase.createClient(window.__ENV.SUPABASE_URL, window.__ENV.SUPABASE_KEY)
-const APP_ACTUAL = '/'          // secciones todavía no rediseñadas → versión actual
+const APP_ACTUAL = '/cuenta'    // login, registro y verificación siguen en la v1, que vive en /cuenta
 
 const $  = (s, el = document) => el.querySelector(s)
 const $$ = (s, el = document) => [...el.querySelectorAll(s)]
