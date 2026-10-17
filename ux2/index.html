@@ -527,7 +527,7 @@
 <div class="modal" id="modal-lanzar" hidden role="dialog" aria-modal="true" aria-labelledby="ml-titulo">
   <div class="modal-box modal-lanzar">
     <button class="modal-x" id="ml-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    <form id="ml-form" class="ml-grid">
+    <form id="ml-form" class="ml-grid" novalidate>
       <div class="ml-campos">
         <h2 id="ml-titulo">Lanzar una propuesta</h2>
         <p class="muted" id="ml-meta-txt"></p>
@@ -538,9 +538,10 @@
           <summary>Agregar contexto y fuentes</summary>
           <label class="ml-l">Contexto<textarea id="ml-contexto" maxlength="1500" rows="3" placeholder="Por qué importa, qué cambiaría"></textarea></label>
           <label class="ml-l">Enlaces a fuentes
-            <input class="ml-link" type="url" placeholder="https://"><input class="ml-link" type="url" placeholder="https://"><input class="ml-link" type="url" placeholder="https://"></label>
-          <label class="ml-l">Video<input id="ml-video" type="url" placeholder="https://"></label>
+            <input class="ml-link" type="url" inputmode="url" autocapitalize="off" placeholder="https://"><input class="ml-link" type="url" inputmode="url" autocapitalize="off" placeholder="https://"><input class="ml-link" type="url" inputmode="url" autocapitalize="off" placeholder="https://"></label>
+          <label class="ml-l">Video<input id="ml-video" type="url" inputmode="url" autocapitalize="off" placeholder="https://"></label>
         </details>
+        <p class="ml-err" id="ml-err-links" role="alert" hidden></p>
         <button class="btn btn-dark ml-enviar" id="ml-enviar" type="submit" disabled>Lanzar propuesta</button>
       </div>
       <div class="ml-vista">
