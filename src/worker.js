@@ -21,6 +21,39 @@ function cspV2(env, nonce) {
   ].join('; ')
 }
 
+// ─── Lanzamiento de la v2 ───
+// En producción la v2 (/ux2/) queda cerrada mientras corra la cuenta regresiva del admin
+// (system_config.countdown). Se abre sola cuando la cuenta llega a cero o cuando se desactiva.
+// Con la v2 abierta, la dirección principal lleva a la v2 y la v1 queda en /cuenta
+// (ahí siguen el login, el registro, la verificación y la recuperación de contraseña).
+// En dev y stage la v2 está siempre abierta.
+const HOSTS_PROD = ['cabildodevenezuela.com', 'www.cabildodevenezuela.com']
+const LANZAMIENTO_RESPALDO = Date.parse('2026-10-19T11:11:00-04:00')   // solo si no se puede leer la configuración
+let _cfgV2 = { t: 0, abierta: null }
+
+async function v2Abierta(env, url) {
+  if (!HOSTS_PROD.includes(url.hostname)) return true
+  const ahora = Date.now()
+  if (_cfgV2.abierta !== null && ahora - _cfgV2.t < 20000) return _cfgV2.abierta
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/system_config?select=value&key=eq.countdown`, {
+      headers: { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}` },
+      cf: { cacheTtl: 15 },
+    })
+    if (!r.ok) throw new Error('status ' + r.status)
+    const v = (await r.json())?.[0]?.value
+    const fin = Date.parse(v?.objetivo)
+    const abierta = !v || !v.active || (!isNaN(fin) && ahora >= fin)
+    _cfgV2 = { t: ahora, abierta }
+    return abierta
+  } catch (e) {
+    if (_cfgV2.abierta !== null) return _cfgV2.abierta
+    return ahora >= LANZAMIENTO_RESPALDO
+  }
+}
+
+const redirigir = (destino, status = 302) => new Response(null, { status, headers: { Location: destino, 'Cache-Control': 'no-store' } })
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -32,6 +65,20 @@ export default {
     // cerrada de rutas y reenviando la IP real.
     if (url.pathname === '/sb' || url.pathname.startsWith('/sb/')) {
       return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    // ─── v2.cabildodevenezuela.com se retira: todo va al dominio principal ───
+    if (url.hostname === 'v2.cabildodevenezuela.com') {
+      return redirigir('https://cabildodevenezuela.com' + url.pathname + url.search);
+    }
+
+    // ─── Lanzamiento: v2 cerrada → /ux2 vuelve a la portada; v2 abierta → la portada lleva a la v2 ───
+    const esRutaV2 = url.pathname === '/ux2' || url.pathname.startsWith('/ux2/');
+    if (url.pathname === '/cuenta/') return redirigir('/cuenta' + url.search, 301);
+    if (esRutaV2 || url.pathname === '/' || url.pathname === '/index.html') {
+      const abierta = await v2Abierta(env, url);
+      if (esRutaV2 && !abierta) return redirigir('/' + url.search);
+      if (!esRutaV2 && abierta) return redirigir('/ux2/' + url.search);
     }
 
     // ─── Static assets ───
