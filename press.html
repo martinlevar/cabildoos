@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prensa — Cabildo de Venezuela lanza su versión 2</title>
+<meta name="description" content="Gacetilla de prensa: Cabildo de Venezuela, la plataforma de participación ciudadana anónima y verificada, lanza su versión 2. Cifras, cambios respecto de la primera versión y equipo.">
+<link rel="canonical" href="https://cabildodevenezuela.com/press">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Cabildo de Venezuela lanza su versión 2">
+<meta property="og:description" content="Más de 1.100 ciudadanos verificados, voto secreto rediseñado y nuevas herramientas para organizarse. Gacetilla de prensa.">
+<meta property="og:url" content="https://cabildodevenezuela.com/press">
+<meta property="og:image" content="https://cabildodevenezuela.com/logo-cabildo.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@cabildoven">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3f4f8; --surface: #ffffff; --surface-2: #f6f7fb; --line: #e7e9f1;
+    --ink: #12162e; --ink-2: #3b4160; --muted: #6b7190;
+    --accent: #4f46e5; --accent-bg: #eef0ff; --navy: #141a3c;
+    --pend-bg: #fff4d6; --pend-ink: #7a4b00;
+    --shadow: 0 1px 2px rgba(18,22,46,.04), 0 8px 24px rgba(18,22,46,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0e1d; --surface: #141830; --surface-2: #1a1f3b; --line: #262c4d;
+      --ink: #eef0fb; --ink-2: #c3c8e3; --muted: #8f95b8;
+      --accent: #8b8cff; --accent-bg: #23285a; --navy: #2b3478;
+      --pend-bg: #3a2e10; --pend-ink: #ffd27a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .tricolor { display: grid; grid-template-columns: repeat(3, 1fr); height: 4px; }
+  .tricolor i:nth-child(1) { background: #f5c518; } .tricolor i:nth-child(2) { background: #1e40af; } .tricolor i:nth-child(3) { background: #dc2626; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px clamp(16px, 4vw, 40px); background: var(--surface); border-bottom: 1px solid var(--line); }
+  .marca { display: flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; }
+  .marca .logo { width: 42px; height: 42px; border-radius: 50%; overflow: hidden; flex: none; }
+  .marca .logo img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.2); display: block; }
+  .marca b { display: block; font-size: 15px; line-height: 1.15; }
+  .marca small { display: block; font-size: 11.5px; color: var(--muted); }
+  .top nav { display: flex; gap: 8px; flex-wrap: wrap; }
+  .top nav a { font-size: 13.5px; font-weight: 600; text-decoration: none; padding: 8px 14px; border-radius: 99px; color: var(--ink-2); }
+  .top nav a.cta { background: var(--navy); color: #fff; }
+
+  main { max-width: 780px; margin: 0 auto; padding: clamp(28px, 6vw, 56px) 16px 72px; }
+  .etiqueta { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); background: var(--accent-bg); padding: 5px 12px; border-radius: 99px; margin-bottom: 18px; }
+  h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.08; letter-spacing: -.03em; margin: 0 0 16px; font-weight: 800; }
+  .bajada { font-size: clamp(17px, 2.2vw, 20px); line-height: 1.5; color: var(--ink-2); margin: 0 0 22px; }
+  .datos-pub { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13.5px; color: var(--muted); padding-bottom: 26px; border-bottom: 1px solid var(--line); margin-bottom: 30px; }
+  h2 { font-size: 23px; letter-spacing: -.02em; margin: 44px 0 12px; line-height: 1.25; }
+  h3 { font-size: 17px; margin: 0 0 6px; }
+  p { margin: 0 0 16px; font-size: 16.5px; }
+  .lead::first-letter { font-weight: 800; }
+
+  .cifras { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 26px 0 8px; }
+  .cifra { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+  .cifra b { display: block; font-size: clamp(24px, 3.4vw, 32px); letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .cifra span { font-size: 13px; color: var(--muted); line-height: 1.35; display: block; margin-top: 4px; }
+  .nota-cifras { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+
+  blockquote { margin: 26px 0; padding: 18px 22px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 18px; line-height: 1.5; }
+  blockquote cite { display: block; margin-top: 10px; font-size: 14px; font-style: normal; color: var(--muted); }
+
+  .comparacion { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); margin: 18px 0 6px; font-size: 14.5px; }
+  .comparacion th, .comparacion td { text-align: left; vertical-align: top; padding: 13px 16px; border-bottom: 1px solid var(--line); line-height: 1.5; }
+  .comparacion tr:last-child td { border-bottom: 0; }
+  .comparacion thead th { background: var(--surface-2); font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .comparacion td:first-child { font-weight: 700; width: 22%; }
+  .comparacion td:last-child { color: var(--ink); }
+  .comparacion td:nth-child(2) { color: var(--ink-2); }
+
+  .novedades { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+  .novedad { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+  .novedad p { font-size: 14.5px; color: var(--ink-2); margin: 0; line-height: 1.55; }
+
+  .equipo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+  .persona { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
+  .persona .ini { width: 46px; height: 46px; border-radius: 14px; background: var(--navy); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: none; }
+  .persona p { font-size: 14px; color: var(--ink-2); margin: 4px 0 0; line-height: 1.5; }
+  .persona .rol { font-size: 13px; color: var(--accent); font-weight: 700; display: block; }
+
+  .contacto { background: var(--navy); color: #fff; border-radius: 20px; padding: 24px clamp(18px, 4vw, 28px); margin: 40px 0 0; }
+  .contacto h2 { margin-top: 0; color: #fff; }
+  .contacto p, .contacto li { color: rgba(255,255,255,.86); font-size: 15px; }
+  .contacto a { color: #fff; font-weight: 700; }
+  .contacto ul { margin: 0 0 16px; padding-left: 20px; }
+  .boton { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 99px; background: #fff; color: #141a3c !important; text-decoration: none; font-weight: 700; font-size: 14.5px; }
+
+  .pend { background: var(--pend-bg); color: var(--pend-ink); border-radius: 6px; padding: 1px 6px; font-weight: 700; }
+  .fin { text-align: center; color: var(--muted); font-size: 13px; margin-top: 40px; }
+  footer { border-top: 1px solid var(--line); padding: 22px 16px 34px; text-align: center; font-size: 13px; color: var(--muted); }
+  footer a { color: var(--muted); margin: 0 8px; }
+
+  @media (max-width: 640px) {
+    .cifras, .novedades, .equipo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .novedades, .equipo { grid-template-columns: minmax(0, 1fr); }
+    .top nav a:not(.cta) { display: none; }
+    .comparacion thead { display: none; }
+    .comparacion, .comparacion tbody, .comparacion tr, .comparacion td { display: block; width: 100%; }
+    .comparacion tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+    .comparacion tr:last-child { border-bottom: 0; }
+    .comparacion td { border: 0; padding: 6px 16px; }
+    .comparacion td:first-child { width: 100%; padding-top: 12px; }
+    .comparacion td:nth-child(2)::before { content: 'Versión 1: '; font-weight: 700; color: var(--muted); }
+    .comparacion td:nth-child(3)::before { content: 'Versión 2: '; font-weight: 700; color: var(--accent); }
+  }
+</style>
+</head>
+<body>
+<div class="tricolor" aria-hidden="true"><i></i><i></i><i></i></div>
+<header class="top">
+  <a class="marca" href="/">
+    <span class="logo"><img src="/logo-cabildo.jpg" alt=""></span>
+    <span><b>Cabildo de Venezuela</b><small>Sala de prensa</small></span>
+  </a>
+  <nav aria-label="Enlaces">
+    <a href="/paper">Whitepaper</a>
+    <a href="#contacto">Contacto</a>
+    <a class="cta" href="/">Entrar al Cabildo</a>
+  </nav>
+</header>
+
+<main>
+  <article>
+    <span class="etiqueta">Gacetilla de prensa</span>
+    <h1>Cabildo de Venezuela lanza su versión 2: más simple, más segura y con el voto secreto rediseñado</h1>
+    <p class="bajada">La plataforma de participación ciudadana anónima y verificada, que ya reúne a más de 1.100 venezolanos con identidad comprobada, estrena una nueva versión con herramientas para organizarse, debatir y votar desde cualquier lugar del mundo.</p>
+    <div class="datos-pub">
+      <span>Para publicación inmediata</span>
+      <span>Lunes 19 de octubre de 2026</span>
+      <span>cabildodevenezuela.com</span>
+    </div>
+
+    <p class="lead">Cabildo de Venezuela, la plataforma digital que permite a venezolanos dentro y fuera del país debatir y votar sobre los temas públicos con su identidad verificada y su voto en secreto, lanzó este lunes 19 de octubre su versión 2. La actualización renueva por completo la experiencia de uso, rediseña la forma en que se registran los votos para que nadie pueda saber qué eligió cada persona e incorpora nuevas herramientas para que los ciudadanos se organicen.</p>
+
+    <p>El proyecto funciona como un parlamento ciudadano: cada persona que comprueba su identidad recibe una <strong>butaca</strong> en un hemiciclo digital. Desde esa butaca puede votar en las consultas abiertas, lanzar propuestas, participar en debates y seguir a otros ciudadanos. La regla es simple: una persona, una butaca, un voto.</p>
+
+    <div class="cifras" role="list" aria-label="El Cabildo en números">
+      <div class="cifra" role="listitem"><b>1.131</b><span>ciudadanos verificados con butaca</span></div>
+      <div class="cifra" role="listitem"><b>3.789</b><span>cuentas registradas</span></div>
+      <div class="cifra" role="listitem"><b>14.237</b><span>participaciones en votaciones</span></div>
+      <div class="cifra" role="listitem"><b>416</b><span>propuestas ciudadanas lanzadas</span></div>
+    </div>
+    <p class="nota-cifras">Cifras al 17 de octubre de 2026. La plataforma abrió su registro en agosto de 2026.</p>
+
+    <blockquote>
+      <span class="pend">[CITA DE MARTÍN LEVAR: dos o tres oraciones sobre por qué la versión 2 y qué espera de ella]</span>
+      <cite>— Martín Levar, <span class="pend">[CARGO]</span> de Cabildo de Venezuela</cite>
+    </blockquote>
+
+    <h2>Anónimo, pero verificado</h2>
+    <p>El Cabildo resuelve un problema central de la participación en línea: cómo garantizar que detrás de cada voto haya una persona real, única y venezolana, sin exponer su identidad. Para obtener una butaca, cada ciudadano completa una verificación con su documento de identidad, una prueba de vida y una foto sosteniendo el documento. El análisis lo realiza un sistema automático con inteligencia artificial y la aprobación final la hace una persona del equipo.</p>
+    <p>Una vez verificada, la persona participa con un número de butaca, no con su nombre. Mostrar un alias o una frase es opcional y lo decide cada ciudadano. Como muchos venezolanos en el exterior no pueden renovar sus documentos, el Cabildo acepta cédulas y pasaportes vencidos.</p>
+
+    <h2>De la versión 1 a la versión 2</h2>
+    <p>La primera versión, lanzada en agosto, demostró que el modelo funcionaba: en dos meses superó el millar de ciudadanos verificados y las catorce mil participaciones. La versión 2 se construyó a partir de esa experiencia y de los reportes de los propios usuarios. Estos son los cambios principales:</p>
+
+    <table class="comparacion">
+      <thead><tr><th scope="col">Aspecto</th><th scope="col">Versión 1</th><th scope="col">Versión 2</th></tr></thead>
+      <tbody>
+        <tr><td>Diseño</td><td>Una aplicación de estética oscura, con toda la experiencia en una sola pantalla.</td><td>Diseño nuevo con modo claro y oscuro, menú por secciones y adaptado al teléfono.</td></tr>
+        <tr><td>Voto secreto</td><td>El voto se sellaba con una huella criptográfica.</td><td>El sistema registra solo que una butaca participó y suma su elección a un contador general. No existe ningún registro que una a una persona con lo que votó, y el teléfono tampoco lo guarda.</td></tr>
+        <tr><td>Resultados</td><td>Animación de revelación al cierre de cada votación.</td><td>Revelación rediseñada: el hemiciclo enciende las butacas que votaron, todas del mismo color para que nadie pueda deducir qué eligió cada una, y recién después muestra el resultado. Con menos de tres votos no se publica el desglose.</td></tr>
+        <tr><td>Organización</td><td>Participación individual.</td><td><strong>Bloques</strong>: grupos de ciudadanos liderados por un anfitrión que acepta mostrar su nombre real tras una segunda verificación. Los miembros siguen siendo anónimos.</td></tr>
+        <tr><td>Recién llegados</td><td>Quien no completaba la verificación quedaba afuera.</td><td><strong>Las Escalinatas</strong>: una antesala con charla por temas y un canal de ayuda donde los ciudadanos verificados acompañan a quienes todavía no consiguieron su butaca.</td></tr>
+        <tr><td>Aprender a participar</td><td>Preguntas frecuentes.</td><td><strong>Aprendé</strong>: lecciones cortas e interactivas sobre cómo votar, proponer y organizarse.</td></tr>
+        <tr><td>Seguridad</td><td>Protección de la aplicación y de los datos.</td><td>Revisiones de seguridad durante todo el desarrollo, permisos de datos más estrictos, protección contra código malicioso en el navegador y moderación con límites en todos los espacios abiertos.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Todo lo que se puede hacer en el Cabildo</h2>
+    <div class="novedades">
+      <div class="novedad"><h3>Votaciones</h3><p>Consultas sobre temas de interés público con fecha de cierre. Sí, No o Abstención, siempre en secreto.</p></div>
+      <div class="novedad"><h3>Propuestas</h3><p>Cualquier butaca puede proponer un tema. Si en 48 horas consigue el apoyo de 20 butacas, pasa a revisión para llegar al hemiciclo.</p></div>
+      <div class="novedad"><h3>Debates y Muro del día</h3><p>Espacios para argumentar a favor y en contra de cada votación, y para opinar sobre el tema del día.</p></div>
+      <div class="novedad"><h3>Auditorio</h3><p>Sesiones en vivo con chat, en las que los ciudadanos piden la palabra.</p></div>
+      <div class="novedad"><h3>Ciudadanos</h3><p>Un directorio de butacas para seguir a otros participantes e intercambiar mensajes privados.</p></div>
+      <div class="novedad"><h3>Estadísticas</h3><p>La actividad del Cabildo en números, abierta a todos.</p></div>
+      <div class="novedad"><h3>Resultados en X</h3><p>Cada votación se anuncia sola en <a href="https://x.com/cabildoven">@cabildoven</a> al abrir y al cerrar, con su resultado y una síntesis neutral del debate.</p></div>
+      <div class="novedad"><h3>Playroom</h3><p>Juegos de conocimiento cívico con ranking entre butacas.</p></div>
+    </div>
+    <p>El equipo ya trabaja en las próximas etapas: una sección de <strong>Noticias</strong>, un sistema de <strong>financiamiento ciudadano</strong> para sostener la plataforma y proyectos decididos por la comunidad, y las aplicaciones nativas para Android e iOS.</p>
+
+    <h2>Quiénes están detrás del Cabildo</h2>
+    <p>Cabildo de Venezuela es desarrollado por <strong>Bowery Global Inc</strong>, la empresa creadora de CabildoOS, el sistema sobre el que funciona la plataforma.</p>
+    <div class="equipo">
+      <div class="persona"><span class="ini" aria-hidden="true">ML</span><div><h3>Martín Levar</h3><span class="rol"><span class="pend">[CARGO]</span></span><p><span class="pend">[Una o dos líneas de biografía]</span></p></div></div>
+      <div class="persona"><span class="ini" aria-hidden="true">?</span><div><h3><span class="pend">[NOMBRE Y APELLIDO]</span></h3><span class="rol"><span class="pend">[CARGO]</span></span><p><span class="pend">[Una o dos líneas de biografía]</span></p></div></div>
+    </div>
+
+    <h2>Sobre Cabildo de Venezuela</h2>
+    <p>Cabildo de Venezuela (<a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a>) es una plataforma de participación ciudadana digital, anónima y verificada, para venezolanos dentro y fuera del país. Su lema, «Generación Independencia 2026», resume su propósito: que cada ciudadano pueda expresar su posición sobre los temas públicos con la seguridad de que su voto cuenta una sola vez y permanece en secreto. El funcionamiento técnico se detalla en el <a href="/paper">whitepaper</a> del proyecto.</p>
+
+    <section class="contacto" id="contacto" aria-labelledby="contacto-titulo">
+      <h2 id="contacto-titulo">Contacto de prensa</h2>
+      <ul>
+        <li>Email: <span class="pend">[EMAIL DE PRENSA]</span></li>
+        <li>X: <a href="https://x.com/cabildoven">@cabildoven</a></li>
+        <li>Sitio: <a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a></li>
+      </ul>
+      <a class="boton" href="/logo-cabildo.jpg" download>Descargar el logo</a>
+    </section>
+
+    <p class="fin">— FIN —</p>
+  </article>
+</main>
+
+<footer>
+  <a href="/">Inicio</a><a href="/paper">Whitepaper</a><a href="/faq">Ayuda</a><a href="/privacidad">Privacidad</a><a href="/terminos">Términos</a>
+</footer>
+</body>
+</html>
