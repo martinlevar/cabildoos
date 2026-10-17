@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cabildo de Venezuela</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/ux2/iconos/icono.svg" type="image/svg+xml">
+<!-- App en la pantalla de inicio (Android e iPhone) -->
+<link rel="manifest" href="/ux2/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/ux2/iconos/apple-touch-icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cabildo">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0e1d" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ux2/ux2.css">
+<script>
+  // Tema antes de pintar (evita parpadeo). Solo preferencia visual de este navegador.
+  try { const t = localStorage.getItem('ux2_tema'); if (t) document.documentElement.dataset.theme = t } catch (e) {}
+  // Sin butaca → solo las Escalinatas (se confirma al cargar la sesión)
+  try { if (localStorage.getItem('ux2_modo_ezc') === '1') document.documentElement.classList.add('modo-ezc') } catch (e) {}
+</script>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══ BARRA SUPERIOR ═══ -->
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menu-btn" aria-label="Abrir menú">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <a class="brand" href="/ux2/">
+      <img src="/logo-cabildo.jpg" alt="" class="brand-logo">
+      <span class="brand-text"><b>Cabildo de<br>Venezuela</b><small>Generación Independencia 2026</small></span>
+    </a>
+    <div class="buscador" id="buscador">
+      <label class="search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="search" id="bus-q" placeholder="Buscar propuestas, temas o ciudadanos…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="bus-res" aria-autocomplete="list">
+        <kbd class="bus-atajo" aria-hidden="true">/</kbd>
+      </label>
+      <div class="bus-res" id="bus-res" role="listbox" hidden></div>
+    </div>
+    <div class="topbar-right">
+      <button class="a2-hd" id="a2-hd" hidden aria-label="Obtener la app del Cabildo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M12 8v6M9.5 11.5 12 14l2.5-2.5"/></svg><span>App</span>
+      </button>
+      <button class="icon-btn bus-movil" id="bus-movil" aria-label="Buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <div class="clock" aria-label="Hora de Venezuela">
+        <span class="flag" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><b id="clock-time">--:--:--</b><small id="clock-date">VET</small></span>
+      </div>
+      <div class="hd-menu">
+        <button class="icon-btn" title="Notificaciones" id="btn-notif" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+          <span class="dot" id="notif-dot" hidden></span>
+        </button>
+        <div class="hd-pop notif-pop" id="notif-pop" hidden></div>
+      </div>
+      <a class="icon-btn hide-sm" href="#ciudadanos/mensajes" title="Mensajes y solicitudes">
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/><path d="M9 9h6M9 12h4"/></svg>
+        <span class="dot" id="msg-dot" hidden></span>
+      </a>
+      <div class="hd-menu">
+        <button class="user-chip" id="user-chip" aria-haspopup="true" aria-expanded="false">
+          <span class="avatar" id="user-avatar">?</span>
+          <span class="user-name" id="user-name">Iniciar sesión</span>
+        </button>
+        <div class="hd-pop user-pop" id="user-pop" hidden></div>
+      </div>
+      <button class="icon-btn" id="theme-btn" aria-label="Cambiar tema">
+        <svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ BARRA LATERAL ═══ -->
+  <nav class="sidebar" id="sidebar" aria-label="Secciones">
+    <button class="fold-btn" id="side-toggle" title="Plegar menú" aria-label="Plegar menú">
+      <svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>
+    </button>
+    <ul class="nav" id="nav"></ul>
+    <figure class="quote">
+      <blockquote>“Ideas hoy.<br>Libertad mañana.”</blockquote>
+      <figcaption>El futuro<br>también se vota.</figcaption>
+    </figure>
+  </nav>
+  <div class="scrim" id="scrim"></div>
+
+  <!-- ═══ CONTENIDO ═══ -->
+  <main class="main" id="main">
+
+    <!-- INICIO -->
+    <section class="view" data-view="inicio">
+      <div class="hero">
+        <div class="hero-flip" id="hero-flip">
+          <div class="hero-cara frente" id="hero-frente">
+            <h1 id="hero-titulo">El futuro de <br>Venezuela <span>se debate aquí.</span></h1>
+            <p id="hero-sub">Ciudadanos. Ideas. Votaciones. Un país posible.</p>
+          </div>
+          <div class="hero-cara dorso" id="hero-dorso" aria-live="polite">
+            <span class="hero-anuncio-tag" id="hero-anuncio-tag"><i></i>Anuncio</span>
+            <p class="hero-anuncio" id="hero-anuncio"></p>
+            <button class="hero-girar" id="hero-girar" type="button">Ver portada ↺</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <p id="hero-tarjeta">Más ciudadanos.<br>Más ideas.<br>Más Venezuela.</p>
+          <span class="hero-play" title="Próximamente">
+            <svg viewBox="0 0 24 24"><path d="M9 7v10l8-5z"/></svg>
+            <small>Ver video</small>
+          </span>
+        </div>
+      </div>
+
+      <div class="home-grid">
+        <!-- Hemiciclo -->
+        <article class="card hemi-card">
+          <header class="hemi-head">
+            <div class="stat"><b id="st-butacas">—</b><small>Ciudadanos<br>con butaca</small></div>
+            <div class="stat"><b id="st-votos">—</b><small><i class="live-dot"></i>Votos en<br>la sesión</small></div>
+            <button class="btn-luz" id="btn-luz" type="button" hidden aria-pressed="false" title="Encender mi butaca: se ve con luz blanca mientras estás presente">
+              <svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z"/></svg><span id="btn-luz-txt">Encender mi butaca</span>
+            </button>
+            <a class="pill-live" id="pill-live" href="#votaciones" hidden><i></i>Sesión en vivo<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg></a>
+            <a class="hemi-expand" id="hemi-expand" href="#monitor" title="Abrir el monitor del Hemiciclo (pantalla completa)" aria-label="Abrir el monitor del Hemiciclo"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Monitor</span></a>
+          </header>
+          <div class="hemi-wrap">
+            <canvas id="hemi" aria-label="Hemiciclo con las butacas del Cabildo"></canvas>
+            <div class="seat-card" id="seat-card" hidden></div>
+            <div class="hemi-zoom" aria-label="Zoom del hemiciclo">
+              <button id="hz-mas" title="Acercar" aria-label="Acercar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+              <button id="hz-menos" title="Alejar" aria-label="Alejar"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+              <button id="hz-todo" title="Ver todo el hemiciclo" aria-label="Ver todo"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+              <button id="hz-mia" title="Ir a mi butaca" aria-label="Ir a mi butaca"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></button>
+            </div>
+            <a class="my-seat-tip" id="my-seat-tip" href="#butaca" hidden>
+              <span><small>Tu butaca</small><b id="my-seat-num"></b></span>
+              <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+            </a>
+            <div class="hemi-label">
+              <b>CABILDO</b><span>DE VENEZUELA</span><small>GENERACIÓN<br>INDEPENDENCIA 2026</small>
+            </div>
+          </div>
+        </article>
+
+        <!-- Votación activa + Muro -->
+        <div class="col-side">
+          <article class="card q-card" id="q-card">
+            <header class="card-head">
+              <h2><span class="iq-vivo" id="iq-vivo" hidden></span>Votaciones en curso <span class="ip-n" id="iq-n"></span></h2>
+              <a href="#votaciones" class="link-more">Ver todas<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+            </header>
+            <ul class="iq-list" id="iq-list"><li class="muted">Buscando votaciones activas…</li></ul>
+          </article>
+
+          <article class="card ini-prop">
+            <header class="card-head">
+              <h2>Propuestas en carrera <span class="ip-n" id="ip-n"></span></h2>
+              <a href="#propuestas" class="link-more">Ver todas<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+            </header>
+            <ul class="ip-list" id="ip-list"><li class="muted">Cargando…</li></ul>
+          </article>
+
+
+        </div>
+
+        <!-- Accesos rápidos -->
+        <div class="quick">
+          <a class="quick-item quick-dark" href="#butaca" id="quick-butaca">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><path d="M7 10V6a5 5 0 0 1 10 0v4M5 10h14v5H5zM7 15v4M17 15v4"/></svg></span>
+            <span><b>Mi Butaca</b><small id="quick-butaca-num">—</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+          <a class="quick-item" href="#propuestas">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg></span>
+            <span><b>Proponer</b><small>Una nueva idea</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+          <a class="quick-item quick-outline" href="#debates">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg></span>
+            <span><b>Debates</b><small>Temas y sesiones</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+          <a class="quick-item" href="#ciudadanos">
+            <span class="qi-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg></span>
+            <span><b>Ciudadanos</b><small>Conocé la comunidad</small></span>
+            <svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+        </div>
+
+        <article class="card muro">
+            <header class="card-head">
+              <h2>Muro del Día</h2>
+              <a href="#muro" class="link-more" id="muro-escribir-ini">+ Escribir</a>
+              <a href="#muro" class="link-more">Ver todo<svg viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></a>
+            </header>
+            <ul class="muro-list" id="muro-list"><li class="muted">Cargando…</li></ul>
+          </article>
+      </div>
+    </section>
+
+    <!-- VOTACIONES -->
+    <section class="view" data-view="votaciones" hidden>
+      <header class="view-head">
+        <div><h1>Votaciones</h1><p>Tu voto es secreto: no se publica ni se muestra a nadie.</p></div>
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-vfiltro="abiertas">Abiertas <span id="vc-abiertas"></span></button>
+          <button class="seg-btn" data-vfiltro="cerradas">Cerradas <span id="vc-cerradas"></span></button>
+        </div>
+      </header>
+      <div class="vlist" id="vlist"><p class="muted">Cargando…</p></div>
+    </section>
+
+    <!-- PROPUESTAS -->
+    <section class="view" data-view="propuestas" hidden id="pr-vista">
+      <header class="view-head pr-head">
+        <div><h1>Propuestas</h1><p>Cada propuesta tiene 48 horas para encender 20 butacas. Si lo logra, pasa a revisión para entrar al Hemiciclo.</p></div>
+        <button class="btn btn-dark pr-lanzar" id="pr-lanzar"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Lanzar propuesta</button>
+      </header>
+
+      <section class="pista" id="pr-pista" aria-label="Propuestas en carrera">
+        <div class="pista-cab">
+          <div class="pista-dato"><b id="pr-n-vivas">–</b><span>en carrera</span></div>
+          <div class="pista-dato"><b id="pr-n-hora">–</b><span>butacas encendidas en la última hora</span></div>
+          <div class="pista-dato pista-prox"><span>La próxima se apaga en</span><span id="pr-prox"><b>–</b></span></div>
+        </div>
+        <div class="pista-meta-linea"><span>Salida</span><span>Hemiciclo</span></div>
+        <div class="carriles" id="pr-carriles"></div>
+        <p class="pista-eco" id="pr-eco" aria-live="polite"></p>
+      </section>
+
+      <div class="pr-barra">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-prfiltro="carrera">En carrera <span></span></button>
+          <button class="seg-btn" data-prfiltro="meta">Lograron la meta <span></span></button>
+          <button class="seg-btn" data-prfiltro="hemiciclo">En el Hemiciclo <span></span></button>
+          <button class="seg-btn" data-prfiltro="mias">Mías <span></span></button>
+        </div>
+        <div class="pr-ordenes" id="pr-ordenes">
+          <button data-prorden="cerca" class="active">Más cerca de la meta</button>
+          <button data-prorden="apagar">Por apagarse</button>
+          <button data-prorden="nuevas">Nuevas</button>
+        </div>
+      </div>
+      <div class="pr-grid" id="pr-grid"><p class="muted">Cargando…</p></div>
+    </section>
+
+    <!-- ESTADÍSTICAS -->
+    <section class="view" data-view="estadisticas" hidden id="es-vista">
+      <header class="view-head">
+        <div><h1>Estadísticas</h1><p>Lo que pasa en el Cabildo, en números. Todo es agregado: nada identifica a ninguna butaca.</p></div>
+      </header>
+      <div class="es-kpis" id="es-kpis"></div>
+
+      <section class="card cloud-card">
+        <div class="cloud-header">
+          <div>
+            <div class="cloud-title">¿De qué se habla en el Cabildo?</div>
+            <div class="cloud-meta" id="cloud-meta">Cargando…</div>
+          </div>
+          <div class="cloud-range">
+            <button class="active" data-horas="1">1h</button><button data-horas="3">3h</button><button data-horas="24">24h</button>
+          </div>
+        </div>
+        <div class="cloud-wrap" id="cloud-wrap">
+          <div class="cloud-empty" id="cloud-empty-msg">Cargando conversaciones…</div>
+          <canvas id="cloud-canvas" style="display:none"></canvas>
+        </div>
+        <div class="cloud-legend" id="cloud-legend" style="display:none">
+          <div class="cloud-legend-item"><span class="cloud-legend-dot" style="background:#C0392B"></span>Crítica / negativo</div>
+          <div class="cloud-legend-item"><span class="cloud-legend-dot" style="background:#1A7A4A"></span>Apoyo / positivo</div>
+          <div class="cloud-legend-item"><span class="cloud-legend-dot" style="background:#4A6FA5"></span>Neutro / descriptivo</div>
+        </div>
+        <p class="cloud-nota">Análisis automático de los mensajes de los debates y el Muro, sin autores. Se actualiza cada 15 minutos.</p>
+      </section>
+
+      <section class="card es-panel">
+        <div class="es-panel-cab"><div><h3>Cómo votó el Cabildo</h3><p class="muted">Últimas votaciones cerradas</p></div><a href="#votaciones" class="es-link" id="es-ver-res">Ver todos los resultados</a></div>
+        <div class="es-part" id="es-part"></div>
+      </section>
+    </section>
+
+    <!-- AUDITORIO -->
+    <section class="view" data-view="auditorio" hidden id="au-vista">
+      <header class="view-head">
+        <div><h1>Auditorio <span class="au-envivo" id="au-envivo" hidden><i></i>En vivo</span></h1>
+          <p id="au-sub">Sesiones en vivo del Cabildo. Mirá, reaccioná y pedí la palabra.</p></div>
+        <div class="au-presentes" id="au-presentes" hidden><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg><b id="au-n">0</b> en la sala</div>
+      </header>
+      <div id="au-cuerpo"><div class="card au-vacio"><p class="muted">Cargando…</p></div></div>
+    </section>
+
+    <!-- PLAYROOM -->
+    <section class="view" data-view="playroom" hidden id="pl-vista">
+      <header class="view-head">
+        <div><h1>Playroom</h1><p>Juegos para ciudadanos verificados. Tu butaca compite contra todo el Cabildo.</p></div>
+        <div class="pl-vivo" id="pl-vivo" hidden><i></i><b id="pl-jugando">0</b> jugando ahora</div>
+      </header>
+      <div id="pl-cuerpo"><div class="card au-vacio"><p class="muted">Cargando…</p></div></div>
+    </section>
+
+    <!-- FOUNDING -->
+    <section class="view" data-view="funding" hidden id="fd-vista">
+      <header class="view-head">
+        <div><h1>Funding</h1><p>La meta para sostener el Cabildo: marcas que auspician y butacas que aportan, todo a la vista.</p></div>
+      </header>
+      <div id="fd-cuerpo"><div class="card au-vacio"><p class="muted">Cargando…</p></div></div>
+    </section>
+
+    <!-- APRENDÉ -->
+    <section class="view" data-view="aprende" hidden id="ap-vista">
+      <div id="ap-cuerpo"></div>
+    </section>
+
+    <!-- LAS ESCALINATAS: antesala del Cabildo para quienes todavía no tienen butaca -->
+    <section class="view" data-view="escalinatas" hidden id="ezc-vista"></section>
+
+    <!-- MURO DEL DÍA -->
+    <section class="view" data-view="muro" hidden id="mu-vista">
+      <header class="view-head">
+        <div><h1>Muro del día</h1><p id="mu-sub">Una opinión por butaca, por día. Lo que pasa hoy en el Cabildo, en primera persona.</p></div>
+        <div class="mu-reloj" id="mu-reloj" title="El Muro se reinicia todos los días a las 3:00 (hora de Venezuela)"></div>
+      </header>
+      <div id="mu-escribir"></div>
+      <div class="mu-barra">
+        <span id="mu-cuenta" class="muted"></span>
+        <div class="seg" role="tablist">
+          <button class="active" data-mu-orden="recientes">Recientes</button><button data-mu-orden="apoyadas">Más apoyadas</button>
+        </div>
+      </div>
+      <div class="mu-grid" id="mu-grid"><p class="muted">Cargando…</p></div>
+    </section>
+
+    <!-- CIUDADANOS -->
+    <section class="view" data-view="ciudadanos" hidden id="ci-vista">
+      <header class="view-head">
+        <div><h1>Ciudadanos</h1><p>Quienes ocupan las butacas del Cabildo. Cada uno decide qué muestra de sí.</p></div>
+      </header>
+      <div class="pr-barra">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" data-citab="directorio">Directorio</button>
+          <button class="seg-btn" data-citab="siguiendo">Siguiendo <span></span></button>
+          <button class="seg-btn" data-citab="seguidores">Seguidores <span></span></button>
+          <button class="seg-btn" data-citab="solicitudes">Solicitudes <span class="ci-badge"></span></button>
+          <button class="seg-btn" data-citab="mensajes">Mensajes <span class="ci-badge"></span></button>
+        </div>
+      </div>
+      <div class="ci-busca" id="ci-busca">
+        <label class="search ci-q"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="ci-q" placeholder="Buscar por alias, frase o número de butaca" autocomplete="off"></label>
+        <label class="ci-check"><input type="checkbox" id="ci-publicos" checked> Solo perfiles públicos</label>
+      </div>
+      <div id="ci-lista"><p class="muted">Cargando…</p></div>
+    </section>
+
+    <!-- DEBATES -->
+    <section class="view" data-view="debates" hidden id="db-vista">
+      <header class="view-head">
+        <div><h1>Debates</h1><p>Un debate por votación. Se habla por turnos: levantá la mano y esperá tu palabra.</p></div>
+      </header>
+      <div class="db-wrap card">
+        <nav class="db-lista" id="db-lista"><p class="muted" style="padding:16px">Cargando…</p></nav>
+        <section class="db-hilo" id="db-hilo"></section>
+      </div>
+    </section>
+
+    <!-- MI BUTACA -->
+    <section class="view" data-view="butaca" hidden>
+      <header class="view-head">
+        <div><h1>Mi Butaca</h1><p>Tu lugar en el hemiciclo. Vos decidís qué se ve y qué no.</p></div>
+      </header>
+      <div id="mb-cuerpo"><p class="muted">Cargando…</p></div>
+    </section>
+
+    <!-- SECCIONES EN CONSTRUCCIÓN -->
+    <!-- MI BLOQUE: espacio privado de los miembros + mini admin del anfitrión -->
+    <section class="view" data-view="bloque" hidden id="bq-vista">
+      <div id="bq-cab"><p class="muted">Cargando tu bloque…</p></div>
+      <nav class="bq-tabs" id="bq-tabs" role="tablist" aria-label="Secciones del bloque"></nav>
+      <div id="bq-cuerpo"></div>
+    </section>
+
+    <section class="view" data-view="pronto" hidden>
+      <div class="card soon">
+        <h1 id="soon-title">Sección</h1>
+        <p>Estamos preparando esta sección. Muy pronto.</p>
+        <a class="btn btn-dark" href="#inicio">Volver al inicio</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══ PANEL DE BLOQUES ═══ -->
+  <aside class="panel" id="panel-bloques" aria-label="Bloques">
+    <button class="panel-rail" id="panel-open" title="Mostrar bloques" aria-label="Mostrar bloques">
+      <svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg>
+      <span>Bloques</span>
+    </button>
+    <header class="panel-head">
+      <div><h2>Bloques</h2><p>Organización ciudadana para un mejor futuro</p></div>
+      <button class="fold-btn" id="panel-toggle" title="Plegar bloques" aria-label="Plegar bloques">
+        <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+    </header>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="destacados" role="tab">Destacados</button>
+      <button class="tab" data-tab="todos" role="tab">Todos los bloques</button>
+      <button class="tab" data-tab="crear" role="tab">Crear bloque</button>
+    </div>
+    <label class="search search-sm">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="bloque-buscar" placeholder="Buscar bloques o ideas…">
+    </label>
+    <div id="bloques-body" class="bloques-body"><p class="muted">Cargando…</p></div>
+  </aside>
+
+  <!-- ═══ PIE ═══ -->
+  <footer class="footer">
+    <span class="foot-brand">cabildoOS <em>v2</em></span>
+    <nav>
+      <a href="/privacidad.html">Privacidad</a><a href="/terminos.html">Términos</a>
+      <a href="/paper.html">Whitepaper</a><a href="/faq.html">Ayuda</a>
+    </nav>
+    <span class="foot-tag">De ciudadanos, para Venezuela. <i class="ve-line"></i></span>
+  </footer>
+</div>
+
+<!-- ═══ MODAL DE VOTO ═══ -->
+<div class="es-tip" id="es-tip" hidden role="tooltip"></div>
+
+<!-- REVELACIÓN de una votación cerrada -->
+<div class="rv" id="rv" hidden role="dialog" aria-modal="true" aria-label="Revelación de la votación">
+  <header class="rv-top">
+    <button class="rv-boton" data-rv="cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Cerrar</span></button>
+    <span class="rv-fase" id="rv-fase"></span>
+    <button class="rv-boton" data-rv="saltar" id="rv-saltar">Saltar<svg viewBox="0 0 24 24"><path d="m6 6 8 6-8 6zM16 6v12"/></svg></button>
+  </header>
+  <div class="rv-preg" id="rv-preg"></div>
+  <div class="rv-escena" id="rv-escena">
+    <canvas id="rv-hemi" aria-hidden="true"></canvas>
+    <div class="rv-mi" id="rv-mi" hidden></div>
+  </div>
+  <div class="rv-panel" id="rv-panel"></div>
+</div>
+
+<!-- MONITOR: el Hemiciclo y las votaciones vigentes a pantalla completa (para proyectar o dejar abierto) -->
+<div class="mon" id="mon" hidden role="dialog" aria-modal="true" aria-label="Monitor del Hemiciclo">
+  <header class="mon-top">
+    <div class="mon-marca">
+      <span class="mon-vivo" id="mon-vivo"><i></i><span id="mon-vivo-txt">En vivo</span></span>
+      <div><b>Cabildo de Venezuela</b><small>Monitor del Hemiciclo</small></div>
+    </div>
+    <div class="mon-reloj" aria-live="off"><b id="mon-hora">--:--</b><small id="mon-fecha"></small></div>
+    <div class="mon-acc">
+      <button class="rv-boton" id="mon-full" title="Pantalla completa (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Pantalla completa</span></button>
+      <button class="rv-boton" id="mon-cerrar" title="Cerrar (Esc)" aria-label="Cerrar el monitor"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Cerrar</span></button>
+    </div>
+  </header>
+  <div class="mon-cuerpo">
+    <section class="mon-sala">
+      <div class="mon-escena" id="mon-escena"><canvas id="mon-hemi" aria-label="Hemiciclo del Cabildo"></canvas></div>
+      <div class="mon-stats">
+        <div><b id="mon-butacas">—</b><small>Ciudadanos con butaca</small></div>
+        <div class="mon-st-votos"><b id="mon-votos">—</b><small>Votos en la sesión</small><span class="mon-mas" id="mon-mas" aria-hidden="true"></span></div>
+        <div><b id="mon-abiertas">—</b><small>Votaciones abiertas</small></div>
+      </div>
+    </section>
+    <aside class="mon-lista">
+      <h2>Votaciones vigentes</h2>
+      <ol class="mon-vq" id="mon-vq"></ol>
+      <div class="mon-cerradas" id="mon-cerradas"></div>
+    </aside>
+  </div>
+  <footer class="mon-pie"><span>🔒 El voto es secreto: el Cabildo muestra cuántos votaron, nunca qué votó cada butaca.</span><span>cabildodevenezuela.com</span></footer>
+</div>
+
+<!-- NERDOCRASY: pantalla de juego -->
+<div class="nd" id="nd" hidden role="dialog" aria-modal="true" aria-label="Nerdocrasy">
+  <div class="nd-fondo" aria-hidden="true"></div>
+  <header class="nd-top">
+    <button class="nd-salir" id="nd-salir" aria-label="Salir del juego"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg><span>Salir</span></button>
+    <div class="nd-ruta" id="nd-ruta" aria-hidden="true"></div>
+    <div class="nd-nivel-chip" id="nd-nivel-chip"></div>
+  </header>
+  <main class="nd-escena" id="nd-escena" aria-live="polite"></main>
+</div>
+
+<!-- APRENDÉ: lección -->
+<div class="modal ap-modal" id="modal-leccion" hidden role="dialog" aria-modal="true" aria-labelledby="ap-l-titulo">
+  <div class="modal-box ap-box">
+    <button class="modal-x" data-ap="cerrar" aria-label="Cerrar">✕</button>
+    <div id="ap-leccion"></div>
+  </div>
+</div>
+
+<!-- MURO: publicación y respuestas -->
+<div class="modal" id="modal-muro" hidden role="dialog" aria-modal="true" aria-label="Publicación del Muro">
+  <div class="modal-box mu-box">
+    <button class="modal-x" data-mu="cerrar" aria-label="Cerrar">✕</button>
+    <div id="mu-detalle"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-voto" hidden role="dialog" aria-modal="true" aria-labelledby="mv-pregunta">
+  <div class="modal-box">
+    <button class="modal-x" id="mv-cerrar" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="mv-top"><span class="tag" id="mv-cat"></span><b class="q-timer" id="mv-timer"></b></div>
+    <h2 id="mv-pregunta"></h2>
+    <p class="mv-desc" id="mv-desc"></p>
+    <div id="mv-cuerpo"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-prop" hidden role="dialog" aria-modal="true">
+  <div class="modal-box modal-prop">
+    <button class="modal-x" id="mp-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div id="mp-cuerpo"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-lanzar" hidden role="dialog" aria-modal="true" aria-labelledby="ml-titulo">
+  <div class="modal-box modal-lanzar">
+    <button class="modal-x" id="ml-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <form id="ml-form" class="ml-grid">
+      <div class="ml-campos">
+        <h2 id="ml-titulo">Lanzar una propuesta</h2>
+        <p class="muted" id="ml-meta-txt"></p>
+        <label class="ml-l">Tu propuesta <em id="ml-cont">0/280</em>
+          <textarea id="ml-texto" maxlength="280" rows="4" required placeholder="Escribila como una pregunta o acción concreta. Ej: ¿Debe el Cabildo exigir auditoría pública del registro electoral?"></textarea></label>
+        <div class="ml-l">Tema<div class="ml-cats" id="ml-cats"></div></div>
+        <details class="ml-mas">
+          <summary>Agregar contexto y fuentes</summary>
+          <label class="ml-l">Contexto<textarea id="ml-contexto" maxlength="1500" rows="3" placeholder="Por qué importa, qué cambiaría"></textarea></label>
+          <label class="ml-l">Enlaces a fuentes
+            <input class="ml-link" type="url" placeholder="https://"><input class="ml-link" type="url" placeholder="https://"><input class="ml-link" type="url" placeholder="https://"></label>
+          <label class="ml-l">Video<input id="ml-video" type="url" placeholder="https://"></label>
+        </details>
+        <button class="btn btn-dark ml-enviar" id="ml-enviar" type="submit" disabled>Lanzar propuesta</button>
+      </div>
+      <div class="ml-vista">
+        <span class="muted ml-vista-l">Vista previa</span>
+        <div class="card pr-card ml-prev" id="ml-prev"></div>
+      </div>
+    </form>
+    <div class="ml-listo" id="ml-listo" hidden>
+      <div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
+      <h2>Tu propuesta está en carrera</h2>
+      <p>El reloj ya corre. Las primeras horas son las que más pesan: compartila ahora con quienes la apoyarían.</p>
+      <div class="mv-acciones"><button class="btn btn-ghost" id="ml-cerrar-listo" type="button">Ver la pista</button><button class="btn btn-dark" id="ml-compartir" data-compartir="" type="button">Compartir enlace</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-meta" hidden role="dialog" aria-modal="true" aria-labelledby="mm-titulo">
+  <div class="modal-box modal-meta">
+    <button class="modal-x" id="mm-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div id="mm-arco"></div>
+    <h2 id="mm-titulo">¡Tu butaca completó el Hemiciclo de esta propuesta!</h2>
+    <p id="mm-texto"></p>
+    <p class="muted">Llegó a la meta y pasa a revisión del moderador para entrar a votación.</p>
+  </div>
+</div>
+
+<div class="modal" id="modal-ciu" hidden role="dialog" aria-modal="true">
+  <div class="modal-box modal-ciu">
+    <button class="modal-x" id="cp-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <div class="cp-cab" id="cp-cab"></div>
+    <div class="seg cp-tabs"><button class="seg-btn active" data-cptab="propuestas">Propuestas</button><button class="seg-btn" data-cptab="mensajes">Mensajes</button></div>
+    <div id="cp-cuerpo"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-bloque" hidden role="dialog" aria-modal="true" aria-label="Crear bloque">
+  <div class="modal-box modal-bloque">
+    <button class="modal-x" id="cb-x" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <ol class="cb-pasos" id="cb-pasos"></ol>
+    <div class="cb-cuerpo" id="cb-cuerpo"></div>
+    <div class="cb-pie" id="cb-pie"><button class="btn btn-ghost" id="cb-atras" type="button">Atrás</button><button class="btn btn-dark" id="cb-sig" type="button">Siguiente</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-conf" hidden role="dialog" aria-modal="true" aria-labelledby="mc-titulo">
+  <div class="modal-box modal-chico">
+    <h2 id="mc-titulo"></h2>
+    <p class="mv-desc" id="mc-texto"></p>
+    <div class="mv-acciones"><button class="btn btn-ghost" id="mc-no">Cancelar</button><button class="btn btn-dark" id="mc-si">Confirmar</button></div>
+  </div>
+</div>
+
+<!-- Librerías servidas desde el propio sitio, con versión fija: un CDN comprometido no puede inyectar código -->
+<script src="/ux2/vendor/wordcloud2-1.2.2.js"></script>
+<script src="/ux2/vendor/supabase-2.117.2.js"></script>
+<script src="/ux2/ux2.js"></script>
+</body>
+</html>
