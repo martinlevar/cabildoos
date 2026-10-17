@@ -1,2 +1,7 @@
 node_modules
 dist
+# Archivos locales que no van al repo
+.wrangler/
+.DS_Store
+**/.DS_Store
+ADOBE/
