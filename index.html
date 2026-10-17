@@ -3,6 +3,9 @@
 <head>
   <base href="/">
 <meta charset="UTF-8">
+<script>/* acceso-android-v3: Android con Chrome/Chromium (no Firefox) usa un acceso sin capas ni animaciones */
+try { var _ua = navigator.userAgent || ''; if (/Android/i.test(_ua) && !/Firefox|FxiOS/i.test(_ua)) document.documentElement.classList.add('android-acceso') } catch (e) {}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cabildo de Venezuela — Democracia digital anónima y verificable</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
