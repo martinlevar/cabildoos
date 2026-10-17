@@ -11866,8 +11866,8 @@ function _showCountdown(val) {
   const ov = document.getElementById('cd-overlay'); if (!ov) return
   _cdVal = val || null
   const forzar = /[?&]ver-countdown\b/.test(location.search)
-  // En dev y en v2 no se aplica (como el mantenimiento), salvo con ?ver-countdown
-  const hostLibre = location.hostname === 'dev.cabildodevenezuela.com' || location.hostname === 'v2.cabildodevenezuela.com'
+  // En dev, stage y v2 no se aplica (ahí la v2 ya está abierta y /cuenta tiene que poder usarse), salvo con ?ver-countdown
+  const hostLibre = ['dev.cabildodevenezuela.com', 'stage.cabildodevenezuela.com', 'v2.cabildodevenezuela.com'].includes(location.hostname)
   const activo = !!(val && (val.active || forzar) && !isNaN(Date.parse(val.objetivo)) && (!hostLibre || forzar))
   if (!activo) {
     ov.hidden = true; document.documentElement.classList.remove('cd-activo')
