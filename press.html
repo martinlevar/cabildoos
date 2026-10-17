@@ -109,9 +109,16 @@
     .comparacion tr:last-child { border-bottom: 0; }
     .comparacion td { border: 0; padding: 6px 16px; }
     .comparacion td:first-child { width: 100%; padding-top: 12px; }
-    .comparacion td:nth-child(2)::before { content: 'Versión 1: '; font-weight: 700; color: var(--muted); }
-    .comparacion td:nth-child(3)::before { content: 'Versión 2: '; font-weight: 700; color: var(--accent); }
+    .comparacion td:not(:first-child)::before { content: attr(data-col) ': '; font-weight: 700; color: var(--muted); }
+    .comparacion td:last-child::before { color: var(--accent); }
   }
+  .cargando, .vacio { color: var(--muted); text-align: center; padding: 60px 0; }
+  .otras { margin-top: 44px; }
+  .otras a { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; text-decoration: none; color: var(--ink); }
+  .otras a small { display: block; color: var(--muted); font-size: 12.5px; margin-bottom: 2px; }
+  .otras a b { font-size: 15.5px; line-height: 1.35; display: block; }
+  ul.lista { padding-left: 20px; margin: 0 0 16px; } ul.lista li { margin-bottom: 8px; font-size: 16px; }
+  .quote-md { margin: 22px 0; padding: 6px 0 6px 18px; border-left: 3px solid var(--accent); color: var(--ink-2); font-size: 17px; }
 </style>
 </head>
 <body>
@@ -129,92 +136,110 @@
 </header>
 
 <main>
-  <article>
-    <span class="etiqueta">Gacetilla de prensa</span>
-    <h1>Cabildo de Venezuela lanza su versión 2: más simple, más segura y con el voto secreto rediseñado</h1>
-    <p class="bajada">La plataforma de participación ciudadana anónima y verificada, que ya reúne a más de 1.100 venezolanos con identidad comprobada, estrena una nueva versión con herramientas para organizarse, debatir y votar desde cualquier lugar del mundo.</p>
-    <div class="datos-pub">
-      <span>Para publicación inmediata</span>
-      <span>Lunes 19 de octubre de 2026</span>
-      <span>cabildodevenezuela.com</span>
-    </div>
-
-    <p class="lead">Cabildo de Venezuela, la plataforma digital que permite a venezolanos dentro y fuera del país debatir y votar sobre los temas públicos con su identidad verificada y su voto en secreto, lanzó este lunes 19 de octubre su versión 2. La actualización renueva por completo la experiencia de uso, rediseña la forma en que se registran los votos para que nadie pueda saber qué eligió cada persona e incorpora nuevas herramientas para que los ciudadanos se organicen.</p>
-
-    <p>El proyecto funciona como un parlamento ciudadano: cada persona que comprueba su identidad recibe una <strong>butaca</strong> en un hemiciclo digital. Desde esa butaca puede votar en las consultas abiertas, lanzar propuestas, participar en debates y seguir a otros ciudadanos. La regla es simple: una persona, una butaca, un voto.</p>
-
-    <div class="cifras" role="list" aria-label="El Cabildo en números">
-      <div class="cifra" role="listitem"><b>1.131</b><span>ciudadanos verificados con butaca</span></div>
-      <div class="cifra" role="listitem"><b>3.789</b><span>cuentas registradas</span></div>
-      <div class="cifra" role="listitem"><b>14.237</b><span>participaciones en votaciones</span></div>
-      <div class="cifra" role="listitem"><b>416</b><span>propuestas ciudadanas lanzadas</span></div>
-    </div>
-    <p class="nota-cifras">Cifras al 17 de octubre de 2026. La plataforma abrió su registro en agosto de 2026.</p>
-
-    <blockquote>
-      <span class="pend">[CITA DE MARTÍN LEVAR: dos o tres oraciones sobre por qué la versión 2 y qué espera de ella]</span>
-      <cite>— Martín Levar, <span class="pend">[CARGO]</span> de Cabildo de Venezuela</cite>
-    </blockquote>
-
-    <h2>Anónimo, pero verificado</h2>
-    <p>El Cabildo resuelve un problema central de la participación en línea: cómo garantizar que detrás de cada voto haya una persona real, única y venezolana, sin exponer su identidad. Para obtener una butaca, cada ciudadano completa una verificación con su documento de identidad, una prueba de vida y una foto sosteniendo el documento. El análisis lo realiza un sistema automático con inteligencia artificial y la aprobación final la hace una persona del equipo.</p>
-    <p>Una vez verificada, la persona participa con un número de butaca, no con su nombre. Mostrar un alias o una frase es opcional y lo decide cada ciudadano. Como muchos venezolanos en el exterior no pueden renovar sus documentos, el Cabildo acepta cédulas y pasaportes vencidos.</p>
-
-    <h2>De la versión 1 a la versión 2</h2>
-    <p>La primera versión, lanzada en agosto, demostró que el modelo funcionaba: en dos meses superó el millar de ciudadanos verificados y las catorce mil participaciones. La versión 2 se construyó a partir de esa experiencia y de los reportes de los propios usuarios. Estos son los cambios principales:</p>
-
-    <table class="comparacion">
-      <thead><tr><th scope="col">Aspecto</th><th scope="col">Versión 1</th><th scope="col">Versión 2</th></tr></thead>
-      <tbody>
-        <tr><td>Diseño</td><td>Una aplicación de estética oscura, con toda la experiencia en una sola pantalla.</td><td>Diseño nuevo con modo claro y oscuro, menú por secciones y adaptado al teléfono.</td></tr>
-        <tr><td>Voto secreto</td><td>El voto se sellaba con una huella criptográfica.</td><td>El sistema registra solo que una butaca participó y suma su elección a un contador general. No existe ningún registro que una a una persona con lo que votó, y el teléfono tampoco lo guarda.</td></tr>
-        <tr><td>Resultados</td><td>Animación de revelación al cierre de cada votación.</td><td>Revelación rediseñada: el hemiciclo enciende las butacas que votaron, todas del mismo color para que nadie pueda deducir qué eligió cada una, y recién después muestra el resultado. Con menos de tres votos no se publica el desglose.</td></tr>
-        <tr><td>Organización</td><td>Participación individual.</td><td><strong>Bloques</strong>: grupos de ciudadanos liderados por un anfitrión que acepta mostrar su nombre real tras una segunda verificación. Los miembros siguen siendo anónimos.</td></tr>
-        <tr><td>Recién llegados</td><td>Quien no completaba la verificación quedaba afuera.</td><td><strong>Las Escalinatas</strong>: una antesala con charla por temas y un canal de ayuda donde los ciudadanos verificados acompañan a quienes todavía no consiguieron su butaca.</td></tr>
-        <tr><td>Aprender a participar</td><td>Preguntas frecuentes.</td><td><strong>Aprendé</strong>: lecciones cortas e interactivas sobre cómo votar, proponer y organizarse.</td></tr>
-        <tr><td>Seguridad</td><td>Protección de la aplicación y de los datos.</td><td>Revisiones de seguridad durante todo el desarrollo, permisos de datos más estrictos, protección contra código malicioso en el navegador y moderación con límites en todos los espacios abiertos.</td></tr>
-      </tbody>
-    </table>
-
-    <h2>Todo lo que se puede hacer en el Cabildo</h2>
-    <div class="novedades">
-      <div class="novedad"><h3>Votaciones</h3><p>Consultas sobre temas de interés público con fecha de cierre. Sí, No o Abstención, siempre en secreto.</p></div>
-      <div class="novedad"><h3>Propuestas</h3><p>Cualquier butaca puede proponer un tema. Si en 48 horas consigue el apoyo de 20 butacas, pasa a revisión para llegar al hemiciclo.</p></div>
-      <div class="novedad"><h3>Debates y Muro del día</h3><p>Espacios para argumentar a favor y en contra de cada votación, y para opinar sobre el tema del día.</p></div>
-      <div class="novedad"><h3>Auditorio</h3><p>Sesiones en vivo con chat, en las que los ciudadanos piden la palabra.</p></div>
-      <div class="novedad"><h3>Ciudadanos</h3><p>Un directorio de butacas para seguir a otros participantes e intercambiar mensajes privados.</p></div>
-      <div class="novedad"><h3>Estadísticas</h3><p>La actividad del Cabildo en números, abierta a todos.</p></div>
-      <div class="novedad"><h3>Resultados en X</h3><p>Cada votación se anuncia sola en <a href="https://x.com/cabildoven">@cabildoven</a> al abrir y al cerrar, con su resultado y una síntesis neutral del debate.</p></div>
-      <div class="novedad"><h3>Playroom</h3><p>Juegos de conocimiento cívico con ranking entre butacas.</p></div>
-    </div>
-    <p>El equipo ya trabaja en las próximas etapas: una sección de <strong>Noticias</strong>, un sistema de <strong>financiamiento ciudadano</strong> para sostener la plataforma y proyectos decididos por la comunidad, y las aplicaciones nativas para Android e iOS.</p>
-
+  <article id="nota" aria-live="polite"><p class="cargando">Cargando…</p></article>
+  <section id="otras" hidden></section>
+  <section id="equipo-sec" hidden>
     <h2>Quiénes están detrás del Cabildo</h2>
-    <p>Cabildo de Venezuela es desarrollado por <strong>Bowery Global Inc</strong>, la empresa creadora de CabildoOS, el sistema sobre el que funciona la plataforma.</p>
-    <div class="equipo">
-      <div class="persona"><span class="ini" aria-hidden="true">ML</span><div><h3>Martín Levar</h3><span class="rol"><span class="pend">[CARGO]</span></span><p><span class="pend">[Una o dos líneas de biografía]</span></p></div></div>
-      <div class="persona"><span class="ini" aria-hidden="true">?</span><div><h3><span class="pend">[NOMBRE Y APELLIDO]</span></h3><span class="rol"><span class="pend">[CARGO]</span></span><p><span class="pend">[Una o dos líneas de biografía]</span></p></div></div>
-    </div>
-
-    <h2>Sobre Cabildo de Venezuela</h2>
-    <p>Cabildo de Venezuela (<a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a>) es una plataforma de participación ciudadana digital, anónima y verificada, para venezolanos dentro y fuera del país. Su lema, «Generación Independencia 2026», resume su propósito: que cada ciudadano pueda expresar su posición sobre los temas públicos con la seguridad de que su voto cuenta una sola vez y permanece en secreto. El funcionamiento técnico se detalla en el <a href="/paper">whitepaper</a> del proyecto.</p>
-
-    <section class="contacto" id="contacto" aria-labelledby="contacto-titulo">
-      <h2 id="contacto-titulo">Contacto de prensa</h2>
-      <ul>
-        <li>Email: <span class="pend">[EMAIL DE PRENSA]</span></li>
-        <li>X: <a href="https://x.com/cabildoven">@cabildoven</a></li>
-        <li>Sitio: <a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a></li>
-      </ul>
-      <a class="boton" href="/logo-cabildo.jpg" download>Descargar el logo</a>
-    </section>
-
-    <p class="fin">— FIN —</p>
-  </article>
+    <p id="empresa"></p>
+    <div class="equipo" id="equipo"></div>
+  </section>
+  <section id="sobre-sec" hidden><h2>Sobre Cabildo de Venezuela</h2><p id="sobre"></p></section>
+  <section class="contacto" id="contacto" aria-labelledby="contacto-titulo">
+    <h2 id="contacto-titulo">Contacto de prensa</h2>
+    <ul>
+      <li id="c-email" hidden>Email: <a id="c-email-a" href="#"></a></li>
+      <li>X: <a href="https://x.com/cabildoven">@cabildoven</a></li>
+      <li>Sitio: <a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a></li>
+    </ul>
+    <a class="boton" href="/logo-cabildo.jpg" download>Descargar el logo</a>
+  </section>
+  <p class="fin">— FIN —</p>
 </main>
 
 <footer>
   <a href="/">Inicio</a><a href="/paper">Whitepaper</a><a href="/faq">Ayuda</a><a href="/privacidad">Privacidad</a><a href="/terminos">Términos</a>
 </footer>
+
+<script>
+(function () {
+  const E = window.__ENV || {}
+  const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const $ = id => document.getElementById(id)
+  // Formato de los textos (simple y seguro): **negrita**, [texto](https://enlace), ## título, ### subtítulo, - lista, > cita, | tabla |
+  function enLinea(t) {
+    let h = esc(t)
+    h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    h = h.replace(/\[([^\]]+)\]\(((?:https:\/\/|\/)[^\s)]+)\)/g, (m, txt, url) => `<a href="${url.replace(/"/g, '%22')}"${url.startsWith('/') ? '' : ' target="_blank" rel="noopener"'}>${txt}</a>`)
+    return h
+  }
+  function cifrasHtml(n) {
+    if (!n.cifras?.length) return ''
+    return `<div class="cifras" role="list" aria-label="En números">${n.cifras.map(c => `<div class="cifra" role="listitem"><b>${esc(c.valor)}</b><span>${esc(c.texto)}</span></div>`).join('')}</div>`
+      + (n.cifras_nota ? `<p class="nota-cifras">${esc(n.cifras_nota)}</p>` : '')
+  }
+  function citaHtml(n) {
+    if (!n.cita_texto) return ''
+    const quien = [n.cita_autor, n.cita_cargo].filter(Boolean).map(esc).join(', ')
+    return `<blockquote>«${esc(n.cita_texto)}»${quien ? `<cite>— ${quien}</cite>` : ''}</blockquote>`
+  }
+  function cuerpoHtml(n) {
+    const bloques = String(n.cuerpo || '').replace(/\r/g, '').split(/\n\s*\n/)
+    const usaCifras = /^\s*\[cifras\]\s*$/m.test(n.cuerpo || ''), usaCita = /^\s*\[cita\]\s*$/m.test(n.cuerpo || '')
+    const out = []
+    bloques.forEach((b, i) => {
+      const t = b.trim(); if (!t) return
+      const lineas = t.split('\n').map(l => l.trim())
+      if (t === '[cifras]') out.push(cifrasHtml(n))
+      else if (t === '[cita]') out.push(citaHtml(n))
+      else if (t.startsWith('### ')) out.push(`<h3>${enLinea(t.slice(4))}</h3>`)
+      else if (t.startsWith('## ')) out.push(`<h2>${enLinea(t.slice(3))}</h2>`)
+      else if (lineas.every(l => l.startsWith('- '))) out.push(`<ul class="lista">${lineas.map(l => `<li>${enLinea(l.slice(2))}</li>`).join('')}</ul>`)
+      else if (lineas.every(l => /^[>›]\s?/.test(l))) out.push(`<p class="quote-md">${lineas.map(l => enLinea(l.replace(/^[>›]\s?/, ''))).join('<br>')}</p>`)
+      else if (lineas.every(l => l.startsWith('|'))) {
+        const filas = lineas.map(l => l.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim())).filter(f => !f.every(c => /^:?-+:?$/.test(c)))
+        const [cab, ...resto] = filas
+        out.push(`<table class="comparacion" style="--cols:${cab.length}"><thead><tr>${cab.map(c => `<th scope="col">${enLinea(c)}</th>`).join('')}</tr></thead><tbody>${resto.map(f => `<tr>${f.map((c, k) => `<td data-col="${esc(cab[k] || '')}">${enLinea(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`)
+      } else out.push(`<p${i === 0 ? ' class="lead"' : ''}>${lineas.map(enLinea).join(' ')}</p>`)
+      if (i === 0 && !usaCifras) out.push(cifrasHtml(n))
+      if (i === 0 && !usaCita) out.push(citaHtml(n))
+    })
+    return out.join('\n')
+  }
+  const fechaLarga = f => { const d = new Date(f + 'T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).replace(/^./, x => x.toUpperCase()) }
+
+  function pintar(d) {
+    const notas = d.notas || [], q = new URLSearchParams(location.search).get('n') || location.hash.slice(1)
+    const n = notas.find(x => x.slug === q) || notas[0]
+    const art = $('nota')
+    if (!n) { art.innerHTML = '<p class="vacio">Pronto vas a encontrar acá las novedades del Cabildo para la prensa.</p>' }
+    else {
+      document.title = 'Prensa — ' + n.titulo
+      art.innerHTML = `<span class="etiqueta">${esc(n.etiqueta)}</span><h1>${esc(n.titulo)}</h1>
+        ${n.bajada ? `<p class="bajada">${esc(n.bajada)}</p>` : ''}
+        <div class="datos-pub"><span>Para publicación inmediata</span><span>${esc(fechaLarga(n.fecha))}</span>${n.lugar ? `<span>${esc(n.lugar)}</span>` : ''}<span>cabildodevenezuela.com</span></div>
+        ${cuerpoHtml(n)}`
+    }
+    const otras = notas.filter(x => x !== n)
+    if (otras.length) { $('otras').hidden = false; $('otras').className = 'otras'; $('otras').innerHTML = '<h2>Otras notas</h2>' + otras.map(o => `<a href="/press?n=${encodeURIComponent(o.slug)}"><small>${esc(fechaLarga(o.fecha))}</small><b>${esc(o.titulo)}</b></a>`).join('') }
+    const c = d.config || {}
+    if ((d.equipo || []).length || c.empresa) {
+      $('equipo-sec').hidden = false
+      $('empresa').innerHTML = c.empresa ? `Cabildo de Venezuela es desarrollado por <strong>${esc(c.empresa)}</strong>${c.empresa_texto ? ', ' + esc(c.empresa_texto) : '.'}` : ''
+      $('equipo').innerHTML = (d.equipo || []).map(p => {
+        const ini = p.nombre.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+        return `<div class="persona"><span class="ini" aria-hidden="true">${esc(ini)}</span><div><h3>${esc(p.nombre)}</h3>${p.cargo ? `<span class="rol">${esc(p.cargo)}</span>` : ''}${p.bio ? `<p>${esc(p.bio)}</p>` : ''}</div></div>`
+      }).join('')
+    }
+    if (c.sobre) { $('sobre-sec').hidden = false; $('sobre').innerHTML = enLinea(c.sobre) }
+    if (c.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) { $('c-email').hidden = false; $('c-email-a').textContent = c.email; $('c-email-a').href = 'mailto:' + c.email }
+  }
+
+  fetch(`${E.SUPABASE_URL}/rest/v1/rpc/prensa_publica`, { method: 'POST', headers: { apikey: E.SUPABASE_KEY, Authorization: `Bearer ${E.SUPABASE_KEY}`, 'Content-Type': 'application/json' }, body: '{}' })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(pintar)
+    .catch(() => { $('nota').innerHTML = '<p class="vacio">No pudimos cargar las notas. Probá de nuevo en un momento.</p>' })
+  window.addEventListener('hashchange', () => location.reload())
+})()
+</script>
 </body>
 </html>
