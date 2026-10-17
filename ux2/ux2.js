@@ -35,11 +35,15 @@ const ICONOS = {
 const SECCIONES = [
   ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['bloque', 'Mi bloque'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
   ['propuestas', 'Propuestas'], ['ciudadanos', 'Ciudadanos'], ['estadisticas', 'Estadísticas'],
-  ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'], ['funding', 'Funding'],
-  ['escalinatas', 'Escalinatas'],
+  ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
+  ['escalinatas', 'Escalinatas'], ['funding', 'Funding'],
 ]
 
+// Funding es solo para inversores: por ahora se abre únicamente en dev (y local). En stage y producción aparece como «pronto».
+const FUNDING_ABIERTO = ['dev.cabildodevenezuela.com', 'localhost', '127.0.0.1'].includes(location.hostname)
+
 const LISTAS = new Set(['escalinatas', 'inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding'])   // secciones ya rediseñadas
+if (!FUNDING_ABIERTO) LISTAS.delete('funding')
 
 // Sin butaca, las Escalinatas van segundas y marcadas: es el lugar desde donde se sube al Cabildo.
 const sinButaca = () => !!(estado.user && !estado.butaca)
@@ -96,7 +100,7 @@ function ruta() {
   else if (mu.abierto) cerrarHiloMuro()
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
-  if (valida === 'funding') entrarFunding(arg); else if (fd.vivo) salirFunding()
+  if (valida === 'funding' && FUNDING_ABIERTO) entrarFunding(arg); else if (fd.vivo) salirFunding()
   if (valida === 'escalinatas') entrarEscalinatas()
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
@@ -2064,8 +2068,8 @@ function fdConfig(cfg) {
   const antes = fd.cfg
   fd.cfg = cfg || null
   if (!fd.cfg?.activo || antes?.simulado !== fd.cfg?.simulado || antes?.meta !== fd.cfg?.meta) { fd.d = null; salirFunding() }
-  const li = $('#nav a[data-sec="funding"]')?.parentElement; if (li) li.hidden = !fd.cfg?.activo
-  if (vistaActual() === 'funding') entrarFunding()
+  const li = $('#nav a[data-sec="funding"]')?.parentElement; if (li) li.hidden = FUNDING_ABIERTO && !fd.cfg?.activo   // fuera de dev se ve siempre, como «pronto»
+  if (FUNDING_ABIERTO && vistaActual() === 'funding') entrarFunding()
   if (vistaActual() === 'aprende' && $('#modal-leccion')?.hidden) {   // la lección de Funding depende de esta configuración
     pintarAprende(); const id = location.hash.startsWith('#aprende/') ? location.hash.slice(9) : ''; if (id) abrirLeccion(id)
   }
@@ -5388,7 +5392,7 @@ const LECCIONES = [
     { esc: 'aud', t: 'El Auditorio', p: 'Sesiones <b>en vivo</b>: mirás, reaccionás y podés pedir la palabra en el chat de la sala.' },
     { esc: 'play', t: 'El Playroom', p: '<b>Nerdocrasy</b>: 90 niveles de preguntas sobre democracia. Un error y empezás de nuevo. ¿Hasta dónde llegás?' }],
     quiz: { q: '¿Cuándo podés mandarle un mensaje a otra butaca?', o: [['Cuando acepta que la sigas', 1], ['Siempre, a cualquiera', 0], ['Nunca', 0]], e: 'Primero mandás una solicitud de seguimiento; si la acepta, pueden escribirse.' } },
-  { id: 'funding', titulo: 'Funding', sub: 'Sostener el Cabildo', color: AC.oro, ico: '💛', ir: ['#funding', 'Ir a Funding'], si: () => !!fd.cfg?.activo, pasos: [
+  { id: 'funding', titulo: 'Funding', sub: 'Sostener el Cabildo', color: AC.oro, ico: '💛', ir: ['#funding', 'Ir a Funding'], si: () => FUNDING_ABIERTO && !!fd.cfg?.activo, pasos: [
     { esc: 'ffondo', t: 'El Cabildo se sostiene entre todos', p: 'En <b>Funding</b> hay una meta anual para mantener el Cabildo: infraestructura y seguridad, una app nativa y una auditoría independiente. Cualquiera puede aportar <b>desde $1</b>. Las <b>marcas</b> también aportan y su logo aparece en la franja, pero <b>no votan ni deciden</b>.' },
     { esc: 'ffundador', t: 'Tu Fundador, para siempre', p: 'Con tu primer aporte al Fondo recibís tu <b>Fundador</b>: un avatar pixel único, numerado por orden de llegada. Es <b>sorpresa</b> y sale de tu butaca: aportar más <b>no lo hace más raro</b>. No se vende ni se transfiere, y queda en el <b>Libro de Fundadores</b>, sellado cada año en Bitcoin para probar que nadie lo alteró.' },
     { esc: 'fmuro', t: 'Tu lugar en el Muro', p: 'Cada aporte ocupa un lugar en el <b>Muro de los Fundadores</b>, como un mosaico: $1 es un casillero y $25 un bloque grande. Vos elegís dónde va. Si tu butaca no se muestra, aparece como <b>“Anónima”</b>.' },
@@ -5411,9 +5415,9 @@ const FAQ = [
   ['¿El anfitrión de un bloque sabe quién soy?', 'No. Cuando pedís sumarte ve tu alias si lo hiciste público, o “Ciudadano anónimo”, y tu presentación si escribiste una. Nunca ve tu número de butaca ni qué votás.'],
   ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Si cambiás de bloque, esperás 30 días. Si el anfitrión te quita, quedás libre enseguida.'],
   ['¿Qué guardan de mí?', 'Tu email (para entrar) y tu butaca. No guardamos tu nombre ni tu número de documento, y las fotos de la verificación se borran.'],
-  ['¿Tengo que aportar para votar?', 'No. Votar, proponer y debatir en el Cabildo es gratis para todas las butacas. Ser socio solo sirve para decidir qué proyectos se financian.', () => !!fd.cfg?.activo],
-  ['¿Si aporto más, mi Fundador es más raro?', 'No. Tu Fundador sale de tu butaca, no de cuánto aportás. Hay uno por butaca y por año, y no se vende ni se transfiere.', () => !!fd.cfg?.activo],
-  ['¿Las marcas deciden algo?', 'No. Las marcas aportan y su logo aparece en la franja, pero no votan ni deciden proyectos.', () => !!fd.cfg?.activo],
+  ['¿Tengo que aportar para votar?', 'No. Votar, proponer y debatir en el Cabildo es gratis para todas las butacas. Ser socio solo sirve para decidir qué proyectos se financian.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
+  ['¿Si aporto más, mi Fundador es más raro?', 'No. Tu Fundador sale de tu butaca, no de cuánto aportás. Hay uno por butaca y por año, y no se vende ni se transfiere.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
+  ['¿Las marcas deciden algo?', 'No. Las marcas aportan y su logo aparece en la franja, pero no votan ni deciden proyectos.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
 ]
 
 // ── Estado y progreso (solo en este navegador) ──
@@ -5430,7 +5434,7 @@ function pintarAprende() {
     <div class="ap-hero-txt">
       <span class="ap-tag">Aprendé · para principiantes</span>
       <h1>El Cabildo, explicado <em>sin vueltas</em></h1>
-      <p>${total} lecciones cortas, con dibujos y prácticas. En 15 minutos sabés votar, proponer${fd.cfg?.activo ? ', organizarte y sostener el Cabildo' : ' y organizarte'}.</p>
+      <p>${total} lecciones cortas, con dibujos y prácticas. En 15 minutos sabés votar, proponer${FUNDING_ABIERTO && fd.cfg?.activo ? ', organizarte y sostener el Cabildo' : ' y organizarte'}.</p>
       <div class="ap-hero-acc">
         <button class="btn btn-dark ap-empezar" data-leccion="${(sig || lecs[0]).id}">${n === 0 ? '▶ Empezar' : sig ? `▶ Seguir: ${esc(sig.titulo)}` : '↻ Repasar'}</button>
         <div class="ap-prog" title="${n} de ${total} lecciones">
