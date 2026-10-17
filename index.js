@@ -12593,3 +12593,30 @@ document.addEventListener('DOMContentLoaded', () => {
   _checkSystemConfig()
   _initSystemConfigRealtime()
 })
+
+
+// ══ acceso-android-v3 ══
+// La portada nunca queda sin botones: si la animación del hemiciclo se corta (pestaña oculta, ahorro de batería,
+// abrir el acceso a mitad), los botones aparecen igual a los pocos segundos.
+setTimeout(function _introHeroRespaldo() {
+  const hero = document.getElementById('intro-hero')
+  if (hero && !hero.classList.contains('visible')) hero.classList.add('visible')
+}, 4500)
+// En Android, mientras el acceso está abierto se frena la animación de fondo y el foco va al formulario;
+// al cerrarlo la portada vuelve a quedar lista (sin depender de que la animación termine).
+;(function _accesoAndroid() {
+  if (!document.documentElement.classList.contains('android-acceso')) return
+  const ov = document.getElementById('auth-overlay'); if (!ov) return
+  let abierto = false
+  new MutationObserver(() => {
+    const ahora = ov.classList.contains('open'); if (ahora === abierto) return
+    abierto = ahora
+    if (ahora) {
+      try { _stopIntroAnim() } catch (e) {}
+      window.scrollTo(0, 0)
+      const panel = document.getElementById('auth-panel'); if (panel) { panel.setAttribute('tabindex', '-1'); panel.focus({ preventScroll: true }) }
+    } else {
+      const hero = document.getElementById('intro-hero'); if (hero) hero.classList.add('visible')
+    }
+  }).observe(ov, { attributes: true, attributeFilter: ['class'] })
+})()

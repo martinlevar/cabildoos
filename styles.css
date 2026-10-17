@@ -7689,3 +7689,18 @@ body.observer-mode.invited-observer #nav-observer-badge { display:inline-flex !i
 #cd-overlay .cd-x:hover, #cd-overlay .cd-entrar:hover { opacity:.88; }
 #cd-overlay a:focus-visible { outline:3px solid var(--cd-accent); outline-offset:3px; }
 html.cd-activo, html.cd-activo body { overflow:hidden !important; }
+
+
+/* ══ acceso-android-v3 ══
+   1) El acceso siempre queda por encima de todo: el anuncio ya no lo tapa (en cualquier dispositivo).
+   2) En Android/Chromium: la portada se muestra sin esperar la animación, y al abrir el acceso
+      se retira todo lo que hay detrás (no solo se tapa), sin transformaciones ni fondos semitransparentes. */
+#auth-overlay { z-index: 1200; }
+body:has(#auth-overlay.open) #sys-announcement { display: none !important; }
+
+html.android-acceso #intro .intro-hero { opacity: 1; pointer-events: auto; transition: none; }
+html.android-acceso #auth-overlay { transition: none; background: #0D1B2E !important; }
+html.android-acceso #auth-overlay #auth-panel { transform: none !important; transition: none !important; width: min(420px, 100%); }
+html.android-acceso body:has(#auth-overlay.open) > .screen,
+html.android-acceso body:has(#auth-overlay.open) #cd-overlay,
+html.android-acceso body:has(#auth-overlay.open) #maint-overlay { visibility: hidden !important; }
