@@ -11807,7 +11807,7 @@ function _showMaintenance(val) {
 //  CUENTA REGRESIVA v2 — system_config.countdown = { active, objetivo, inicio }
 //  Pantalla completa con la estética de la v2. ?ver-countdown la fuerza para probar.
 // ══════════════════════════════════════════════════════════════
-let _cdVal = null, _cdTimer = null, _cdSeats = null, _cdEncendidos = -1, _cdDia = 'lunes'
+let _cdVal = null, _cdTimer = null, _cdSeats = null, _cdEncendidos = -1, _cdDia = 'lunes', _cdSalto = false
 
 function _cdAsientos() {
   if (_cdSeats) return _cdSeats
@@ -11846,6 +11846,16 @@ function _cdTick() {
     seats.forEach((c, i) => { c.classList.toggle('on', i < enc); c.classList.toggle('yo', i === enc - 1 && prog < 1) })
   }
   const listo = resta <= 0
+  // Al llegar a cero: en la portada se recarga una vez (el servidor ya lleva a la v2); en /cuenta y demás rutas la pantalla se quita
+  if (listo) {
+    const enPortada = location.pathname === '/' || location.pathname === '/index.html'
+    if (!enPortada) { _showCountdown(null); return }
+    if (!_cdSalto) {
+      _cdSalto = true
+      let yaRecargo = false; try { yaRecargo = sessionStorage.getItem('cd_recargo') === '1' } catch (e) {}
+      if (!yaRecargo) { try { sessionStorage.setItem('cd_recargo', '1') } catch (e) {} setTimeout(() => location.reload(), 2000 + Math.random() * 8000) }
+    }
+  }
   pon('cd-titulo', listo ? 'El nuevo Cabildo ya abrió' : 'El nuevo Cabildo abre el ' + _cdDia)
   const cuenta = document.getElementById('cd-cuenta'), boton = document.getElementById('cd-listo')
   if (cuenta) cuenta.hidden = listo
