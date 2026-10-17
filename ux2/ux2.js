@@ -986,9 +986,9 @@ function tickCuentas() {
 }
 
 // ── Modal de voto ──
-let mvPregunta = null, mvEleccion = null
+let mvPregunta = null, mvEleccion = null, mvConsultado = false
 function abrirVoto(q) {
-  mvPregunta = q; mvEleccion = null
+  mvPregunta = q; mvEleccion = null; mvConsultado = false
   $('#mv-cat').textContent = q.category || 'General'
   $('#mv-timer').textContent = cuentaRegresiva(q.ends_at)
   $('#mv-pregunta').textContent = q.text
@@ -1008,9 +1008,12 @@ async function pasoVoto() {
     c.innerHTML = `<div class="mv-nota">Para votar necesitás tener butaca: completá la verificación de identidad.</div><a class="btn btn-dark" style="width:100%" href="${APP_ACTUAL}">Verificarme</a>`; return
   }
   if (!abierta(q)) { c.innerHTML = '<div class="mv-nota">Esta votación ya cerró.</div>'; return }
-  if (!vMisVotos.has(q.id)) {
+  if (!vMisVotos.has(q.id) && !mvConsultado) {   // una sola consulta por apertura: tocar una opción no espera al servidor
+    mvConsultado = true
+    c.innerHTML = '<div class="mv-nota">Cargando…</div>'
     const { data } = await sb.rpc('v2_mis_participaciones')
     ;(data || []).forEach(id => vMisVotos.add(id))
+    if (mvPregunta !== q) return
   }
   if (vMisVotos.has(q.id)) {
     c.innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
@@ -1028,7 +1031,11 @@ async function pasoVoto() {
       <button class="btn btn-ghost" id="mv-cancelar">Cancelar</button>
       <button class="btn btn-dark" id="mv-confirmar" ${mvEleccion ? '' : 'aria-disabled="true"'}>${mvEleccion ? 'Confirmar: ' + OPC[mvEleccion][0] : 'Elegí una opción'}</button>
     </div>`
-  $$('[data-op]', c).forEach(b => b.onclick = () => { mvEleccion = b.dataset.op; pasoVoto() })
+  $$('[data-op]', c).forEach(b => b.onclick = () => {   // la elección se marca al instante, sin volver a pintar todo
+    mvEleccion = b.dataset.op
+    $$('[data-op]', c).forEach(x => x.classList.toggle('elegida', x === b))
+    const conf = $('#mv-confirmar'); conf.removeAttribute('aria-disabled'); conf.textContent = 'Confirmar: ' + OPC[mvEleccion][0]
+  })
   $('#mv-cancelar').onclick = cerrarVoto
   $('#mv-confirmar').onclick = confirmarVoto
 }
@@ -3734,10 +3741,25 @@ function previsualizar() {
   $('#ml-enviar').disabled = t.trim().length < 10
 }
 
+document.addEventListener('input', e => { if (e.target.matches?.('.ml-link.ml-mal, #ml-video.ml-mal')) mlValidarEnlaces() })
+function mlValidarEnlaces() {
+  let primero = null
+  $$('.ml-link, #ml-video').forEach(i => {
+    const v = i.value.trim(), mal = !!v && !/^https?:\/\/[^\s.]+\.\S+$/i.test(v)
+    i.classList.toggle('ml-mal', mal); i.setAttribute('aria-invalid', mal ? 'true' : 'false')
+    if (mal && !primero) primero = i
+  })
+  const err = $('#ml-err-links')
+  if (err) { err.hidden = !primero; err.textContent = primero ? 'Revisá los enlaces marcados: tienen que empezar con https:// (por ejemplo https://ejemplo.com).' : '' }
+  return primero
+}
+
 async function lanzar(e) {
   e.preventDefault()
   const text = limpiar($('#ml-texto').value)
-  if (text.length < 10) return
+  if (text.length < 10) { aviso('La propuesta tiene que tener al menos 10 caracteres.', 'error'); $('#ml-texto').focus(); return }
+  const malo = mlValidarEnlaces()
+  if (malo) { const det = malo.closest('details'); if (det) det.open = true; malo.focus(); malo.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
   const btn = $('#ml-enviar'); btn.disabled = true; btn.textContent = 'Lanzando…'
   const links = $$('.ml-link').map(i => i.value.trim()).filter(v => /^https?:\/\/\S+$/i.test(v)).slice(0, 3)
   const video = $('#ml-video').value.trim()
@@ -3932,10 +3954,17 @@ async function seguir(num) {
   if (ciu.tab === 'siguiendo') pintarCiudadanos()
 }
 
-async function responderSolicitud(id, acepta) {
+async function responderSolicitud(id, acepta, btn) {
   const s = ciu.sol.find(x => x.id === id); if (!s) return
-  const { error } = acepta ? await sb.from('follows').update({ status: 'accepted' }).eq('id', id) : await sb.from('follows').delete().eq('id', id)
-  if (error) { aviso('No se pudo completar.', 'error'); return }
+  const fila = btn?.closest('.ci-fila'), botones = fila ? $$('button[data-aceptar],button[data-rechazar]', fila) : []
+  botones.forEach(b => { b.disabled = true }); if (btn) btn.textContent = acepta ? 'Aceptando…' : 'Rechazando…'
+  const { data, error } = acepta
+    ? await sb.from('follows').update({ status: 'accepted' }).eq('id', id).select('id')
+    : await sb.from('follows').delete().eq('id', id).select('id')
+  if (error || !data?.length) {
+    botones.forEach(b => { b.disabled = false; b.textContent = b.dataset.aceptar ? 'Aceptar' : 'Rechazar' })
+    aviso('No se pudo completar. Probá de nuevo en un momento.', 'error'); return
+  }
   ciu.sol = ciu.sol.filter(x => x.id !== id)
   if (acepta) { ciu.segs.add(s.from_seat); aviso(`Aceptaste a la butaca #${s.from_seat}`) }
   pintarAvisosSocial(); pintarCiudadanos()
@@ -4031,14 +4060,17 @@ function cerrarPerfil() {
   if (vistaActual() === 'ciudadanos') pintarCiudadanos()
 }
 
+// En el celular las barras de pestañas (.seg) se desplazan de costado: la elegida siempre queda a la vista
+document.addEventListener('click', e => { const b = e.target.closest('.seg .seg-btn'); if (b) b.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }) })
+
 function enlazarCiudadanos() {
   const v = $('#ci-vista'); if (!v) return
   document.addEventListener('click', e => {
     const t = e.target.closest('[data-seguir],[data-perfil],[data-aceptar],[data-rechazar],[data-citab],[data-cptab],#ci-mas,#cp-hemi,#cp-enviar')
     if (!t) return
     if (t.dataset.seguir) { e.stopPropagation(); return seguir(Number(t.dataset.seguir)) }
-    if (t.dataset.aceptar) return responderSolicitud(t.dataset.aceptar, true)
-    if (t.dataset.rechazar) return responderSolicitud(t.dataset.rechazar, false)
+    if (t.dataset.aceptar) return responderSolicitud(t.dataset.aceptar, true, t)
+    if (t.dataset.rechazar) return responderSolicitud(t.dataset.rechazar, false, t)
     if (t.dataset.citab) { ciu.tab = t.dataset.citab; ciu.cuantos = 48; return pintarCiudadanos() }
     if (t.dataset.cptab) { ciu.ptab = t.dataset.cptab; return pintarPestanaPerfil() }
     if (t.id === 'ci-mas') { ciu.cuantos += 96; return pintarCiudadanos() }
