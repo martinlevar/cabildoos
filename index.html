@@ -3,10 +3,17 @@
 <head>
   <base href="/">
 <meta charset="UTF-8">
-<script>/* acceso-android-v3: Android con Chrome/Chromium (no Firefox) usa un acceso sin capas ni animaciones */
-try { var _ua = navigator.userAgent || ''; if (/Android/i.test(_ua) && !/Firefox|FxiOS/i.test(_ua)) document.documentElement.classList.add('android-acceso') } catch (e) {}
-</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Acceso en Android Chrome/Chromium como pantalla única (fix v11). ?android-auth-screen=on|off para probar. -->
+<script>
+(() => {
+  const override = new URLSearchParams(location.search).get('android-auth-screen');
+  const ua = navigator.userAgent;
+  if (override !== 'off' && (override === 'on' || (/Android/i.test(ua) && /Chrome\/|Chromium\//i.test(ua) && !/Firefox\/|Fennec\//i.test(ua)))) {
+    document.documentElement.classList.add('android-auth-screen');
+  }
+})();
+</script>
 <title>Cabildo de Venezuela — Democracia digital anónima y verificable</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="manifest" href="/manifest.json">
@@ -52,7 +59,7 @@ try { var _ua = navigator.userAgent || ''; if (/Android/i.test(_ua) && !/Firefox
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=auth-screen-2">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
 </head>
@@ -2785,7 +2792,7 @@ try { var _ua = navigator.userAgent || ''; if (/Android/i.test(_ua) && !/Firefox
 
 </div><!-- #playroom-overlay -->
 
-<script src="index.js"></script>
+<script src="index.js?v=auth-screen-2"></script>
 
 
 <script>
