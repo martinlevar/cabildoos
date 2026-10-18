@@ -168,6 +168,42 @@
   /* totales en vivo */
   .totales { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   @media (max-width: 640px) { .cifras.totales { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .hb { grid-template-columns: minmax(0, 1fr); gap: 2px 0; } .hb-f { margin-bottom: 8px; } }
+  /* ══ Animación: cómo funciona la verificación (ilustración genérica, sin datos reales) ══ */
+  :root { --a-card: #eef1f8; --a-card-line: #cdd3e6; --a-fig: #9aa3bf; --a-fig-2: #c3c9dc; --a-bar: #c9cfe2; --a-phone: #141a3c; --a-screen: #f8f9fd; --a-ok: #15803d; }
+  @media (prefers-color-scheme: dark) { :root { --a-card: #1f2647; --a-card-line: #343d6b; --a-fig: #7f88ad; --a-fig-2: #4b5480; --a-bar: #3a4374; --a-phone: #050713; --a-screen: #161b36; --a-ok: #4ade80; } }
+  .anim-v .av-lienzo { position: relative; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+  .anim-v svg { width: 100%; height: auto; display: block; }
+  .anim-v svg text { font-family: inherit; }
+  .av-t { fill: var(--ink-2); font-size: 13px; font-weight: 600; }
+  .av-t-s { fill: var(--muted); font-size: 11.5px; }
+  .av-ok { fill: var(--a-ok); font-weight: 700; }
+  .av-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important; fill: var(--accent); font-size: 13px; font-weight: 700; }
+  .av-paso { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 2px; min-height: 22px; }
+  .av-paso b { font-size: 12px; color: var(--accent); background: var(--accent-bg); border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
+  .av-paso span { font-size: 15.5px; font-weight: 700; color: var(--ink); }
+  .av-desc { font-size: 14px; color: var(--ink-2); line-height: 1.5; margin: 4px 0 10px; min-height: 42px; }
+  .av-ctrl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .av-ctrl button { font: inherit; font-size: 13px; font-weight: 600; min-height: 36px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+  .av-ctrl button:hover { border-color: var(--accent); color: var(--accent); }
+  .av-ctrl button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .av-puntos { display: flex; gap: 6px; margin-left: auto; }
+  .av-puntos button { width: 30px; min-height: 30px; padding: 0; border-radius: 50%; font-size: 12px; }
+  .av-puntos button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .anim-v .a-in { opacity: 0; animation: aIn .45s ease forwards; }
+  .anim-v .a-scan { animation: aScan 1.6s ease-in-out infinite alternate; }
+  .anim-v .a-turn { animation: aTurn 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  .anim-v .a-px { opacity: 0; animation: aIn .18s ease forwards; }
+  .anim-v .a-trash { animation: aTrash .9s ease-in forwards; transform-box: fill-box; transform-origin: center; }
+  .anim-v .a-pulse { animation: aPulse 1.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes aIn { to { opacity: 1; } }
+  @keyframes aScan { from { transform: translateY(0); } to { transform: translateY(132px); } }
+  @keyframes aTurn { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(-16px); } 70% { transform: translateX(16px); } }
+  @keyframes aTrash { to { transform: translate(var(--tx, 0px), var(--ty, 0px)) scale(.15); opacity: 0; } }
+  @keyframes aPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  @media (prefers-reduced-motion: reduce) { .anim-v * { animation-duration: .01s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; } }
+  .av-chips { display: none; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .av-chips span { font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; }
+  @media (max-width: 640px) { .av-puntos { margin-left: 0; width: 100%; } .av-desc { min-height: 63px; } .anim-v svg text, .anim-v .av-badge { display: none; } .av-chips { display: flex; } }
 </style>
 </head>
 <body>
@@ -370,7 +406,114 @@
       [num(t.promedio_por_votacion), 'butacas por votación, en promedio'], [num(t.maximo_por_votacion), 'participaciones en la más concurrida'], [num(t.propuestas), 'propuestas ciudadanas'], [num(t.mensajes), 'mensajes de debate y comentarios']]
     return `<div class="cifras totales" role="list" aria-label="El Cabildo en números">${c.map(([v, l]) => `<div class="cifra" role="listitem"><b>${v}</b><span>${l}</span></div>`).join('')}</div><p class="nota-cifras">${esc(FUENTE())}</p>`
   }
-  const GRAFICOS = { '[grafico:crecimiento]': gCrecimiento, '[grafico:actividad]': gActividad, '[grafico:participacion]': gActividad, '[grafico:temas]': gTemas, '[grafico:votaciones]': gVotaciones, '[nube]': gNube, '[totales]': gTotales }
+  // ══ Animación de la verificación: ilustración genérica (no usa imágenes ni datos de ninguna persona) ══
+  const AV_PASOS = [
+    { c: ['Nombre ✓', 'Número ✓', 'Fecha de nacimiento ✓', 'Foto completa: se descarta'], t: 'Foto del documento', d: 'Un análisis automático lee el nombre, el número y la fecha de nacimiento y los compara con lo que escribiste. La foto completa no se guarda.' },
+    { c: ['Girá la cabeza', 'Persona real ✓'], t: 'Prueba de vida', d: 'Movés la cabeza frente a la cámara para demostrar que hay una persona real, no una foto.' },
+    { c: ['Datos del documento pixelados ✓'], t: 'Selfie con el documento', d: 'Antes de enviarla, tu teléfono pixela los datos del documento. Solo se ve tu cara.' },
+    { c: ['Revisión humana ✓', 'Imágenes borradas', 'Huella cifrada: 9c1e…06d5'], t: 'Revisión humana y borrado', d: 'Una persona del equipo compara la cara del documento con la selfie. Al terminar, las imágenes se borran y del número solo queda una huella cifrada.' },
+  ]
+  function avCarnet(x, y, w, h, conDatos) {
+    const fx = x + 12, fy = y + 14, fw = w * .3, fh = h - 28
+    const lineas = [.9, .7, .8, .55, .65].map((k, i) => `<rect x="${fx + fw + 14}" y="${y + 22 + i * ((h - 40) / 5)}" width="${(w - fw - 38) * k}" height="7" rx="3.5" fill="var(--a-bar)"/>`).join('')
+    return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="var(--a-card)" stroke="var(--a-card-line)"/>
+      <rect x="${x}" y="${y}" width="${w / 3}" height="5" fill="#f5c518"/><rect x="${x + w / 3}" y="${y}" width="${w / 3}" height="5" fill="#1e40af"/><rect x="${x + 2 * w / 3}" y="${y}" width="${w / 3}" height="5" fill="#dc2626"/>
+      <rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" rx="6" fill="var(--a-fig-2)"/>
+      <circle cx="${fx + fw / 2}" cy="${fy + fh * .38}" r="${fw * .22}" fill="var(--a-fig)"/>
+      <path d="M${fx + fw * .14},${fy + fh} q${fw * .36},-${fh * .42} ${fw * .72},0 z" fill="var(--a-fig)"/>
+      ${conDatos === false ? '' : lineas}</g>`
+  }
+  function avPersona(cx, cy, r) {
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--a-fig)"/><path d="M${cx - r * 1.9},${cy + r * 3.1} q${r * 1.9},-${r * 2.5} ${r * 3.8},0 z" fill="var(--a-fig)"/>`
+  }
+  function avEscena(n) {
+    const V = 'viewBox="0 0 640 340" role="img"'
+    if (n === 0) {
+      const datos = ['Nombre', 'N.º de documento', 'Fecha de nacimiento']
+      return `<svg ${V} aria-label="Un documento de identidad ilustrado mientras se analizan sus datos">
+        ${avCarnet(150, 92, 250, 156)}
+        <g class="a-scan"><rect x="140" y="88" width="270" height="3" rx="1.5" fill="var(--accent)"/><rect x="140" y="80" width="270" height="10" fill="var(--accent)" opacity=".12"/></g>
+        ${datos.map((t, i) => `<g class="a-in" style="animation-delay:${.7 + i * .55}s"><text class="av-t" x="436" y="${132 + i * 34}">${t}</text><text class="av-ok" x="604" y="${132 + i * 34}" text-anchor="end">✓</text></g>`).join('')}
+        <g class="a-in" style="animation-delay:2.6s"><text class="av-t-s" x="436" y="246">La foto completa se descarta</text></g>
+      </svg>`
+    }
+    if (n === 1) {
+      return `<svg ${V} aria-label="Un teléfono que muestra a una persona ilustrada moviendo la cabeza">
+        <rect x="250" y="20" width="140" height="300" rx="22" fill="var(--a-phone)"/><rect x="258" y="30" width="124" height="280" rx="16" fill="var(--a-screen)"/>
+        <ellipse cx="320" cy="150" rx="46" ry="60" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 5"/>
+        <g class="a-turn">${avPersona(320, 140, 30)}</g>
+        <text class="av-t-s" x="320" y="290" text-anchor="middle">Girá la cabeza</text>
+        <g class="a-in" style="animation-delay:.4s"><path d="M200,150 l-18,0 m6,-7 l-7,7 7,7" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M440,150 l18,0 m-6,-7 l7,7 -7,7" stroke="var(--accent)" stroke-width="2.5" fill="none" stroke-linecap="round"/></g>
+        <g class="a-in" style="animation-delay:2.8s"><circle cx="372" cy="58" r="15" fill="var(--a-ok)"/><path d="M365,58 l5,5 9,-10" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>
+      </svg>`
+    }
+    if (n === 2) {
+      const x0 = 338, y0 = 150, w = 170, h = 108, cols = 11, filas = 7, cw = w / cols, ch = h / filas
+      const tonos = ['#c7d2fe', '#a5b4fc', '#e0e7ff', '#cbd5e1', '#94a3b8', '#dbe2f3', '#b4bfdc']
+      let celdas = '', k = 0
+      const orden = []; for (let f = 0; f < filas; f++) for (let c = 0; c < cols; c++) orden.push([f, c])
+      orden.sort((a, b) => ((a[0] * 7 + a[1] * 13) % 17) - ((b[0] * 7 + b[1] * 13) % 17))
+      for (const [f, c] of orden) celdas += `<rect class="a-px" style="animation-delay:${1.1 + (k++) * .018}s" x="${(x0 + c * cw).toFixed(1)}" y="${(y0 + f * ch).toFixed(1)}" width="${(cw + .6).toFixed(1)}" height="${(ch + .6).toFixed(1)}" fill="${tonos[(f * 3 + c * 5) % tonos.length]}"/>`
+      return `<svg ${V} aria-label="Una persona ilustrada sostiene un documento y los datos del documento se pixelan">
+        <rect x="150" y="20" width="340" height="300" rx="18" fill="var(--a-screen)" stroke="var(--line)"/>
+        ${avPersona(262, 128, 44)}
+        <g transform="rotate(-4 ${x0 + w / 2} ${y0 + h / 2})">${avCarnet(x0, y0, w, h)}${celdas}</g>
+        <circle cx="${x0 + 6}" cy="${y0 + h - 8}" r="15" fill="var(--a-fig)"/>
+        <g class="a-in av-badge" style="animation-delay:2.6s"><rect x="372" y="38" width="104" height="26" rx="13" fill="var(--accent)"/><text class="av-t" x="424" y="56" text-anchor="middle" style="fill:#fff;font-size:12px;font-weight:700">Pixelado ✓</text></g>
+      </svg>`
+    }
+    // n === 3: revisión y borrado
+    const thumbCara = `<g><rect x="70" y="70" width="120" height="150" rx="10" fill="var(--a-card)" stroke="var(--a-card-line)"/><rect x="84" y="84" width="92" height="122" rx="6" fill="var(--a-fig-2)"/><circle cx="130" cy="130" r="22" fill="var(--a-fig)"/><path d="M98,206 q32,-46 64,0 z" fill="var(--a-fig)"/></g>`
+    let px = ''; for (let f = 0; f < 4; f++) for (let c = 0; c < 5; c++) px += `<rect x="${268 + c * 12}" y="${150 + f * 12}" width="12.6" height="12.6" fill="${['#c7d2fe', '#a5b4fc', '#e0e7ff', '#cbd5e1', '#94a3b8'][(f * 2 + c) % 5]}"/>`
+    const thumbSelfie = `<g><rect x="220" y="70" width="120" height="150" rx="10" fill="var(--a-screen)" stroke="var(--line)"/>${avPersona(262, 120, 20)}${px}</g>`
+    return `<svg ${V} aria-label="La cara del documento y la selfie pixelada se revisan y luego se borran">
+      <text class="av-t-s" x="130" y="58" text-anchor="middle">Cara del documento</text><text class="av-t-s" x="280" y="58" text-anchor="middle">Selfie pixelada</text>
+      <g class="a-trash" style="--tx:360px;--ty:20px;animation-delay:3.1s">${thumbCara}</g>
+      <g class="a-trash" style="--tx:220px;--ty:20px;animation-delay:3.25s">${thumbSelfie}</g>
+      <g class="a-in" style="animation-delay:.5s">${avPersona(430, 120, 20)}<circle cx="452" cy="102" r="12" fill="var(--a-ok)"/><path d="M446,102 l4,4 8,-8" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/><text class="av-t-s" x="430" y="196" text-anchor="middle">Revisión humana</text></g>
+      <g class="a-in" style="animation-delay:2.6s"><path d="M528,150 h52 l-6,62 h-40 z" fill="none" stroke="var(--ink-2)" stroke-width="2.4" stroke-linejoin="round"/><path d="M522,150 h64 M545,150 v-8 h18 v8" stroke="var(--ink-2)" stroke-width="2.4" fill="none" stroke-linecap="round"/><text class="av-t-s" x="554" y="236" text-anchor="middle">Se borran</text></g>
+      <g class="a-in" style="animation-delay:4s"><text class="av-t-s" x="320" y="282" text-anchor="middle">Del número de documento solo queda una huella cifrada:</text><text class="av-mono" x="320" y="306" text-anchor="middle">9c1e 47b2 · · · a83f 06d5</text></g>
+    </svg>`
+  }
+  function gAnimVerificacion() {
+    return `<figure class="grafico anim-v" id="g-anim-verificacion" aria-roledescription="animación"><h3>Cómo funciona la verificación</h3><p class="g-sub">Ilustración del proceso, paso a paso. No usa imágenes de ninguna persona real.</p>
+      <div class="av-lienzo" aria-live="polite"></div><div class="av-chips" aria-hidden="true"></div>
+      <div class="av-paso"><b></b><span></span></div><p class="av-desc"></p>
+      <div class="av-ctrl"><button type="button" data-av="prev" aria-label="Paso anterior">←</button><button type="button" data-av="pausa">Pausar</button><button type="button" data-av="next" aria-label="Paso siguiente">→</button>
+      <div class="av-puntos" role="group" aria-label="Pasos">${AV_PASOS.map((p, i) => `<button type="button" data-av-ir="${i}" aria-label="Paso ${i + 1}: ${esc(p.t)}">${i + 1}</button>`).join('')}</div></div></figure>`
+  }
+  function iniciarAnimaciones() {
+    document.querySelectorAll('.anim-v').forEach(fig => {
+      if (fig.dataset.listo) return; fig.dataset.listo = '1'
+      const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches
+      let paso = 0, pausado = quieto, timer = null
+      const lienzo = fig.querySelector('.av-lienzo'), bPausa = fig.querySelector('[data-av="pausa"]')
+      const mostrar = n => {
+        paso = (n + AV_PASOS.length) % AV_PASOS.length
+        lienzo.innerHTML = avEscena(paso)
+        fig.querySelector('.av-paso b').textContent = `Paso ${paso + 1} de ${AV_PASOS.length}`
+        fig.querySelector('.av-paso span').textContent = AV_PASOS[paso].t
+        fig.querySelector('.av-desc').textContent = AV_PASOS[paso].d
+        fig.querySelector('.av-chips').innerHTML = AV_PASOS[paso].c.map(x => `<span>${esc(x)}</span>`).join('')
+        fig.querySelectorAll('[data-av-ir]').forEach(b => +b.dataset.avIr === paso ? b.setAttribute('aria-current', 'step') : b.removeAttribute('aria-current'))
+        programar()
+      }
+      const programar = () => { clearTimeout(timer); if (!pausado) timer = setTimeout(() => mostrar(paso + 1), paso === 3 ? 6500 : 5200) }
+      bPausa.textContent = pausado ? 'Reproducir' : 'Pausar'
+      fig.addEventListener('click', e => {
+        const b = e.target.closest('button'); if (!b) return
+        if (b.dataset.av === 'prev') mostrar(paso - 1)
+        else if (b.dataset.av === 'next') mostrar(paso + 1)
+        else if (b.dataset.av === 'pausa') { pausado = !pausado; bPausa.textContent = pausado ? 'Reproducir' : 'Pausar'; programar() }
+        else if (b.dataset.avIr) mostrar(+b.dataset.avIr)
+      })
+      // solo anima cuando está a la vista
+      new IntersectionObserver(es => es.forEach(en => { if (en.isIntersecting && !fig.dataset.visto) { fig.dataset.visto = '1'; mostrar(0) } }), { threshold: .25 }).observe(fig)
+      lienzo.innerHTML = avEscena(0); fig.querySelector('.av-paso b').textContent = `Paso 1 de ${AV_PASOS.length}`; fig.querySelector('.av-paso span').textContent = AV_PASOS[0].t; fig.querySelector('.av-desc').textContent = AV_PASOS[0].d
+    })
+  }
+
+  const GRAFICOS = { '[grafico:crecimiento]': gCrecimiento, '[grafico:actividad]': gActividad, '[grafico:participacion]': gActividad, '[grafico:temas]': gTemas, '[grafico:votaciones]': gVotaciones, '[nube]': gNube, '[totales]': gTotales, '[animacion:verificacion]': gAnimVerificacion }
   function dibujarTodo() { document.querySelectorAll('.g-lienzo[data-g="linea"]').forEach(dibujarLinea); document.querySelectorAll('.g-lienzo[data-g="barras"]').forEach(dibujarBarras) }
   let _rz; addEventListener('resize', () => { clearTimeout(_rz); _rz = setTimeout(dibujarTodo, 150) })
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', dibujarTodo)
@@ -428,6 +571,7 @@
     if (c.sobre) { $('sobre-sec').hidden = false; $('sobre').innerHTML = enLinea(c.sobre) }
     if (c.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) { $('c-email').hidden = false; $('c-email-a').textContent = c.email; $('c-email-a').href = 'mailto:' + c.email }
     dibujarTodo()
+    iniciarAnimaciones()
   }
 
   fetch(`${E.SUPABASE_URL}/rest/v1/rpc/prensa_publica`, { method: 'POST', headers: { apikey: E.SUPABASE_KEY, Authorization: `Bearer ${E.SUPABASE_KEY}`, 'Content-Type': 'application/json' }, body: '{}' })
