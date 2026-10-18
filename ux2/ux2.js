@@ -4849,8 +4849,8 @@ function pintarPlayroom() {
   const est = nd.est
   $('#pl-vivo').hidden = !(est?.jugando > 0)
   if (est) $('#pl-jugando').textContent = fmtNum(est.jugando)
-  if (!nd.cargado) { c.innerHTML = '<div class="card au-vacio"><p class="muted">Cargando…</p></div>'; return }
-  if (!estado.user) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom es para ciudadanos</h3><p class="muted">Iniciá sesión para jugar.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`; return }
+  if (estado.cargado && !estado.user) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom es para ciudadanos</h3><p class="muted">Iniciá sesión para jugar.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`; return }
+  if (!estado.cargado || !nd.cargado) { c.innerHTML = '<div class="card au-vacio"><p class="muted">Cargando…</p></div>'; return }
   if (!est) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>No se pudo cargar el Playroom</h3><p class="muted">Probá de nuevo en un momento.</p></div>`; return }
   if (!est.activo) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom está cerrado</h3><p class="muted">Vuelve a abrir pronto. Tu récord y tu posición quedan guardados.</p></div>`; return }
 
