@@ -7698,9 +7698,20 @@ html.cd-activo, html.cd-activo body { overflow:hidden !important; }
 #auth-overlay { z-index: 1200; }
 body:has(#auth-overlay.open) #sys-announcement { display: none !important; }
 
-html.android-acceso #intro .intro-hero { opacity: 1; pointer-events: auto; transition: none; }
-html.android-acceso #auth-overlay { transition: none; background: #0D1B2E !important; }
-html.android-acceso #auth-overlay #auth-panel { transform: none !important; transition: none !important; width: min(420px, 100%); }
-html.android-acceso body:has(#auth-overlay.open) > .screen,
-html.android-acceso body:has(#auth-overlay.open) #cd-overlay,
-html.android-acceso body:has(#auth-overlay.open) #maint-overlay { visibility: hidden !important; }
+
+/* ANDROID_AUTH_SCREEN (fix v11) — en Android Chrome el acceso es una pantalla en el flujo del documento,
+   sin capas detrás. Se activa con la clase html.android-auth-screen. */
+html.android-auth-screen #intro .intro-hero { opacity: 1; pointer-events: auto; transition: none; }
+html.android-auth-screen #auth-overlay { display: none; }
+html.android-auth-screen:has(#auth-overlay.open),
+html.android-auth-screen:has(#auth-overlay.open) body { height: auto; min-height: 100%; overflow: auto; background: #0D1B2E; }
+html.android-auth-screen:has(#auth-overlay.open) body > :not(#auth-overlay):not(script):not(style):not(.open):not(.active),
+html.android-auth-screen:has(#auth-overlay.open) body > .screen { display: none !important; }
+html.android-auth-screen #auth-overlay.open {
+  position: static; inset: auto; display: block; width: 100%; height: auto; min-height: 100vh; min-height: 100dvh; max-height: none;
+  overflow: visible; padding: 16px; background: #0D1B2E !important; opacity: 1; transition: none; pointer-events: auto;
+}
+html.android-auth-screen #auth-overlay #auth-panel {
+  width: min(420px, 100%); margin: 0 auto; padding: 28px 18px; transform: none; transition: none; box-shadow: none; border: 0; border-radius: 0;
+}
+/* ANDROID_AUTH_SCREEN_END */
