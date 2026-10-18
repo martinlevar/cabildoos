@@ -6558,7 +6558,10 @@ async function iniciar() {
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
   const habiaModo = modoEscalinatas()
-  if (aplicarModoEscalinatas() || habiaModo) { pintarNav(); ruta() }       // ruta() ya abre la sala
+  const conModo = aplicarModoEscalinatas()
+  // Quien ya tiene su butaca deja el modo Escalinatas y entra por el Inicio
+  if (habiaModo && !conModo && location.hash === '#escalinatas') history.replaceState(null, '', '#inicio')
+  if (conModo || habiaModo) { pintarNav(); ruta() }       // ruta() ya abre la sala
   else if (vistaActual() === 'escalinatas') entrarEscalinatas()
   vigilarSesion()
   vigilarPortada()
