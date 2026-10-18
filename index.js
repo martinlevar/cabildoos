@@ -3594,6 +3594,24 @@ async function _vpAuthHeaders() {
 }
 
 
+// Consentimiento expreso para usar las imágenes de la verificación: se registra (fecha + versión del texto)
+// antes de pasar al paso 2. Sin registro no se avanza.
+const VP_CONSENT_VERSION = 'verificacion-2026-10-18'
+async function vpAceptarConsentimiento() {
+  const chk = document.getElementById('vp-consent'), btn = document.getElementById('vp-btn-s1')
+  if (!chk?.checked) { showToast('Para continuar tenés que dar tu consentimiento.'); return }
+  btn.disabled = true; const txt = btn.textContent; btn.textContent = 'Guardando…'
+  try {
+    const { error } = await sb.rpc('registrar_consentimiento', { p_tipo: 'verificacion', p_version: VP_CONSENT_VERSION })
+    if (error) throw error
+    btn.textContent = txt; btn.disabled = false
+    vpGoStep(2)
+  } catch (e) {
+    btn.textContent = txt; btn.disabled = false
+    showToast('No pudimos registrar tu consentimiento. Revisá tu conexión y probá de nuevo.', 4000)
+  }
+}
+
 function uuidv4() {
   if (self.crypto?.randomUUID) return self.crypto.randomUUID();
   const b = self.crypto.getRandomValues(new Uint8Array(16));
@@ -5311,6 +5329,7 @@ function abrirVerificacion() {
   document.getElementById('vp-dob-wrap')?.classList.remove('error')
   vpInitDobSelects()
   document.getElementById('vp-btn-s1').disabled = true
+  const _vpc = document.getElementById('vp-consent'); if (_vpc) _vpc.checked = false
   // Mostrar botón × solo para usuarios ya verificados (pueden cerrar el overlay)
   // Usuarios no verificados no pueden escapar del overlay hasta completar el flujo
   const closeBtn = document.getElementById('vp-close-btn')
@@ -5563,7 +5582,7 @@ function vpInitDobSelects() {
   }
   const anoEl = document.getElementById('vp-dob-ano')
   if (anoEl && anoEl.options.length <= 1) {
-    const maxYear = new Date().getFullYear() - 16
+    const maxYear = new Date().getFullYear() - 18
     for (let y = maxYear; y >= 1924; y--) {
       const o = document.createElement('option')
       o.value = String(y)
@@ -5596,14 +5615,15 @@ function vpCheckStep1() {
   const fechaNac = document.getElementById('vp-fecha-nac')?.value
   const pais     = document.getElementById('vp-pais')?.value
 
-  // Validar edad mínima 16 años
+  // Validar edad mínima 18 años
   let edadOk = false
   if (fechaNac) {
-    const max = new Date(); max.setFullYear(max.getFullYear() - 16)
+    const max = new Date(); max.setFullYear(max.getFullYear() - 18)
     edadOk = new Date(fechaNac) <= max
   }
 
-  const ok = nombre?.length > 1 && tipoDoc && numDoc?.length > 3 && fechaNac && edadOk && pais
+  const consiente = !!document.getElementById('vp-consent')?.checked
+  const ok = nombre?.length > 1 && tipoDoc && numDoc?.length > 3 && fechaNac && edadOk && pais && consiente
   document.getElementById('vp-btn-s1').disabled = !ok
 
   // Mostrar hint de edad si la fecha está puesta pero no cumple

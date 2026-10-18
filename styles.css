@@ -7715,3 +7715,15 @@ html.android-auth-screen #auth-overlay #auth-panel {
   width: min(420px, 100%); margin: 0 auto; padding: 28px 18px; transform: none; transition: none; box-shadow: none; border: 0; border-radius: 0;
 }
 /* ANDROID_AUTH_SCREEN_END */
+
+/* Consentimiento expreso antes de la verificación (18/10/2026) */
+.vp-consent-box { margin: 14px 0 4px; padding: 14px 16px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); text-align: left; }
+.vp-consent-title { font-size: 13px; font-weight: 700; color: #fff; margin: 0 0 8px; }
+.vp-consent-box ul { margin: 0 0 12px; padding-left: 18px; }
+.vp-consent-box li { font-size: 12.5px; line-height: 1.5; color: rgba(255,255,255,.72); margin-bottom: 5px; }
+.vp-consent-check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 12.5px; line-height: 1.5; color: rgba(255,255,255,.88); }
+.vp-consent-check input { width: 20px; height: 20px; flex: none; margin-top: 1px; accent-color: var(--orange); }
+.vp-consent-check a { color: #fff; text-decoration: underline; }
+#verify-overlay .vp-consent-check input[type=checkbox] { width: 20px !important; min-width: 20px; height: 20px; padding: 0 !important; margin: 1px 0 0 !important; border: 0; background: none; box-shadow: none; appearance: auto; -webkit-appearance: checkbox; }
+#verify-overlay .vp-consent-check span { flex: 1 1 auto; min-width: 0; }
+#verify-overlay .vp-consent-check, #verify-overlay .vp-consent-check span { text-transform: none; letter-spacing: normal; font-weight: 500; font-size: 12.5px; line-height: 1.5; color: rgba(255,255,255,.9); }
