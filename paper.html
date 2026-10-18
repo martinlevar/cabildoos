@@ -329,6 +329,8 @@ body {
   font-size: 12px; color: var(--muted);
 }
 .doc-footer a { color: var(--accent); text-decoration: none; }
+/* topbar-movil: que los enlaces no desborden en el celular */
+@media (max-width: 640px) { .topbar { flex-wrap: wrap; gap: 8px; height: auto; padding-top: 10px; padding-bottom: 10px; } .topbar-links { flex-wrap: wrap; gap: 4px 12px; } }
 </style>
 </head>
 <body>
@@ -416,8 +418,8 @@ body {
         </div>
         <div class="principle-card">
           <div class="principle-icon">🎭</div>
-          <div class="principle-name">Anonimato garantizado</div>
-          <div class="principle-desc">Nadie — ni el operador de la plataforma — puede vincular tu identidad con el sentido de tu voto.</div>
+          <div class="principle-name">Voto secreto</div>
+          <div class="principle-desc">No se guarda qué votó cada butaca: ni el operador de la plataforma puede consultar tu voto.</div>
         </div>
         <div class="principle-card">
           <div class="principle-icon">✅</div>
@@ -427,7 +429,7 @@ body {
         <div class="principle-card">
           <div class="principle-icon">🔍</div>
           <div class="principle-name">Resultados verificables</div>
-          <div class="principle-desc">Cualquier persona puede auditar que el resultado final corresponde a los votos emitidos.</div>
+          <div class="principle-desc">Los resultados se publican al cierre de cada votación, en el sitio y en X. El objetivo es que cualquiera pueda auditarlos en un registro público (Fase 2).</div>
         </div>
         <div class="principle-card">
           <div class="principle-icon">📱</div>
@@ -437,7 +439,7 @@ body {
         <div class="principle-card">
           <div class="principle-icon">🌐</div>
           <div class="principle-name">Open Source</div>
-          <div class="principle-desc">El código es auditable por cualquiera. La confianza no depende de nuestra palabra — depende del código.</div>
+          <div class="principle-desc">Vamos a abrir el código para que cualquiera pueda auditarlo, y que la confianza no dependa de nuestra palabra sino del código (ver sección 8).</div>
         </div>
       </div>
     </div>
@@ -511,24 +513,28 @@ body {
     <!-- S5: VAV -->
     <div class="doc-section" id="s5">
       <h2><span class="num">05</span>Protocolo VaV — Verifiable Anonymous Votes</h2>
-      <p>El Protocolo <strong>VaV (Verifiable Anonymous Votes)</strong> es el mecanismo criptográfico que garantiza la integridad de cada votación. Es una tecnología propietaria desarrollada por <strong>Bowery Global Inc</strong>, la empresa creadora de CabildoOS. Está basado en el esquema <em>commit-reveal</em> ampliamente usado en sistemas de criptografía, adaptado para participación ciudadana masiva.</p>
+      <p>El Protocolo <strong>VaV (Verifiable Anonymous Votes)</strong> es el mecanismo que protege la integridad y el secreto de cada votación. Es una tecnología propietaria desarrollada por <strong>Bowery Global Inc</strong>, la empresa creadora de CabildoOS. Su objetivo es que el voto sea secreto y que cada persona vote una sola vez, también en participación ciudadana masiva.</p>
 
       <h3>El problema que resuelve</h3>
       <p>En una votación simple, si los resultados son visibles en tiempo real, los últimos votantes pueden adaptar su voto conociendo el resultado parcial. Esto introduce sesgos y permite manipulación. El VaV elimina ese problema.</p>
 
-      <h3>Cómo funciona</h3>
+      <div class="callout callout-orange">
+        <strong>Actualización — octubre de 2026:</strong> en la versión 2 de la plataforma reemplazamos el esquema commit-reveal de la primera versión. Al revelarse, ese esquema dejaba cada voto guardado junto a su butaca. Ahora el voto individual no se guarda.
+      </div>
+
+      <h3>Cómo funciona hoy</h3>
       <ol>
-        <li><strong>Fase Commit:</strong> emitís tu voto encriptado. El sistema recibe un hash de tu voto — sabe que votaste, pero no sabe qué votaste. Nadie puede ver los resultados parciales.</li>
-        <li><strong>Fase Reveal:</strong> cuando la votación cierra, todos los votos se revelan simultáneamente. Cualquiera puede verificar que el hash corresponde al voto declarado.</li>
-        <li><strong>Conteo:</strong> el resultado es calculado automáticamente. Ninguna parte puede alterar el conteo.</li>
+        <li><strong>Participación:</strong> cuando votás, el sistema registra que tu butaca participó. Esa marca impide el doble voto.</li>
+        <li><strong>Contador:</strong> tu opción (Sí, No o Abstención) se suma a un contador general de la votación. No queda ningún registro de qué eligió cada butaca.</li>
+        <li><strong>Resultados al cierre:</strong> mientras la votación está abierta solo se ve cuántas butacas votaron, lo que evita que los últimos votantes se dejen llevar por el resultado parcial. El resultado por opción se publica al cierre, y solo si votaron al menos tres butacas.</li>
       </ol>
 
       <div class="callout callout-green">
-        <strong>Garantía actual:</strong> el servidor no puede conocer el sentido de tu voto hasta que la votación cierra. Una vez emitido el commit, no puede modificarse. La verificación del resultado es pública.
+        <strong>Garantía actual:</strong> no existe en la base de datos ningún registro que una a una butaca con su voto, así que ni el equipo ni un atacante que robara la base podrían consultarlo.
       </div>
 
       <h3>La limitación actual</h3>
-      <p>En la implementación actual, el servidor centralizado almacena los hashes y ejecuta el reveal. Aunque técnicamente no puede conocer el voto antes del reveal, sí podría, en teoría, retener o modificar el reveal. Esta limitación se resuelve en la Fase 2 con la descentralización del protocolo.</p>
+      <p>En el instante de votar, el servidor centralizado recibe la sesión y la elección juntas para sumarla al contador. Que ese vínculo no se guarde, y que el contador no se altere, depende del código y de la buena fe del operador, no de una prueba matemática. Esta limitación se resuelve en la Fase 2, con el conteo en un registro público verificable.</p>
     </div>
 
     <!-- S6: DONDE ESTAMOS -->
@@ -698,7 +704,7 @@ body {
       <h3>Los diferenciadores</h3>
       <ul>
         <li><strong>Verificación real de identidad</strong> con IA — no encuestas abiertas sin control de identidad.</li>
-        <li><strong>Protocolo VaV</strong> — la única plataforma de votación ciudadana con commit-reveal criptográfico accesible para usuarios no técnicos.</li>
+        <li><strong>Protocolo VaV</strong> — voto secreto sin registro individual del voto, accesible para usuarios no técnicos.</li>
         <li><strong>Roadmap de descentralización</strong> — las garantías técnicas mejoran con el tiempo sin romper la experiencia de usuario.</li>
         <li><strong>Open Source</strong> — confianza auditable, no declarada.</li>
       </ul>

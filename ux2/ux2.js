@@ -5384,7 +5384,7 @@ const LECCIONES = [
     quiz: { q: '¿Cuántas butacas puede tener una persona?', o: [['Una sola', 1], ['Las que quiera', 0], ['Tres', 0]], e: 'Una persona, una butaca. Así cada voto vale lo mismo.' } },
   { id: 'butaca', titulo: 'Tu butaca', sub: 'Anónima y tuya', color: AC.oro, ico: '💺', ir: ['#butaca', 'Ir a Mi Butaca'], pasos: [
     { esc: 'verif', t: 'Primero, mostrás que sos una persona real', p: 'Una sola vez, con tu documento y una selfie. Así sabemos que sos una persona y que no tenés otra butaca. Después recibís tu número.' },
-    { esc: 'anonimo', t: 'Y después, nadie sabe quién sos', p: 'No guardamos tu nombre ni tu número de documento, y las fotos se borran. Tu butaca queda identificada solo por su número.' },
+    { esc: 'anonimo', t: 'Y después, participás con tu número', p: 'No guardamos tu nombre ni tu número de documento, y las fotos se borran. Frente a los demás, tu butaca queda identificada solo por su número.' },
     { esc: 'mostrar', t: 'Vos elegís qué mostrar', p: 'Podés ponerle un <b>alias</b>, una frase y un color, o no mostrar nada. Probalo acá abajo 👇', sim: 'alias' }],
     quiz: { q: '¿Tu nombre real aparece en tu butaca?', o: [['No, solo si elijo mostrar un alias', 1], ['Sí, siempre', 0], ['Solo para los que me siguen', 0]], e: 'Tu butaca es anónima. El alias es opcional y lo elegís vos.' } },
   { id: 'votar', titulo: 'Cómo votar', sub: 'Paso a paso', color: AC.verde, ico: '🗳️', ir: ['#votaciones', 'Ir a votar'], pasos: [

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Política de Privacidad — Cabildo de Venezuela</title>
-<meta name="description" content="Cómo CabildoOS recopila, usa y protege tu información en Cabildo de Venezuela: minimización de datos, hash del documento, y los límites reales de un sistema centralizado.">
+<meta name="description" content="Qué datos guarda Cabildo de Venezuela, para qué y por cuánto tiempo, cómo funciona el voto secreto y cuáles son los límites reales de un sistema centralizado.">
 <link rel="canonical" href="https://cabildodevenezuela.com/privacidad.html">
 <meta name="robots" content="index, follow">
 <meta property="og:type" content="website">
@@ -206,6 +206,8 @@ body {
   font-size: 12px; color: var(--muted);
 }
 .doc-footer a { color: var(--accent); text-decoration: none; }
+/* topbar-movil: que los enlaces no desborden en el celular */
+@media (max-width: 640px) { .topbar { flex-wrap: wrap; gap: 8px; height: auto; padding-top: 10px; padding-bottom: 10px; } .topbar-links { flex-wrap: wrap; gap: 4px 12px; } }
 </style>
 </head>
 <body>
@@ -225,20 +227,22 @@ body {
   <!-- TOC -->
   <aside class="toc">
     <div class="toc-title">Contenido</div>
-    <a href="#s1">1. Principio fundamental</a>
-    <a href="#s2">2. Qué NO guardamos</a>
-    <a href="#s3">3. Qué SÍ guardamos</a>
-    <a href="#s4">4. Por qué guardamos cada dato</a>
-    <a href="#s5">5. VaV y privacidad por diseño</a>
-    <a href="#s6">6. El hash y sus límites reales</a>
-    <a href="#s-central">7. Centralizado vs. descentralizado</a>
-    <a href="#s7">8. Acceso a tus datos</a>
-    <a href="#s8">9. Terceros y servicios</a>
-    <a href="#s9">10. Seguridad técnica</a>
-    <a href="#s10">11. Tus derechos</a>
-    <a href="#s11">12. Retención de datos</a>
-    <a href="#s12">13. Cambios a esta política</a>
-    <a href="#s13">14. Contacto</a>
+    <a href="#s1">1. Quién es responsable</a>
+    <a href="#s2">2. Resumen</a>
+    <a href="#s3">3. Lo que no guardamos nunca</a>
+    <a href="#s4">4. Lo que sí guardamos</a>
+    <a href="#s5">5. Fotos de la verificación</a>
+    <a href="#s6">6. Lo que pasa en tu teléfono</a>
+    <a href="#s7">7. Tu consentimiento</a>
+    <a href="#s8">8. El voto secreto</a>
+    <a href="#s-central">9. Límites de un sistema centralizado</a>
+    <a href="#s10">10. Quién puede ver tus datos</a>
+    <a href="#s11">11. Proveedores y transferencias</a>
+    <a href="#s12">12. Seguridad técnica</a>
+    <a href="#s13">13. Plazos de conservación</a>
+    <a href="#s14">14. Tus derechos</a>
+    <a href="#s15">15. Edad mínima</a>
+    <a href="#s16">16. Cambios y contacto</a>
   </aside>
 
   <!-- CONTENT -->
@@ -246,180 +250,110 @@ body {
     <div class="hero">
       <div class="hero-tag">Documento legal</div>
       <h1>Política de Privacidad</h1>
-      <p>Cómo CabildoOS recopila, usa y protege tu información en la plataforma Cabildo de Venezuela.</p>
+      <p>Qué datos usa Cabildo de Venezuela, para qué, cuánto tiempo los conserva y cuáles son los límites reales de su privacidad.</p>
       <div class="version-tag">
         <span class="dot"></span>
-        Versión 1.2 · Agosto 2026 · Última actualización: 03/08/2026
+        Versión 2.0 · Octubre 2026 · Última actualización: 18/10/2026
       </div>
     </div>
 
     <div class="principle-banner">
-      <h3>Privacidad por diseño — y honestidad sobre sus límites</h3>
-      <p>El principio que guía cada decisión de arquitectura de CabildoOS es minimizar los datos que almacenamos. Los datos que podrían identificarte (nombre, número de documento, fecha de nacimiento) se analizan en el momento y se descartan. <strong>Pero hay algo que debés saber:</strong> CabildoOS es un sistema centralizado. Eso significa que como operadores, tenemos capacidades técnicas que otros sistemas descentralizados no tendrían. Esta sección explica exactamente cuáles son esas capacidades, sus límites reales, y qué significa confiar en una plataforma centralizada.</p>
+      <h3>Guardamos lo mínimo y te decimos exactamente qué es</h3>
+      <p>Cabildo de Venezuela necesita comprobar que detrás de cada butaca hay una persona real y única. Para eso usa tu documento y tu cara durante la verificación, pero no guarda tu nombre, tu número de documento ni tu fecha de nacimiento, y borra las fotos después de la revisión. <strong>No es un sistema anónimo absoluto:</strong> guardamos el email de tu cuenta y sabemos qué cuenta tiene qué butaca. Esta política explica todo lo que guardamos y dónde están los límites.</p>
     </div>
 
     <div class="doc-section" id="s1">
-      <h2><span class="num">01</span>Principio fundamental</h2>
-      <p>Esta Política de Privacidad describe qué información recopila CabildoOS cuando usás la plataforma Cabildo de Venezuela (<strong>cabildodevenezuela.com</strong>), cómo la usamos y qué derechos tenés sobre ella.</p>
-      <p>Aplicamos el principio de <strong>minimización de datos</strong>: solo recopilamos lo estrictamente necesario para que la plataforma funcione. Si un dato no es necesario, no se recopila. Si puede derivarse en tiempo real sin guardarse, no se guarda.</p>
+      <h2><span class="num">01</span>Quién es responsable</h2>
+      <p>La plataforma Cabildo de Venezuela (<a href="https://cabildodevenezuela.com">cabildodevenezuela.com</a>) funciona sobre CabildoOS, un sistema desarrollado y operado por <strong>Bowery Global Inc.</strong>, responsable del tratamiento de los datos descritos en esta política.</p>
+      <p>Usamos tus datos solo para: crear y proteger tu cuenta, comprobar que sos una persona real y única, permitirte participar (votar, proponer, debatir) y mantener la plataforma segura. No vendemos, alquilamos ni cedemos datos personales con fines publicitarios o comerciales.</p>
     </div>
 
     <div class="doc-section" id="s2">
-      <h2><span class="num">02</span>Lo que <em style="color:var(--red)">no</em> guardamos nunca</h2>
-      <p>Contrariamente a lo que sucede en la mayoría de las plataformas digitales, estos datos <strong>jamás se almacenan en nuestros sistemas</strong>:</p>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Dato</th>
-            <th>¿Se guarda?</th>
-            <th>Por qué no</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Nombre completo del documento</td>
-            <td><span class="badge-no">NUNCA</span></td>
-            <td>Solo se compara en tiempo real con lo declarado. Se descarta al terminar el análisis.</td>
-          </tr>
-          <tr>
-            <td>Número de documento (cédula, pasaporte)</td>
-            <td><span class="badge-no">NUNCA</span></td>
-            <td>Solo se deriva un hash irreversible. El número original se descarta.</td>
-          </tr>
-          <tr>
-            <td>Fecha de nacimiento</td>
-            <td><span class="badge-no">NUNCA</span></td>
-            <td>Analizada para verificación, descartada inmediatamente.</td>
-          </tr>
-          <tr>
-            <td>Dirección o domicilio</td>
-            <td><span class="badge-no">NUNCA</span></td>
-            <td>No es relevante para el proceso. No se analiza ni se guarda.</td>
-          </tr>
-          <tr>
-            <td>Foto original del documento</td>
-            <td><span class="badge-no">NUNCA</span></td>
-            <td>La imagen se procesa en memoria y se descarta. No va a disco ni base de datos.</td>
-          </tr>
-          <tr>
-            <td>Selfie original (sin censurar)</td>
-            <td><span class="badge-no">NUNCA</span></td>
-            <td>El selfie sin censurar se analiza en memoria y se descarta. Solo se guarda la versión con datos del documento pixelados.</td>
-          </tr>
-        </tbody>
-      </table>
+      <h2><span class="num">02</span>Resumen</h2>
+      <ul>
+        <li><strong>Guardamos:</strong> el email de tu cuenta, tu número de butaca, una huella cifrada de tu número de documento y lo que publicás en la plataforma.</li>
+        <li><strong>No guardamos:</strong> tu nombre, tu número de documento, tu fecha de nacimiento, la foto completa de tu documento ni qué votaste.</li>
+        <li><strong>Guardamos por un tiempo:</strong> una selfie con el documento pixelado y la cara recortada del documento, hasta que una persona del equipo revisa tu solicitud. Después se borran.</li>
+        <li><strong>Límite:</strong> el sistema es centralizado. El equipo puede saber qué email corresponde a qué butaca. Nadie puede saber qué votó cada butaca, porque ese dato no se guarda.</li>
+      </ul>
     </div>
 
     <div class="doc-section" id="s3">
-      <h2><span class="num">03</span>Lo que <em style="color:var(--green)">sí</em> guardamos</h2>
+      <h2><span class="num">03</span>Lo que <em style="color:var(--red)">no</em> guardamos nunca</h2>
       <table class="data-table">
-        <thead>
-          <tr>
-            <th>Dato</th>
-            <th>Estado</th>
-            <th>Para qué sirve</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Dato</th><th>¿Se guarda?</th><th>Qué pasa con él</th></tr></thead>
         <tbody>
-          <tr>
-            <td>Email de registro</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Identificación de cuenta, recuperación de contraseña, notificaciones.</td>
-          </tr>
-          <tr>
-            <td>Alias (nombre de usuario elegido)</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Identificación pública dentro de la plataforma (opcional si elegís ocultarlo).</td>
-          </tr>
-          <tr>
-            <td>Número de butaca asignado</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Identidad dentro del hemiciclo. Es público.</td>
-          </tr>
-          <tr>
-            <td>Hash del documento (HMAC-SHA256)</td>
-            <td><span class="badge-hash">HASH SOLO</span></td>
-            <td>Prevenir que el mismo documento cree múltiples cuentas. Irreversible para atacantes externos. <strong>Ver nota importante en sección 06.</strong></td>
-          </tr>
-          <tr>
-            <td>Selfie censurada (datos del documento pixelados)</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Revisión por verificador humano para confirmar que sos una persona real.</td>
-          </tr>
-          <tr>
-            <td>Resultado de verificación (true/false)</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Estado de la solicitud de verificación.</td>
-          </tr>
-          <tr>
-            <td>Votos (commit hash + reveal)</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Integridad del proceso electoral. El vote_hash no revela el voto hasta el reveal.</td>
-          </tr>
-          <tr>
-            <td>Preferencias de perfil</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Mostrar/ocultar alias, frase, historial de votos según tus preferencias.</td>
-          </tr>
-          <tr>
-            <td>Eventos de seguridad (intentos fallidos)</td>
-            <td><span class="badge-yes">SE GUARDA</span></td>
-            <td>Detección de ataques. Solo contiene tipo de evento y timestamp, no datos personales.</td>
-          </tr>
+          <tr><td>Nombre completo</td><td><span class="badge-no">NUNCA</span></td><td>Lo escribís para compararlo con el documento durante la verificación. No se almacena.</td></tr>
+          <tr><td>Número de documento</td><td><span class="badge-no">NUNCA</span></td><td>Se transforma en una huella cifrada (ver sección 4). El número no se almacena.</td></tr>
+          <tr><td>Fecha de nacimiento</td><td><span class="badge-no">NUNCA</span></td><td>Se usa para comprobar la edad mínima y se descarta.</td></tr>
+          <tr><td>Foto completa del documento</td><td><span class="badge-no">NUNCA</span></td><td>Se envía al servicio de análisis automático (sección 11) para leer los datos. De ella solo conservamos, hasta la revisión, el recorte de la cara.</td></tr>
+          <tr><td>Qué votaste</td><td><span class="badge-no">NUNCA</span></td><td>Tu elección se suma a un contador general. No existe ningún registro que una tu butaca con tu opción (sección 8).</td></tr>
+          <tr><td>Dirección, teléfono, ubicación</td><td><span class="badge-no">NUNCA</span></td><td>No se piden.</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="doc-section" id="s4">
-      <h2><span class="num">04</span>Por qué guardamos cada dato</h2>
-      <p>Cada dato que almacenamos tiene una justificación específica:</p>
-      <ul>
-        <li><strong>Email:</strong> base técnica de la autenticación. Sin email no hay recuperación de cuenta.</li>
-        <li><strong>Hash del documento:</strong> sin él, la misma persona podría crear múltiples butacas, invalidando el proceso democrático.</li>
-        <li><strong>Selfie censurada:</strong> la revisión humana es una capa de seguridad necesaria porque los sistemas de IA pueden ser engañados. La censura previa garantiza que el revisor no vea datos personales.</li>
-        <li><strong>Votos:</strong> sin persistencia de votos no hay proceso electoral. El protocolo commit-reveal garantiza que no podamos conocer el contenido antes del reveal.</li>
-      </ul>
+      <h2><span class="num">04</span>Lo que <em style="color:var(--green)">sí</em> guardamos</h2>
+      <table class="data-table">
+        <thead><tr><th>Dato</th><th>Para qué</th><th>Cuánto tiempo</th></tr></thead>
+        <tbody>
+          <tr><td>Email de la cuenta</td><td>Entrar, recuperar la contraseña y recibir avisos de la plataforma.</td><td>Mientras la cuenta exista.</td></tr>
+          <tr><td>Vínculo cuenta ↔ butaca</td><td>Saber qué butaca te corresponde, revisar reportes y aplicar sanciones.</td><td>Mientras la cuenta exista.</td></tr>
+          <tr><td>Huella cifrada del documento (HMAC-SHA256 con clave secreta)</td><td>Impedir que un mismo documento obtenga dos butacas.</td><td>Indefinido, incluso si borrás la cuenta, para evitar reingresos fraudulentos. En verificaciones abandonadas, 90 días.</td></tr>
+          <tr><td>Alias, frase, color de tarjeta y preferencias</td><td>Tu perfil público, que vos decidís mostrar u ocultar.</td><td>Mientras la cuenta exista.</td></tr>
+          <tr><td>Propuestas, mensajes de debate, Muro y comentarios</td><td>La participación pública.</td><td>Mientras la plataforma exista o hasta que se borren.</td></tr>
+          <tr><td>Mensajes privados entre butacas</td><td>Que puedas conversar con otras butacas.</td><td>Mientras la cuenta exista. No tienen cifrado de extremo a extremo.</td></tr>
+          <tr><td>Participación en votaciones</td><td>Impedir el doble voto. Registra que una butaca participó, no qué votó.</td><td>Indefinido, como registro histórico.</td></tr>
+          <tr><td>Registro de consentimiento</td><td>Probar que aceptaste el uso de tus imágenes para la verificación (fecha y versión del texto).</td><td>Mientras la cuenta exista.</td></tr>
+          <tr><td>Registros técnicos y de seguridad</td><td>Detectar ataques y errores. No contienen nombre ni número de documento.</td><td>90 días.</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Sobre la huella del documento:</strong> es una función matemática irreversible calculada con una clave secreta del servidor. Quien obtenga la base de datos sin esa clave no puede reconstruir ningún número. Pero quien tenga esa clave podría probar números de documento uno por uno hasta encontrar el que corresponde a una huella. Por eso la clave está guardada fuera de la base de datos y solo la usa el servidor de verificación.</p>
+      <p><strong>Anfitriones de Bloques:</strong> quien decide liderar un Bloque acepta mostrar su nombre real y hace una segunda verificación. En ese caso guardamos su nombre, apellido, foto pública y las imágenes de su documento mientras el Bloque esté activo; cada acceso a esas imágenes queda registrado y se borran cuando el Bloque se cierra o se rechaza. Los miembros de un Bloque siguen siendo anónimos.</p>
     </div>
 
     <div class="doc-section" id="s5">
-      <h2><span class="num">05</span>VaV y privacidad por diseño</h2>
-      <p>El protocolo <strong>VaV (Voto Anónimo Verificable)</strong> implementa la separación entre identidad y voto a nivel criptográfico:</p>
-      <div class="info-box">
-        <strong>Fase Commit:</strong> cuando votás, el sistema almacena únicamente el <code>SHA-256(voto + nonce_aleatorio)</code>. Ni nosotros ni nadie puede deducir tu voto a partir de ese hash. El nonce es generado aleatoriamente en tu dispositivo.
-      </div>
-      <div class="info-box">
-        <strong>Fase Reveal:</strong> al cierre de la votación, el voto en claro se publica junto con el nonce. El sistema verifica que <code>SHA-256(voto_publicado + nonce_publicado) == hash_original</code>. Si no coincide, el voto es inválido.
-      </div>
-      <p>La consecuencia práctica es que durante toda la fase de votación — que puede durar horas o días — <strong>CabildoOS técnicamente no puede saber cómo votaste</strong>, aunque quisiese. El compromiso criptográfico lo impide.</p>
-      <h3>El vínculo butaca–identidad</h3>
-      <p>El número de butaca es público. Tu identidad real (nombre, documento) nunca fue almacenada. El vínculo entre tu butaca y tu identidad real solo existe en tu conocimiento y en la memoria del verificador (que vio tu selfie censurada). Ninguna de estas dos partes puede probar ese vínculo ante terceros sin tu participación.</p>
+      <h2><span class="num">05</span>Fotos de la verificación</h2>
+      <p>Para obtener una butaca completás tres pasos: una foto de tu documento, una prueba de vida y una selfie sosteniendo el documento.</p>
+      <ul>
+        <li>Las imágenes de los tres pasos (documento, prueba de vida y selfie) se envían al servicio de análisis automático (sección 11), que lee los datos del documento, los compara con lo que escribiste, comprueba que haya una persona real frente a la cámara y ubica los datos del documento en la selfie para pixelarlos. Nosotros no guardamos la foto del documento ni las de la prueba de vida.</li>
+        <li>La <strong>selfie con el documento</strong> se guarda con los datos del documento pixelados, y de la foto del documento se guarda <strong>solo el recorte de la cara</strong>, sin ningún dato escrito.</li>
+        <li>Esas dos imágenes quedan en un almacenamiento privado hasta que una persona del equipo revisa tu solicitud. <strong>Al aprobarla o rechazarla, se borran.</strong></li>
+      </ul>
     </div>
 
     <div class="doc-section" id="s6">
-      <h2><span class="num">06</span>El hash del documento y sus límites reales</h2>
-      <p>En la sección anterior indicamos que el hash HMAC-SHA256 del número de documento "protege contra que CabildoOS conozca tu número". Eso requiere una aclaración honesta.</p>
-      <h3>Qué es cierto</h3>
-      <p>HMAC-SHA256 es criptográficamente irreversible: no existe ningún algoritmo matemático que permita, dado el hash, calcular el input original. Un atacante externo que obtenga la base de datos —sin la clave del servidor— no puede reconstruir ningún número de documento.</p>
-      <h3>Qué es incompleto</h3>
-      <p>Los números de cédula venezolana tienen un formato conocido y un espacio finito de aproximadamente 30 millones de combinaciones posibles. CabildoOS, al ser propietario de la clave del servidor, podría técnicamente calcular el HMAC de cada número posible y comparar contra los hashes almacenados. En cuestión de segundos, podría asociar cada hash al número de documento original.</p>
-      <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:18px 20px;margin:16px 0">
-        <p style="color:#fca5a5;font-weight:700;margin-bottom:8px">Lo que esto significa en términos de confianza:</p>
-        <p style="color:#fca5a5;margin:0">El hash protege tu número de documento ante filtraciones externas. No te protege ante un eventual mal uso por parte de CabildoOS como operador. En última instancia, usar esta plataforma implica confiar en que CabildoOS no realizará esa enumeración. Eso es honesto decirlo.</p>
-      </div>
-      <h3>Por qué usamos este sistema igual</h3>
-      <p>La alternativa sería no almacenar ninguna referencia del documento — pero eso haría imposible detectar que alguien usa el mismo documento para crear dos cuentas. Elegimos el hash como el menor mal: protege ante ataques externos (que son la amenaza más probable) y declaramos explícitamente la limitación ante ataques internos.</p>
-      <p>La protección real ante ese escenario no es técnica sino legal y reputacional: CabildoOS se compromete a no realizar esa enumeración, y cualquier evidencia de que lo hace constituiría una violación grave de esta política y de la confianza que sustenta la plataforma.</p>
-      <h3>¿Puede CabildoOS vincular identidad con voto?</h3>
-      <p>Sí, después del reveal — y es importante decirlo con precisión:</p>
+      <h2><span class="num">06</span>Lo que pasa en tu teléfono</h2>
+      <p>Parte del proceso ocurre en tu propio dispositivo y nunca llega a nuestros servidores en esa forma:</p>
       <ul>
-        <li><strong>Durante la votación (commit): no.</strong> El voto está protegido por <span class="info-box" style="display:inline;padding:1px 6px;font-size:12px">SHA-256(voto + nonce_aleatorio)</span>. El nonce lo genera el dispositivo del usuario y CabildoOS nunca lo ve. A diferencia del número de cédula, el nonce tiene un espacio infinito — imposible de enumerar.</li>
-        <li><strong>Después del reveal: sí.</strong> El voto en claro queda en la base de datos vinculado al número de butaca, y CabildoOS sabe qué email corresponde a cada butaca. Pueden reconstruir: email → butaca → voto.</li>
+        <li>La <strong>comparación de tu cara</strong> con la del documento se calcula en el navegador de tu teléfono; al servidor llega el resultado (un número de similitud). No guardamos plantillas ni mediciones de tu rostro.</li>
+        <li>El <strong>pixelado del documento</strong> en la selfie y el recorte de la cara se hacen en tu teléfono antes de enviar las imágenes.</li>
+        <li>El comprobante de tu voto queda solo en tu dispositivo.</li>
       </ul>
-      <p>Lo que CabildoOS <strong>no puede</strong> conocer en ningún momento es el nombre real del usuario — no fue almacenado. El vínculo llega hasta el email, no más allá, salvo que el usuario haya usado su nombre real como alias o un email identificable.</p>
+    </div>
+
+    <div class="doc-section" id="s7">
+      <h2><span class="num">07</span>Tu consentimiento</h2>
+      <p>Las imágenes de tu cara y de tu documento son datos sensibles. Antes de empezar la verificación te mostramos qué vamos a hacer con ellas y te pedimos un <strong>consentimiento expreso</strong>, que registramos con la fecha y la versión del texto que aceptaste. Sin ese consentimiento no se inicia la verificación.</p>
+      <p>Podés retirar tu consentimiento en cualquier momento escribiendo a <a href="mailto:recinto@cabildodevenezuela.com">recinto@cabildodevenezuela.com</a>. Si lo retirás antes de la revisión, borramos tus imágenes y cancelamos la solicitud; si ya tenés butaca, podés pedir que borremos tu cuenta.</p>
+    </div>
+
+    <div class="doc-section" id="s8">
+      <h2><span class="num">08</span>El voto secreto: cómo funciona y su límite</h2>
+      <ul>
+        <li>Cuando votás, el sistema registra <strong>que tu butaca participó</strong> (para que no puedas votar dos veces) y <strong>suma tu opción a un contador general</strong>. No se guarda qué elegiste.</li>
+        <li>Mientras la votación está abierta solo se muestra cuántas butacas votaron. El resultado por opción se publica al cierre, y solo si votaron al menos tres butacas.</li>
+        <li>En el hemiciclo, las butacas que votaron se encienden todas del mismo color, para que nadie pueda deducir qué eligió cada una.</li>
+      </ul>
+      <div class="info-box">
+        <p><strong>El límite honesto:</strong> en el instante en que votás, nuestro servidor recibe tu sesión y tu elección juntas para poder sumarla. Lo que garantizamos es que ese vínculo no se guarda en ningún lado. Esa garantía depende de nuestro código y de nuestra buena fe, no de una prueba matemática. Es una de las razones por las que el objetivo a largo plazo es descentralizar la votación (sección 9).</p>
+      </div>
+      <p>Qué butaca participó en cada votación (no qué votó) es visible para las butacas verificadas.</p>
     </div>
 
     <div class="doc-section" id="s-central">
-      <h2><span class="num">07</span>Centralización vs. descentralización — qué somos y por qué</h2>
+      <h2><span class="num">09</span>Límites de un sistema centralizado</h2>
       <style>
         .central-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0; }
         @media(max-width:600px){ .central-grid { grid-template-columns:1fr; } }
@@ -433,146 +367,110 @@ body {
         .card-decentral { background:rgba(96,165,250,.06); border:1px solid rgba(96,165,250,.2); }
         .card-decentral h4 { color:var(--blue); }
       </style>
-
-      <p>CabildoOS es actualmente un sistema <strong>centralizado</strong>. Esto tiene implicaciones concretas que cualquier usuario debería entender antes de participar.</p>
-
+      <p>Cabildo de Venezuela es hoy un sistema <strong>centralizado</strong>: un solo operador administra los servidores, la base de datos y las claves. Eso tiene consecuencias que tenés que conocer antes de participar.</p>
       <div class="central-grid">
         <div class="central-card card-central">
-          <h4>Sistema centralizado (CabildoOS hoy)</h4>
+          <h4>Hoy (centralizado)</h4>
           <ul>
-            <li><strong>Un solo operador</strong> controla el servidor, la base de datos y las claves criptográficas.</li>
-            <li><strong>Modelo de confianza:</strong> los usuarios confían en que CabildoOS actúa de buena fe.</li>
-            <li><strong>A favor:</strong> más fácil de implementar, mantener y corregir; la verificación humana de identidad es viable; la experiencia visual del hemiciclo funciona en tiempo real.</li>
-            <li><strong>En contra:</strong> punto único de falla; el operador tiene acceso técnico total; si CabildoOS es comprometido o actúa de mala fe, no hay mecanismo técnico que lo impida.</li>
+            <li><strong>Modelo de confianza:</strong> confiás en que el operador cumple lo que dice esta política.</li>
+            <li><strong>El operador puede</strong> saber qué email corresponde a qué butaca y leer lo que se guarda en la base de datos.</li>
+            <li><strong>El operador no puede</strong> saber qué votó cada butaca ni recuperar tu nombre o tu número de documento, porque no se guardan.</li>
+            <li><strong>A favor:</strong> se puede usar sin conocimientos técnicos, con revisión humana de la identidad y resultados en tiempo real.</li>
           </ul>
         </div>
         <div class="central-card card-decentral">
-          <h4>Sistema descentralizado (el ideal futuro)</h4>
+          <h4>El objetivo (descentralizado)</h4>
           <ul>
-            <li><strong>Múltiples nodos independientes</strong> — ningún actor controla todo solo.</li>
-            <li><strong>Modelo de confianza:</strong> las reglas están en el código público; la confianza es matemática, no institucional.</li>
-            <li><strong>A favor:</strong> nadie puede manipular los datos unilateralmente; las pruebas de conocimiento cero (ZK-proofs) podrían verificar identidad sin revelar cuál.</li>
-            <li><strong>En contra:</strong> mucho más complejo de implementar; la verificación humana de identidad es difícil de descentralizar; más lento y costoso; menos accesible para usuarios no técnicos.</li>
+            <li><strong>Votos en un registro público</strong> (blockchain) que cualquiera pueda auditar, con el conteo hecho por un contrato y no por nuestros servidores.</li>
+            <li><strong>Identidad con pruebas de conocimiento cero:</strong> demostrar «soy una persona real y única» sin que ningún servidor sepa quién sos.</li>
+            <li><strong>Resultado:</strong> que vincular a una persona con su voto sea matemáticamente imposible, no solo una promesa.</li>
           </ul>
         </div>
       </div>
-
-      <h3>¿Por qué no usar blockchain o ZK-proofs ahora?</h3>
-      <p>Las pruebas de conocimiento cero (zero-knowledge proofs) son la tecnología que permitiría verificar "esta persona es venezolana con documento válido" sin almacenar ni revelar cuál es ese documento. Es la solución ideal. El problema es que implementarla correctamente en un sistema de verificación con revisión humana, accesible para usuarios sin experiencia técnica y con la experiencia visual del hemiciclo en tiempo real, está fuera del alcance técnico y económico de la fase actual.</p>
-      <p>Los sistemas de voto en blockchain existen (Helios, Vocdoni, entre otros) pero tienen sus propias limitaciones: son más difíciles de auditar para ciudadanos no técnicos, más lentos, y el problema de la verificación de identidad siguen resolviéndolo de forma centralizada o a través de documentos de identidad digitales que no existen aún en Venezuela de forma universal.</p>
-
-      <h3>Nuestra posición honesta</h3>
-      <p>CabildoOS es hoy una apuesta por lo posible: un sistema centralizado que minimiza los datos que recopila, declara explícitamente sus limitaciones, y aspira a incorporar elementos de descentralización progresivamente a medida que la tecnología y los recursos lo permitan. Participar implica aceptar ese modelo de confianza. No ocultamos esa realidad.</p>
-    </div>
-
-    <div class="doc-section" id="s7">
-      <h2><span class="num">08</span>Quién puede acceder a tus datos</h2>
-      <h3>Dentro de la plataforma</h3>
-      <ul>
-        <li><strong>Vos:</strong> podés ver todos tus datos de perfil, tus votos (si elegís mostrarlos) y el estado de tu verificación.</li>
-        <li><strong>Verificadores:</strong> durante la revisión, ven únicamente tu selfie censurada. No tienen acceso a tu email, alias ni número de butaca hasta que la verificación sea aprobada.</li>
-        <li><strong>Admins de CabildoOS:</strong> acceso técnico completo para gestión del sistema. Sujetos a acuerdos de confidencialidad.</li>
-        <li><strong>Otros usuarios:</strong> solo ven lo que elegís mostrar públicamente (alias, frase, número de butaca, historial de votos según tus preferencias).</li>
-      </ul>
-      <h3>Protección técnica de acceso</h3>
-      <p>Todas las tablas de la base de datos tienen <strong>Row Level Security (RLS)</strong> activo. Esto significa que incluso si alguien obtuviese las credenciales de conexión, las políticas de acceso a nivel de base de datos impedirían que leyera datos de otros usuarios. La única excepción es la cuenta de servicio interna de CabildoOS.</p>
-    </div>
-
-    <div class="doc-section" id="s8">
-      <h2><span class="num">09</span>Terceros y servicios externos</h2>
-      <p>La plataforma usa los siguientes servicios de terceros:</p>
-      <ul>
-        <li><strong>Supabase</strong> — base de datos, autenticación y almacenamiento de archivos. Los datos están alojados en servidores de Supabase, sometidos a su política de privacidad.</li>
-        <li><strong>Google Gemini Vision</strong> — análisis de documentos e imágenes durante la verificación. Las imágenes son enviadas a la API de Google para análisis y <strong>no son almacenadas por Google</strong> conforme a los términos de la API. La imagen se descarta al terminar el análisis.</li>
-        <li><strong>Google Fonts</strong> — fuentes tipográficas. Puede registrar tu IP al cargar las fuentes.</li>
-        <li><strong>Cloudflare</strong> — protección DNS y CDN. Procesa tráfico de red conforme a su política de privacidad.</li>
-      </ul>
-      <p>No vendemos, cedemos ni intercambiamos datos personales con terceros para fines publicitarios o comerciales. Nunca.</p>
-    </div>
-
-    <div class="doc-section" id="s9">
-      <h2><span class="num">10</span>Seguridad técnica</h2>
-      <p>Las medidas de seguridad implementadas incluyen:</p>
-      <ul>
-        <li><strong>HMAC-SHA256 con salt secreto</strong> para el hash de documentos — sin la clave del servidor, el hash no puede ser revertido ni utilizado para ataques de diccionario.</li>
-        <li><strong>Row Level Security (RLS)</strong> en todas las tablas — los usuarios solo pueden leer y modificar sus propios datos.</li>
-        <li><strong>Funciones con SECURITY DEFINER y search_path fijo</strong> — prevención de inyección de schema.</li>
-        <li><strong>Políticas de acceso diferenciadas</strong> por rol (anónimo, autenticado, verificador, admin).</li>
-        <li><strong>Transmisión cifrada (HTTPS/TLS)</strong> en todas las comunicaciones.</li>
-        <li><strong>Monitoreo activo</strong> mediante el sistema Agente Smith que detecta patrones de ataque.</li>
-        <li><strong>Auditorías periódicas</strong> mediante el sistema NEO que verifica el estado de seguridad de la plataforma.</li>
-      </ul>
-      <p>Ningún sistema es 100% seguro. Si descubrís una vulnerabilidad, te pedimos reportarla de forma responsable a <a href="mailto:seguridad@cabildodevenezuela.com">seguridad@cabildodevenezuela.com</a> antes de divulgarla públicamente.</p>
+      <h3>¿Por qué todavía no usamos blockchain?</h3>
+      <p>Como explica el <a href="paper.html">whitepaper</a>, la descentralización es el destino y no el punto de partida. Exigir una billetera cripto, claves privadas y costos por transacción dejaría afuera a la mayoría de los ciudadanos que más necesitan esta herramienta. Además, la verificación de identidad con revisión humana todavía no tiene una alternativa descentralizada madura y accesible para documentos venezolanos. Por eso primero construimos una experiencia que cualquiera pueda usar y después iremos moviendo la votación y la identidad hacia garantías matemáticas.</p>
     </div>
 
     <div class="doc-section" id="s10">
-      <h2><span class="num">11</span>Tus derechos</h2>
-      <div class="rights-grid">
-        <div class="right-card">
-          <div class="right-icon">👁</div>
-          <h4>Acceso</h4>
-          <p>Podés solicitar una copia de todos los datos que tenemos sobre vos.</p>
-        </div>
-        <div class="right-card">
-          <div class="right-icon">✏️</div>
-          <h4>Rectificación</h4>
-          <p>Podés corregir datos incorrectos de tu perfil directamente desde la plataforma.</p>
-        </div>
-        <div class="right-card">
-          <div class="right-icon">🗑</div>
-          <h4>Eliminación</h4>
-          <p>Podés solicitar la eliminación de tu cuenta. El hash del documento puede mantenerse para prevenir reingresos fraudulentos.</p>
-        </div>
-        <div class="right-card">
-          <div class="right-icon">⏸</div>
-          <h4>Restricción</h4>
-          <p>Podés solicitar que limitemos el procesamiento de tus datos mientras se resuelve una disputa.</p>
-        </div>
-        <div class="right-card">
-          <div class="right-icon">📦</div>
-          <h4>Portabilidad</h4>
-          <p>Podés solicitar tus datos en formato exportable (JSON).</p>
-        </div>
-        <div class="right-card">
-          <div class="right-icon">🚫</div>
-          <h4>Oposición</h4>
-          <p>Podés oponerte al procesamiento de tus datos para fines distintos a los esenciales del servicio.</p>
-        </div>
-      </div>
-      <p style="margin-top:20px">Para ejercer cualquiera de estos derechos, contactá a <a href="mailto:recinto@cabildodevenezuela.com">recinto@cabildodevenezuela.com</a>. Responderemos en un plazo máximo de 30 días.</p>
+      <h2><span class="num">10</span>Quién puede ver tus datos</h2>
+      <ul>
+        <li><strong>Vos:</strong> tu perfil, tus participaciones y el estado de tu verificación.</li>
+        <li><strong>Otras butacas:</strong> solo lo que elegís mostrar (alias, frase) y tu número de butaca.</li>
+        <li><strong>Equipo de revisión:</strong> durante la revisión ve la selfie con el documento pixelado, el recorte de la cara del documento y el resultado del análisis automático. Puede ver el email de la cuenta.</li>
+        <li><strong>Administradores:</strong> acceso técnico para operar la plataforma, con permisos por rol. El acceso a imágenes de documentos de anfitriones queda registrado.</li>
+      </ul>
+      <p>La base de datos aplica reglas de acceso por fila (RLS): con la clave pública del sitio nadie puede leer datos de otros usuarios ni las tablas internas.</p>
     </div>
 
     <div class="doc-section" id="s11">
-      <h2><span class="num">12</span>Retención de datos</h2>
+      <h2><span class="num">11</span>Proveedores y transferencias internacionales</h2>
       <ul>
-        <li><strong>Datos de cuenta activa:</strong> se conservan mientras la cuenta esté activa.</li>
-        <li><strong>Selfie censurada:</strong> puede ser eliminada a solicitud del usuario una vez aprobada la verificación.</li>
-        <li><strong>Hash del documento:</strong> se conserva indefinidamente para prevenir la creación de múltiples cuentas con el mismo documento, incluso después de eliminar la cuenta.</li>
-        <li><strong>Votos:</strong> se conservan indefinidamente como parte del registro histórico del proceso democrático.</li>
-        <li><strong>Eventos de seguridad:</strong> se conservan por 90 días, luego se eliminan automáticamente.</li>
-        <li><strong>Logs de autenticación:</strong> gestionados por Supabase conforme a su política de retención.</li>
+        <li><strong>Supabase</strong> — base de datos, cuentas y almacenamiento de archivos. Servidores en Estados Unidos.</li>
+        <li><strong>Google (API de Gemini)</strong> — análisis automático de las imágenes de la verificación (documento, prueba de vida y selfie). Usamos el servicio pago de la API: según sus condiciones, Google no usa ese contenido para mejorar sus productos y lo conserva por un tiempo limitado solo para detectar abusos.</li>
+        <li><strong>Cloudflare</strong> — alojamiento del sitio, red y protección contra ataques. Procesa datos técnicos de conexión, como la dirección IP.</li>
+        <li><strong>Google Fonts</strong> — tipografías. Puede registrar tu dirección IP al cargarlas.</li>
+        <li><strong>X (Twitter)</strong> — publicamos el resultado de cada votación en <a href="https://x.com/cabildoven">@cabildoven</a>. Solo se publican totales, nunca datos de personas.</li>
       </ul>
+      <p>Al usar la plataforma, tus datos se procesan en Estados Unidos y en los países donde operan estos proveedores, que pueden tener leyes de protección de datos distintas a las de tu país.</p>
     </div>
 
     <div class="doc-section" id="s12">
-      <h2><span class="num">13</span>Cambios a esta política</h2>
-      <p>Podemos actualizar esta Política de Privacidad para reflejar cambios en la plataforma, cambios legales o mejoras en nuestras prácticas. La versión vigente siempre estará disponible en esta página con la fecha de última actualización.</p>
-      <p>Cambios sustanciales serán notificados con al menos 15 días de anticipación mediante un aviso en la plataforma.</p>
+      <h2><span class="num">12</span>Seguridad técnica</h2>
+      <ul>
+        <li>Transmisión cifrada (HTTPS/TLS) en todas las comunicaciones.</li>
+        <li>Reglas de acceso por fila (RLS) en la base de datos y funciones protegidas por rol.</li>
+        <li>Huella del documento con clave secreta (HMAC-SHA256), guardada fuera de la base de datos.</li>
+        <li>Política de seguridad del contenido en el navegador: solo se ejecuta código del propio sitio.</li>
+        <li>Imágenes de verificación en un almacenamiento privado, sin acceso público.</li>
+        <li>Revisiones de seguridad durante todo el desarrollo y alertas automáticas ante actividad sospechosa.</li>
+      </ul>
+      <p>Ningún sistema es 100 % seguro. Si descubrís una vulnerabilidad, reportala de forma responsable a <a href="mailto:seguridad@cabildodevenezuela.com">seguridad@cabildodevenezuela.com</a> antes de divulgarla.</p>
     </div>
 
     <div class="doc-section" id="s13">
-      <h2><span class="num">14</span>Contacto</h2>
-      <p>Para consultas sobre privacidad, para ejercer tus derechos, o para reportar vulnerabilidades de seguridad:</p>
+      <h2><span class="num">13</span>Plazos de conservación</h2>
+      <ul>
+        <li><strong>Selfie con documento pixelado y recorte de cara:</strong> hasta la revisión de tu solicitud.</li>
+        <li><strong>Verificaciones abandonadas</strong> (nunca enviadas a revisión): 90 días.</li>
+        <li><strong>Registros técnicos, de errores y de seguridad:</strong> 90 días. Se borran automáticamente.</li>
+        <li><strong>Registro de accesos a documentos de anfitriones:</strong> 1 año.</li>
+        <li><strong>Mensajes de las Escalinatas:</strong> 24 horas.</li>
+        <li><strong>Cuenta, butaca, perfil y mensajes:</strong> mientras la cuenta exista.</li>
+        <li><strong>Huella del documento y participación en votaciones:</strong> indefinido (ver sección 4).</li>
+        <li><strong>Copias de seguridad:</strong> el proveedor de base de datos conserva copias de seguridad por un período limitado; lo borrado desaparece de ellas cuando vencen.</li>
+      </ul>
+    </div>
+
+    <div class="doc-section" id="s14">
+      <h2><span class="num">14</span>Tus derechos</h2>
+      <div class="rights-grid">
+        <div class="right-card"><div class="right-icon">👁</div><h4>Acceso</h4><p>Pedir una copia de los datos que tenemos sobre vos.</p></div>
+        <div class="right-card"><div class="right-icon">✏️</div><h4>Rectificación</h4><p>Corregir tus datos de perfil desde la plataforma.</p></div>
+        <div class="right-card"><div class="right-icon">🗑</div><h4>Eliminación</h4><p>Pedir que borremos tu cuenta. La huella del documento puede conservarse para impedir reingresos fraudulentos.</p></div>
+        <div class="right-card"><div class="right-icon">↩️</div><h4>Retirar el consentimiento</h4><p>Retirar el consentimiento para el uso de tus imágenes (sección 7).</p></div>
+        <div class="right-card"><div class="right-icon">📦</div><h4>Portabilidad</h4><p>Recibir tus datos en un formato exportable.</p></div>
+        <div class="right-card"><div class="right-icon">🚫</div><h4>Oposición</h4><p>Oponerte a usos distintos de los esenciales del servicio.</p></div>
+      </div>
+      <p>Para ejercerlos escribí a <a href="mailto:recinto@cabildodevenezuela.com">recinto@cabildodevenezuela.com</a>. Respondemos en un plazo máximo de 30 días. También podés reclamar ante la autoridad de protección de datos de tu país.</p>
+    </div>
+
+    <div class="doc-section" id="s15">
+      <h2><span class="num">15</span>Edad mínima</h2>
+      <p>Cabildo de Venezuela es para personas mayores de 18 años, como establecen los <a href="terminos.html">Términos y Condiciones</a>. La edad se comprueba con la fecha de nacimiento durante la verificación, sin guardarla. Si detectamos que una cuenta pertenece a una persona menor de edad, la eliminamos.</p>
+    </div>
+
+    <div class="doc-section" id="s16">
+      <h2><span class="num">16</span>Cambios y contacto</h2>
+      <p>Podemos actualizar esta política cuando cambie la plataforma o la ley. La versión vigente está siempre en esta página, con su fecha. Los cambios importantes se anuncian en la plataforma antes de entrar en vigor y, si afectan a la verificación, te pedimos de nuevo el consentimiento.</p>
       <ul>
         <li>Privacidad y derechos: <a href="mailto:recinto@cabildodevenezuela.com">recinto@cabildodevenezuela.com</a></li>
         <li>Vulnerabilidades de seguridad: <a href="mailto:seguridad@cabildodevenezuela.com">seguridad@cabildodevenezuela.com</a></li>
-        <li>Plataforma: sección "Reportar" disponible en la aplicación</li>
       </ul>
     </div>
 
     <div class="doc-footer">
-      <p>Cabildo de Venezuela — operado por CabildoOS · Versión 1.0 · Agosto 2026</p>
-      <p style="margin-top:8px">Ver también: <a href="faq.html">Preguntas Frecuentes</a> · <a href="terminos.html">Términos y Condiciones</a></p>
+      <p>Cabildo de Venezuela — CabildoOS, de Bowery Global Inc. · Política de Privacidad versión 2.0 · 18 de octubre de 2026</p>
+      <p style="margin-top:8px">Ver también: <a href="faq.html">Preguntas Frecuentes</a> · <a href="terminos.html">Términos y Condiciones</a> · <a href="paper.html">Whitepaper</a> · <a href="/press">Prensa</a></p>
     </div>
   </main>
 </div>

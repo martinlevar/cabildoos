@@ -60,7 +60,7 @@
       "name": "¿CabildoOS guarda mis datos personales?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No se guarda tu nombre, número de documento, fecha de nacimiento ni dirección. Solo se guarda un hash irreversible del número de documento (HMAC-SHA256) para detectar duplicados, una foto censurada del selfie con los datos pixelados para la revisión humana, y el resultado del análisis (verdadero/falso). La foto censurada puede eliminarse a tu solicitud."
+        "text": "No se guarda tu nombre, número de documento, fecha de nacimiento ni la foto completa de tu documento. Se guarda el email de tu cuenta, tu número de butaca y una huella cifrada (HMAC-SHA256) del número de documento para impedir cuentas duplicadas. La selfie con el documento pixelado y el recorte de la cara del documento se guardan solo hasta la revisión humana y después se borran."
       }
     },
     {
@@ -68,7 +68,7 @@
       "name": "¿Qué es VaV (Voto Anónimo Verificable)?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "VaV es el protocolo criptográfico propio de CabildoOS que permite que tu voto sea a la vez anónimo y verificable. Funciona en dos fases: commit, donde se registra un hash SHA-256 de tu voto más un nonce secreto (como un sobre sellado); y reveal, donde al cerrar la votación se abre el sobre y se verifica el hash contra el voto revelado. Durante la fase de commit nadie sabe cómo votaste."
+        "text": "Es el sistema de voto secreto de Cabildo. Cuando votás se registra que tu butaca participó, para impedir el doble voto, y tu opción se suma a un contador general. No se guarda qué votó cada butaca. Mientras la votación está abierta solo se ve cuántas butacas votaron; el resultado se publica al cierre."
       }
     },
     {
@@ -76,7 +76,7 @@
       "name": "¿Puedo votar dos veces?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. El sistema tiene dos capas independientes de protección a nivel de base de datos: un constraint único por (pregunta + butaca) y otro por (pregunta + identity hash). Son reglas de integridad que no pueden eludirse por bugs de código ni modificando las solicitudes de red."
+        "text": "No. La base de datos registra que tu butaca participó en cada votación y una regla de integridad impide un segundo voto de la misma butaca. Además, cada documento solo puede obtener una butaca."
       }
     },
     {
@@ -290,6 +290,8 @@ body {
 .doc-footer p { font-size: 12px; color: var(--muted); }
 .doc-footer a { color: var(--accent); text-decoration: none; }
 .doc-footer a:hover { text-decoration: underline; }
+/* topbar-movil: que los enlaces no desborden en el celular */
+@media (max-width: 640px) { .topbar { flex-wrap: wrap; gap: 8px; height: auto; padding-top: 10px; padding-bottom: 10px; } .topbar-links { flex-wrap: wrap; gap: 4px 12px; } }
 </style>
 </head>
 <body>
@@ -443,14 +445,14 @@ body {
       </div>
       <div class="faq-a">
         <div class="faq-a-inner">
-          <p><strong>No guardamos tu nombre, número de documento, fecha de nacimiento, dirección ni ningún dato escrito en tu documento de identidad.</strong></p>
+          <p><strong>No guardamos tu nombre, tu número de documento, tu fecha de nacimiento ni la foto completa de tu documento.</strong></p>
           <p>Lo que sí guardamos es:</p>
           <ul>
-            <li><strong>Hash del documento</strong> — una huella matemática irreversible del número de documento (<span class="tech-badge">HMAC-SHA256</span> con clave secreta del servidor). Sirve para detectar duplicados sin guardar el número real. Matemáticamente imposible revertirlo al número original.</li>
-            <li><strong>Foto censurada del selfie</strong> — con los datos del documento pixelados. Necesaria para que el verificador humano confirme que sos una persona real.</li>
-            <li><strong>Resultado del análisis</strong> — solo verdadero/falso: el documento coincidió o no.</li>
+            <li><strong>El email de tu cuenta</strong>, para que puedas entrar y recuperar la contraseña, y qué butaca te corresponde.</li>
+            <li><strong>Una huella cifrada del número de documento</strong> (<span class="tech-badge">HMAC-SHA256</span> con clave secreta del servidor), para impedir que un mismo documento obtenga dos butacas.</li>
+            <li><strong>Hasta la revisión humana:</strong> la selfie con los datos del documento pixelados y el recorte de la cara del documento. Al aprobar o rechazar tu solicitud se borran.</li>
           </ul>
-          <p>Una vez aprobada la verificación, la foto censurada puede ser eliminada a tu solicitud.</p>
+          <p>Antes de empezar la verificación te pedimos un consentimiento expreso para usar estas imágenes. El detalle completo está en la <a href="privacidad.html">Política de Privacidad</a>.</p>
         </div>
       </div>
     </div>
@@ -482,13 +484,13 @@ body {
       </div>
       <div class="faq-a">
         <div class="faq-a-inner">
-          <p>VaV es el protocolo criptográfico propio de CabildoOS que permite que tu voto sea <strong>a la vez anónimo y verificable</strong> — dos propiedades que parecen contradictorias pero que la criptografía moderna permite combinar.</p>
-          <p>Funciona en dos fases:</p>
+          <p>VaV es el sistema de voto secreto de Cabildo. Desde octubre de 2026 funciona así:</p>
           <ul>
-            <li><strong>Commit (compromiso):</strong> cuando votás, el sistema registra un <span class="tech-badge">hash SHA-256</span> de tu voto más un número aleatorio secreto (nonce). Nadie puede deducir tu voto a partir de ese hash. Es como poner tu voto en un sobre sellado.</li>
-            <li><strong>Reveal (revelación):</strong> al cerrar la votación, el sistema revela el contenido del sobre. El hash del commit se verifica contra el voto revelado — si no coinciden, el voto es inválido. El resultado aparece en el hemiciclo butaca por butaca.</li>
+            <li>Cuando votás, el sistema registra <strong>que tu butaca participó</strong> (para que no puedas votar dos veces) y <strong>suma tu opción a un contador general</strong>. No queda ningún registro de qué eligió cada butaca.</li>
+            <li>Mientras la votación está abierta solo se ve cuántas butacas votaron. El resultado por opción se publica al cierre, y solo si votaron al menos tres butacas.</li>
+            <li>En el hemiciclo, las butacas que votaron se encienden todas del mismo color.</li>
           </ul>
-          <p>Durante la fase de commit, <strong>ni nosotros ni nadie sabe cómo votaste</strong>. El sobre solo se abre cuando la votación termina.</p>
+          <p>La primera versión usaba un esquema de «compromiso y revelación» (commit-reveal) que, al cierre, dejaba el voto vinculado a la butaca. Lo reemplazamos para que ese vínculo no exista.</p>
         </div>
       </div>
     </div>
@@ -501,12 +503,8 @@ body {
       </div>
       <div class="faq-a">
         <div class="faq-a-inner">
-          <p>No. El sistema tiene dos capas de protección independientes que impiden el doble voto, ambas aplicadas a nivel de base de datos (no solo en el código):</p>
-          <ul>
-            <li>Un <strong>constraint único</strong> por (número de pregunta + butaca): la misma butaca no puede tener dos votos en la misma pregunta.</li>
-            <li>Un <strong>constraint único</strong> por (número de pregunta + identity hash): el mismo identity hash no puede votar dos veces.</li>
-          </ul>
-          <p>Estas son reglas de integridad de base de datos — no pueden ser eludidas por bugs de código ni por modificar las solicitudes de red.</p>
+          <p>No. La base de datos registra que tu butaca participó en cada votación, y una regla de integridad (no solo el código de la página) impide un segundo voto de la misma butaca en la misma pregunta.</p>
+          <p>Además, cada documento solo puede obtener una butaca: la huella cifrada del documento se compara con todas las existentes antes de aprobar una verificación.</p>
         </div>
       </div>
     </div>
@@ -519,13 +517,13 @@ body {
       </div>
       <div class="faq-a">
         <div class="faq-a-inner">
-          <p>No. Hay varios mecanismos que lo impiden:</p>
+          <p>Hay varios mecanismos que lo impiden o lo hacen detectable:</p>
           <ul>
-            <li>El voto solo puede insertarse desde una sesión autenticada con tu cuenta — el sistema no puede impersonarte.</li>
-            <li>El campo <span class="tech-badge">vote_plain</span> solo acepta los valores <span class="tech-badge">'si'</span>, <span class="tech-badge">'no'</span>, <span class="tech-badge">'abs'</span> — constraint verificado a nivel de base de datos.</li>
-            <li>No hay "butacas vacías" que el sistema pueda usar: cada butaca solo existe si hay un usuario verificado que la ocupa, y cada usuario ocupa exactamente una butaca (constraint <span class="tech-badge">UNIQUE (seat_number)</span> en profiles).</li>
-            <li>El commit-reveal hace que modificar un voto después del commit lo invalide — el hash no coincidiría.</li>
+            <li>El voto solo puede emitirse desde una sesión iniciada con tu cuenta y con butaca asignada.</li>
+            <li>Cada butaca corresponde a una persona verificada y cada persona tiene una sola butaca.</li>
+            <li>La cantidad de votos de cada pregunta siempre coincide con la cantidad de butacas que participaron, y esa lista es visible para las butacas verificadas.</li>
           </ul>
+          <p>Como el sistema es centralizado, estas garantías dependen de nuestro código y de nuestra buena fe, no de una prueba matemática. Por eso el objetivo a largo plazo es llevar el conteo a un registro público verificable (ver el <a href="paper.html">whitepaper</a>).</p>
         </div>
       </div>
     </div>
@@ -538,9 +536,9 @@ body {
       </div>
       <div class="faq-a">
         <div class="faq-a-inner">
-          <p>Tu voto es secreto durante toda la fase de votación. Solo se revela el resultado (el color en el hemiciclo) al finalizar. Sin embargo, hay una aclaración importante:</p>
-          <p>En el hemiciclo, cada butaca tiene un color que indica el voto de quien la ocupa. Si alguien sabe cuál es tu número de butaca, podría saber cómo votaste mirando el hemiciclo después del reveal. <strong>El número de butaca es público</strong>; la identidad detrás de cada butaca depende de cuánta información personal hayas elegido compartir en tu perfil.</p>
-          <p>Si configurás tu perfil como anónimo (sin alias visible ni foto), nadie puede vincular tu butaca a tu identidad real — ni CabildoOS puede hacerlo, ya que los datos de identidad no fueron almacenados.</p>
+          <p>Sí, es secreto. No se guarda qué votó cada butaca: tu opción solo se suma a un contador general. Ni otras personas ni el equipo de Cabildo pueden consultar tu voto, porque ese dato no existe en la base de datos.</p>
+          <p>Lo que sí es visible para las butacas verificadas es <strong>que tu butaca participó</strong> en una votación, no qué eligió. En el hemiciclo, todas las butacas que votaron se encienden del mismo color.</p>
+          <p>Un límite honesto: en el instante en que votás, nuestro servidor recibe tu sesión y tu elección juntas para poder sumarla. Lo que garantizamos es que ese vínculo no se guarda.</p>
         </div>
       </div>
     </div>
@@ -678,18 +676,12 @@ body {
           <p>Las dos preguntas tienen respuestas distintas. Respuesta directa, sin rodeos:</p>
 
           <p style="font-size:13px;font-weight:700;color:var(--accent);margin-top:4px;margin-bottom:6px">¿Quién es cada usuario?</p>
-          <p>CabildoOS conoce tu email, tu alias (que puede ser anónimo) y tu número de butaca. Técnicamente puede derivar tu número de cédula enumerando el hash. Lo que <strong>no tiene</strong> es tu nombre — no fue almacenado y no puede recuperarlo de su propia base de datos. Para vincular un número de cédula a un nombre real necesitaría fuentes externas (registros del gobierno venezolano) que no controla.</p>
+          <p>CabildoOS conoce el email de tu cuenta, tu alias (que puede ser anónimo) y tu número de butaca. No guarda tu nombre ni tu número de documento. Guarda una huella cifrada del documento: con la clave secreta del servidor, alguien podría probar números de cédula uno por uno hasta encontrar el que corresponde a una huella. Por eso esa clave está fuera de la base de datos. Aun así, para llegar de un número de cédula a un nombre haría falta información externa que CabildoOS no tiene.</p>
+          <p>Si usás un email que no tenga tu nombre y un alias anónimo, el vínculo entre tu butaca y tu identidad real es mucho más débil.</p>
 
           <p style="font-size:13px;font-weight:700;color:var(--accent);margin-top:12px;margin-bottom:6px">¿Cómo votó cada usuario?</p>
-          <p>Depende del momento:</p>
-          <ul>
-            <li><strong>Durante la votación (fase commit): no.</strong> El voto viaja como <span class="tech-badge">SHA-256(voto + nonce_aleatorio)</span>. El nonce lo genera tu dispositivo aleatoriamente — CabildoOS nunca lo ve. A diferencia del número de cédula (que tiene ~30 millones de combinaciones conocidas), el nonce tiene un espacio efectivamente infinito: imposible de enumerar aunque se conozca el algoritmo.</li>
-            <li><strong>Después del reveal: sí.</strong> El voto queda en claro en la base de datos, vinculado al número de butaca. CabildoOS sabe qué email corresponde a qué butaca. Por lo tanto, después del reveal, pueden ver: email → butaca → voto.</li>
-          </ul>
-
-          <p style="font-size:13px;font-weight:700;color:var(--accent);margin-top:12px;margin-bottom:6px">Conclusión exacta</p>
-          <p>Después del reveal, CabildoOS puede saber qué email votó qué. Si usaste un email sin tu nombre real y un alias anónimo, ese vínculo no llega a tu identidad real. Si usaste tu email personal con tu nombre como alias, sí llega.</p>
-          <p>Lo que CabildoOS <strong>no puede</strong> saber en ningún momento: cómo votás durante la fase de votación (protección criptográfica real), y tu nombre (no fue almacenado). Lo que el sistema <strong>sí protege</strong> de forma matemática es el secreto del voto durante el período de votación. Lo que descansa en confianza institucional es el período posterior al reveal.</p>
+          <p><strong>No.</strong> Desde octubre de 2026 el voto individual no se guarda: solo se registra que la butaca participó y la opción se suma a un contador general. Los votos de la primera versión, que sí quedaban vinculados a la butaca, fueron eliminados.</p>
+          <p>El límite: en el instante de votar, el servidor recibe tu sesión y tu elección juntas. Que ese vínculo no se guarde depende de nuestro código y de nuestra buena fe, no de una prueba matemática. Esa es la diferencia con un sistema descentralizado, que es nuestro objetivo a largo plazo.</p>
           <p>Preferimos que esto quede claro antes de que lo señale alguien más.</p>
         </div>
       </div>
