@@ -96,7 +96,7 @@ function ruta() {
   if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
   if (valida === 'bloque') cargarMiBloque(arg); else if (bq.salaT) bqCerrarSala()
-  if (valida === 'muro') { pintarMuroDia(); if (estado.user || mu.cargado) cargarMuroDia() }
+  if (valida === 'muro') { pintarMuroDia(); if (estado.cargado || estado.user || mu.cargado) cargarMuroDia() }
   else if (mu.abierto) cerrarHiloMuro()
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
@@ -4849,8 +4849,8 @@ function pintarPlayroom() {
   const est = nd.est
   $('#pl-vivo').hidden = !(est?.jugando > 0)
   if (est) $('#pl-jugando').textContent = fmtNum(est.jugando)
-  if (!nd.cargado) { c.innerHTML = '<div class="card au-vacio"><p class="muted">Cargando…</p></div>'; return }
-  if (!estado.user) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom es para ciudadanos</h3><p class="muted">Iniciá sesión para jugar.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`; return }
+  if (estado.cargado && !estado.user) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom es para ciudadanos</h3><p class="muted">Iniciá sesión para jugar.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`; return }
+  if (!estado.cargado || !nd.cargado) { c.innerHTML = '<div class="card au-vacio"><p class="muted">Cargando…</p></div>'; return }
   if (!est) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>No se pudo cargar el Playroom</h3><p class="muted">Probá de nuevo en un momento.</p></div>`; return }
   if (!est.activo) { c.innerHTML = `<div class="card au-vacio">${plIcono()}<h3>El Playroom está cerrado</h3><p class="muted">Vuelve a abrir pronto. Tu récord y tu posición quedan guardados.</p></div>`; return }
 
@@ -6558,7 +6558,10 @@ async function iniciar() {
   tickReloj(); setInterval(() => { tickReloj(); tickVotacion(); tickCuentas(); tickPropuestas(); if (vistaActual() === 'muro') tickMuro(); if (mon.abierto) tickMonitor() }, 1000)
   await cargarUsuario()
   const habiaModo = modoEscalinatas()
-  if (aplicarModoEscalinatas() || habiaModo) { pintarNav(); ruta() }       // ruta() ya abre la sala
+  const conModo = aplicarModoEscalinatas()
+  // Quien ya tiene su butaca deja el modo Escalinatas y entra por el Inicio
+  if (habiaModo && !conModo && location.hash === '#escalinatas') history.replaceState(null, '', '#inicio')
+  if (conModo || habiaModo) { pintarNav(); ruta() }       // ruta() ya abre la sala
   else if (vistaActual() === 'escalinatas') entrarEscalinatas()
   vigilarSesion()
   vigilarPortada()
