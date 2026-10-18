@@ -96,7 +96,7 @@ function ruta() {
   if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
   if (valida === 'bloque') cargarMiBloque(arg); else if (bq.salaT) bqCerrarSala()
-  if (valida === 'muro') { pintarMuroDia(); if (estado.user || mu.cargado) cargarMuroDia() }
+  if (valida === 'muro') { pintarMuroDia(); if (estado.cargado || estado.user || mu.cargado) cargarMuroDia() }
   else if (mu.abierto) cerrarHiloMuro()
   if (valida === 'aprende') { pintarAprende(); if (arg) abrirLeccion(arg); else cerrarLeccion() }
   else if (ap.lec) cerrarLeccion()
