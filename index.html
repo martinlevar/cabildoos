@@ -1311,7 +1311,7 @@
             </select>
           </div>
           <input type="hidden" id="vp-fecha-nac">
-          <div class="vp-dob-hint" id="vp-dob-hint">Debés tener al menos 16 años para registrarte</div>
+          <div class="vp-dob-hint" id="vp-dob-hint">Debés tener al menos 18 años para registrarte</div>
         </div>
         <div class="vp-field">
           <label class="vp-label">País emisor del documento <span style="color:var(--orange)">*</span></label>
@@ -1325,7 +1325,22 @@
           </select>
         </div>
       </div>
-      <button class="vp-btn-main" id="vp-btn-s1" onclick="vpGoStep(2)" disabled>Continuar →</button>
+      <div class="vp-consent-box" id="vp-consent-box">
+        <p class="vp-consent-title">Antes de seguir, leé cómo usamos tus imágenes</p>
+        <ul>
+          <li>Para comprobar que sos una persona real y única vamos a usar una foto de tu documento, una prueba de vida y una selfie sosteniendo el documento.</li>
+          <li>Esas imágenes las analiza automáticamente la API de Google Gemini, que no las usa para mejorar sus productos.</li>
+          <li>No guardamos tu nombre, tu número de documento ni tu fecha de nacimiento. Del número solo guardamos una huella cifrada para impedir cuentas duplicadas.</li>
+          <li>La selfie con el documento pixelado y el recorte de la cara del documento se guardan hasta que una persona del equipo revisa tu solicitud, y después se borran.</li>
+          <li>La comparación de tu cara con la del documento se hace en tu teléfono.</li>
+          <li>Podés retirar este consentimiento cuando quieras escribiendo a recinto@cabildodevenezuela.com.</li>
+        </ul>
+        <label class="vp-consent-check">
+          <input type="checkbox" id="vp-consent" onchange="vpCheckStep1()">
+          <span>Tengo 18 años o más y doy mi consentimiento expreso para que se usen las imágenes de mi documento y de mi cara con este fin, según la <a href="/privacidad" target="_blank" rel="noopener">Política de Privacidad</a>.</span>
+        </label>
+      </div>
+      <button class="vp-btn-main" id="vp-btn-s1" onclick="vpAceptarConsentimiento()" disabled>Continuar →</button>
       <button class="vp-btn-link" onclick="cerrarVerificacion()">Cancelar</button>
     </div>
 
@@ -2160,23 +2175,25 @@
       <button onclick="document.getElementById('modal-privacidad').classList.remove('open')">✕</button>
     </div>
     <div class="lgl-body">
-      <p class="lgl-section-title">Qué datos recopilamos</p>
-      <p>CabildoOS recopila únicamente los datos necesarios para verificar tu identidad como ciudadano y permitirte participar en el hemiciclo digital: tu email de registro, los datos del documento presentado durante la verificación y tu alias público.</p>
+      <p class="lgl-section-title">Qué guardamos</p>
+      <p>El email de tu cuenta, tu número de butaca, una huella cifrada de tu número de documento (para impedir cuentas duplicadas) y lo que publicás en la plataforma.</p>
 
-      <p class="lgl-section-title">Verificación de Identidad Anónima (VaV)</p>
-      <p>El sistema VaV (Voto Anónimo Verificable) garantiza que podés participar sin revelar quién sos. Tu identidad real se convierte en un hash criptográfico irreversible. <strong>Ni el equipo de CabildoOS puede vincular tu voto con tu persona.</strong> Las fotos del documento y el selfie se eliminan automáticamente una vez procesada la verificación y nunca se almacenan de forma permanente.</p>
+      <p class="lgl-section-title">Qué no guardamos</p>
+      <p>Tu nombre, tu número de documento, tu fecha de nacimiento, la foto completa de tu documento ni qué votaste.</p>
 
-      <p class="lgl-section-title">Datos públicos vs. privados</p>
-      <p>Tu <strong>alias, butaca y propuestas</strong> son públicos dentro de la plataforma. Tu email, documento de identidad y mensajes privados son estrictamente confidenciales y nunca se comparten con terceros.</p>
+      <p class="lgl-section-title">Fotos de la verificación</p>
+      <p>Las imágenes las analiza automáticamente la API de Google Gemini. La selfie con el documento pixelado y el recorte de la cara del documento se guardan hasta la revisión humana y después se borran. Antes de empezar te pedimos tu consentimiento expreso.</p>
 
-      <p class="lgl-section-title">Uso de IA (Gemini)</p>
-      <p>Las imágenes del documento se envían a la API de Google Gemini únicamente para la extracción de datos de verificación. Google no las usa para entrenamiento según sus términos de uso de datos de la API.</p>
+      <p class="lgl-section-title">Voto secreto</p>
+      <p>Se registra que tu butaca participó y tu opción se suma a un contador general. No queda ningún registro de qué votó cada butaca.</p>
 
-      <p class="lgl-section-title">Retención de datos</p>
-      <p>Podés solicitar la eliminación de tu cuenta y todos tus datos enviando un mensaje a través del formulario de Contacto. Procesamos las solicitudes en un plazo de 30 días.</p>
+      <p class="lgl-section-title">El límite</p>
+      <p>Cabildo es un sistema centralizado: el equipo sabe qué email corresponde a qué butaca. Para más anonimato, usá un email que no tenga tu nombre.</p>
 
-      <p class="lgl-section-title">Contacto</p>
-      <p>Para consultas sobre privacidad, usá el formulario de <a onclick="document.getElementById('modal-privacidad').classList.remove('open');abrirBugReport('contacto')" style="color:var(--navy);cursor:pointer">Contacto</a> en el footer.</p>
+      <p class="lgl-section-title">Tus derechos</p>
+      <p>Podés pedir una copia de tus datos, retirar tu consentimiento o borrar tu cuenta escribiendo a recinto@cabildodevenezuela.com. Respondemos en 30 días.</p>
+
+      <p><a href="/privacidad" target="_blank" rel="noopener" style="color:var(--navy);font-weight:700">Leer la Política de Privacidad completa →</a></p>
     </div>
   </div>
 </div>
