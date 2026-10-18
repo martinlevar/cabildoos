@@ -9602,6 +9602,16 @@ let _introCtx = null
 let _introCv = null
 
 let _introResizeListenerAdded = false
+let _introGeneration = 0
+
+function _introLater(callback, delay) {
+  const generation = _introGeneration
+  setTimeout(() => {
+    if (document.documentElement.classList.contains('android-auth-screen') &&
+        (generation !== _introGeneration || document.getElementById('auth-overlay').classList.contains('open'))) return
+    callback()
+  }, delay)
+}
 
 function _initIntroCanvas(canvasId = 'intro-canvas') {
   _introCv = document.getElementById(canvasId)
@@ -9658,7 +9668,7 @@ function _introRevealComplete() {
   // Revelación completa — mostrar hero y dejar los dots vivos (sin re-ciclar)
   const hero = document.getElementById('intro-hero')
   if (hero) hero.classList.add('visible')
-  setTimeout(() => { _introQuieto = true }, 1500)
+  _introLater(() => { _introQuieto = true }, 1500)
 }
 
 function _introAssignAndReveal() {
@@ -9762,10 +9772,15 @@ function _introDrawFrame() {
 }
 
 function _startIntroAnim(canvasId = 'intro-canvas', triggerReveal = false) {
+  if (document.documentElement.classList.contains('android-auth-screen') &&
+      document.getElementById('auth-overlay').classList.contains('open')) {
+    _stopIntroAnim()
+    return
+  }
   _initIntroCanvas(canvasId)
   if (_introRaf) {
     // Ya corriendo — si se pide reveal, dispararlo
-    if (triggerReveal) setTimeout(_introAssignAndReveal, 200)
+    if (triggerReveal) _introLater(_introAssignAndReveal, 200)
     return
   }
   const hero = document.getElementById('intro-hero')
@@ -9776,10 +9791,11 @@ function _startIntroAnim(canvasId = 'intro-canvas', triggerReveal = false) {
   _introFrame = 0
   _introQuieto = false
   _introRaf = requestAnimationFrame(_introDrawFrame)
-  if (triggerReveal) setTimeout(_introAssignAndReveal, 800)
+  if (triggerReveal) _introLater(_introAssignAndReveal, 800)
 }
 
 function _stopIntroAnim() {
+  _introGeneration++
   if (_introRaf) { cancelAnimationFrame(_introRaf); _introRaf = null }
   if (_introRevealTimer) { clearTimeout(_introRevealTimer); _introRevealTimer = null }
 }
@@ -9793,6 +9809,45 @@ document.body.classList.add('on-intro')
 // Inicializar canvas inmediatamente (dots neutrales), pero la revelación
 // de colores la dispara el splash cuando termina
 _startIntroAnim('intro-canvas')
+
+// Fix Android v11: el acceso es una sola pantalla en el flujo del documento. La clase .open sigue siendo
+// la única fuente de estado para los handlers existentes (abrir/cerrarAuth).
+;(function androidAuthScreen() {
+  if (!document.documentElement.classList.contains('android-auth-screen')) return
+  const overlay = document.getElementById('auth-overlay')
+  const panel = document.getElementById('auth-panel')
+  if (!overlay || !panel) return
+  let opened = false, returnTo = null
+  panel.tabIndex = -1
+  panel.setAttribute('role', 'region')
+  panel.setAttribute('aria-label', 'Acceso a Cabildo')
+  panel.querySelector('button.vp-close')?.setAttribute('aria-label', 'Cerrar')
+  const sync = () => {
+    const next = overlay.classList.contains('open')
+    overlay.inert = !next
+    if (next === opened) return
+    opened = next
+    if (next) {
+      returnTo = document.activeElement
+      _stopIntroAnim()
+      window.scrollTo(0, 0)
+      panel.focus({ preventScroll: true })
+    } else {
+      if (overlay.contains(document.activeElement)) document.activeElement.blur()
+      const target = returnTo?.isConnected && returnTo.matches('button,a[href],input,textarea,select,[tabindex]') && returnTo.getClientRects().length
+        ? returnTo : document.querySelector('.screen.active button')
+      target?.focus({ preventScroll: true })
+      returnTo = null
+      if (document.getElementById('intro')?.classList.contains('active') && !document.hidden) _startIntroAnim('intro-canvas', true)
+    }
+  }
+  new MutationObserver(sync).observe(overlay, { attributes: true, attributeFilter: ['class'] })
+  document.addEventListener('visibilitychange', () => {
+    if (opened || document.hidden) _stopIntroAnim()
+    else if (document.getElementById('intro')?.classList.contains('active')) _startIntroAnim('intro-canvas', true)
+  })
+  sync()
+})();
 
 // ══════════════════════════════════════════════════════════════
 //  VENEZUELAN FLAG — generated via canvas for HD crispness
@@ -12602,21 +12657,3 @@ setTimeout(function _introHeroRespaldo() {
   const hero = document.getElementById('intro-hero')
   if (hero && !hero.classList.contains('visible')) hero.classList.add('visible')
 }, 4500)
-// En Android, mientras el acceso está abierto se frena la animación de fondo y el foco va al formulario;
-// al cerrarlo la portada vuelve a quedar lista (sin depender de que la animación termine).
-;(function _accesoAndroid() {
-  if (!document.documentElement.classList.contains('android-acceso')) return
-  const ov = document.getElementById('auth-overlay'); if (!ov) return
-  let abierto = false
-  new MutationObserver(() => {
-    const ahora = ov.classList.contains('open'); if (ahora === abierto) return
-    abierto = ahora
-    if (ahora) {
-      try { _stopIntroAnim() } catch (e) {}
-      window.scrollTo(0, 0)
-      const panel = document.getElementById('auth-panel'); if (panel) { panel.setAttribute('tabindex', '-1'); panel.focus({ preventScroll: true }) }
-    } else {
-      const hero = document.getElementById('intro-hero'); if (hero) hero.classList.add('visible')
-    }
-  }).observe(ov, { attributes: true, attributeFilter: ['class'] })
-})()
