@@ -2689,6 +2689,23 @@ _applyInviteCodeField()
   }
 })()
 
+// login-a-v2: con la v2 abierta, quien ya tiene butaca (o es observador) vuelve a la v2 al entrar.
+// Solo desde /cuenta; /cuenta?v1 deja quedarse en la v1 (por ejemplo, para aceptar una propuesta).
+let _yendoAV2 = false
+async function _irAV2SiCorresponde() {
+  if (_yendoAV2) return true
+  if (!location.pathname.startsWith('/cuenta')) return false
+  const q = new URLSearchParams(location.search)
+  if (q.has('v1') || q.get('type') === 'recovery' || _isPasswordRecovery) return false
+  try {
+    const r = await fetch('/ux2/', { method: 'HEAD', redirect: 'manual', cache: 'no-store' })
+    if (r.type === 'opaqueredirect' || !r.ok) return false   // v2 cerrada: seguir en la v1
+  } catch (_) { return false }
+  _yendoAV2 = true
+  location.replace('/ux2/')
+  return true
+}
+
 async function _onLogin(user) {
   _authUser = user
   window._MY_ROLE = user?.app_metadata?.role || ''
@@ -2766,6 +2783,7 @@ async function _onLogin(user) {
 
   // ── Observer: experiencia de solo lectura, sin flujo de verificación ────────
   if (_isObserver()) {
+    if (await _irAV2SiCorresponde()) return
     document.body.classList.add('observer-mode', 'invited-observer')
     // Nav: mostrar pill con "Observador" (no "Crear cuenta")
     document.getElementById('nav-creat-btn')?.style.setProperty('display', 'none')
@@ -2858,6 +2876,7 @@ async function _onLogin(user) {
   } catch(_) {}
 
   if (_seatNum > 0) {
+    if (await _irAV2SiCorresponde()) return
     MY_SEAT = _seatNum
     localStorage.setItem('cabildoos_butaca', _seatNum)
     if (ddButaca) ddButaca.textContent = '· Butaca #' + _seatNum
@@ -2897,6 +2916,7 @@ async function _onLogin(user) {
   } else {
     // ── Modo observador: master o usuario invitado como observer ──────────
     if (_isObserverMode()) {
+      if (await _irAV2SiCorresponde()) return
       voActualizarAlias(_isMaster() ? 'Master' : (displayName || 'Observador'))
       mostrarSelectorCabildos()
       return
