@@ -1051,7 +1051,18 @@ async function pasoVoto() {
   $('#mv-confirmar').onclick = confirmarVoto
 }
 
+// mob14-27-31: convierte una excepción del servicio en { error } para que siempre se pueda recuperar la pantalla
+const seguro = p => Promise.resolve(p).then(r => r, e => ({ data: null, error: { message: e?.message || 'Sin conexión' } }))
+let mvEnviando = false
+
 async function confirmarVoto() {
+  if (mvEnviando) return                 // MOB-14: una sola confirmación en curso
+  mvEnviando = true
+  try { await confirmarVotoUnaVez() }
+  catch (e) { aviso('No se pudo enviar el voto. Revisá tu conexión y probá de nuevo.', 'error'); try { pasoVoto() } catch (_) {} }
+  finally { mvEnviando = false }
+}
+async function confirmarVotoUnaVez() {
   const q = mvPregunta, voto = mvEleccion
   if (!q || !voto) return
   if (!abierta(q)) { aviso('La votación ya cerró.', 'error'); pasoVoto(); return }
@@ -3400,12 +3411,17 @@ async function enviarMensaje() {
   const el = $('#db-txt'), btn = $('#db-enviar')
   const txt = limpiar(el.value).slice(0, 280)
   if (!txt) return
-  btn.disabled = true; el.disabled = true
-  const { data, error } = await sb.from('debate_messages')
+  if (dbt.enviando) return
+  const qEnvio = dbt.q.id
+  dbt.enviando = true; btn.disabled = true; el.disabled = true
+  const { data, error } = await seguro(sb.from('debate_messages')
     .insert({ question_id: dbt.q.id, seat_number: estado.butaca, alias: '', text: txt })
-    .select('id, seat_number, text, created_at').single()
+    .select('id, seat_number, text, created_at').single())
+  dbt.enviando = false
   if (error) {
-    btn.disabled = false; el.disabled = false
+    // MOB-31: se conserva el texto y se reactiva solo si sigue siendo tu turno en el mismo debate
+    const sigue = dbt.mano === 'ready' && dbt.q?.id === qEnvio
+    btn.disabled = !sigue; el.disabled = !sigue
     aviso(/turno|cerr|butaca|caracteres/i.test(error.message || '') ? error.message : 'No se pudo enviar. Intentá de nuevo.', 'error')
     return
   }
@@ -3987,11 +4003,15 @@ async function seguir(num) {
 
 async function responderSolicitud(id, acepta, btn) {
   const s = ciu.sol.find(x => x.id === id); if (!s) return
+  ciu.respondiendo = ciu.respondiendo || new Set()
+  if (ciu.respondiendo.has(id)) return            // MOB-27: una sola respuesta en curso por solicitud
+  ciu.respondiendo.add(id)
   const fila = btn?.closest('.ci-fila'), botones = fila ? $$('button[data-aceptar],button[data-rechazar]', fila) : []
   botones.forEach(b => { b.disabled = true }); if (btn) btn.textContent = acepta ? 'Aceptando…' : 'Rechazando…'
-  const { data, error } = acepta
-    ? await sb.from('follows').update({ status: 'accepted' }).eq('id', id).select('id')
-    : await sb.from('follows').delete().eq('id', id).select('id')
+  const { data, error } = await seguro(acepta
+    ? sb.from('follows').update({ status: 'accepted' }).eq('id', id).select('id')
+    : sb.from('follows').delete().eq('id', id).select('id'))
+  ciu.respondiendo.delete(id)
   if (error || !data?.length) {
     botones.forEach(b => { b.disabled = false; b.textContent = b.dataset.aceptar ? 'Aceptar' : 'Rechazar' })
     aviso('No se pudo completar. Probá de nuevo en un momento.', 'error'); return
@@ -5821,7 +5841,7 @@ async function publicarMuro() {
   const el = $('#mu-txt'), btn = $('#mu-publicar'); if (!el || mu.enviando) return
   const txt = limpiar(el.value).trim().slice(0, 280); if (!txt) return
   mu.enviando = true; btn.disabled = true; btn.textContent = 'Publicando…'
-  const { data, error } = await sb.from('muro_posts').insert({ user_id: estado.user.id, body: txt, day_key: diaMuro() }).select(MU_SEL).single()
+  const { data, error } = await seguro(sb.from('muro_posts').insert({ user_id: estado.user.id, body: txt, day_key: diaMuro() }).select(MU_SEL).single())
   mu.enviando = false
   if (error) {
     btn.disabled = false; btn.textContent = 'Publicar'
@@ -5878,8 +5898,9 @@ function pintarHiloMuro() {
 async function responderMuro() {
   const el = $('#mu-resp-txt'), btn = $('#mu-resp-btn'), p = mu.posts.find(x => x.id === mu.abierto); if (!el || !p) return
   const txt = limpiar(el.value).trim().slice(0, 280); if (!txt) return
+  if (btn.disabled) return
   btn.disabled = true
-  const { data, error } = await sb.from('muro_replies').insert({ post_id: p.id, user_id: estado.user.id, body: txt }).select('id, seat_number, alias, card_color, body, created_at').single()
+  const { data, error } = await seguro(sb.from('muro_replies').insert({ post_id: p.id, user_id: estado.user.id, body: txt }).select('id, seat_number, alias, card_color, body, created_at').single())
   btn.disabled = false
   if (error) return aviso(/caracteres|butaca/i.test(error.message) ? error.message : 'No se pudo responder.', 'error')
   if (!p.muro_replies.some(r => r.id === data.id)) p.muro_replies.push(data)
