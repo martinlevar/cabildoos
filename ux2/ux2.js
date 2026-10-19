@@ -791,7 +791,7 @@ async function cargarVotacion() {
   // Votos emitidos en la sesión (todas las votaciones abiertas). Solo el total: el detalle se ve al cerrar.
   if (!iqPreguntas.length) { $('#st-votos').textContent = '0'; iqVotos = new Map(); if (mon.abierto) pintarMonitor(); return }
   try {
-    const tot = await Promise.all(iqPreguntas.map(q => sb.rpc('get_question_votes', { p_question_id: q.id })
+    const tot = await Promise.all(iqPreguntas.map(q => !estado.user ? 0 : sb.rpc('get_question_votes', { p_question_id: q.id })   // votos-visitantes: sin sesión la base no lo permite
       .then(({ data }) => (data || []).reduce((a, r) => a + Number(r.total || 0), 0), () => 0)))
     $('#st-votos').textContent = fmtNum(tot.reduce((a, n) => a + n, 0))
     tot.forEach((n, i) => { const el = $(`[data-iq-votos="${iqPreguntas[i].id}"]`); if (el) el.textContent = `${fmtNum(n)} ${n === 1 ? 'voto' : 'votos'}` })
