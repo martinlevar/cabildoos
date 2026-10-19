@@ -3007,3 +3007,30 @@ html.modo-ezc .main > .view:not([data-view="escalinatas"]) { display: none !impo
   .au-compo #au-enviar { flex: 1 1 100%; }
   .modal { padding: 10px; }
 }
+
+/* ══ qa35-android: ajustes del informe de QA móvil, SOLO en Android (html.android) ══ */
+/* MOB-15: el orden del Muro muestra cuál está elegido */
+html.android .mu-barra .seg > button { padding: 8px 14px; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--muted); }
+html.android .mu-barra .seg > button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+/* MOB-10: cada tema con su color */
+html.android .tag[style*="--cat"] { color: var(--cat); background: color-mix(in srgb, var(--cat) 12%, transparent); }
+html.android:root[data-theme="dark"] .tag[style*="--cat"], :root[data-theme="dark"].android .tag[style*="--cat"] { color: color-mix(in srgb, var(--cat) 45%, #fff); background: color-mix(in srgb, var(--cat) 28%, transparent); }
+/* MOB-12: volver a Debates como botón reconocible */
+html.android .db-volver { align-items: center; gap: 4px; min-height: 40px; padding: 0 14px 0 10px; border-radius: 999px; background: var(--accent-bg); color: var(--accent); font-weight: 700; }
+@media (max-width: 640px) { html.android .db-volver { display: inline-flex; } }
+/* MOB-09: la tarjeta de la butaca y su etiqueta no se salen del hemiciclo */
+html.android .seat-card { max-width: calc(100% - 16px); }
+html.android .sc-head { grid-template-columns: 38px minmax(0, 1fr) auto; }
+/* MOB-03: el video todavía no está disponible */
+html.android .hero-play { opacity: .6; }
+html.android .hero-play small { font-size: 0; }
+html.android .hero-play small::after { content: 'Video pronto'; font-size: 12px; }
+/* MOB-19: respuestas del Muro: campo más alto, texto legible, botón con margen y la X sin pisar la publicación */
+html.android .mu-responder { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); align-items: stretch; }
+html.android .mu-responder textarea { font-size: 16px; min-height: 64px; }
+html.android .mu-responder .btn { flex: none; align-self: stretch; min-height: 64px; padding: 0 16px; }
+@media (max-width: 640px) { html.android .mu-hilo { max-height: 36vh; } html.android .mu-box .mu-card { box-shadow: none; } html.android .mu-box { padding-top: 54px; } }
+/* MOB-16: en la revelación, Cerrar arriba a la derecha como en el resto de los paneles */
+html.android .rv-top #rv-saltar { order: 1; }
+html.android .rv-top .rv-fase { order: 2; }
+html.android .rv-top [data-rv="cerrar"] { order: 3; margin-left: auto; }
