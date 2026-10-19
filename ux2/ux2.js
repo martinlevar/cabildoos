@@ -459,6 +459,7 @@ const aMundo    = (sx, sy, W, Hh) => ({ x: (sx - W / 2) / cam.s + cam.x, y: (sy 
 
 function pintar() {
   const cv = $('#hemi'); if (!cv || !cv.offsetParent) return
+  if (esAndroid()) { const ta = objetivo.s > encuadre.s * 1.05 ? 'none' : 'pan-y'; if (cv.style.touchAction !== ta) cv.style.touchAction = ta }  // qa35-android
   const { W, H: Hh } = tamCanvas()
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(Hh * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(Hh * dpr) }
@@ -803,7 +804,7 @@ function pintarVotacionesInicio() {
   ul.innerHTML = iqPreguntas.slice(0, IQ_MAX).map(q => {
     const vote = iqMios.has(q.id)
     return `<li class="${vote ? 'hecha' : ''}">
-      <div class="iq-top"><span class="tag">${esc(q.category || 'General')}</span><b class="iq-reloj" data-iq-fin="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b><small data-iq-votos="${q.id}"></small></div>
+      <div class="iq-top"><span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span><b class="iq-reloj" data-iq-fin="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b><small data-iq-votos="${q.id}"></small></div>
       <p title="${esc(q.text)}">${esc(q.text)}</p>
       <div class="iq-acc">
         <a class="iq-deb" href="#debates/${q.id}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>
@@ -904,7 +905,7 @@ function pintarVotaciones() {
         ? resultadosDe(q) + `<a class="v-otra" href="#revelacion/${q.id}">✦ Ver la revelación otra vez</a>`
         : `<a class="v-revelar" href="#revelacion/${q.id}"><span>✦</span><b>Ver la revelación</b><small>El resultado se muestra con su revelación</small></a>`
     return `<article class="card vcard">
-      <div class="vcard-top"><span class="tag">${esc(q.category || 'General')}</span>
+      <div class="vcard-top"><span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>
         ${vFiltro === 'abiertas'
           ? `<b class="q-timer" data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b><small>para votar</small>`
           : `<small>Cerró el ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</small>`}
@@ -970,7 +971,7 @@ function pintarCerradas() {
     const visto = rvVista(q.id), voto = vMisVotos.has(q.id)
     html += `<a class="vc-fila card ${visto ? '' : 'nueva'}" href="#revelacion/${q.id}">
       <span class="vc-fecha"><b>${d.getDate()}</b><small>${d.toLocaleDateString('es-VE', { month: 'short' }).replace('.', '')}</small></span>
-      <span class="vc-txt"><span class="vc-meta"><span class="tag">${esc(q.category || 'General')}</span>${voto ? '<span class="vc-voto">✓ Votaste</span>' : ''}</span><b>${esc(q.text)}</b></span>
+      <span class="vc-txt"><span class="vc-meta"><span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>${voto ? '<span class="vc-voto">✓ Votaste</span>' : ''}</span><b>${esc(q.text)}</b></span>
       <span class="vc-der">${visto ? chipResultado(q) : '<span class="vc-revelar">✦ Revelación</span>'}</span>
     </a>`
   })
@@ -3233,7 +3234,7 @@ function pintarListaDebates() {
   if (!dbt.lista.length) { l.innerHTML = '<p class="muted" style="padding:16px">Todavía no hay debates.</p>'; return }
   l.innerHTML = dbt.lista.map(q => `
     <button class="db-item ${dbt.q?.id === q.id ? 'active' : ''}" data-debate="${q.id}">
-      <span class="db-item-top"><span class="tag">${esc(q.category || 'General')}</span>
+      <span class="db-item-top"><span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>
         ${dbAbierto(q) ? '<span class="db-vivo"><i></i>En vivo</span>' : `<small>Cerró ${new Date(q.ends_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short' })}</small>`}</span>
       <b>${esc(q.text)}</b>
     </button>`).join('')
@@ -3333,7 +3334,7 @@ function pintarHilo(cargando = false) {
   h.innerHTML = `
     <header class="db-head">
       <button class="db-volver" id="db-volver" aria-label="Volver a la lista">‹ Debates</button>
-      <div class="vcard-top"><span class="tag">${esc(q.category || 'General')}</span>
+      <div class="vcard-top"><span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>
         ${abierto ? `<b class="q-timer" data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b><span class="db-vivo"><i></i>En vivo</span>` : '<small>Debate cerrado</small>'}</div>
       <h2>${esc(q.text)}</h2>
       <small class="muted" id="db-n">${cargando ? 'Cargando…' : participantes()}</small>
@@ -3651,6 +3652,26 @@ function momentoMeta(p) {
 
 // Compartir en X: abre el compositor de X con el post ya escrito, en la cuenta de la persona
 // (sin API ni permisos). La persona lo revisa y lo publica ella.
+function esAndroid() { return document.documentElement.classList.contains('android') }  // qa35-android
+function colorCat(c) { try { return CAT_COLOR[c] || CAT_COLOR.General } catch (e) { return '#475569' } }
+
+// MOB-22 (Android): menú nativo de compartir (WhatsApp, Telegram, copiar…). En el resto sigue abriendo X.
+async function compartirPropuesta(id) {
+  if (esAndroid() && navigator.share) {
+    const p = pr.d?.propuestas?.find(x => x.id === id)
+    const url = `${location.origin}/ux2/#propuestas/${id}`
+    const texto = p ? `Apoyá esta propuesta en el Cabildo de Venezuela: “${p.text.length > 190 ? p.text.slice(0, 187).trimEnd() + '…' : p.text}”` : 'Propuesta en el Cabildo de Venezuela'
+    try { await navigator.share({ title: 'Cabildo de Venezuela', text: texto, url }); return } catch (e) { if (e && e.name === 'AbortError') return }
+  }
+  compartir(id)
+}
+
+// Android: mismo botón de cierre (X dibujada) en todos los paneles
+document.addEventListener('DOMContentLoaded', () => {
+  if (!esAndroid()) return
+  document.querySelectorAll('.modal-x').forEach(b => { if (b.textContent.trim() === '✕') b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>' })
+})
+
 function compartir(id) {
   const p = pr.d?.propuestas?.find(x => x.id === id)
   const url = `${location.origin}/ux2/#propuestas/${id}`
@@ -3793,7 +3814,7 @@ function enlazarPropuestas() {
     const t = e.target.closest('[data-apoyar],[data-abrir],[data-compartir],[data-prfiltro],[data-prorden]')
     if (!t) return
     if (t.dataset.apoyar) return apoyar(t.dataset.apoyar, t)
-    if (t.dataset.compartir !== undefined && t.dataset.compartir) return compartir(t.dataset.compartir)
+    if (t.dataset.compartir !== undefined && t.dataset.compartir) return compartirPropuesta(t.dataset.compartir)
     if (t.dataset.abrir) return abrirPropuesta(t.dataset.abrir)
     if (t.dataset.prfiltro) { pr.filtro = t.dataset.prfiltro; return pintarPropuestas() }
     if (t.dataset.prorden) { pr.orden = t.dataset.prorden; return pintarPropuestas() }
