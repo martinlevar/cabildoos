@@ -65,6 +65,9 @@ function pintarNav() {
       <svg viewBox="0 0 24 24">${ICONOS[id]}</svg><span>${label}</span>
       ${LISTAS.has(id) ? (id === 'escalinatas' && sinButaca() ? '<span class="nav-tag">estás acá</span>' : '') : '<span class="soon-tag">pronto</span>'}
     </a></li>`).join('')
+  if (document.documentElement.classList.contains('android') && !modoEscalinatas()) {   // android-diseno
+    $('#nav').insertAdjacentHTML('beforeend', `<li><a href="#inicio" data-ver-bloques title="Bloques"><svg viewBox="0 0 24 24">${ICONOS.bloque}</svg><span>Bloques</span></a></li>`)
+  }
   const sec = (location.hash || '#inicio').slice(1).split('/')[0]
   $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === sec))
 }
@@ -117,6 +120,12 @@ function ruta() {
 }
 
 function abrirMenu()  { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show') }
+function verBloques() {   // android-diseno
+  document.documentElement.classList.add('ver-bloques'); $('.app')?.classList.remove('panel-plegado'); cerrarMenu()
+  setTimeout(() => $('#panel-bloques')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-ver-bloques]')) { setTimeout(verBloques, 0) } })
+addEventListener('hashchange', () => { if (!document.documentElement.classList.contains('ver-bloques-fijo')) document.documentElement.classList.remove('ver-bloques') })
 function cerrarMenu() { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show') }
 
 // ── Reloj (hora de Venezuela) ───────────────────────────────────
@@ -177,6 +186,7 @@ function pintarUsuario() {
     ? (estado.alias || (estado.butaca ? `Butaca #${estado.butaca}` : 'Mi cuenta'))
     : 'Iniciar sesión'
   $('#user-name').textContent = nombre
+  document.documentElement.classList.toggle('con-sesion', !!estado.user)  // android-diseno
   $('#user-avatar').textContent = estado.user ? (estado.alias || 'B').charAt(0).toUpperCase() : '?'
   $('#quick-butaca-num').textContent = estado.butaca ? `#${estado.butaca}` : (estado.user ? 'Sin butaca' : 'Iniciá sesión')
   $('#my-seat-num').textContent = estado.butaca ? `#${estado.butaca}` : ''
@@ -238,7 +248,7 @@ function cerrarBuscador() { $('#bus-res').hidden = true; $('#bus-q').setAttribut
 function elegirResultado(i) {
   const it = bus.items[i]; if (!it) return
   cerrarBuscador(); $('#bus-q').blur()
-  if (it.bloque) { location.hash = '#inicio'; const b = $('#bloque-buscar'); if (b) { b.value = it.bloque; b.dispatchEvent(new Event('input', { bubbles: true })); $('.app')?.classList.remove('panel-plegado'); b.scrollIntoView({ behavior: 'smooth', block: 'center' }) } return }
+  if (it.bloque) { location.hash = '#inicio'; setTimeout(() => document.documentElement.classList.add('ver-bloques'), 0); const b = $('#bloque-buscar'); if (b) { b.value = it.bloque; b.dispatchEvent(new Event('input', { bubbles: true })); $('.app')?.classList.remove('panel-plegado'); b.scrollIntoView({ behavior: 'smooth', block: 'center' }) } return }
   location.hash = it.href
 }
 function enlazarBuscador() {
@@ -1809,7 +1819,7 @@ const bqVal = id => ($('#' + id)?.value || '').trim()
 
 async function bqAccion(a, el) {
   const d = bq.d
-  if (a === 'explorar') { location.hash = '#inicio'; $('.app')?.classList.remove('panel-plegado'); irATab('todos'); return }
+  if (a === 'explorar') { location.hash = '#inicio'; setTimeout(() => document.documentElement.classList.add('ver-bloques'), 0); $('.app')?.classList.remove('panel-plegado'); irATab('todos'); return }
   if (a === 'ver-todos') { bq.verTodos = true; bqRepintar(); return }
   if (a === 'lema') {
     el.disabled = true
