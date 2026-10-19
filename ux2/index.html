@@ -19,6 +19,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/ux2/ux2.css">
+<script>/* qa35-android: los ajustes de diseño para Android se aplican solo con esta clase */
+try { if (/Android/i.test(navigator.userAgent || '')) document.documentElement.classList.add('android') } catch (e) {}
+</script>
 <script>
   // Tema antes de pintar (evita parpadeo). Solo preferencia visual de este navegador.
   try { const t = localStorage.getItem('ux2_tema'); if (t) document.documentElement.dataset.theme = t } catch (e) {}
