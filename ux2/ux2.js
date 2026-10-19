@@ -1366,17 +1366,135 @@ function pintarBloques() {
   const q = ($('#bloque-buscar').value || '').trim().toLowerCase()
   const lista = estado.bloques.filter(b => !q || [b.nombre, b.lema, b.anfitrion_nombre].some(v => (v || '').toLowerCase().includes(q)))
   if (!estado.bloques.length) {
-    body.innerHTML = `<div class="empty"><div class="e-icon">${ICON_GRUPO}</div>
+    body.innerHTML = simTarjeta('') + `<div class="empty"><div class="e-icon">${ICON_GRUPO}</div>
       <h3>Todavía no hay bloques</h3><p>Sé el primero en reunir ciudadanos alrededor de tus ideas.</p>
       <button class="btn btn-accent" data-tab-go="crear">Crear bloque</button></div>`
     return
   }
-  if (!lista.length) { body.innerHTML = bannerMiBloque() + '<p class="muted">No hay bloques que coincidan con tu búsqueda.</p>'; return }
-  body.innerHTML = bannerMiBloque() + (estado.tab === 'destacados'
+  if (!lista.length) { body.innerHTML = bannerMiBloque() + simTarjeta(q) + '<p class="muted">No hay bloques que coincidan con tu búsqueda.</p>'; return }
+  body.innerHTML = bannerMiBloque() + simTarjeta(q) + (estado.tab === 'destacados'
     ? heroBloque(lista[0]) + lista.slice(1, 4).map(filaBloque).join('') +
       (lista.length > 4 ? '<button class="btn btn-ghost" data-tab-go="todos">Ver todos los bloques →</button>' : '')
     : lista.map(filaBloque).join(''))
 }
+
+// ══ bloque-simulador: Bloque Simulador — un bloque de práctica con Claria como anfitriona. Es un tutorial guiado:
+// todo pasa en este navegador, no se guarda nada y no cuenta como bloque real.
+const SIM_IMG = '/ux2/marcas/claria.svg'
+function simTarjeta(q) {
+  if (q && !['simulador', 'práctica', 'practica', 'claria', 'tutorial'].some(w => w.includes(q) || q.includes(w))) return ''
+  return `<article class="sim-card">
+    <div class="sim-cab"><img src="${SIM_IMG}" alt="Claria, la anfitriona del simulador"><span class="sim-tag">Simulador · Práctica</span></div>
+    <div class="sim-cuerpo">
+      <h3>Bloque Simulador</h3>
+      <p>Probá cómo funciona un bloque, paso a paso y sin consecuencias reales.</p>
+      <div class="sim-host"><img src="${SIM_IMG}" alt=""><span><b>Claria</b><small>Anfitriona</small></span></div>
+      <div class="sim-datos"><span><b>5 pasos</b>unos 3 minutos</span><span><b>Sin espera</b>no cuenta como bloque</span></div>
+      <button class="btn btn-dark sim-entrar" type="button" data-sim-abrir>Entrar y practicar</button>
+      <small class="sim-nota">No te suma a ningún bloque real, no activa los 30 días de espera y no publica nada.</small>
+    </div>
+  </article>`
+}
+const SIM_PASOS = [
+  { tab: 'Inicio', bot: ['¡Guau, hola! Soy Claria, la anfitriona de este bloque de práctica. No soy una persona real: soy un tutorial.', 'Un bloque es un grupo de ciudadanos que se organiza alrededor de unas ideas. Lo crea un anfitrión que acepta mostrar su nombre real. Los miembros siguen siendo anónimos.'],
+    ops: [{ label: 'Empezar el recorrido', yo: 'Empecemos', next: 1, primario: true }, { label: '¿Quién puede crear uno?', yo: '¿Quién puede crear un bloque?', extra: 'Cualquier butaca, con una segunda verificación en la que acepta mostrar nombre y apellido. Por eso yo, como anfitriona, soy lo único público acá.' }] },
+  { tab: 'Sumarse', bot: ['Paso 1: sumarte. Tocá «Pedir sumarme». En un bloque real podés escribir un mensaje de presentación para el anfitrión.'],
+    ops: [{ label: 'Pedir sumarme', yo: 'Pido sumarme al bloque', next: 2, primario: true, estado: 'Solicitud aceptada · ya sos miembro de práctica' }] },
+  { tab: 'Comunicados', bot: ['¡Bienvenido! Paso 2: los comunicados. Es como el anfitrión les habla a todos los miembros a la vez. Mirá uno de ejemplo:'], tarjeta: 'comunicado',
+    ops: [{ label: 'Entendido, sigamos', yo: 'Entendido', next: 3, primario: true }, { label: '¿Puedo responder?', yo: '¿Puedo responderle al anfitrión?', extra: 'Los comunicados no se responden: para charlar está la Sala del bloque, y para proponer, la pestaña Ideas.' }] },
+  { tab: 'Ideas', bot: ['Paso 3: las ideas. Cualquier miembro propone una idea y los demás la apoyan. Si llega a la meta que eligió el anfitrión (acá, 10 apoyos), sale sola a Propuestas con el sello del bloque.', 'Te escribí una idea de ejemplo. Probá juntar apoyos:'], tarjeta: 'idea',
+    ops: [{ label: 'Simular apoyos', yo: 'Quiero ver cómo junta apoyos', accion: 'apoyos', primario: true }] },
+  { tab: 'Privacidad', bot: ['Paso 4: tu privacidad. Esto es lo que ve y lo que nunca ve el anfitrión de un bloque:'], tarjeta: 'privacidad',
+    ops: [{ label: '¿Y si me quiero ir?', yo: '¿Y si me quiero ir del bloque?', next: 5, primario: true }] },
+  { tab: 'Salir', bot: ['Podés salir cuando quieras. Para entrar a otro bloque esperás 30 días; eso evita que la gente salte de bloque en bloque. Igual seguís votando en todo el Cabildo.', 'Si el bloque se cierra o lo suspenden, todos sus miembros quedan libres al instante.'],
+    ops: [{ label: 'Terminar el recorrido', yo: 'Listo, terminemos', next: 6, primario: true }] },
+  { tab: 'Listo', bot: ['¡Listo! Ya sabés cómo funciona un bloque: sumarte, leer comunicados, proponer ideas, apoyar y cuidar tu privacidad.', 'Ahora podés buscar un bloque real en el panel de Bloques. Este simulador queda acá para cuando quieras repasar.'], estado: 'Recorrido completado',
+    ops: [{ label: 'Ver bloques reales', yo: 'Quiero ver bloques reales', fin: true, primario: true }, { label: 'Empezar de nuevo', yo: 'Empezar de nuevo', reiniciar: true }] },
+]
+const sim = { paso: 0, log: [], escribiendo: false, apoyos: 1, timers: [] }
+function simLimpiarTimers() { sim.timers.forEach(t => { clearTimeout(t); clearInterval(t) }); sim.timers = [] }
+function simModal() {
+  let m = $('#modal-sim'); if (m) return m
+  document.body.insertAdjacentHTML('beforeend', `<div class="modal sim-modal" id="modal-sim" hidden role="dialog" aria-modal="true" aria-label="Bloque Simulador">
+    <div class="modal-box sim-box">
+      <header class="sim-top"><img src="${SIM_IMG}" alt="Claria, la anfitriona"><div><b>Bloque Simulador <span class="sim-tag chico">Práctica</span></b><small>Anfitriona: Claria</small></div>
+        <span class="sim-paso" id="sim-paso"></span>
+        <button class="modal-x" type="button" data-sim-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+      <div class="sim-barra"><i id="sim-prog"></i></div>
+      <nav class="sim-tabs" id="sim-tabs" aria-label="Secciones del bloque"></nav>
+      <div class="sim-chat" id="sim-chat" aria-live="polite"></div>
+      <footer class="sim-pie"><small>Respuestas rápidas</small><div class="sim-ops" id="sim-ops"></div>
+        <small>Todo en este bloque es de práctica: nada se publica ni cuenta en el Cabildo.</small></footer>
+    </div></div>`)
+  m = $('#modal-sim')
+  m.addEventListener('click', e => {
+    if (e.target === m || e.target.closest('[data-sim-cerrar]')) return simCerrar()
+    const b = e.target.closest('[data-sim-op]'); if (b) simElegir(+b.dataset.simOp)
+  })
+  m.addEventListener('keydown', e => { if (e.key === 'Escape') simCerrar() })
+  return m
+}
+function simAbrir() {
+  const m = simModal(); m.hidden = false; document.body.style.overflow = 'hidden'
+  simLimpiarTimers(); sim.apoyos = 1; simDecir(0, [])
+  setTimeout(() => m.querySelector('[data-sim-cerrar]')?.focus(), 50)
+}
+function simCerrar() { simLimpiarTimers(); const m = $('#modal-sim'); if (m) m.hidden = true; document.body.style.overflow = '' }
+function simDecir(n, previo) {
+  const p = SIM_PASOS[n]
+  const cola = p.bot.map(t => ({ k: 'bot', texto: t }))
+  if (p.tarjeta) cola.push({ k: p.tarjeta })
+  if (p.estado) cola.push({ k: 'estado', texto: p.estado })
+  sim.paso = n; sim.log = previo.slice(); sim.escribiendo = true; simPintar()
+  const sig = i => {
+    if (i >= cola.length) { sim.escribiendo = false; simPintar(); return }
+    sim.timers.push(setTimeout(() => { sim.log.push(cola[i]); sim.escribiendo = i + 1 < cola.length; simPintar(); sig(i + 1) }, i === 0 ? 650 : 900))
+  }
+  sig(0)
+}
+function simElegir(i) {
+  if (sim.escribiendo) return
+  const o = SIM_PASOS[sim.paso].ops[i]; if (!o) return
+  sim.log.push({ k: 'yo', texto: o.yo })
+  if (o.reiniciar) { simLimpiarTimers(); sim.apoyos = 1; return simDecir(0, []) }
+  if (o.fin) { simCerrar(); irATab('todos'); return }
+  if (o.extra) { sim.escribiendo = true; simPintar(); sim.timers.push(setTimeout(() => { sim.log.push({ k: 'bot', texto: o.extra }); sim.escribiendo = false; simPintar() }, 700)); return }
+  if (o.accion === 'apoyos') {
+    sim.escribiendo = true; simPintar()
+    const iv = setInterval(() => {
+      if (sim.apoyos >= 10) { clearInterval(iv); sim.log.push({ k: 'estado', texto: '10 de 10 apoyos · idea publicada' }); simPintar(); sim.timers.push(setTimeout(() => simDecir(4, sim.log), 900)); return }
+      sim.apoyos++; simPintar()
+    }, 260)
+    sim.timers.push(iv); return
+  }
+  if (o.estado) sim.log.push({ k: 'estado', texto: o.estado })
+  simDecir(o.next, sim.log)
+}
+function simPintar() {
+  if (!$('#modal-sim')) return
+  const total = SIM_PASOS.length - 1, p = SIM_PASOS[sim.paso]
+  $('#sim-paso').textContent = sim.paso === 0 ? 'Tutorial' : (sim.paso >= total ? 'Completado' : `Paso ${sim.paso} de ${total - 1}`)
+  $('#sim-prog').style.width = Math.round(sim.paso / total * 100) + '%'
+  $('#sim-tabs').innerHTML = ['Sumarse', 'Comunicados', 'Ideas', 'Privacidad', 'Salir'].map(t => `<span class="${t === p.tab ? 'on' : ''}">${t}</span>`).join('')
+  const av = `<img class="sim-av" src="${SIM_IMG}" alt="">`
+  $('#sim-chat').innerHTML = sim.log.map(m => {
+    if (m.k === 'bot') return `<div class="sim-m bot">${av}<p>${esc(m.texto)}</p></div>`
+    if (m.k === 'yo') return `<div class="sim-m yo"><p>${esc(m.texto)}</p></div>`
+    if (m.k === 'estado') return `<div class="sim-m estado"><span>✓ ${esc(m.texto)}</span></div>`
+    if (m.k === 'comunicado') return `<div class="sim-m tarjeta"><div class="sim-t"><div class="sim-t-cab"><span class="tag">Comunicado</span><small>de la anfitriona · recién</small></div>
+      <p>Este sábado debatimos cómo pedir más centros de votación en el exterior. Traé tus ideas a la pestaña Ideas.</p><small>Les llega a todos los miembros, con notificación.</small></div></div>`
+    if (m.k === 'idea') return `<div class="sim-m tarjeta"><div class="sim-t"><div class="sim-t-cab"><span class="tag sim-verde">Tu idea</span><small>${sim.apoyos} de 10 apoyos</small></div>
+      <p><b>Pedir que los consulados abran como centros de votación en las próximas elecciones.</b></p>
+      <div class="sim-meta"><i style="width:${Math.min(100, sim.apoyos * 10)}%"></i></div>
+      ${sim.apoyos >= 10 ? '<p class="sim-ok">Llegó a la meta: salió a Propuestas con el sello del bloque.</p>' : ''}</div></div>`
+    if (m.k === 'privacidad') return `<div class="sim-m tarjeta"><div class="sim-priv"><div><b class="si">El anfitrión ve</b><p>Tu alias, si lo hiciste público. Si no, «Ciudadano anónimo». Y tu mensaje de presentación.</p></div>
+      <div><b class="no">Nunca ve</b><p>Tu número de butaca, tu email ni cómo votás en el hemiciclo.</p></div></div></div>`
+    return ''
+  }).join('') + (sim.escribiendo ? `<div class="sim-m bot">${av}<p class="sim-escribe" aria-label="Claria está escribiendo"><i></i><i></i><i></i></p></div>` : '')
+  $('#sim-ops').innerHTML = sim.escribiendo ? '' : p.ops.map((o, i) => `<button type="button" class="btn ${o.primario ? 'btn-accent' : 'btn-ghost'}" data-sim-op="${i}">${esc(o.label)}</button>`).join('')
+  const c = $('#sim-chat'); c.scrollTop = c.scrollHeight
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-sim-abrir]')) simAbrir() })
 
 async function unirme(id) {
   if (!estado.user) { location.href = APP_ACTUAL; return }
