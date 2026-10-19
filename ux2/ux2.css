@@ -3031,8 +3031,10 @@ html.android .rv-top [data-rv="cerrar"] { order: 3; margin-left: auto; }
 /* ══ qa35-todos: portada con mini hemiciclo animado (reemplaza el botón de video, que todavía no existe) ══ */
 .hero-loop { flex: none; width: 78px; align-self: center; }
 .hero-loop svg { width: 100%; height: auto; display: block; overflow: visible; }
-.hero-loop circle { fill: #fff; opacity: .22; animation: heroAsiento 4.2s ease-in-out infinite; }
+.hero-loop circle { fill: #fff; opacity: .22; }  /* hero-ciclo */
+.hero-loop.anim circle { animation: heroAsiento 4.2s ease-in-out 2, heroEncendida .8s ease-out forwards; }
 .hero-loop circle.o { fill: #f5c518; }
 @keyframes heroAsiento { 0%, 8% { opacity: .22; } 22%, 62% { opacity: 1; } 80%, 100% { opacity: .22; } }
+@keyframes heroEncendida { from { opacity: .22; } to { opacity: 1; } }
 @media (max-width: 640px) { .hero-loop { width: 64px; } }
-@media (prefers-reduced-motion: reduce) { .hero-loop circle { animation: none; opacity: .85; } }
+@media (prefers-reduced-motion: reduce) { .hero-loop circle, .hero-loop.anim circle { animation: none; opacity: 1; } }
