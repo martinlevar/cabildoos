@@ -6910,3 +6910,12 @@ document.addEventListener('visibilitychange', () => {
 })
 
 iniciar()
+
+// hero-ciclo: el mini hemiciclo de la portada se enciende en dos pasadas, queda encendido 5 minutos y vuelve a empezar
+;(function cicloHeroLoop() {
+  const ESPERA = 5 * 60 * 1000 + 10000   // 5 minutos encendido + ~10 s de las dos pasadas
+  setInterval(() => {
+    const s = document.querySelector('.hero-loop'); if (!s || document.hidden) return
+    s.classList.remove('anim'); void s.offsetWidth; s.classList.add('anim')
+  }, ESPERA)
+})()
