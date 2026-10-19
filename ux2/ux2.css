@@ -3038,3 +3038,29 @@ html.android .rv-top [data-rv="cerrar"] { order: 3; margin-left: auto; }
 @keyframes heroEncendida { from { opacity: .22; } to { opacity: 1; } }
 @media (max-width: 640px) { .hero-loop { width: 64px; } }
 @media (prefers-reduced-motion: reduce) { .hero-loop circle, .hero-loop.anim circle { animation: none; opacity: 1; } }
+
+/* mob09-android: tarjeta de butaca en Android — alias en varias líneas, etiqueta en fila propia y siempre dentro de la tarjeta */
+html.android .sc-head { grid-template-columns: 38px minmax(0, 1fr); row-gap: 6px; }
+html.android .sc-head b { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+html.android .sc-head .sc-badge { grid-column: 2; justify-self: start; }
+
+/* ══ android-diseno: diseño en Android (MOB-01/02/06/33/34). Solo con html.android ══ */
+.hd-votar { display: none; }
+@media (max-width: 860px) {
+  /* MOB-01: barra superior más baja, botones del mismo tamaño */
+  html.android { --top: 60px; }
+  html.android .app { grid-template-rows: 60px 1fr auto; }
+  html.android .brand-logo { width: 36px; height: 36px; }
+  /* MOB-02: con sesión, el tema se cambia desde el menú de usuario y aparece «Votar» */
+  html.android.con-sesion #theme-btn { display: none; }
+  html.android.con-sesion .hd-votar { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 12px; border-radius: 999px; background: var(--navy); color: #fff; font-size: 13px; font-weight: 700; }
+  html.android.con-sesion .hd-votar svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  html.android .topbar-right { gap: 4px; }
+  /* MOB-06: menú lateral más angosto y filas más juntas, sin cortar nombres */
+  html.android .sidebar { width: 214px; padding: 14px 10px; gap: 14px; }
+  html.android .nav { gap: 2px; }
+  html.android .nav a { gap: 12px; padding: 10px 12px; font-size: 14.5px; }
+  html.android .nav a span:not(.soon-tag):not(.nav-tag) { white-space: nowrap; }
+  /* MOB-33/34: Bloques deja de estar fijo debajo de cada sección; se abre desde «Bloques» en el menú */
+  html.android:not(.ver-bloques) #panel-bloques { display: none; }
+}
