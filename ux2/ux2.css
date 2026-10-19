@@ -3124,3 +3124,23 @@ html.android .sc-head .sc-badge { grid-column: 2; justify-self: start; }
 .sim-ops .btn { min-height: 44px; border-radius: 99px; padding: 0 16px; }
 @media (max-width: 640px) { .sim-modal { padding: 0; } .sim-box { width: 100%; height: 100dvh; max-height: none; border-radius: 0; } }
 @media (prefers-reduced-motion: reduce) { .sim-m, .sim-escribe i { animation: none; } }
+
+/* ══ simulador-diseno: igual al diseño aprobado ══ */
+.sim-cab { height: 150px; }
+.sim-cab .sim-dots { position: absolute; left: -20px; top: 30px; width: 200px; height: 100px; opacity: .35; }
+.sim-cab img { width: 122px; height: 122px; top: 14px; }
+.sim-entrar { border-radius: 99px; background: #141a3c; color: #fff; font-weight: 700; font-size: 14.5px; }
+.sim-foto { position: relative; width: 48px; height: 48px; flex: none; }
+.sim-top .sim-foto img { width: 48px; height: 48px; border-radius: 14px; display: block; }
+.sim-insignia { position: absolute; right: -4px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; background: #f5c518; border: 2px solid var(--surface); display: grid; place-items: center; }
+.sim-insignia svg { width: 11px; height: 11px; fill: none; stroke: #141a3c; stroke-width: 3; stroke-linecap: round; }
+.sim-practica { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #7a4b00; background: #fff4d6; padding: 3px 7px; border-radius: 99px; vertical-align: 2px; margin-left: 4px; }
+.sim-op { font: inherit; font-size: 14px; font-weight: 700; min-height: 44px; padding: 0 16px; border-radius: 99px; cursor: pointer; background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); }
+.sim-op:hover { border-color: var(--accent); color: var(--accent); }
+.sim-op:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sim-op.primario { background: #141a3c; color: #fff; border-color: #141a3c; }
+.sim-op.primario:hover { color: #fff; background: #232b5c; }
+:root[data-theme="dark"] .sim-op.primario { background: var(--accent); border-color: var(--accent); }
+.sim-m.estado span { display: inline-flex; align-items: center; gap: 8px; color: #047857; background: #e7f6ef; }
+.sim-m.estado svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+:root[data-theme="dark"] .sim-m.estado span { color: var(--green); background: var(--green-bg); }

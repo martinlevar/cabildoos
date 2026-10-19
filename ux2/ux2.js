@@ -1384,7 +1384,7 @@ const SIM_IMG = '/ux2/marcas/claria.svg'
 function simTarjeta(q) {
   if (q && !['simulador', 'práctica', 'practica', 'claria', 'tutorial'].some(w => w.includes(q) || q.includes(w))) return ''
   return `<article class="sim-card">
-    <div class="sim-cab"><img src="${SIM_IMG}" alt="Claria, la anfitriona del simulador"><span class="sim-tag">Simulador · Práctica</span></div>
+    <div class="sim-cab"><svg class="sim-dots" viewBox="0 0 160 80" aria-hidden="true"><g fill="#ffffff"><circle cx="20" cy="70" r="4"/><circle cx="34" cy="48" r="4"/><circle cx="54" cy="32" r="4"/><circle cx="80" cy="26" r="4"/><circle cx="106" cy="32" r="4"/><circle cx="126" cy="48" r="4"/><circle cx="140" cy="70" r="4"/><circle cx="44" cy="70" r="4"/><circle cx="56" cy="54" r="4"/><circle cx="80" cy="48" r="4"/><circle cx="104" cy="54" r="4"/><circle cx="116" cy="70" r="4"/></g><g fill="#f5c518"><circle cx="80" cy="26" r="4"/><circle cx="56" cy="54" r="4"/><circle cx="116" cy="70" r="4"/></g></svg><img src="${SIM_IMG}" alt="Claria, la anfitriona del simulador"><span class="sim-tag">Simulador · Práctica</span></div>
     <div class="sim-cuerpo">
       <h3>Bloque Simulador</h3>
       <p>Probá cómo funciona un bloque, paso a paso y sin consecuencias reales.</p>
@@ -1411,13 +1411,14 @@ const SIM_PASOS = [
   { tab: 'Listo', bot: ['¡Listo! Ya sabés cómo funciona un bloque: sumarte, leer comunicados, proponer ideas, apoyar y cuidar tu privacidad.', 'Ahora podés buscar un bloque real en el panel de Bloques. Este simulador queda acá para cuando quieras repasar.'], estado: 'Recorrido completado',
     ops: [{ label: 'Ver bloques reales', yo: 'Quiero ver bloques reales', fin: true, primario: true }, { label: 'Empezar de nuevo', yo: 'Empezar de nuevo', reiniciar: true }] },
 ]
+// simulador-diseno
 const sim = { paso: 0, log: [], escribiendo: false, apoyos: 1, timers: [] }
 function simLimpiarTimers() { sim.timers.forEach(t => { clearTimeout(t); clearInterval(t) }); sim.timers = [] }
 function simModal() {
   let m = $('#modal-sim'); if (m) return m
   document.body.insertAdjacentHTML('beforeend', `<div class="modal sim-modal" id="modal-sim" hidden role="dialog" aria-modal="true" aria-label="Bloque Simulador">
     <div class="modal-box sim-box">
-      <header class="sim-top"><img src="${SIM_IMG}" alt="Claria, la anfitriona"><div><b>Bloque Simulador <span class="sim-tag chico">Práctica</span></b><small>Anfitriona: Claria</small></div>
+      <header class="sim-top"><span class="sim-foto"><img src="${SIM_IMG}" alt="Claria, la anfitriona"><span class="sim-insignia" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/></svg></span></span><div><b>Bloque Simulador <span class="sim-practica">Práctica</span></b><small>Anfitriona: Claria</small></div>
         <span class="sim-paso" id="sim-paso"></span>
         <button class="modal-x" type="button" data-sim-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
       <div class="sim-barra"><i id="sim-prog"></i></div>
@@ -1480,7 +1481,7 @@ function simPintar() {
   $('#sim-chat').innerHTML = sim.log.map(m => {
     if (m.k === 'bot') return `<div class="sim-m bot">${av}<p>${esc(m.texto)}</p></div>`
     if (m.k === 'yo') return `<div class="sim-m yo"><p>${esc(m.texto)}</p></div>`
-    if (m.k === 'estado') return `<div class="sim-m estado"><span>✓ ${esc(m.texto)}</span></div>`
+    if (m.k === 'estado') return `<div class="sim-m estado"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>${esc(m.texto)}</span></div>`
     if (m.k === 'comunicado') return `<div class="sim-m tarjeta"><div class="sim-t"><div class="sim-t-cab"><span class="tag">Comunicado</span><small>de la anfitriona · recién</small></div>
       <p>Este sábado debatimos cómo pedir más centros de votación en el exterior. Traé tus ideas a la pestaña Ideas.</p><small>Les llega a todos los miembros, con notificación.</small></div></div>`
     if (m.k === 'idea') return `<div class="sim-m tarjeta"><div class="sim-t"><div class="sim-t-cab"><span class="tag sim-verde">Tu idea</span><small>${sim.apoyos} de 10 apoyos</small></div>
@@ -1491,7 +1492,7 @@ function simPintar() {
       <div><b class="no">Nunca ve</b><p>Tu número de butaca, tu email ni cómo votás en el hemiciclo.</p></div></div></div>`
     return ''
   }).join('') + (sim.escribiendo ? `<div class="sim-m bot">${av}<p class="sim-escribe" aria-label="Claria está escribiendo"><i></i><i></i><i></i></p></div>` : '')
-  $('#sim-ops').innerHTML = sim.escribiendo ? '' : p.ops.map((o, i) => `<button type="button" class="btn ${o.primario ? 'btn-accent' : 'btn-ghost'}" data-sim-op="${i}">${esc(o.label)}</button>`).join('')
+  $('#sim-ops').innerHTML = sim.escribiendo ? '' : p.ops.map((o, i) => `<button type="button" class="sim-op ${o.primario ? 'primario' : ''}" data-sim-op="${i}">${esc(o.label)}</button>`).join('')
   const c = $('#sim-chat'); c.scrollTop = c.scrollHeight
 }
 document.addEventListener('click', e => { if (e.target.closest('[data-sim-abrir]')) simAbrir() })
