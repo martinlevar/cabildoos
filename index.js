@@ -2708,6 +2708,14 @@ async function _irAV2SiCorresponde() {
 
 async function _onLogin(user) {
   _authUser = user
+  // bloques-publicos: si llegó desde la página pública de un bloque, queda registrado de dónde vino
+  try {
+    const _inv = JSON.parse(localStorage.getItem('cabildo_bloque_invitacion') || 'null')
+    if (_inv?.slug && !_inv.reg && Date.now() - (_inv.at || 0) < 30 * 864e5) {
+      sb.rpc('bloque_invitacion_registrar', { p_slug: _inv.slug, p_ref: _inv.ref || 'link' })
+        .then(({ error }) => { if (!error) { _inv.reg = 1; localStorage.setItem('cabildo_bloque_invitacion', JSON.stringify(_inv)) } }, () => {})
+    }
+  } catch (e) {}
   window._MY_ROLE = user?.app_metadata?.role || ''
   document.body.classList.remove('observer-mode')
 
