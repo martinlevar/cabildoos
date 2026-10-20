@@ -145,7 +145,8 @@ export default {
     }
 
     // La v2 y la sala de prensa (/press, pública y con link compartido) llevan la política estricta con nonce.
-    const esV2 = url.pathname === '/ux2' || url.pathname.startsWith('/ux2/') || url.pathname === '/press' || url.pathname === '/press.html';
+    const esV2 = url.pathname === '/ux2' || url.pathname.startsWith('/ux2/') || url.pathname === '/press' || url.pathname === '/press.html'
+      || url.pathname === '/verificacion-manual' || url.pathname === '/verificacion-manual.html';   // fotos de documentos: política estricta
     const nonce = esV2 ? btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))) : '';
 
     const envScript = `<script${esV2 ? ` nonce="${nonce}"` : ''}>window.__ENV=${JSON.stringify({
