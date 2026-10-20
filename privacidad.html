@@ -286,7 +286,7 @@ body {
           <tr><td>Nombre completo</td><td><span class="badge-no">NUNCA</span></td><td>Lo escribís para compararlo con el documento durante la verificación. No se almacena.</td></tr>
           <tr><td>Número de documento</td><td><span class="badge-no">NUNCA</span></td><td>Se transforma en una huella cifrada (ver sección 4). El número no se almacena.</td></tr>
           <tr><td>Fecha de nacimiento</td><td><span class="badge-no">NUNCA</span></td><td>Se usa para comprobar la edad mínima y se descarta.</td></tr>
-          <tr><td>Foto completa del documento</td><td><span class="badge-no">NUNCA</span></td><td>Se envía al servicio de análisis automático (sección 11) para leer los datos. De ella solo conservamos, hasta la revisión, el recorte de la cara.</td></tr>
+          <tr><td>Foto completa del documento</td><td><span class="badge-no">NO*</span></td><td>Se envía al servicio de análisis automático (sección 11) para leer los datos. De ella solo conservamos, hasta la revisión, el recorte de la cara. <strong>*Única excepción:</strong> si elegís la verificación manual por soporte (sección 5), la foto se guarda hasta que termina la revisión, como máximo 7 días.</td></tr><!-- verif-manual-politica -->
           <tr><td>Qué votaste</td><td><span class="badge-no">NUNCA</span></td><td>Tu elección se suma a un contador general. No existe ningún registro que una tu butaca con tu opción (sección 8).</td></tr>
           <tr><td>Dirección, teléfono, ubicación</td><td><span class="badge-no">NUNCA</span></td><td>No se piden.</td></tr>
         </tbody>
@@ -320,6 +320,15 @@ body {
         <li>Las imágenes de los tres pasos (documento, prueba de vida y selfie) se envían al servicio de análisis automático (sección 11), que lee los datos del documento, los compara con lo que escribiste, comprueba que haya una persona real frente a la cámara y ubica los datos del documento en la selfie para pixelarlos. Nosotros no guardamos la foto del documento ni las de la prueba de vida.</li>
         <li>La <strong>selfie con el documento</strong> se guarda con los datos del documento pixelados, y de la foto del documento se guarda <strong>solo el recorte de la cara</strong>, sin ningún dato escrito.</li>
         <li>Esas dos imágenes quedan en un almacenamiento privado hasta que una persona del equipo revisa tu solicitud. <strong>Al aprobarla o rechazarla, se borran.</strong></li>
+      </ul>
+      <h3>Verificación manual por soporte</h3><!-- verif-manual-politica -->
+      <p>Si la verificación automática no te funciona y escribís a soporte, te podemos ofrecer una verificación manual. Es opcional y solo se hace si la aceptás expresamente en una página propia, con tu sesión iniciada:</p>
+      <ul>
+        <li>Subís una <strong>selfie</strong> y las <strong>dos caras de tu documento</strong>. Antes de enviarlas, tu teléfono las vuelve a dibujar para quitarles la ubicación y los datos del aparato.</li>
+        <li>Una persona del equipo con rol de administrador <strong>ve el documento sin pixelar</strong> para confirmar tu identidad. Cada vez que alguien abre las fotos queda registrado.</li>
+        <li>Las fotos se guardan en un almacenamiento privado y <strong>se borran al aprobar o rechazar la solicitud</strong>, o a los 7 días si nadie la revisó.</li>
+        <li>Del documento se guarda lo mismo que en la verificación automática: solo la huella cifrada del número (sección 4). El número y la fecha de nacimiento se usan en la revisión y se descartan.</li>
+        <li>Te pedimos que <strong>no mandes fotos del documento por email</strong>: lo que llega por correo no tiene estas protecciones.</li>
       </ul>
     </div>
 
