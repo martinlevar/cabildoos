@@ -156,7 +156,7 @@ function aviso(msg, tipo = 'ok') {
   let t = $('#ux2-toast')
   if (!t) {
     t = document.createElement('div'); t.id = 'ux2-toast'
-    t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.2);max-width:90vw;text-align:center;transition:opacity .2s'
+    t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483000;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.2);max-width:90vw;text-align:center;transition:opacity .2s'
     document.body.appendChild(t)
   }
   t.style.background = tipo === 'error' ? '#e11d48' : '#141a3c'
@@ -6664,17 +6664,32 @@ function rvConfeti(c) {
   box.appendChild(el); setTimeout(() => el.remove(), 2200)
 }
 
+// compartir-revelacion: menú del teléfono (WhatsApp, X…) si existe; si no, copia el enlace; si tampoco, lo muestra para copiar a mano.
+async function rvCompartir() {
+  if (!rv.q?.id) return
+  const url = `${location.origin}/ux2/#revelacion/${rv.q.id}`
+  const preg = String(rv.q.text || '').trim(), corta = preg.length > 160 ? preg.slice(0, 157).trimEnd() + '…' : preg
+  const text = corta ? `Mirá el resultado en el Cabildo de Venezuela: «${corta}»` : 'Mirá el resultado en el Cabildo de Venezuela'
+  if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+    try { await navigator.share({ title: 'Cabildo de Venezuela', text, url }); return }
+    catch (e) { if (e?.name === 'AbortError') return }
+  }
+  try { await navigator.clipboard.writeText(url); aviso('✓ Enlace copiado. Pegalo donde quieras compartirlo.'); return } catch (e) {}
+  try {
+    const ta = document.createElement('textarea'); ta.value = url; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0'
+    document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove()
+    if (ok) { aviso('✓ Enlace copiado. Pegalo donde quieras compartirlo.'); return }
+  } catch (e) {}
+  aviso('Copiá este enlace: ' + url)
+}
+
 function enlazarRevelacion() {
   const v = $('#rv'); if (!v) return
   v.addEventListener('click', e => {
     const a = e.target.closest('[data-rv]')?.dataset.rv
     if (a === 'cerrar') { e.preventDefault(); return cerrarRevelacion() }
     if (a === 'saltar') { rv.t0 = performance.now() - 1e6; return }
-    if (a === 'compartir') {
-      const url = `${location.origin}${location.pathname}#revelacion/${rv.q.id}`
-      navigator.clipboard?.writeText(url).then(() => aviso('Enlace copiado'), () => aviso('No se pudo copiar el enlace', 'error'))
-      return
-    }
+    if (a === 'compartir') { rvCompartir(); return }   // compartir-revelacion
     if (a === 'ir') { rv.abierto = false; cancelAnimationFrame(rv.raf); $('#rv').hidden = true; document.body.style.overflow = '' }
   })
   document.addEventListener('keydown', e => { if (!v.hidden && e.key === 'Escape') cerrarRevelacion() })
