@@ -7137,3 +7137,47 @@ document.addEventListener('click', e => {
   try { localStorage.setItem('ux2_sim_plegado', b.dataset.simPlegar) } catch (_) {}
   pintarBloques()
 })
+
+// ══════════════════════════════════════════════════════════════
+//  PAUSA POR INACTIVIDAD (pausa-inactividad) — igual que la v1: libera la conexión de quien dejó la pestaña abierta.
+//  8 min sin actividad → aviso; 10 min → se cortan realtime y consultas automáticas y queda «Sesión pausada».
+// ══════════════════════════════════════════════════════════════
+;(() => {
+  const AVISO_MS = 8 * 60e3, PAUSA_MS = 10 * 60e3
+  let tAviso = null, tPausa = null, tCuenta = null, pausada = false
+  const ahoraMirando = () => { try { return vistaActual() === 'auditorio' || !!(typeof mon !== 'undefined' && mon.abierto) } catch (e) { return false } }
+  const aviso = document.createElement('div'); aviso.className = 'ina-aviso'; aviso.hidden = true; aviso.setAttribute('role', 'status')
+  const capa = document.createElement('div'); capa.className = 'ina-capa'; capa.hidden = true; capa.setAttribute('role', 'dialog'); capa.setAttribute('aria-modal', 'true')
+  capa.innerHTML = `<div class="ina-caja"><div class="ina-ico"><svg viewBox="0 0 24 24"><rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/></svg></div>
+    <h2>Sesión pausada</h2><p>Estuviste un rato sin actividad y te desconectamos para dejar lugar a otros ciudadanos.</p>
+    <button class="btn btn-dark ina-volver" type="button">Volver al Cabildo</button></div>`
+  const montar = () => { if (!aviso.isConnected) document.body.append(aviso, capa) }
+  const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  function avisar() {
+    if (pausada) return
+    if (ahoraMirando()) return reiniciar()
+    let s = Math.round((PAUSA_MS - AVISO_MS) / 1000)
+    aviso.innerHTML = `⏰ ¿Seguís ahí? En <b>${mmss(s)}</b> pausamos tu sesión.`; aviso.hidden = false
+    clearInterval(tCuenta); tCuenta = setInterval(() => { s = Math.max(0, s - 1); const b = aviso.querySelector('b'); if (b) b.textContent = mmss(s) }, 1000)
+  }
+  function pausar() {
+    if (pausada) return
+    if (ahoraMirando()) return reiniciar()
+    pausada = true; aviso.hidden = true; capa.hidden = false
+    try { sb.removeAllChannels() } catch (e) {}
+    // Frenar todas las consultas automáticas (setInterval / setTimeout pendientes)
+    const tope = setTimeout(() => {}, 0)
+    for (let i = 1; i <= tope; i++) { clearInterval(i); clearTimeout(i) }
+    capa.querySelector('.ina-volver')?.focus()
+  }
+  function reiniciar() {
+    if (pausada) return
+    clearTimeout(tAviso); clearTimeout(tPausa); clearInterval(tCuenta); aviso.hidden = true
+    tAviso = setTimeout(avisar, AVISO_MS); tPausa = setTimeout(pausar, PAUSA_MS)
+  }
+  capa.addEventListener('click', () => location.reload())
+  ;['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'].forEach(ev => document.addEventListener(ev, reiniciar, { passive: true, capture: true }))
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reiniciar() })
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { montar(); reiniciar() }); else { montar(); reiniciar() }
+  window.__inactividad = { pausar, avisar }   // para pruebas
+})()
