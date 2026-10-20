@@ -14,6 +14,20 @@
   }
 })();
 </script>
+<!-- ANDROID_WELCOME_SCREEN_BEGIN: bienvenida/verificación sin composición de fondo. -->
+<script>
+(() => {
+  const enabled = true;
+  const override = new URLSearchParams(location.search).get('android-welcome-screen');
+  const ua = navigator.userAgent;
+  if (enabled && override !== 'off' && (override === 'on' ||
+      (/Android/i.test(ua) && /Chrome\/|Chromium\//i.test(ua) && !/Firefox\/|Fennec\//i.test(ua)))) {
+    document.documentElement.classList.add('android-welcome-screen');
+    document.documentElement.dataset.welcomeRenderer = 'welcome-screen-1';
+  }
+})();
+</script>
+<!-- ANDROID_WELCOME_SCREEN_END -->
 <title>Cabildo de Venezuela — Democracia digital anónima y verificable</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="manifest" href="/manifest.json">
@@ -59,7 +73,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=auth-screen-2">
+<link rel="stylesheet" href="styles.css?v=welcome-screen-1">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
 </head>
@@ -1277,7 +1291,7 @@
         <label class="vp-label">Nombre completo <span style="color:var(--orange)">*</span></label>
         <input class="vp-input" id="vp-nombre" placeholder="Exactamente como figura en el documento" maxlength="80" oninput="vpSanitizeNombre(this);vpCheckStep1()" autocomplete="off">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="vp-data-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="vp-field">
           <label class="vp-label">Tipo de documento <span style="color:var(--orange)">*</span></label>
           <select class="vp-input" id="vp-tipo-doc" onchange="vpOnTipoDocChange()">
@@ -1290,7 +1304,7 @@
           <input class="vp-input" id="vp-num-doc" placeholder="Sin espacios ni guiones" maxlength="20" oninput="vpSanitizeDoc(this);vpCheckStep1()" autocomplete="off" inputmode="numeric">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="vp-data-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="vp-field">
           <label class="vp-label">Fecha de nacimiento <span style="color:var(--orange)">*</span></label>
           <div class="vp-dob-wrap" id="vp-dob-wrap">
@@ -2811,7 +2825,7 @@
 
 </div><!-- #playroom-overlay -->
 
-<script src="index.js?v=auth-screen-2"></script>
+<script src="index.js?v=welcome-screen-1"></script>
 
 
 <script>
