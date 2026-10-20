@@ -1374,9 +1374,9 @@ function pintarBloques() {
   }
   if (!lista.length) { body.innerHTML = bannerMiBloque() + simTarjeta(q) + '<p class="muted">No hay bloques que coincidan con tu búsqueda.</p>'; return }
   body.innerHTML = bannerMiBloque() + simTarjeta(q) + (estado.tab === 'destacados'
-    ? heroBloque(lista[0]) + lista.slice(1, 4).map(filaBloque).join('') +
-      (lista.length > 4 ? '<button class="btn btn-ghost" data-tab-go="todos">Ver todos los bloques →</button>' : '')
-    : lista.map(filaBloque).join(''))
+    ? lista.slice(0, 2).map(heroBloque).join('') +   // bloques-portadas: 2 destacados con portada; en «Todos», todos con portada
+      (lista.length > 2 ? `<button class="btn btn-ghost b-ver-todos" data-tab-go="todos">Ver todos los bloques (${fmtNum(lista.length)}) →</button>` : '')
+    : lista.map(heroBloque).join(''))
 }
 
 // ══ bloque-simulador: Bloque Simulador — un bloque de práctica con Claria como anfitriona. Es un tutorial guiado:
@@ -1384,8 +1384,9 @@ function pintarBloques() {
 const SIM_IMG = '/ux2/marcas/claria.svg'
 function simTarjeta(q) {
   if (q && !['simulador', 'práctica', 'practica', 'claria', 'tutorial'].some(w => w.includes(q) || q.includes(w))) return ''
+  if (!q && simPlegado()) return `<button class="sim-plegada" type="button" data-sim-plegar="0"><img src="${SIM_IMG}" alt=""><span><b>Bloque Simulador</b><small>Practicá cómo funciona un bloque</small></span><em>Desplegar simulador</em></button>`
   return `<article class="sim-card">
-    <div class="sim-cab"><svg class="sim-dots" viewBox="0 0 160 80" aria-hidden="true"><g fill="#ffffff"><circle cx="20" cy="70" r="4"/><circle cx="34" cy="48" r="4"/><circle cx="54" cy="32" r="4"/><circle cx="80" cy="26" r="4"/><circle cx="106" cy="32" r="4"/><circle cx="126" cy="48" r="4"/><circle cx="140" cy="70" r="4"/><circle cx="44" cy="70" r="4"/><circle cx="56" cy="54" r="4"/><circle cx="80" cy="48" r="4"/><circle cx="104" cy="54" r="4"/><circle cx="116" cy="70" r="4"/></g><g fill="#f5c518"><circle cx="80" cy="26" r="4"/><circle cx="56" cy="54" r="4"/><circle cx="116" cy="70" r="4"/></g></svg><img src="${SIM_IMG}" alt="Claria, la anfitriona del simulador"><span class="sim-tag">Simulador · Práctica</span></div>
+    <div class="sim-cab"><button class="sim-ocultar" type="button" data-sim-plegar="1" title="Ocultar el simulador">Ocultar</button><svg class="sim-dots" viewBox="0 0 160 80" aria-hidden="true"><g fill="#ffffff"><circle cx="20" cy="70" r="4"/><circle cx="34" cy="48" r="4"/><circle cx="54" cy="32" r="4"/><circle cx="80" cy="26" r="4"/><circle cx="106" cy="32" r="4"/><circle cx="126" cy="48" r="4"/><circle cx="140" cy="70" r="4"/><circle cx="44" cy="70" r="4"/><circle cx="56" cy="54" r="4"/><circle cx="80" cy="48" r="4"/><circle cx="104" cy="54" r="4"/><circle cx="116" cy="70" r="4"/></g><g fill="#f5c518"><circle cx="80" cy="26" r="4"/><circle cx="56" cy="54" r="4"/><circle cx="116" cy="70" r="4"/></g></svg><img src="${SIM_IMG}" alt="Claria, la anfitriona del simulador"><span class="sim-tag">Simulador · Práctica</span></div>
     <div class="sim-cuerpo">
       <h3>Bloque Simulador</h3>
       <p>Probá cómo funciona un bloque, paso a paso y sin consecuencias reales.</p>
@@ -7127,4 +7128,12 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-mua-cerrar]')) { $('#mu-archivo').hidden = true; if (mua.dia) { mua.dia = null; pintarMuroDia() } return }
   const d = e.target.closest('[data-mua-dia]'); if (d) return muaVerDia(d.dataset.muaDia)
   if (e.target.closest('[data-mua-hoy]')) { mua.dia = null; $('#mu-escribir').innerHTML = ''; muaPintarDias(); pintarMuroDia() }
+})
+
+// ── Simulador plegable (bloques-portadas) ──
+function simPlegado() { try { return localStorage.getItem('ux2_sim_plegado') === '1' } catch (e) { return false } }
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-sim-plegar]'); if (!b) return
+  try { localStorage.setItem('ux2_sim_plegado', b.dataset.simPlegar) } catch (_) {}
+  pintarBloques()
 })
