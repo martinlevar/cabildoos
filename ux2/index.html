@@ -326,8 +326,10 @@ try { if (/Android/i.test(navigator.userAgent || '')) document.documentElement.c
     <section class="view" data-view="muro" hidden id="mu-vista">
       <header class="view-head">
         <div><h1>Muro del día</h1><p id="mu-sub">Una opinión por butaca, por día. Lo que pasa hoy en el Cabildo, en primera persona.</p></div>
-        <div class="mu-reloj" id="mu-reloj" title="El Muro se reinicia todos los días a las 3:00 (hora de Venezuela)"></div>
+        <div class="mua-acc"><button class="btn mua-btn" id="mua-btn" hidden><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Muros anteriores</button>
+        <div class="mu-reloj" id="mu-reloj" title="El Muro se reinicia todos los días a las 3:00 (hora de Venezuela)"></div></div>
       </header>
+      <div id="mu-archivo" hidden></div><!-- muros-anteriores -->
       <div id="mu-escribir"></div>
       <div class="mu-barra">
         <span id="mu-cuenta" class="muted"></span>

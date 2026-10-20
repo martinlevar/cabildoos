@@ -5868,6 +5868,7 @@ function enlazarAprende() {
 //  El servidor pone la butaca, el alias (solo si es público) y el color; acá no se pide user_id ajeno.
 // ══════════════════════════════════════════════════════════════
 const mu = { posts: [], mios: new Set(), cargado: false, canal: null, abierto: null, orden: 'recientes', enviando: false }
+const mua = { dias: null, dia: null, posts: [] }   // muros-anteriores
 const diaMuro = () => new Date(Date.now() - 7 * 3600e3).toISOString().slice(0, 10)
 const finDiaMuro = () => { const d = new Date(Date.now() - 7 * 3600e3); d.setUTCHours(0, 0, 0, 0); return d.getTime() + 31 * 3600e3 }
 const miPostHoy = () => mu.posts.find(p => p.seat_number === estado.butaca)
@@ -5925,6 +5926,8 @@ function tarjetaMuro(p) {
 function pintarMuroDia() {
   const esc_ = $('#mu-escribir'), grid = $('#mu-grid'); if (!grid) return
   tickMuro()
+  const muaB = $('#mua-btn'); if (muaB) muaB.hidden = !estado.user   // muros-anteriores
+  if (mua.dia) return muaPintar()
   const hoy = new Date(Date.now() - 7 * 3600e3)
   $('#mu-sub').textContent = `${hoy.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).replace(/^./, c => c.toUpperCase())} · Una opinión por butaca, por día.`
   if (!mu.cargado) { grid.innerHTML = '<p class="muted">Cargando…</p>'; return }
@@ -5940,7 +5943,7 @@ function pintarMuroDia() {
       <div class="mu-caja-cuerpo">
         <label for="mu-txt" class="mu-caja-tit">¿Qué pensás hoy, <b>${esc(miAlias)}</b>?</label>
         <textarea id="mu-txt" maxlength="280" rows="3" placeholder="Tu opinión del día. Tenés una sola: que valga."></textarea>
-        <div class="mu-caja-pie"><small>Publicás como <b>${esc(miAlias)}</b>${ident.show_alias ? '' : ' (tu alias está oculto)'} · se ve hasta mañana a las 3:00</small>
+        <div class="mu-caja-pie"><small>Publicás como <b>${esc(miAlias)}</b>${ident.show_alias ? '' : ' (tu alias está oculto)'} · mañana a las 3:00 pasa a Muros anteriores</small>
           <span class="mu-cont" id="mu-cont">280</span><button class="btn btn-dark" id="mu-publicar" disabled>Publicar</button></div>
       </div></div>`
   // Lista
@@ -7070,3 +7073,58 @@ iniciar()
     s.classList.remove('anim'); void s.offsetWidth; s.classList.add('anim')
   }, ESPERA)
 })()
+
+// ── Muros anteriores (muros-anteriores): calendario de días pasados, solo lectura ──
+const muaFecha = (d, o) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-VE', { timeZone: 'UTC', ...o })
+async function muaAbrir() {
+  const box = $('#mu-archivo'); box.hidden = false
+  if (!mua.dias) {
+    box.innerHTML = '<div class="card mua-caja"><p class="muted">Cargando muros anteriores…</p></div>'
+    const { data } = await sb.rpc('v2_muro_dias').then(r => r, () => ({ data: null }))
+    mua.dias = Array.isArray(data) ? data : []
+  }
+  muaPintarDias()
+  box.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+}
+function muaPintarDias() {
+  const box = $('#mu-archivo'); if (!box || box.hidden) return
+  if (!mua.dias?.length) { box.innerHTML = '<div class="card mua-caja"><div class="mua-cab"><b>Muros anteriores</b><button class="btn btn-ghost btn-sm" data-mua-cerrar>Cerrar</button></div><p class="muted">Todavía no hay muros anteriores.</p></div>'; return }
+  const meses = new Map()
+  mua.dias.forEach(d => { const k = String(d.dia).slice(0, 7); if (!meses.has(k)) meses.set(k, []); meses.get(k).push(d) })
+  box.innerHTML = `<div class="card mua-caja"><div class="mua-cab"><div><b>Muros anteriores</b><small class="muted">Elegí un día para leer lo que se dijo.</small></div><button class="btn btn-ghost btn-sm" data-mua-cerrar>Cerrar</button></div>` +
+    [...meses].map(([k, ds]) => `<div class="mua-mes"><small>${esc(muaFecha(k + '-15', { month: 'long', year: 'numeric' }))}</small><div class="mua-dias">${ds.map(d =>
+      `<button class="mua-dia ${mua.dia === d.dia ? 'on' : ''}" data-mua-dia="${esc(d.dia)}" title="${esc(muaFecha(d.dia, { weekday: 'long', day: 'numeric', month: 'long' }))} · ${fmtNum(d.n)} ${d.n === 1 ? 'voz' : 'voces'}"><span>${esc(muaFecha(d.dia, { weekday: 'short' }).replace('.', ''))}</span><b>${Number(String(d.dia).slice(8))}</b><i>${fmtNum(d.n)}</i></button>`).join('')}</div></div>`).join('') + '</div>'
+}
+async function muaVerDia(dia) {
+  mua.dia = dia; mua.posts = []; muaPintarDias()
+  $('#mu-grid').innerHTML = '<p class="muted">Cargando…</p>'
+  const { data } = await sb.rpc('v2_muro_dia', { p_dia: dia }).then(r => r, () => ({ data: null }))
+  if (mua.dia !== dia) return
+  mua.posts = Array.isArray(data) ? data : []
+  pintarMuroDia()
+  $('#mu-escribir')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+}
+function muaTarjeta(p) {
+  const c = colorDe(p.card_color, p.seat_number), rs = p.muro_replies || []
+  const hora = new Date(p.created_at).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+  return `<article class="mu-card mua-card ${p.seat_number === estado.butaca ? 'mia' : ''}" style="--c:${c}">
+    <header>${muAv(p.alias, p.card_color, p.seat_number)}<div><b>${p.seat_number === estado.butaca ? 'Vos' : esc(p.alias)}</b><small>#${p.seat_number} · ${hora}</small></div></header>
+    <p>${esc(p.body)}</p>
+    <footer><span class="mu-like mua-like"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>${fmtNum(p.likes_count || 0)}</span></span>
+      ${rs.length ? `<details class="mua-resp"><summary>${fmtNum(rs.length)} ${rs.length === 1 ? 'respuesta' : 'respuestas'}</summary>${rs.map(r => `<div class="mu-r">${muAv(r.alias, r.card_color, r.seat_number)}<div><div class="mu-r-cab"><b>${r.seat_number === estado.butaca ? 'Vos' : esc(r.alias)}</b><small>#${r.seat_number}</small></div><p>${esc(r.body)}</p></div></div>`).join('')}</details>` : ''}</footer>
+  </article>`
+}
+function muaPintar() {
+  const grid = $('#mu-grid'), f = muaFecha(mua.dia, { weekday: 'long', day: 'numeric', month: 'long' })
+  $('#mu-sub').textContent = `Muro del ${f} · solo lectura`
+  $('#mu-escribir').innerHTML = `<div class="card mu-caja mu-caja-info mua-banda"><p>Estás leyendo el <b>Muro del ${esc(f)}</b>: ${fmtNum(mua.posts.length)} ${mua.posts.length === 1 ? 'voz' : 'voces'}. Es solo lectura.</p><button class="btn btn-dark" data-mua-hoy>Volver al muro de hoy</button></div>`
+  $('#mu-cuenta').textContent = ''
+  const lista = [...mua.posts].sort(mu.orden === 'apoyadas' ? (a, b) => (b.likes_count || 0) - (a.likes_count || 0) || new Date(b.created_at) - new Date(a.created_at) : (a, b) => new Date(b.created_at) - new Date(a.created_at))
+  grid.innerHTML = lista.length ? lista.map(muaTarjeta).join('') : '<p class="muted">Ese día no quedaron publicaciones.</p>'
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('#mua-btn')) { const b = $('#mu-archivo'); if (!b.hidden && !mua.dia) { b.hidden = true; return } return muaAbrir() }
+  if (e.target.closest('[data-mua-cerrar]')) { $('#mu-archivo').hidden = true; if (mua.dia) { mua.dia = null; pintarMuroDia() } return }
+  const d = e.target.closest('[data-mua-dia]'); if (d) return muaVerDia(d.dataset.muaDia)
+  if (e.target.closest('[data-mua-hoy]')) { mua.dia = null; $('#mu-escribir').innerHTML = ''; muaPintarDias(); pintarMuroDia() }
+})
