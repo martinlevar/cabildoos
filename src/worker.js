@@ -55,7 +55,55 @@ async function v2Abierta(env, url) {
 
 const redirigir = (destino, status = 302) => new Response(null, { status, headers: { Location: destino, 'Cache-Control': 'no-store' } })
 
+// ─── Vigía externo (vigia-externo) ───
+// Cada 2 min (cron en wrangler.prod.toml) prueba Supabase desde afuera y avisa en #alertas-infra si no responde
+// o si el vigía interno (pg_cron) dejó de correr. Cubre el caso en que la base no puede disparar sus propias alertas.
+// Necesita el secreto SLACK_BOT_TOKEN y el KV VIGIA (guarda si ya avisó); si falta alguno, no hace nada.
+async function vigiaProbar(env) {
+  const h = { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}` }
+  const fallas = []
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/infra_latido`, { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(15000) })
+    if (!r.ok) fallas.push(`La API de Supabase respondió con error ${r.status}.`)
+    else {
+      const t = Date.parse(await r.json())
+      const min = Math.round((Date.now() - t) / 60000)
+      if (!isNaN(t) && min > 6) fallas.push(`El vigía interno no corre desde hace ${min} min: la base no está ejecutando sus tareas programadas.`)
+    }
+  } catch (e) { fallas.push('La API de Supabase no respondió en 15 s.') }
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/auth/v1/health`, { headers: h, signal: AbortSignal.timeout(10000) })
+    if (r.status >= 500) fallas.push(`El login respondió con error ${r.status}.`)
+  } catch (e) { fallas.push('El login no respondió en 10 s.') }
+  return fallas
+}
+
+async function vigiaSlack(env, texto) {
+  const h = { Authorization: `Bearer ${env.SLACK_BOT_TOKEN}` }
+  const l = await (await fetch('https://slack.com/api/conversations.list', { method: 'POST', headers: { ...h, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ types: 'public_channel,private_channel', exclude_archived: 'true', limit: '1000' }) })).json()
+  const canal = (l.channels || []).find(c => c.name === 'alertas-infra')?.id
+  if (!canal) return
+  await fetch('https://slack.com/api/chat.postMessage', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify({ channel: canal, text: texto, unfurl_links: false }) })
+}
+
+async function vigiaExterno(env) {
+  if (!env.SLACK_BOT_TOKEN || !env.VIGIA || !env.SUPABASE_KEY) return
+  let fallas = await vigiaProbar(env)
+  if (fallas.length) { await new Promise(r => setTimeout(r, 20000)); fallas = await vigiaProbar(env) }   // confirmar: no avisar por un parpadeo
+  let e = { caido: false, desde: 0, aviso: 0 }
+  try { e = { ...e, ...JSON.parse(await env.VIGIA.get('estado') || '{}') } } catch (_) {}
+  const ahora = Date.now(), min = () => Math.max(1, Math.round((ahora - e.desde) / 60000))
+  let texto = null
+  if (fallas.length && !e.caido) { e = { caido: true, desde: ahora, aviso: ahora }; texto = '<!channel> :red_circle: *Supabase con problemas* (vigía externo)\n' + fallas.map(f => '• ' + f).join('\n') + '\nEl sitio y el login pueden no funcionar. Revisá el panel de Supabase.' }
+  else if (fallas.length && ahora - e.aviso > 30 * 60000) { e.aviso = ahora; texto = `:red_circle: Supabase *sigue* con problemas (hace ${min()} min).\n` + fallas.map(f => '• ' + f).join('\n') }
+  else if (!fallas.length && e.caido) { texto = `:white_check_mark: Supabase volvió a responder (vigía externo). Estuvo con problemas ~${min()} min.`; e = { caido: false, desde: 0, aviso: 0 } }
+  if (!texto) return
+  await env.VIGIA.put('estado', JSON.stringify(e))
+  await vigiaSlack(env, texto)
+}
+
 export default {
+  async scheduled(event, env, ctx) { ctx.waitUntil(vigiaExterno(env).catch(e => console.error('vigía externo', e))) },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
