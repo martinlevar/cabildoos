@@ -9657,6 +9657,10 @@ function _introLater(callback, delay) {
   setTimeout(() => {
     if (document.documentElement.classList.contains('android-auth-screen') &&
         (generation !== _introGeneration || document.getElementById('auth-overlay').classList.contains('open'))) return
+    if (document.documentElement.classList.contains('android-welcome-screen') &&
+        (generation !== _introGeneration || document.getElementById('verify-onboard')?.classList.contains('active') ||
+         document.getElementById('verify-overlay')?.classList.contains('open'))) return
+
     callback()
   }, delay)
 }
@@ -9820,6 +9824,13 @@ function _introDrawFrame() {
 }
 
 function _startIntroAnim(canvasId = 'intro-canvas', triggerReveal = false) {
+  // Una bienvenida estática no adquiere RAF; tampoco se arranca detrás de verificación.
+  if (document.documentElement.classList.contains('android-welcome-screen') &&
+      (canvasId === 'vo-canvas' || document.getElementById('verify-overlay')?.classList.contains('open'))) {
+    _stopIntroAnim()
+    return
+  }
+
   if (document.documentElement.classList.contains('android-auth-screen') &&
       document.getElementById('auth-overlay').classList.contains('open')) {
     _stopIntroAnim()
@@ -12705,3 +12716,40 @@ setTimeout(function _introHeroRespaldo() {
   const hero = document.getElementById('intro-hero')
   if (hero && !hero.classList.contains('visible')) hero.classList.add('visible')
 }, 4500)
+
+// ANDROID_WELCOME_SCREEN_BEGIN — observa estado existente, sin otra pila modal.
+;(function androidWelcomeScreen() {
+  if (!document.documentElement.classList.contains('android-welcome-screen')) return
+  const overlay = document.getElementById('verify-overlay')
+  const panel = document.getElementById('verify-panel')
+  if (!overlay || !panel) return
+  let opened = false, returnTo = null, returnScroll = 0
+  panel.tabIndex = -1
+  panel.setAttribute('role', 'region')
+  panel.setAttribute('aria-label', 'Verificación de identidad')
+  const sync = () => {
+    const next = overlay.classList.contains('open')
+    overlay.inert = !next
+    if (next === opened) return
+    opened = next
+    if (next) {
+      returnTo = document.activeElement
+      returnScroll = window.scrollY
+      _stopIntroAnim()
+      window.scrollTo(0, 0)
+      panel.focus({ preventScroll: true })
+    } else {
+      if (overlay.contains(document.activeElement)) document.activeElement.blur()
+      const target = returnTo?.isConnected && returnTo.getClientRects().length
+        ? returnTo : document.querySelector('.screen.active button')
+      target?.focus({ preventScroll: true })
+      window.scrollTo(0, returnScroll)
+      returnTo = null
+      if (document.getElementById('intro')?.classList.contains('active') && !document.hidden)
+        _startIntroAnim('intro-canvas', true)
+    }
+  }
+  new MutationObserver(sync).observe(overlay, { attributes: true, attributeFilter: ['class'] })
+  sync()
+})();
+// ANDROID_WELCOME_SCREEN_END
