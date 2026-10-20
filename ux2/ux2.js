@@ -4600,10 +4600,10 @@ function renderWordCloud(entities, hours, total, generado, aviso) {
     const escala = Math.max(8, W / 50)
     WordCloud(canvas, {
       list: entradas.map(e => [e.word, e.weight]),
-      weightFactor: s => Math.max(12, s * escala),
+      weightFactor: s => s * escala,   // nube-congela: sin piso; lo que no entra se achica bajo minSize y se descarta
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif', fontWeight: 'bold',
       color: w => colorMap[w] || sentimentColor.neu, rotateRatio: 0.1, backgroundColor: 'transparent',
-      gridSize: Math.round(W / 55), drawOutOfBound: false, shrinkToFit: true, minSize: 10, wait: 0,
+      gridSize: Math.round(W / 55), drawOutOfBound: false, shrinkToFit: true, minSize: 10, wait: 0, abortThreshold: 400,
     })
   }
   tabs.querySelectorAll('.cloud-tab').forEach(b => b.addEventListener('click', () => {
@@ -4628,7 +4628,7 @@ function enlazarEstadisticas() {
   v.addEventListener('pointerout', e => { if (e.target.closest('[data-tip]')) tip.hidden = true })
   v.addEventListener('focusin', e => { const t = e.target.closest('[data-tip]'); if (!t) return; const r = t.getBoundingClientRect(), z = parseFloat(getComputedStyle(document.body).zoom) || 1; tip.textContent = t.dataset.tip; tip.hidden = false; tip.style.left = r.left / z + 'px'; tip.style.top = r.bottom / z + 6 + 'px' })
   v.addEventListener('focusout', () => { tip.hidden = true })
-  let rz; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => { if (est.nube && vistaActual() === 'estadisticas') renderWordCloud(est.nube.entities || [], est.nube.horas || est.horas, est.nube.total || 0, est.nube.generado_at, est.nube.error) }, 250) }).observe($('#cloud-wrap'))
+  let rz, anchoNube = 0; new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(() => { const a = $('#cloud-wrap').offsetWidth; if (a === anchoNube) return; anchoNube = a; if (est.nube && vistaActual() === 'estadisticas') renderWordCloud(est.nube.entities || [], est.nube.horas || est.horas, est.nube.total || 0, est.nube.generado_at, est.nube.error) }, 250) }).observe($('#cloud-wrap'))
 }
 
 // Plegar / desplegar el menú izquierdo o el panel de bloques (se recuerda en este navegador)
