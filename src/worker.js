@@ -102,6 +102,26 @@ async function vigiaExterno(env) {
   await vigiaSlack(env, texto)
 }
 
+// ─── bloques-publicos: datos para la vista previa de /b/<slug> (WhatsApp, X…) ───
+// Solo lo que bloque_publico ya devuelve sin sesión. Timeout corto y caché de 5 min para no cargar la base.
+const _limpiarMeta = s => String(s ?? '').replace(/[<>"&\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200)
+async function bloqueMeta(env, url, slug, ctx) {
+  const clave = new Request(`${url.origin}/__bloque-meta/${slug}`)
+  try { const c = await caches.default.match(clave); if (c) return await c.json() } catch (e) {}
+  let d = null
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/bloque_publico`, {
+      method: 'POST', headers: { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_slug: slug }), signal: AbortSignal.timeout(1500),
+    })
+    if (r.ok) d = await r.json()
+  } catch (e) { return { error: true } }
+  const img = /^https:\/\/ayxscmxmnoguktfgveud\.supabase\.co\/storage\/v1\/object\/public\//.test(d?.imagen_url || '') ? d.imagen_url : 'https://cabildodevenezuela.com/logo-cabildo.jpg'
+  const meta = d ? { ok: true, nombre: _limpiarMeta(d.nombre), lema: _limpiarMeta(d.lema), miembros: Number(d.miembros) || 0, anfitrion: _limpiarMeta(d.anfitrion_nombre), img } : { ok: false }
+  try { ctx.waitUntil(caches.default.put(clave, new Response(JSON.stringify(meta), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=300' } }))) } catch (e) {}
+  return meta
+}
+
 export default {
   async scheduled(event, env, ctx) { ctx.waitUntil(vigiaExterno(env).catch(e => console.error('vigía externo', e))) },
   async fetch(request, env, ctx) {
@@ -130,8 +150,12 @@ export default {
       if (!esRutaV2 && abierta) return redirigir('/ux2/' + url.search);
     }
 
+    // ─── bloques-publicos: /b/<slug> sirve la página pública del bloque ───
+    const mBloque = url.pathname.match(/^\/b\/([a-z0-9-]{1,80})\/?$/);
+    if (url.pathname === '/b' || (url.pathname.startsWith('/b/') && !mBloque)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+
     // ─── Static assets ───
-    const assetResponse = await env.ASSETS.fetch(request);
+    const assetResponse = mBloque ? await env.ASSETS.fetch(new URL('/bloque', request.url).toString()) : await env.ASSETS.fetch(request);
 
     // SPA fallback: rutas como /auth/recovery no son archivos → servir index.html
     const targetResponse = (assetResponse.status === 404)
@@ -146,7 +170,7 @@ export default {
 
     // La v2 y la sala de prensa (/press, pública y con link compartido) llevan la política estricta con nonce.
     const esV2 = url.pathname === '/ux2' || url.pathname.startsWith('/ux2/') || url.pathname === '/press' || url.pathname === '/press.html'
-      || url.pathname === '/verificacion-manual' || url.pathname === '/verificacion-manual.html';   // fotos de documentos: política estricta
+      || url.pathname === '/verificacion-manual' || url.pathname === '/verificacion-manual.html' || !!mBloque;   // fotos de documentos: política estricta
     const nonce = esV2 ? btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16)))) : '';
 
     const envScript = `<script${esV2 ? ` nonce="${nonce}"` : ''}>window.__ENV=${JSON.stringify({
@@ -162,10 +186,22 @@ export default {
         },
       });
     if (esV2) rw = rw.on('script', { element(el) { el.setAttribute('nonce', nonce) } });
+    let bmeta = null;
+    if (mBloque) {
+      bmeta = await bloqueMeta(env, url, mBloque[1], ctx);
+      if (bmeta?.ok) {
+        const titulo = `${bmeta.nombre} · Bloque en el Cabildo de Venezuela`;
+        const desc = `${bmeta.lema ? bmeta.lema + ' · ' : ''}${bmeta.miembros.toLocaleString('es-VE')} ciudadanos verificados. Anfitrión: ${bmeta.anfitrion}. Sumate en el Cabildo de Venezuela.`;
+        const pon = (sel, v) => { rw = rw.on(sel, { element(el) { el.setAttribute('content', v) } }) };
+        rw = rw.on('title', { element(el) { el.setInnerContent(titulo) } });
+        pon('meta[name="description"]', desc); pon('meta[property="og:title"]', titulo); pon('meta[property="og:description"]', desc);
+        pon('meta[property="og:image"]', bmeta.img); pon('meta[property="og:url"]', `https://cabildodevenezuela.com/b/${mBloque[1]}`);
+      }
+    }
     const out = rw.transform(targetResponse);
     if (!esV2) return out;
 
-    const res = new Response(out.body, out);
+    const res = new Response(out.body, mBloque && bmeta && bmeta.ok === false ? { status: 404, headers: out.headers } : out);
     res.headers.set('Content-Security-Policy', cspV2(env, nonce));
     res.headers.set('X-Content-Type-Options', 'nosniff');
     res.headers.set('X-Frame-Options', 'DENY');
