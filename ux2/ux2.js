@@ -179,6 +179,18 @@ async function cargarUsuario() {
   estado.cargado = true
   pintarUsuario()
   cargarNotificaciones()
+  if (estado.butaca) cartelButacaPrueba()
+}
+// butaca-prueba: butacas de testing; sus votos y apoyos no suman (lo garantiza la base, no este cartel)
+async function cartelButacaPrueba() {
+  try {
+    const { data } = await sb.rpc('v2_butaca_prueba')
+    if (data !== true || document.getElementById('cartel-prueba')) return
+    const c = document.createElement('div')
+    c.id = 'cartel-prueba'; c.className = 'cartel-prueba'; c.setAttribute('role', 'status')
+    c.innerHTML = '<b>Butaca de prueba</b><span>Esta butaca está designada para usuarios de testing y su uso está controlado para que no afecte las estadísticas generales del sistema: sus votos y apoyos no suman a los resultados.</span>'
+    const m = document.getElementById('main'); if (m) m.prepend(c)
+  } catch (e) {}
 }
 
 function pintarUsuario() {
