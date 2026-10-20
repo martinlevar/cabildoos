@@ -137,6 +137,11 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 /* ── Contenido ──────────────────────────────────────── */
 .main { padding: 28px 28px 36px; min-width: 0; }
+/* butaca-prueba */
+.cartel-prueba { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin: 0 0 18px; padding: 12px 16px; border-radius: 14px; background: #FFF7DD; border: 1px solid #F1DE9C; color: #3a3420; font-size: 14px; line-height: 1.5; }
+.cartel-prueba b { color: #12162e; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cartel-prueba { background: #2a2414; border-color: #5c4d1e; color: #efe3bf; } :root:not([data-theme="light"]) .cartel-prueba b { color: #fff; } }
+:root[data-theme="dark"] .cartel-prueba { background: #2a2414; border-color: #5c4d1e; color: #efe3bf; } :root[data-theme="dark"] .cartel-prueba b { color: #fff; }
 .hero { display: grid; grid-template-columns: 1fr 270px; gap: 24px; align-items: center; margin-bottom: 24px; }
 .hero h1 { font-size: clamp(32px, 4vw, 52px); line-height: 1.02; letter-spacing: -.035em; margin: 0 0 10px; font-weight: 800; }
 .hero h1 span { color: var(--accent); }
