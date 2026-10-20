@@ -7732,3 +7732,65 @@ html.android-auth-screen #auth-overlay #auth-panel {
 .vp-soporte { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.08); font-size: 12px; line-height: 1.5; color: rgba(255,255,255,.5); text-align: center; }
 .vp-soporte a { color: #C9A227; font-weight: 600; text-decoration: none; word-break: break-all; }
 .vp-soporte a:hover { text-decoration: underline; }
+
+/* ANDROID_WELCOME_SCREEN_BEGIN — solo presentación; no cambia verificación remota. */
+html.android-welcome-screen { --welcome-screen-bg: #040C1E; --welcome-panel-bg: #0D1B2E; }
+html.android-welcome-screen:has(#verify-onboard.active),
+html.android-welcome-screen:has(#verify-onboard.active) body,
+html.android-welcome-screen:has(#verify-overlay.open),
+html.android-welcome-screen:has(#verify-overlay.open) body {
+  height: auto; min-height: 100%; overflow: auto;
+  background: var(--welcome-screen-bg);
+}
+/* Conservar otras capas explícitamente abiertas; retirar hermanos inactivos. */
+html.android-welcome-screen:has(#verify-onboard.active) body > :not(.screen):not(.open):not(.active):not(script):not(style):not(#toast):not(#idle-overlay),
+html.android-welcome-screen:has(#verify-onboard.active) body > .screen:not(#verify-onboard),
+html.android-welcome-screen:has(#verify-overlay.open) body > :not(#verify-overlay):not(.open):not(.active):not(script):not(style):not(#toast):not(#idle-overlay),
+html.android-welcome-screen:has(#verify-overlay.open) body > .screen {
+  display: none !important;
+}
+html.android-welcome-screen #verify-onboard.active {
+  position: static; inset: auto; min-height: 100vh; min-height: 100dvh;
+  height: auto; overflow: visible; opacity: 1; transition: none;
+  background: var(--welcome-screen-bg);
+}
+html.android-welcome-screen #vo-canvas,
+html.android-welcome-screen #verify-onboard .vo-glow { display: none; }
+html.android-welcome-screen #verify-onboard .vo-topbar {
+  position: static; display: flex; justify-content: space-between;
+  padding: 16px 20px; gap: 12px;
+}
+html.android-welcome-screen #verify-onboard .vo-ui {
+  position: static; inset: auto; display: block; overflow: visible;
+  padding: 0 16px 24px;
+}
+html.android-welcome-screen #verify-onboard .vo-card {
+  width: min(520px, 100%); box-sizing: border-box; margin: 0 auto;
+  padding: 28px 20px; background: var(--welcome-panel-bg);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: none; transform: none;
+}
+html.android-welcome-screen #verify-overlay:not(.open) { display: none; }
+html.android-welcome-screen #verify-overlay.open {
+  position: static; inset: auto; display: block;
+  min-height: 100vh; min-height: 100dvh; height: auto;
+  box-sizing: border-box; padding: 16px; overflow: visible;
+  opacity: 1; transition: none; background: var(--welcome-panel-bg);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+html.android-welcome-screen #verify-overlay #verify-panel {
+  width: min(560px, 100%); box-sizing: border-box; margin: 0 auto;
+  max-height: none; overflow: visible; padding: 36px 20px 24px;
+  transform: none; transition: none; box-shadow: none;
+  background: var(--welcome-panel-bg);
+}
+html.android-welcome-screen #verify-panel .vp-step { animation: none; }
+html.android-welcome-screen #verify-panel:focus-visible { outline: 2px solid #ff9b55; outline-offset: -3px; }
+html.android-welcome-screen #verify-panel .vp-field { min-width: 0; }
+html.android-welcome-screen #verify-panel .vp-input,
+html.android-welcome-screen #verify-panel .vp-dob-sel { min-width: 0; box-sizing: border-box; }
+@media (max-width: 600px) {
+  html.android-welcome-screen #verify-panel .vp-data-row { grid-template-columns: minmax(0, 1fr) !important; }
+  html.android-welcome-screen #verify-panel .vp-dob-wrap { grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1fr); }
+}
+/* ANDROID_WELCOME_SCREEN_END */
