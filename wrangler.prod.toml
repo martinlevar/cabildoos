@@ -9,6 +9,10 @@ routes = [
   { pattern = "cabildodevenezuela.com", custom_domain = true }
 ]
 
+# vigia-externo: prueba Supabase cada 2 min y avisa en Slack (ver vigiaExterno en src/worker.js)
+[triggers]
+crons = ["*/2 * * * *"]
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
