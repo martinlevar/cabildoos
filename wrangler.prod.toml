@@ -13,6 +13,10 @@ routes = [
 [triggers]
 crons = ["*/2 * * * *"]
 
+[[kv_namespaces]]
+binding = "VIGIA"
+id = "bea870dd2a004f569d91c1c5044e4a9b"
+
 [assets]
 directory = "./dist"
 binding = "ASSETS"
