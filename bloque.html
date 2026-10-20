@@ -124,14 +124,14 @@ a { color: inherit; }
         <div style="display:grid;gap:18px;align-content:start">
           <section class="card"><div class="datos">
             <div class="dato"><b>${fmt(b.miembros)}</b><span>${b.miembros === 1 ? 'ciudadano verificado' : 'ciudadanos verificados'}</span></div>
-            <div class="dato"><b>${fmt(b.ideas)}</b><span>ideas internas</span></div>
+            ${b.ideas == null ? '' : `<div class="dato"><b>${fmt(b.ideas)}</b><span>ideas internas</span></div>`}<!-- bloques-directorio: el anfitrión puede ocultarlo -->
             <div class="dato"><b>${esc(desde) || '—'}</b><span>activo desde</span></div>
           </div></section>
           ${b.descripcion ? `<section class="card"><h2>Qué es este bloque</h2><p class="desc">${esc(b.descripcion)}</p></section>` : ''}
-          <section class="card"><h2>Propuestas del bloque</h2>${(b.propuestas || []).length ? `<ul class="props">${b.propuestas.map(p => {
+          ${b.propuestas === null ? '' : `<section class="card"><h2>Propuestas del bloque</h2>${(b.propuestas || []).length ? `<ul class="props">${b.propuestas.map(p => {
               const [t, c] = EST[p.estado] || ['', '']
               return `<li><p>${esc(p.texto)}</p><small>${t ? `<span class="badge ${c}">${t}</span>` : ''}${fmt(p.apoyos)} apoyos</small></li>` }).join('')}</ul>`
-            : '<p style="margin:0;color:var(--muted);font-size:14.5px">Todavía no publicó propuestas en el Cabildo.</p>'}</section>
+            : '<p style="margin:0;color:var(--muted);font-size:14.5px">Todavía no publicó propuestas en el Cabildo.</p>'}</section>`}
         </div>
         <div style="display:grid;gap:18px;align-content:start">
           <section class="card sumate"><h2>Sumate a este bloque</h2>

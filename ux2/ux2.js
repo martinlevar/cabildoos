@@ -27,13 +27,14 @@ const ICONOS = {
   noticias:     '<path d="M5 4h12v16H7a2 2 0 0 1-2-2z"/><path d="M17 8h2v10a2 2 0 0 1-2 2M8 8h6M8 12h6M8 16h4"/>',
   auditorio:    '<circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>',
   bloque:       '<circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/>',
+  bloques:      '<rect x="3" y="4" width="7" height="7" rx="2"/><rect x="14" y="4" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',   // bloques-directorio
   muro:         '<path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/>',
   playroom:     '<path d="M6 9h12a3 3 0 0 1 3 3v3a2 2 0 0 1-3.5 1.3L15 14H9l-2.5 2.3A2 2 0 0 1 3 15v-3a3 3 0 0 1 3-3z"/><path d="M8 11v2M7 12h2M16 12h.01"/>',
   funding:     '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/><path d="M3 21h18"/>',
   escalinatas: '<path d="M3 20h18M6 16h15M9 12h12M12 8h9M15 4h6"/>',
 }
 const SECCIONES = [
-  ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['bloque', 'Mi bloque'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
+  ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['bloque', 'Mi bloque'], ['bloques', 'Bloques'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
   ['propuestas', 'Propuestas'], ['ciudadanos', 'Ciudadanos'], ['estadisticas', 'Estadísticas'],
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
   ['escalinatas', 'Escalinatas'], ['funding', 'Funding'],
@@ -42,7 +43,7 @@ const SECCIONES = [
 // Funding es solo para inversores: por ahora se abre únicamente en dev (y local). En stage y producción aparece como «pronto».
 const FUNDING_ABIERTO = ['dev.cabildodevenezuela.com', 'localhost', '127.0.0.1'].includes(location.hostname)
 
-const LISTAS = new Set(['escalinatas', 'inicio', 'votaciones', 'butaca', 'bloque', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding'])   // secciones ya rediseñadas
+const LISTAS = new Set(['escalinatas', 'inicio', 'votaciones', 'butaca', 'bloque', 'bloques', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding'])   // secciones ya rediseñadas
 if (!FUNDING_ABIERTO) LISTAS.delete('funding')
 
 // Sin butaca, las Escalinatas van segundas y marcadas: es el lugar desde donde se sube al Cabildo.
@@ -65,7 +66,7 @@ function pintarNav() {
       <svg viewBox="0 0 24 24">${ICONOS[id]}</svg><span>${label}</span>
       ${LISTAS.has(id) ? (id === 'escalinatas' && sinButaca() ? '<span class="nav-tag">estás acá</span>' : '') : '<span class="soon-tag">pronto</span>'}
     </a></li>`).join('')
-  if (document.documentElement.classList.contains('android') && !modoEscalinatas()) {   // android-diseno
+  if (document.documentElement.classList.contains('android') && !modoEscalinatas() && !SECCIONES.some(([id]) => id === 'bloques')) {   // android-diseno (bloques-directorio: Bloques ya tiene su sección)
     $('#nav').insertAdjacentHTML('beforeend', `<li><a href="#inicio" data-ver-bloques title="Bloques"><svg viewBox="0 0 24 24">${ICONOS.bloque}</svg><span>Bloques</span></a></li>`)
   }
   const sec = (location.hash || '#inicio').slice(1).split('/')[0]
@@ -97,6 +98,7 @@ function ruta() {
   if (valida === 'votaciones') cargarVotaciones()
   if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
   if (valida === 'estadisticas') cargarEstadisticas()
+  if (valida === 'bloques') cargarDirectorio(); else if (bd.peek) bdCerrarPeek()   // bloques-directorio
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
   if (valida === 'bloque') cargarMiBloque(arg); else if (bq.salaT) bqCerrarSala()
   if (valida === 'muro') { pintarMuroDia(); if (estado.user || mu.cargado) cargarMuroDia() }
@@ -1321,6 +1323,7 @@ async function cargarBloques() {
   pintarBloques(); actualizarNavBloque()
   if (vistaActual() === 'bloque' && !bq.d) cargarMiBloque()
   invitacionBloque()   // bloques-publicos
+  if (vistaActual() === 'bloques') cargarDirectorio()   // bloques-directorio
 }
 
 const ICON_GRUPO = '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg>'
@@ -1340,7 +1343,7 @@ function filaBloque(b) {
     : `<span class="b-av" style="background:${colorDe(null, b.id)}">${esc(b.nombre.charAt(0))}</span>`
   return `<div class="b-row">${av}
     <div><h4>${esc(b.nombre)}</h4><p>${esc(b.lema || '')}</p><p>Anfitrión: ${esc(b.anfitrion_nombre)}</p>
-      <div class="b-mini"><span>👥 ${fmtNum(b.miembros)}</span><span>💡 ${fmtNum(b.ideas)}</span></div></div>
+      <div class="b-mini"><span>👥 ${fmtNum(b.miembros)}</span>${b.ideas == null ? '' : `<span>💡 ${fmtNum(b.ideas)}</span>`}</div></div>
     ${botonSumarse(b)}</div>`
 }
 
@@ -1353,7 +1356,7 @@ function heroBloque(b) {
       <p>${esc(b.lema || '')}</p>
       <small>Anfitrión del bloque</small><span class="b-host">${esc(b.anfitrion_nombre)}</span>
     </div>
-    <div class="b-stats"><span><b>${fmtNum(b.miembros)}</b>Ciudadanos</span><span><b>${fmtNum(b.ideas)}</b>Ideas</span></div>
+    <div class="b-stats"><span><b>${fmtNum(b.miembros)}</b>Ciudadanos</span>${b.ideas == null ? '' : `<span><b>${fmtNum(b.ideas)}</b>Ideas</span>`}</div>
     ${botonSumarse(b, true)}
   </div>`
 }
@@ -1391,6 +1394,164 @@ function pintarBloques() {
       (lista.length > 2 ? `<button class="btn btn-ghost b-ver-todos" data-tab-go="todos">Ver todos los bloques (${fmtNum(lista.length)}) →</button>` : '')
     : lista.map(heroBloque).join(''))
 }
+
+// ══ bloques-directorio: «Todos los bloques» — página completa con un vistazo de cada bloque.
+// Solo datos públicos (v2_bloques_directorio) y solo lo que cada anfitrión deja ver: el contador de ideas y las
+// propuestas públicas se pueden ocultar desde Administrar. Ideas, debates, sala, comunicados y miembros nunca salen.
+const bd = { lista: null, filtro: 'todos', q: '', peek: null, t: 0 }
+const BD_TONOS = [['#1e3a8a', '#f5c518'], ['#14532d', '#d9f2e1'], ['#7c2d12', '#fde7d3'], ['#312e81', '#e0e7ff'], ['#0e7490', '#ddf6fb'], ['#9f1239', '#ffe4e6'], ['#b45309', '#fef3c7'], ['#6b21a8', '#f3e8ff'], ['#334155', '#e2e8f0']]
+const bdTono = id => BD_TONOS[Math.abs([...String(id)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 7)) % BD_TONOS.length]
+const bdIniciales = s => { const w = String(s || '').replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean); return [w[0], ...w.slice(1).filter(x => x.length >= 4)].filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase() || 'B' }
+const bdUrlOk = u => /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\//.test(String(u || ''))
+const BD_FILTROS = [['todos', 'Todos'], ['nuevos', 'Recién creados'], ['abiertos', 'Abiertos a todos'], ['ideas', 'Con ideas en debate'], ['propuestas', 'Con propuestas']]
+const bdDestacadoDe = () => { const L = bd.lista || []; return L.length > 1 && L[0].miembros > 1 ? L[0] : null }
+
+async function cargarDirectorio() {
+  const t = ++bd.t
+  if (!bd.lista) bdPintar()
+  try {
+    const { data, error } = await sb.rpc('v2_bloques_directorio')
+    if (error) throw error
+    if (t !== bd.t) return
+    bd.lista = Array.isArray(data) ? data : []
+  } catch (e) { console.warn('cargarDirectorio:', e); if (!bd.lista) bd.lista = [] }
+  if (vistaActual() !== 'bloques') return
+  const q = document.activeElement?.id === 'bd-q'
+  bdPintar()
+  if (q) { const i = $('#bd-q'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length) } }
+  if (bd.peek) bdPintarPeek()
+}
+
+function bdFiltrados() {
+  const q = norm(bd.q).trim()
+  let l = (bd.lista || []).filter(b => !q || [b.nombre, b.lema, b.descripcion, b.anfitrion_nombre].some(v => norm(v).includes(q)))
+  if (bd.filtro === 'abiertos') l = l.filter(b => !b.pide_aprobacion)
+  if (bd.filtro === 'ideas') l = l.filter(b => b.ideas > 0)
+  if (bd.filtro === 'propuestas') l = l.filter(b => b.propuestas > 0)
+  if (bd.filtro === 'nuevos') l = [...l].sort((a, b) => String(b.aprobado_at || '').localeCompare(String(a.aprobado_at || '')))
+  return l
+}
+function bdPuntos(n, cl) {
+  const on = Math.min(30, Number(n) || 0)
+  return `<span class="bd-dots ${cl || ''}" role="img" aria-label="${fmtNum(n)} ${n === 1 ? 'butaca encendida' : 'butacas encendidas'}"><span>${Array.from({ length: 30 }, (_, i) => `<i class="${i < on ? 'on' : ''}"></i>`).join('')}</span>${n > 30 ? `<em>+${fmtNum(n - 30)}</em>` : ''}</span>`
+}
+function bdPortada(b, cl) {
+  const [bg, fg] = bdTono(b.id)
+  return bdUrlOk(b.imagen_url)
+    ? `<div class="bd-cover ${cl || ''}"><img src="${esc(b.imagen_url)}" alt="" loading="lazy"></div>`
+    : `<div class="bd-cover ${cl || ''} sin-foto" style="background:${bg};color:${fg}"><span>${esc(bdIniciales(b.nombre))}</span></div>`
+}
+const bdEtiqueta = b => `<span class="bd-etq ${b.pide_aprobacion ? '' : 'abierto'}">${b.pide_aprobacion ? 'Con aprobación' : 'Abierto a todos'}</span>`
+const bdAvatar = b => bdUrlOk(b.anfitrion_foto) ? `<img class="bd-av" src="${esc(b.anfitrion_foto)}" alt="">` : `<span class="bd-av">${esc(bdIniciales(b.anfitrion_nombre))}</span>`
+const bdAnfitrion = (b, largo) => `<div class="bd-host">${bdAvatar(b)}<span><b>${esc(b.anfitrion_nombre)}</b><small>${largo ? 'Anfitrión con identidad pública verificada' : 'Anfitrión'}</small></span></div>`
+function bdDatos(b) {
+  return `<span><b>${fmtNum(b.miembros)}</b> ${b.miembros === 1 ? 'ciudadano' : 'ciudadanos'}</span>` +
+    (b.ideas != null ? `<span><b>${fmtNum(b.ideas)}</b> ${b.ideas === 1 ? 'idea' : 'ideas'}</span>` : '') +
+    (b.propuestas != null ? `<span><b>${fmtNum(b.propuestas)}</b> ${b.propuestas === 1 ? 'propuesta' : 'propuestas'}</span>` : '')
+}
+const bdApoyos = n => `${fmtNum(n)} ${n === 1 ? 'apoyo' : 'apoyos'}`
+
+function bdDestacado(b) {
+  return `<section class="bd-dest" id="bd-dest" aria-label="Bloque destacado">
+    ${bdPortada(b, 'grande')}
+    <div class="bd-dest-txt">
+      <span class="bd-kicker">El bloque más grande</span>
+      <h2>${esc(b.nombre)}</h2>
+      ${b.lema ? `<p class="bd-lema">«${esc(b.lema)}»</p>` : ''}
+      ${bdPuntos(b.miembros, 'claro')}
+      <div class="bd-datos">${bdDatos(b)}</div>
+      ${b.ultima ? `<figure class="bd-ultima"><figcaption>Lo último del bloque · propuesta pública</figcaption><blockquote>«${esc(b.ultima.texto)}»</blockquote><small>${bdApoyos(b.ultima.apoyos)}</small></figure>` : ''}
+      <div class="bd-pie">${bdAnfitrion(b, true)}<div class="bd-acciones"><button type="button" class="btn btn-ghost" data-bd-peek="${esc(b.id)}">Vistazo</button>${botonSumarse(b, true)}</div></div>
+    </div></section>`
+}
+function bdTarjeta(b) {
+  return `<article class="bd-card">
+    <button type="button" class="bd-card-cover" data-bd-peek="${esc(b.id)}" aria-label="Vistazo de ${esc(b.nombre)}">${bdPortada(b)}${bdEtiqueta(b)}</button>
+    <div class="bd-card-body">
+      <h3>${esc(b.nombre)}</h3>
+      ${b.lema ? `<p class="bd-lema">«${esc(b.lema)}»</p>` : ''}
+      ${b.descripcion ? `<p class="bd-desc">${esc(b.descripcion)}</p>` : ''}
+      ${bdPuntos(b.miembros)}
+      <div class="bd-datos">${bdDatos(b)}</div>
+      <div class="bd-card-pie">${bdAnfitrion(b)}<button type="button" class="btn btn-ghost" data-bd-peek="${esc(b.id)}">Vistazo</button></div>
+    </div></article>`
+}
+const bdCrear = () => `<button type="button" class="bd-crear" data-bd-crear><span class="bd-crear-ico"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><b>¿Tenés una idea que une?</b><span>Creá tu bloque, mostrá tu nombre como anfitrión y sumá ciudadanos verificados.</span><em>Crear mi bloque →</em></button>`
+
+function bdPintar() {
+  const v = $('#bd'); if (!v) return
+  if (!bd.lista) { v.innerHTML = '<p class="muted">Cargando bloques…</p>'; return }
+  const L = bd.lista, suma = k => L.reduce((a, b) => a + (Number(b[k]) || 0), 0), dest = bdDestacadoDe()
+  const kpi = (n, t) => `<div class="bd-kpi"><b>${fmtNum(n)}</b><span>${t}</span></div>`
+  v.innerHTML = `
+    <header class="bd-head">
+      <div class="bd-head-txt">
+        <a class="bd-volver" href="#inicio">← Volver al inicio</a>
+        <span class="ve-line"></span>
+        <h1>Los bloques del Cabildo</h1>
+        <p>Grupos de ciudadanos verificados que se organizan alrededor de una idea. Mirá qué pasa en cada uno, sumate al que te represente o creá el tuyo.</p>
+      </div>
+      <div class="bd-kpis">${kpi(L.length, L.length === 1 ? 'bloque activo' : 'bloques activos')}${kpi(suma('miembros'), 'ciudadanos sumados')}${kpi(suma('ideas'), 'ideas internas')}${kpi(suma('propuestas'), 'propuestas públicas')}</div>
+    </header>
+    ${bannerMiBloque()}
+    ${dest ? bdDestacado(dest) : ''}
+    <div class="bd-barra">
+      <div class="bd-chips" role="group" aria-label="Filtrar bloques">${BD_FILTROS.map(([k, t]) => `<button type="button" class="bd-chip ${bd.filtro === k ? 'on' : ''}" aria-pressed="${bd.filtro === k}" data-bd-filtro="${k}">${t}${k === 'todos' ? ` · ${fmtNum(L.length)}` : ''}</button>`).join('')}</div>
+      <label class="search bd-buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" id="bd-q" placeholder="Buscar por nombre, idea o anfitrión" value="${esc(bd.q)}" aria-label="Buscar bloque" autocomplete="off"></label>
+    </div>
+    <div class="bd-grid" id="bd-grid"></div>
+    <div class="bd-sim"><span><b>¿Primera vez en un bloque?</b> Practicá con Claria en el Bloque Simulador: nada se guarda y no te suma a ninguno.</span><button class="btn btn-dark" type="button" data-sim-abrir>Abrir el simulador</button></div>`
+  bdPintarGrid()
+}
+function bdPintarGrid() {
+  const g = $('#bd-grid'); if (!g) return
+  const L = bd.lista || [], dest = bdDestacadoDe(), d = $('#bd-dest')
+  const verDest = !!(dest && d && !bd.q.trim() && bd.filtro === 'todos')
+  if (d) d.hidden = !verDest
+  const lista = bdFiltrados().filter(b => !(verDest && b.id === dest.id))
+  g.innerHTML = (lista.length ? lista.map(bdTarjeta).join('') : `<p class="muted bd-nada">${L.length ? 'No hay bloques que coincidan.' : 'Todavía no hay bloques.'}</p>`) + bdCrear()
+}
+
+function bdAbrirPeek(id) { bd.peek = id; bdPintarPeek() }
+function bdCerrarPeek() { bd.peek = null; $('#bd-peek')?.remove(); document.documentElement.classList.remove('bd-peek-abierto') }
+function bdPintarPeek() {
+  const b = (bd.lista || []).find(x => x.id === bd.peek); if (!b) return bdCerrarPeek()
+  let el = $('#bd-peek'); const nuevo = !el
+  if (nuevo) { el = document.createElement('div'); el.id = 'bd-peek'; el.className = 'bd-peek'; document.body.appendChild(el); document.documentElement.classList.add('bd-peek-abierto') }
+  el.innerHTML = `<div class="bd-peek-scrim" data-bd-cerrar></div>
+    <aside class="bd-peek-panel" role="dialog" aria-modal="true" aria-labelledby="bd-peek-t">
+      <div class="bd-peek-cover">${bdPortada(b, 'peek')}${bdEtiqueta(b)}<button type="button" class="bd-peek-x" data-bd-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+      <div class="bd-peek-body">
+        <span class="bd-kicker">Vistazo</span>
+        <h2 id="bd-peek-t">${esc(b.nombre)}</h2>
+        ${b.lema ? `<p class="bd-lema">«${esc(b.lema)}»</p>` : ''}
+        ${b.descripcion ? `<p class="bd-peek-desc">${esc(b.descripcion)}</p>` : ''}
+        <div class="bd-peek-kpis"><div><b>${fmtNum(b.miembros)}</b><small>${b.miembros === 1 ? 'ciudadano' : 'ciudadanos'}</small></div>${b.ideas != null ? `<div><b>${fmtNum(b.ideas)}</b><small>ideas internas</small></div>` : ''}${b.propuestas != null ? `<div><b>${fmtNum(b.propuestas)}</b><small>propuestas públicas</small></div>` : ''}</div>
+        <div class="bd-peek-sec"><b>Butacas encendidas</b>${bdPuntos(b.miembros, 'grande')}</div>
+        ${b.propuestas != null ? `<div class="bd-peek-sec"><b>Lo último del bloque</b>${b.ultima
+          ? `<div class="bd-peek-prop"><p>«${esc(b.ultima.texto)}»</p><small>${bdApoyos(b.ultima.apoyos)} · propuesta pública</small></div>`
+          : '<p class="bd-peek-vacio">Recién arranca: todavía no publicó propuestas. Los primeros en sumarse marcan el rumbo.</p>'}</div>` : ''}
+        ${bdAnfitrion(b, true)}
+        <p class="bd-peek-priv">Lo de adentro es privado: el anfitrión ve tu alias solo si lo hacés público, y nadie ve tu número de butaca ni cómo votás.</p>
+        <div class="bd-peek-acc">${botonSumarse(b, true)}${/^[a-z0-9-]{1,80}$/.test(b.slug || '') ? `<a class="btn btn-ghost" href="/b/${b.slug}" target="_blank" rel="noopener">Ver página pública</a>` : ''}</div>
+      </div></aside>`
+  if (nuevo) el.querySelector('.bd-peek-x')?.focus()
+}
+
+document.addEventListener('click', e => {
+  const t = e.target
+  if (t.closest('#bd-peek [data-bd-cerrar]')) return bdCerrarPeek()
+  const enPeek = t.closest('#bd-peek'), enBd = t.closest('#bd')
+  if (!enPeek && !enBd) return
+  const u = t.closest('[data-unirme]'); if (u) return unirme(u.dataset.unirme)
+  if (t.closest('[data-cancelar-pedido]')) return cancelarPedido()
+  if (!enBd) return
+  const p = t.closest('[data-bd-peek]'); if (p) return bdAbrirPeek(p.dataset.bdPeek)
+  const f = t.closest('[data-bd-filtro]'); if (f) { bd.filtro = f.dataset.bdFiltro; return bdPintar() }
+  if (t.closest('[data-bd-crear]')) { location.hash = '#inicio'; setTimeout(() => { verBloques(); irATab('crear') }, 30) }
+})
+document.addEventListener('input', e => { if (e.target.id === 'bd-q') { bd.q = e.target.value; bdPintarGrid() } })
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && bd.peek) bdCerrarPeek() })
 
 // ══ bloque-simulador: Bloque Simulador — un bloque de práctica con Claria como anfitriona. Es un tutorial guiado:
 // todo pasa en este navegador, no se guarda nada y no cuenta como bloque real.
@@ -1862,6 +2023,12 @@ function bqAdmin(d) {
         <div class="bq-umbral"><input type="number" id="bq-umbral" min="2" max="500" value="${Number(c.umbral) || 10}"><button class="btn btn-dark" data-bq="umbral">Guardar</button></div></div>
     </article>
     <article class="card bq-admin">
+      <h3>Qué se ve afuera del bloque</h3>
+      <p class="bq-vit-ayuda">En «Todos los bloques» y en la página pública se muestran el nombre, la frase, la descripción, la portada, tu perfil y cuántos miembros hay. Ideas, debates, sala, comunicados y la lista de miembros nunca se muestran.</p>
+      ${sw('vitrina_ideas', c.vitrina_ideas !== false, 'Mostrar cuántas ideas internas hay', 'Solo el número, nunca el contenido de las ideas.')}
+      ${sw('vitrina_propuestas', c.vitrina_propuestas !== false, 'Mostrar las propuestas públicas del bloque', 'Las que ya lanzaste a Propuestas. El vistazo muestra la última y cuántos apoyos tiene.')}
+    </article>
+    <article class="card bq-admin">
       <h3>Tu bloque hoy</h3>
       <div class="bq-stats">
         <div><b>${fmtNum(b.miembros)}</b><small>Miembros</small></div>
@@ -2098,6 +2265,12 @@ function enlazarMiBloque() {
            : `Cualquier butaca va a poder sumarse directo.${pend ? ` Las ${pend} solicitudes pendientes entran solas.` : ''}`, 'Confirmar')) return
       const r = await bqRpc('bloque_config_aprobacion', { p_on: on }, '✓ Guardado')
       if (r !== null) { if (r > 0) aviso(`✓ Entraron ${r} ${r === 1 ? 'persona' : 'personas'} que estaban esperando`); bqRefrescar(true) }
+      return
+    }
+    if (sw && sw.dataset.bqSw.startsWith('vitrina_')) {   // bloques-directorio
+      const v = { vitrina_ideas: bq.d.config.vitrina_ideas !== false, vitrina_propuestas: bq.d.config.vitrina_propuestas !== false }
+      v[sw.dataset.bqSw] = !v[sw.dataset.bqSw]
+      if (await bqRpc('bloque_config_vitrina', { p_ideas: v.vitrina_ideas, p_propuestas: v.vitrina_propuestas }, '✓ Guardado')) { cargarMiBloque(); cargarBloques() }
       return
     }
     if (sw) {
@@ -4658,6 +4831,7 @@ function plegar(k) {
 }
 
 function irATab(tab) {
+  if (tab === 'todos') { if (location.hash !== '#bloques') location.hash = '#bloques'; tab = 'destacados' }   // bloques-directorio: «Todos» es una página completa
   estado.tab = tab
   $$('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab))
   pintarBloques()
