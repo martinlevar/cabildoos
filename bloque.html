@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloque · Cabildo de Venezuela</title>
+<meta name="description" content="Un bloque de ciudadanos verificados en el Cabildo de Venezuela.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cabildo de Venezuela">
+<meta property="og:locale" content="es_VE">
+<meta property="og:title" content="Bloque · Cabildo de Venezuela">
+<meta property="og:description" content="Un bloque de ciudadanos verificados en el Cabildo de Venezuela.">
+<meta property="og:image" content="https://cabildodevenezuela.com/logo-cabildo.jpg">
+<meta property="og:url" content="https://cabildodevenezuela.com/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#f3f4f8; --surface:#fff; --surface-2:#f6f7fb; --line:#e7e9f1; --ink:#12162e; --ink-2:#3b4160; --muted:#6b7190; --navy:#141a3c; --accent:#4f46e5; --accent-bg:#eef0ff; --green:#047857; --green-bg:#e7f6ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0b0d1c; --surface:#151834; --surface-2:#1b1f40; --line:#2a2f57; --ink:#eef0ff; --ink-2:#c5c9e6; --muted:#9499bd; --navy:#4f46e5; --accent:#8b85ff; --accent-bg:#232662; --green:#34d399; --green-bg:#0f2f27; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--ink); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 980px; margin: 0 auto; padding: 14px 16px; }
+.marca { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; text-decoration: none; }
+.marca img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 12px; border: 0; background: var(--navy); color: #fff; font: inherit; font-weight: 700; font-size: 15px; text-decoration: none; cursor: pointer; }
+.btn.sec { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+.btn.chico { min-height: 40px; padding: 0 14px; font-size: 14px; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px 48px; }
+.hero { position: relative; border-radius: 22px; overflow: hidden; background: linear-gradient(135deg, #1b2150, #2a2f7a 60%, #3c2d82); color: #fff; min-height: 320px; display: flex; align-items: flex-end; }
+.hero img.portada { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,12,30,.05) 30%, rgba(10,12,30,.85)); }
+.hero .txt { position: relative; z-index: 1; padding: 28px 26px; max-width: 760px; }
+.hero .etq { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.25); padding: 5px 10px; border-radius: 999px; }
+.hero h1 { margin: 12px 0 0; font-size: clamp(28px, 5vw, 44px); line-height: 1.1; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.hero .lema { margin: 10px 0 0; font-size: 18px; color: #e6e8f8; }
+.tri { display: flex; height: 4px; width: 120px; margin-top: 16px; } .tri span { flex: 1; } .tri span:nth-child(1){background:#F2C230}.tri span:nth-child(2){background:#2f52c4}.tri span:nth-child(3){background:#C1272D}
+.grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } .hero { min-height: 260px; } }
+.wrap, .card, .host { overflow-wrap: anywhere; } .grid > *, .host > * { min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.card h2 { margin: 0 0 10px; font-size: 17px; }
+.datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.dato { padding: 14px; background: var(--surface-2); border-radius: 14px; }
+.dato b { display: block; font-size: 26px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.dato span { font-size: 12.5px; color: var(--muted); }
+.desc { white-space: pre-line; color: var(--ink-2); margin: 0; overflow-wrap: anywhere; }
+.host { display: flex; gap: 14px; align-items: center; }
+.host .foto { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex: none; background: var(--accent-bg); color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 24px; }
+.host b { display: block; font-size: 17px; }
+.host small { color: var(--muted); font-size: 13px; }
+.bio { margin: 12px 0 0; color: var(--ink-2); font-size: 14.5px; overflow-wrap: anywhere; }
+.sumate { background: var(--navy); color: #fff; border: 0; }
+.sumate h2 { font-size: 20px; color: #fff; }
+.sumate p { margin: 0 0 14px; color: #d9dcf3; font-size: 14.5px; }
+.sumate .btn { width: 100%; background: #fff; color: #141a3c; }
+.sumate ul { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 13.5px; color: #d9dcf3; }
+.sumate li::before { content: '✓  '; color: #7ee2b8; font-weight: 700; }
+.props { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.props li { padding: 12px 14px; background: var(--surface-2); border-radius: 12px; }
+.props p { margin: 0; font-size: 14.5px; overflow-wrap: anywhere; }
+.props small { color: var(--muted); font-size: 12.5px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; background: var(--accent-bg); color: var(--accent); margin-right: 6px; }
+.badge.ok { background: var(--green-bg); color: var(--green); }
+.compartir { display: flex; flex-wrap: wrap; gap: 8px; }
+.pie { margin-top: 18px; text-align: center; font-size: 13px; color: var(--muted); }
+.pie a { color: var(--accent); }
+.vacio { text-align: center; padding: 60px 16px; }
+.vacio h1 { margin: 0 0 8px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 14px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="marca" href="/"><img src="/logo-cabildo.jpg" alt="">Cabildo de Venezuela</a>
+  <a class="btn chico sec" href="/cuenta">Entrar</a>
+</header>
+<main class="wrap" id="app"><p style="padding:40px 0;color:var(--muted)">Cargando el bloque…</p></main>
+<p class="toast" id="toast" hidden></p>
+<script src="/ux2/vendor/supabase-2.117.2.js"></script>
+<script>
+(() => {
+  const CLAVE = 'cabildo_bloque_invitacion'
+  const sb = window.supabase.createClient(window.__ENV.SUPABASE_URL, window.__ENV.SUPABASE_KEY)
+  const slug = (location.pathname.match(/^\/b\/([a-z0-9-]{1,80})\/?$/) || [])[1] || ''
+  const refRaw = new URLSearchParams(location.search).get('r') || ''
+  const ref = /^[a-z0-9-]{1,40}$/.test(refRaw) ? refRaw : 'link'
+  const app = document.getElementById('app')
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const urlSegura = u => /^https:\/\/ayxscmxmnoguktfgveud\.supabase\.co\/storage\/v1\/object\/public\//.test(String(u || '')) ? u : ''
+  const fmt = n => Number(n || 0).toLocaleString('es-VE')
+  const EST = { pending: ['En campaña', ''], accepted: ['Llegó a la meta', 'ok'], approved: ['En el Hemiciclo', 'ok'] }
+  let bloque = null
+
+  function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true }, 2600) }
+
+  async function iniciar() {
+    if (!slug) return noExiste()
+    const { data, error } = await sb.rpc('bloque_publico', { p_slug: slug })
+    if (error || !data) return noExiste()
+    bloque = data
+    pintar()
+  }
+
+  function noExiste() {
+    app.innerHTML = `<div class="vacio"><h1>Este bloque no está disponible</h1><p style="color:var(--muted)">Puede que haya cambiado de nombre o que ya no esté activo.</p><a class="btn" href="/ux2/#bloques">Ver los bloques del Cabildo</a></div>`
+  }
+
+  function pintar() {
+    const b = bloque, portada = urlSegura(b.imagen_url), foto = urlSegura(b.anfitrion_foto)
+    const desde = b.aprobado_at ? new Date(b.aprobado_at).toLocaleDateString('es-VE', { month: 'short', year: 'numeric' }) : ''
+    const link = `https://cabildodevenezuela.com/b/${b.slug}`
+    const textoShare = `Sumate a «${b.nombre}» en el Cabildo de Venezuela: ya somos ${fmt(b.miembros)} ciudadanos verificados.`
+    app.innerHTML = `
+      <section class="hero">${portada ? `<img class="portada" src="${esc(portada)}" alt="">` : ''}
+        <div class="txt"><span class="etq">Bloque del Cabildo</span><h1>${esc(b.nombre)}</h1>${b.lema ? `<p class="lema">${esc(b.lema)}</p>` : ''}<div class="tri"><span></span><span></span><span></span></div></div>
+      </section>
+      <div class="grid">
+        <div style="display:grid;gap:18px;align-content:start">
+          <section class="card"><div class="datos">
+            <div class="dato"><b>${fmt(b.miembros)}</b><span>ciudadanos verificados</span></div>
+            <div class="dato"><b>${fmt(b.ideas)}</b><span>ideas internas</span></div>
+            <div class="dato"><b>${esc(desde) || '—'}</b><span>activo desde</span></div>
+          </div></section>
+          ${b.descripcion ? `<section class="card"><h2>Qué es este bloque</h2><p class="desc">${esc(b.descripcion)}</p></section>` : ''}
+          <section class="card"><h2>Propuestas del bloque</h2>${(b.propuestas || []).length ? `<ul class="props">${b.propuestas.map(p => {
+              const [t, c] = EST[p.estado] || ['', '']
+              return `<li><p>${esc(p.texto)}</p><small>${t ? `<span class="badge ${c}">${t}</span>` : ''}${fmt(p.apoyos)} apoyos</small></li>` }).join('')}</ul>`
+            : '<p style="margin:0;color:var(--muted);font-size:14.5px">Todavía no publicó propuestas en el Cabildo.</p>'}</section>
+        </div>
+        <div style="display:grid;gap:18px;align-content:start">
+          <section class="card sumate"><h2>Sumate a este bloque</h2>
+            <p>Cada miembro es una persona real, verificada por el Cabildo. Para sumarte necesitás tu butaca: te registrás, te verificás y entrás.</p>
+            <button class="btn" id="sumate" type="button">${b.pide_aprobacion ? 'Pedir sumarme' : 'Sumarme'}</button>
+            <ul><li>El anfitrión solo ve tu alias, si lo hacés público.</li><li>Nadie ve tu número de butaca ni cómo votás.</li>${b.pide_aprobacion ? '<li>El anfitrión aprueba cada solicitud.</li>' : ''}</ul>
+          </section>
+          <section class="card"><h2>Anfitrión</h2><div class="host">${foto ? `<img class="foto" src="${esc(foto)}" alt="">` : `<span class="foto">${esc((b.anfitrion_nombre || 'A').charAt(0))}</span>`}
+            <div><b>${esc(b.anfitrion_nombre)}</b><small>Figura pública con identidad verificada</small></div></div>
+            ${b.anfitrion_bio ? `<p class="bio">${esc(b.anfitrion_bio)}</p>` : ''}</section>
+          <section class="card"><h2>Compartí este bloque</h2><div class="compartir">
+            <a class="btn chico sec" target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encodeURIComponent(textoShare + ' ' + link)}">WhatsApp</a>
+            <a class="btn chico sec" target="_blank" rel="noopener noreferrer" href="https://x.com/intent/post?text=${encodeURIComponent(textoShare)}&url=${encodeURIComponent(link)}">X</a>
+            <button class="btn chico sec" type="button" id="copiar">Copiar link</button></div></section>
+        </div>
+      </div>
+      <p class="pie">El Cabildo de Venezuela es una plataforma ciudadana donde personas verificadas votan, proponen y debaten. Tu voto es secreto. · <a href="/privacidad.html">Privacidad</a></p>`
+    document.getElementById('sumate').addEventListener('click', sumarme)
+    document.getElementById('copiar').addEventListener('click', () => navigator.clipboard.writeText(link).then(() => toast('Link copiado'), () => toast(link)))
+  }
+
+  async function sumarme() {
+    const btn = document.getElementById('sumate'); btn.disabled = true
+    try { localStorage.setItem(CLAVE, JSON.stringify({ slug, id: bloque.id, nombre: bloque.nombre, ref, at: Date.now() })) } catch (e) {}
+    const { data: { session } } = await sb.auth.getSession()
+    if (!session) { location.href = '/cuenta'; return }
+    try { await sb.rpc('bloque_invitacion_registrar', { p_slug: slug, p_ref: ref }) } catch (e) {}
+    let butaca = 0
+    try { const { data } = await sb.rpc('get_my_seat'); butaca = data || 0 } catch (e) {}
+    location.href = butaca ? '/ux2/#bloques' : '/cuenta'
+  }
+
+  iniciar()
+})()
+</script>
+</body>
+</html>

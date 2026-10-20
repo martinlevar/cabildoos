@@ -1308,6 +1308,7 @@ async function cargarBloques() {
   }
   pintarBloques(); actualizarNavBloque()
   if (vistaActual() === 'bloque' && !bq.d) cargarMiBloque()
+  invitacionBloque()   // bloques-publicos
 }
 
 const ICON_GRUPO = '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg>'
@@ -1641,8 +1642,9 @@ async function bqSubirFoto(tipo, file) {
 }
 
 async function bqCargarGente() {
-  const [s, m] = await Promise.all([sb.rpc('bloque_solicitudes_listar'), sb.rpc('bloque_miembros_listar')])
+  const [s, m, sl, iv] = await Promise.all([sb.rpc('bloque_solicitudes_listar'), sb.rpc('bloque_miembros_listar'), sb.rpc('bloque_mi_slug'), sb.rpc('bloque_invitaciones_resumen')])
   bq.sols = s.error ? [] : (s.data || []); bq.miem = m.error ? [] : (m.data || [])
+  bq.slug = sl.error ? null : sl.data; bq.inv = iv.error ? null : iv.data
 }
 const BQ_TABS = [['comunicados', 'Comunicados'], ['debates', 'Debates'], ['sala', 'Sala'], ['ideas', 'Ideas'], ['propuestas', 'Propuestas'], ['admin', 'Administrar']]
 const soyDeUnBloque = () => !!estado.miBloque?.bloque_id
@@ -1813,7 +1815,7 @@ function bqPropuestas(d) {
 function bqAdmin(d) {
   const c = d.config || {}, b = d.bloque
   const sw = (k, on, t, a) => `<div class="mb-fila"><div><b>${t}</b><small>${a}</small></div><button class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${!!on}" data-bq-sw="${k}" aria-label="${t}"><i></i></button></div>`
-  return bqGente(d) + `<div class="bq-admin-grid">
+  return bqGente(d) + bqCompartir() + `<div class="bq-admin-grid">
     <article class="card bq-admin bq-fotos">
       <h3>Cómo te ven en el panel de Bloques</h3>
       <div class="bq-f-cols">
@@ -7181,3 +7183,51 @@ document.addEventListener('click', e => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { montar(); reiniciar() }); else { montar(); reiniciar() }
   window.__inactividad = { pausar, avisar }   // para pruebas
 })()
+
+// ── Bloques públicos (bloques-publicos) ──
+// Invitación guardada en la página pública /b/<slug>: se registra al tener sesión y, con butaca, se ofrece sumarse.
+const INV_CLAVE = 'cabildo_bloque_invitacion'
+let _invVista = false
+async function invitacionBloque() {
+  if (_invVista || !estado.user) return
+  let inv = null
+  try { inv = JSON.parse(localStorage.getItem(INV_CLAVE) || 'null') } catch (e) {}
+  const borrar = () => { try { localStorage.removeItem(INV_CLAVE) } catch (e) {} }
+  if (!inv || !/^[a-z0-9-]{1,80}$/.test(inv.slug || '') || Date.now() - (inv.at || 0) > 30 * 864e5) return borrar()
+  if (!inv.reg) {
+    try { const { error } = await sb.rpc('bloque_invitacion_registrar', { p_slug: inv.slug, p_ref: inv.ref || 'link' }); if (!error) { inv.reg = 1; localStorage.setItem(INV_CLAVE, JSON.stringify(inv)) } } catch (e) {}
+  }
+  if (!estado.butaca) return            // se ofrece cuando tenga butaca
+  _invVista = true
+  if (soyDeUnBloque()) return borrar()
+  const b = estado.bloques.find(x => x.id === inv.id); if (!b) return borrar()
+  const si = await confirmar(`Te invitaron a «${b.nombre}»`, 'Antes de entrar al Cabildo pediste sumarte a este bloque. ¿Querés hacerlo ahora?', pideAprobacion(b.id) ? 'Pedir sumarme' : 'Sumarme')
+  borrar()
+  if (si) unirme(b.id)
+}
+
+// Tarjeta «Compartí tu bloque» del anfitrión: link público, botones y contador (solo totales)
+function bqCompartir() {
+  if (!bq.slug) return ''
+  const link = `https://cabildodevenezuela.com/b/${bq.slug}`, i = bq.inv || {}, b = bq.d?.bloque || {}
+  const txt = `Sumate a «${b.nombre || ''}» en el Cabildo de Venezuela: ya somos ${fmtNum(b.miembros || 0)} ciudadanos verificados.`
+  return `<article class="card bq-admin bq-share">
+    <h3>Compartí tu bloque</h3>
+    <p class="muted">Es la página pública de tu bloque: cualquiera la puede abrir, aunque no tenga cuenta. Quien toca «Sumate» se registra, se verifica y entra a tu bloque.</p>
+    <div class="bq-share-link"><input readonly value="${esc(link)}" aria-label="Link público de tu bloque"><button class="btn btn-dark" type="button" data-bq-copiar="${esc(link)}">Copiar</button></div>
+    <div class="bq-share-btns">
+      <a class="btn btn-ghost" target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encodeURIComponent(txt + ' ' + link)}">WhatsApp</a>
+      <a class="btn btn-ghost" target="_blank" rel="noopener noreferrer" href="https://x.com/intent/post?text=${encodeURIComponent(txt)}&amp;url=${encodeURIComponent(link)}">X</a>
+      <a class="btn btn-ghost" target="_blank" rel="noopener" href="${esc(link)}">Ver la página</a>
+    </div>
+    <div class="bq-share-cifras">
+      <span><b>${fmtNum(i.llegaron || 0)}</b>llegaron por tu link</span>
+      <span><b>${fmtNum(i.con_butaca || 0)}</b>ya tienen butaca</span>
+      <span><b>${fmtNum(i.sumados || 0)}</b>se sumaron</span>
+    </div>
+  </article>`
+}
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-bq-copiar]'); if (!c) return
+  navigator.clipboard.writeText(c.dataset.bqCopiar).then(() => aviso('Link copiado'), () => aviso(c.dataset.bqCopiar))
+})

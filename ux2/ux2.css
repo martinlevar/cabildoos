@@ -3195,3 +3195,13 @@ html.android .sc-head .sc-badge { grid-column: 2; justify-self: start; }
 .ina-caja h2 { margin: 4px 0 0; font-size: 21px; letter-spacing: -.02em; }
 .ina-caja p { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
 .ina-volver { margin-top: 8px; width: 100%; }
+
+/* ── Compartí tu bloque (bloques-publicos) ── */
+.bq-share { margin-bottom: 12px; gap: 10px; }
+.bq-share .muted { margin: 0; font-size: 13.5px; }
+.bq-share-link { display: flex; gap: 8px; }
+.bq-share-link input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 13.5px; }
+.bq-share-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.bq-share-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
+.bq-share-cifras span { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 12px; color: var(--muted); display: grid; }
+.bq-share-cifras b { font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
