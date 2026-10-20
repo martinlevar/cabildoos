@@ -152,7 +152,8 @@ export default {
 
     // ─── bloques-publicos: /b/<slug> sirve la página pública del bloque ───
     const mBloque = url.pathname.match(/^\/b\/([a-z0-9-]{1,80})\/?$/);
-    if (url.pathname === '/b' || (url.pathname.startsWith('/b/') && !mBloque)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
+    // bloques-publicos-2: la plantilla solo se sirve por /b/<slug>
+    if (url.pathname === '/b' || url.pathname === '/bloque' || url.pathname === '/bloque.html' || (url.pathname.startsWith('/b/') && !mBloque)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
 
     // ─── Static assets ───
     const assetResponse = mBloque ? await env.ASSETS.fetch(new URL('/bloque', request.url).toString()) : await env.ASSETS.fetch(request);
@@ -191,7 +192,7 @@ export default {
       bmeta = await bloqueMeta(env, url, mBloque[1], ctx);
       if (bmeta?.ok) {
         const titulo = `${bmeta.nombre} · Bloque en el Cabildo de Venezuela`;
-        const desc = `${bmeta.lema ? bmeta.lema + ' · ' : ''}${bmeta.miembros.toLocaleString('es-VE')} ciudadanos verificados. Anfitrión: ${bmeta.anfitrion}. Sumate en el Cabildo de Venezuela.`;
+        const desc = `${bmeta.lema ? bmeta.lema + ' · ' : ''}${bmeta.miembros.toLocaleString('es-VE')} ${bmeta.miembros === 1 ? 'ciudadano verificado' : 'ciudadanos verificados'}. Anfitrión: ${bmeta.anfitrion}. Sumate en el Cabildo de Venezuela.`;
         const pon = (sel, v) => { rw = rw.on(sel, { element(el) { el.setAttribute('content', v) } }) };
         rw = rw.on('title', { element(el) { el.setInnerContent(titulo) } });
         pon('meta[name="description"]', desc); pon('meta[property="og:title"]', titulo); pon('meta[property="og:description"]', desc);

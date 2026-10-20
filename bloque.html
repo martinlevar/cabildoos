@@ -115,7 +115,7 @@ a { color: inherit; }
     const b = bloque, portada = urlSegura(b.imagen_url), foto = urlSegura(b.anfitrion_foto)
     const desde = b.aprobado_at ? new Date(b.aprobado_at).toLocaleDateString('es-VE', { month: 'short', year: 'numeric' }) : ''
     const link = `https://cabildodevenezuela.com/b/${b.slug}`
-    const textoShare = `Sumate a «${b.nombre}» en el Cabildo de Venezuela: ya somos ${fmt(b.miembros)} ciudadanos verificados.`
+    const textoShare = `Sumate a «${b.nombre}» en el Cabildo de Venezuela: ya somos ${fmt(b.miembros)} ${b.miembros === 1 ? 'ciudadano verificado' : 'ciudadanos verificados'}.` // bloques-publicos-2
     app.innerHTML = `
       <section class="hero">${portada ? `<img class="portada" src="${esc(portada)}" alt="">` : ''}
         <div class="txt"><span class="etq">Bloque del Cabildo</span><h1>${esc(b.nombre)}</h1>${b.lema ? `<p class="lema">${esc(b.lema)}</p>` : ''}<div class="tri"><span></span><span></span><span></span></div></div>
@@ -123,7 +123,7 @@ a { color: inherit; }
       <div class="grid">
         <div style="display:grid;gap:18px;align-content:start">
           <section class="card"><div class="datos">
-            <div class="dato"><b>${fmt(b.miembros)}</b><span>ciudadanos verificados</span></div>
+            <div class="dato"><b>${fmt(b.miembros)}</b><span>${b.miembros === 1 ? 'ciudadano verificado' : 'ciudadanos verificados'}</span></div>
             <div class="dato"><b>${fmt(b.ideas)}</b><span>ideas internas</span></div>
             <div class="dato"><b>${esc(desde) || '—'}</b><span>activo desde</span></div>
           </div></section>
