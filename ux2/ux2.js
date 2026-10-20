@@ -371,7 +371,7 @@ function enlazarHeader() {
   document.addEventListener('click', cerrarPops)
   document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPops() })
   window.addEventListener('hashchange', cerrarPops)
-  setInterval(() => { if (estado.butaca) cargarNotificaciones() }, 120_000)
+  setInterval(() => { if (estado.butaca && !document.hidden) cargarNotificaciones() }, 120_000)   // carga-base: nada en segundo plano
 }
 
 // ── Hemiciclo ───────────────────────────────────────────────────
@@ -715,15 +715,15 @@ async function cargarPresencia() {
   if (pres.mia && estado.butaca) pres.set.add(estado.butaca)
   if (vistaActual() === 'inicio') pintar()
 }
-function latirPresencia() { if (pres.mia && estado.butaca) sb.rpc('v2_presencia_latido').then(() => {}, () => {}) }
+function latirPresencia() { if (pres.mia && estado.butaca && !document.hidden) sb.rpc('v2_presencia_latido').then(() => {}, () => {}) }
 async function iniciarPresencia() {
   if (estado.user && estado.butaca) {
     try { const { data } = await sb.rpc('v2_presencia_mia'); pres.mia = !!data } catch (e) {}
   }
   pintarBotonLuz(); latirPresencia(); cargarPresencia()
   clearInterval(pres.latido); pres.latido = setInterval(latirPresencia, 45_000)
-  clearInterval(pres.poll); pres.poll = setInterval(() => { if (vistaActual() === 'inicio' || mon.abierto) cargarPresencia() }, 30_000)
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { latirPresencia(); cargarPresencia() } })
+  clearInterval(pres.poll); pres.poll = setInterval(() => { if (!document.hidden && (vistaActual() === 'inicio' || mon.abierto)) cargarPresencia() }, 60_000)
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { latirPresencia(); cargarPresencia(); cargarVotacion() } })
 }
 async function cambiarPresencia(rapido = false) {
   if (!estado.butaca) { aviso('Necesitás una butaca para esto.', 'error'); return }
@@ -1263,7 +1263,7 @@ function vigilarPortada() {
       if (n?.key === 'funding') fdConfig({ activo: !!n.value?.activo, simulado: n.value?.simulado !== false, meta: Number(n.value?.meta) || 30000 })
       if (n?.key === 'announcement') ponerAnuncio(n.value?.active ? n.value : null)
     }).subscribe()
-  setInterval(cargarPortada, 120_000)   // respaldo (y para quien no inició sesión)
+  setInterval(() => { if (!document.hidden) cargarPortada() }, 120_000)   // respaldo (y para quien no inició sesión)
   $('#hero-girar')?.addEventListener('click', () => {
     const f = $('#hero-flip'); f.classList.remove('girada'); portada.mostrandoAnuncio = false
     setTimeout(() => { if (portada.anuncio) { portada.mostrandoAnuncio = true; f.classList.add('girada') } }, 8000)
@@ -3629,7 +3629,7 @@ async function cargarPropuestas(id) {
   pintarPropuestas()
   if (id) abrirPropuesta(id)
   if (!pr.canal) escucharPropuestas()
-  if (!pr.poll) pr.poll = setInterval(() => { if (vistaActual() === 'propuestas') refrescarPropuestas() }, 60_000)
+  if (!pr.poll) pr.poll = setInterval(() => { if (!document.hidden && vistaActual() === 'propuestas') refrescarPropuestas() }, 60_000)
 }
 
 async function refrescarPropuestas() {
@@ -6781,8 +6781,8 @@ async function iniciar() {
   iniciarTiempoReal()
   if (vistaActual() === 'butaca') cargarMiButaca()
   if (vistaActual() === 'propuestas' && pr.d) pintarPropuestas()   // ya con alias públicos cargados
-  setInterval(cargarVotacion, 60_000)
-  setInterval(() => { if (vistaActual() === 'inicio') { cargarPropInicio(); cargarMuro() } }, 90_000)   // refresca votos y estado de la sesión
+  setInterval(() => { if (!document.hidden) cargarVotacion() }, 120_000)
+  setInterval(() => { if (!document.hidden && vistaActual() === 'inicio') { cargarPropInicio(); cargarMuro() } }, 90_000)   // refresca votos y estado de la sesión
 }
 
 // ══════════════════════════════════════════════════════════════

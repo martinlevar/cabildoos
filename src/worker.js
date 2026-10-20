@@ -39,6 +39,7 @@ async function v2Abierta(env, url) {
     const r = await fetch(`${env.SUPABASE_URL}/rest/v1/system_config?select=value&key=eq.countdown`, {
       headers: { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}` },
       cf: { cacheTtl: 15 },
+      signal: AbortSignal.timeout(1500),   // carga-base: si Supabase está lento, el sitio no espera
     })
     if (!r.ok) throw new Error('status ' + r.status)
     const v = (await r.json())?.[0]?.value
