@@ -4836,7 +4836,7 @@ async function vpCapturarManualDoc() {
 //  AUTO-CAPTURE — countdown overlay sobre la cámara
 // ══════════════════════════════════════════════════════════════════════════════
 
-async function vpContador(videoWrapperId, segundos) {
+async function vpContador(videoWrapperId, segundos, texto = 'Mantené quieto…') {   // gestos-v2: texto según el paso
   const wrap = document.getElementById(videoWrapperId)
   if (!wrap) return
   // Crear overlay de countdown
@@ -4850,7 +4850,7 @@ async function vpContador(videoWrapperId, segundos) {
   num.style.cssText = 'font-size:72px;font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,.5)'
   const txt = document.createElement('div')
   txt.style.cssText = 'font-size:13px;color:rgba(255,255,255,.8);margin-top:8px;font-weight:600'
-  txt.textContent = 'Mantené quieto…'
+  txt.textContent = texto
   overlay.appendChild(num); overlay.appendChild(txt)
   wrap.style.position = 'relative'
   wrap.appendChild(overlay)
@@ -4861,8 +4861,8 @@ async function vpContador(videoWrapperId, segundos) {
   overlay.remove()
 }
 
-async function vpAutoCapturar(tipo, wrapperId, segundos = 3) {
-  await vpContador(wrapperId, segundos)
+async function vpAutoCapturar(tipo, wrapperId, segundos = 3, texto) {
+  await vpContador(wrapperId, segundos, texto)
   await vpCapturar(tipo)
 }
 
@@ -4891,7 +4891,8 @@ function vpLivenessIniciar() {
     })
     .then(() => {
       if (token !== _vpLivenessToken) return  // cancelado
-      return vpAutoCapturar('selfie', 'cam-selfie-wrap', 4)
+      // gestos-v2: durante la cuenta se muestra el gesto (antes decía «Mantené quieto» y la foto salía sin gesto)
+      return vpAutoCapturar('selfie', 'cam-selfie-wrap', 4, `${vpLivenessInstruccion?.emoji || ''} ${vpLivenessInstruccion?.texto || 'Hacé el gesto'}: hacelo ahora y mantenelo`)
     })
     .then(() => {
       if (token !== _vpLivenessToken) return  // cancelado — no parar la cámara del otro paso
@@ -4907,8 +4908,7 @@ function vpLivenessIniciar() {
 }
 
 function vpLivenessReintentar() {
-  vpReintentoSelfie++
-  if (vpReintentoSelfie >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
+  // gestos-v2: repetir la foto no cuenta como intento fallido (el fallo ya se contó en vpUsarSelfie)
   document.getElementById('cam-selfie-post').style.display = 'none'
   document.getElementById('cam-selfie-preview').style.display = 'none'
   document.getElementById('cam-selfie-pre').style.display = ''
@@ -5327,9 +5327,15 @@ async function vpUsarSelfie() {
 
   if (!ok) {
     vpReintentoSelfie++
-    if (vpReintentoSelfie >= VP_MAX_REINTENTOS) { vpReiniciarTodo(); return }
     const cnt = document.getElementById('vp-selfie-contador')
-    if (cnt) cnt.textContent = `⚠ No se detectó la acción. Intento ${vpReintentoSelfie + 1} de ${VP_MAX_REINTENTOS}`
+    // gestos-v2: si se agotan los intentos, se prueba con otro gesto SIN volver al documento
+    if (vpReintentoSelfie >= VP_MAX_REINTENTOS) {
+      vpReintentoSelfie = 0
+      if (cnt) cnt.textContent = '⚠ No pudimos ver el gesto. Probemos con otro: hacelo bien marcado mientras corre la cuenta y mantenelo hasta la foto.'
+    } else if (cnt) {
+      cnt.textContent = `⚠ No se vio el gesto. Hacelo bien marcado mientras corre la cuenta. Intento ${vpReintentoSelfie + 1} de ${VP_MAX_REINTENTOS}`
+    }
+    vpOfrecerManual(document.getElementById('cam-selfie-post')?.closest('.vp-step'))
     return
   }
   vpReintentoSelfie = 0
