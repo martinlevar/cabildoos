@@ -1334,10 +1334,15 @@ async function cargarBloques() {
 const ICON_GRUPO = '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M21 19a6 6 0 0 0-4-5.7"/></svg>'
 
 const pideAprobacion = id => estado.reglas?.[id] !== false
+// salida-por-bloque: bloques que dejé hace poco (no puedo volver hasta la fecha)
+const vuelvoDesde = id => { const x = (estado.miBloque?.no_volver || []).find(v => v.bloque_id === id); const d = x && new Date(x.desde); return d && d > new Date() ? d : null }
+const fechaCorta = d => d.toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })
 const pedidoPendiente = id => estado.miBloque?.pedido?.estado === 'pendiente' && estado.miBloque.pedido.bloque_id === id
 function botonSumarse(b, grande) {
   const cl = grande ? 'btn' : 'btn btn-ghost'
   if (estado.miBloque?.bloque_id === b.id) return `<span class="${cl}" aria-disabled="true">${grande ? 'Ya sos parte de este bloque' : 'Tu bloque'}</span>`
+  const vd = vuelvoDesde(b.id)   // salida-por-bloque
+  if (vd) return `<span class="${cl}" aria-disabled="true" title="Saliste de este bloque hace poco">${grande ? `Podés volver desde el ${fechaCorta(vd)}` : `Desde el ${fechaCorta(vd)}`}</span>`
   if (pedidoPendiente(b.id)) return `<button class="${cl} b-pedido" data-cancelar-pedido="${b.id}" title="Solicitud enviada. Tocá para cancelarla">⏳ ${grande ? 'Solicitud enviada' : 'Pendiente'}</button>`
   return `<button class="${cl}" data-unirme="${b.id}">${pideAprobacion(b.id) ? 'Pedir sumarme' : grande ? 'Sumarse al bloque' : 'Sumarse'}</button>`
 }
@@ -1572,7 +1577,7 @@ function simTarjeta(q) {
       <div class="sim-host"><img src="${SIM_IMG}" alt=""><span><b>Claria</b><small>Anfitriona</small></span></div>
       <div class="sim-datos"><span><b>5 pasos</b>unos 3 minutos</span><span><b>Sin espera</b>no cuenta como bloque</span></div>
       <button class="btn btn-dark sim-entrar" type="button" data-sim-abrir>Entrar y practicar</button>
-      <small class="sim-nota">No te suma a ningún bloque real, no activa los 30 días de espera y no publica nada.</small>
+      <small class="sim-nota">No te suma a ningún bloque real, no cuenta como salida y no publica nada.</small>
     </div>
   </article>`
 }
@@ -1587,7 +1592,7 @@ const SIM_PASOS = [
     ops: [{ label: 'Simular apoyos', yo: 'Quiero ver cómo junta apoyos', accion: 'apoyos', primario: true }] },
   { tab: 'Privacidad', bot: ['Paso 4: tu privacidad. Esto es lo que ve y lo que nunca ve el anfitrión de un bloque:'], tarjeta: 'privacidad',
     ops: [{ label: '¿Y si me quiero ir?', yo: '¿Y si me quiero ir del bloque?', next: 5, primario: true }] },
-  { tab: 'Salir', bot: ['Podés salir cuando quieras. Para entrar a otro bloque esperás 30 días; eso evita que la gente salte de bloque en bloque. Igual seguís votando en todo el Cabildo.', 'Si el bloque se cierra o lo suspenden, todos sus miembros quedan libres al instante.'],
+  { tab: 'Salir', bot: ['Podés salir cuando quieras y sumarte enseguida a otro bloque. Lo que no podés es volver al mismo antes de 30 días: así cada bloque cuida a su gente. Igual seguís votando en todo el Cabildo.', 'Si el bloque se cierra o lo suspenden, todos sus miembros quedan libres al instante.'],
     ops: [{ label: 'Terminar el recorrido', yo: 'Listo, terminemos', next: 6, primario: true }] },
   { tab: 'Listo', bot: ['¡Listo! Ya sabés cómo funciona un bloque: sumarte, leer comunicados, proponer ideas, apoyar y cuidar tu privacidad.', 'Ahora podés buscar un bloque real en el panel de Bloques. Este simulador queda acá para cuando quieras repasar.'], estado: 'Recorrido completado',
     ops: [{ label: 'Ver bloques reales', yo: 'Quiero ver bloques reales', fin: true, primario: true }, { label: 'Empezar de nuevo', yo: 'Empezar de nuevo', reiniciar: true }] },
@@ -3373,7 +3378,7 @@ function pintarMiButaca() {
        ${me.soy_anfitrion
          ? '<p class="muted mb-nota">Como anfitrión, para salir tenés que cerrar el bloque.</p>'
          : `<button class="btn btn-ghost" id="mb-salir">Salir del bloque</button>
-            <p class="muted mb-nota">Si salís, vas a poder sumarte a otro bloque recién en ${me.dias_espera || 30} días.</p>`}`
+            <p class="muted mb-nota">Si salís, podés sumarte a otro bloque cuando quieras. A este no vas a poder volver durante ${me.dias_espera || 30} días.</p>`}`
     : espera
       ? `<p class="muted mb-nota" style="margin:0">Saliste de un bloque hace poco. Vas a poder sumarte a otro desde el <b>${espera.toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}</b>.</p>`
       : `<p class="muted mb-nota" style="margin:0 0 12px">Todavía no formás parte de ningún bloque.</p>
@@ -3503,7 +3508,7 @@ async function cambiarVisibilidad(campo) {
 
 async function salirDelBloque() {
   const dias = estado.miBloque?.dias_espera || 30
-  const ok = await confirmar('¿Salir del bloque?', `Vas a dejar de ver sus ideas y debates internos, y no vas a poder sumarte a otro bloque durante ${dias} días.`, 'Sí, salir', true)
+  const ok = await confirmar('¿Salir del bloque?', `Vas a dejar de ver sus ideas y debates internos. Podés sumarte a otro bloque cuando quieras, pero a este no vas a poder volver durante ${dias} días.`, 'Sí, salir', true)
   if (!ok) return
   const { error } = await sb.rpc('bloque_salir')
   if (error) { aviso(error.message || 'No se pudo salir del bloque.', 'error'); return }
@@ -5650,7 +5655,7 @@ const ESCENAS = {
     ${Array.from({ length: 12 }, (_, i) => { const a = Math.PI * (i / 11), x = 320 - 230 * Math.cos(a), y = 300 - 150 * Math.sin(a); return `<g class="a-acercar" ${dl((1 + i * .12).toFixed(2))}><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="18" class="papel borde" stroke-width="3"/>${tx(x.toFixed(0), (y + 6).toFixed(0), '?', 16, 'tenue', 900)}</g>` }).join('')}`),
   bsumar: () => sv(`${[['Bloque A', AC.azul, 150], ['Bloque B', AC.verde, 490]].map(([t, c, x]) => `<g class="a-pop"><rect x="${x - 100}" y="80" width="200" height="170" rx="20" fill="${c}" opacity=".12"/><rect x="${x - 100}" y="80" width="200" height="170" rx="20" fill="none" stroke="${c}" stroke-width="3"/>${tx(x, 112, t, 18, 'tinta', 900)}</g>`).join('')}
     <g class="a-mudar">${aPer(150, 220, 1.1, AC.teal)}</g>
-    <g class="a-pop" ${dl(1.8)}><rect x="264" y="270" width="112" height="62" rx="12" class="papel borde" stroke-width="3"/><rect x="264" y="270" width="112" height="20" rx="10" fill="${AC.rojo}"/>${tx(320, 322, '30 días', 18, 'tinta', 900)}</g>`),
+    <g class="a-pop" ${dl(1.8)}><rect x="210" y="270" width="220" height="62" rx="12" class="papel borde" stroke-width="3"/><rect x="210" y="270" width="220" height="20" rx="10" fill="${AC.rojo}"/>${tx(320, 322, 'Volver a A: 30 días', 18, 'tinta', 900)}<!-- salida-por-bloque --></g>`),
   bcrear: () => sv(`<g class="a-pop"><rect x="70" y="100" width="180" height="120" rx="18" class="papel borde" stroke-width="3"/>${aPer(120, 196, .8, AC.oro)}${tx(190, 150, 'Martín L.', 17, 'tinta', 900)}${tx(190, 176, 'público', 13, 'verde', 800)}</g>
     <g class="a-pop" ${dl(.6)}><rect x="300" y="110" width="120" height="76" rx="10" class="papel borde" stroke-width="3"/><circle cx="330" cy="140" r="14" fill="${AC.gris}"/><rect x="352" y="132" width="50" height="8" rx="4" class="suave"/>${tx(360, 210, 'DNI', 14, 'tenue', 900)}</g>
     <g class="a-guardar" ${dl(1.2)}><rect x="300" y="110" width="120" height="76" rx="10" fill="${AC.gris}" opacity=".0"/></g>
@@ -5779,7 +5784,7 @@ const LECCIONES = [
   { id: 'bloques', titulo: 'Bloques', sub: 'Organizarse', color: AC.violeta, ico: '🚩', ir: ['#inicio', 'Ver bloques'], pasos: [
     { esc: 'bque', t: '¿Qué es un bloque?', p: 'Un grupo de ciudadanos que se junta alrededor de ideas comunes, con un <b>anfitrión</b> que lo lidera. El anfitrión muestra su nombre real; los miembros siguen siendo <b>anónimos</b> para el público, que solo ve cuántos son.' },
     { esc: 'bpedir', t: 'Pedir sumarte', p: 'Tocás <b>“Pedir sumarme”</b> y, si querés, escribís una presentación. El anfitrión te ve con tu <b>alias</b> si lo hiciste público, o como <b>“Ciudadano anónimo”</b>, y decide si entrás. <b>Nunca ve tu número de butaca</b> ni qué votás. Si el bloque está abierto a todos, entrás directo. Probalo 👇', sim: 'sumarme' },
-    { esc: 'bsumar', t: 'Un bloque a la vez', p: 'Podés estar en <b>un bloque a la vez</b>. Si te vas a otro, esperás <b>30 días</b>. Si el anfitrión te quita, quedás libre <b>sin esperar</b>. Y siempre seguís votando todo lo del Cabildo.' },
+    { esc: 'bsumar', t: 'Un bloque a la vez', p: 'Podés estar en <b>un bloque a la vez</b>. Si te vas, podés sumarte enseguida a otro, pero <b>no volver al mismo durante 30 días</b>. Si el anfitrión te quita, quedás libre <b>sin esperar</b>. Y siempre seguís votando todo lo del Cabildo.' },
     { esc: 'badentro', t: 'Adentro, todo en vivo', p: 'Comunicados del anfitrión, debates, una sala para charlar e ideas que los miembros apoyan. <b>Todo se actualiza solo</b>, sin recargar. Si el anfitrión lo habilita, una idea con suficientes apoyos sale como <b>propuesta del bloque</b>; si no, <b>el anfitrión decide</b> qué impulsar.' },
     { esc: 'bcrear', t: 'Crear tu propio bloque', p: 'Para ser anfitrión mostrás tu <b>nombre real</b> y verificás tu identidad otra vez con tu DNI, que queda bajo llave y se borra si el bloque cierra. Desde <b>Administrar</b> elegís si pedís aprobación, aceptás o quitás miembros, y cambiás tu foto, la portada y la frase del bloque.' }],
     quiz: { q: 'Pedís sumarte a un bloque. ¿Qué ve el anfitrión?', o: [['Mi alias si es público, o “Ciudadano anónimo”', 1], ['Mi número de butaca', 0], ['Mi nombre real', 0]], e: 'El anfitrión decide quién entra, pero nunca ve tu butaca ni cómo votás.' } },
@@ -5810,7 +5815,7 @@ const FAQ = [
   ['¿Qué pasa si mi propuesta no llega a {META} apoyos?', 'Vence a las {HORAS} horas. Podés lanzar otra cuando quieras.'],
   ['¿Tengo que mostrar mi nombre?', 'No. Tu butaca es anónima. Solo los anfitriones de bloques muestran su nombre real, porque lo eligen.'],
   ['¿El anfitrión de un bloque sabe quién soy?', 'No. Cuando pedís sumarte ve tu alias si lo hiciste público, o “Ciudadano anónimo”, y tu presentación si escribiste una. Nunca ve tu número de butaca ni qué votás.'],
-  ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Si cambiás de bloque, esperás 30 días. Si el anfitrión te quita, quedás libre enseguida.'],
+  ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Podés cambiarte cuando quieras, pero al bloque que dejaste no podés volver durante 30 días. Si el anfitrión te quita, quedás libre enseguida.'],
   ['¿Qué guardan de mí?', 'Tu email (para entrar) y tu butaca. No guardamos tu nombre ni tu número de documento, y las fotos de la verificación se borran.'],
   ['¿Tengo que aportar para votar?', 'No. Votar, proponer y debatir en el Cabildo es gratis para todas las butacas. Ser socio solo sirve para decidir qué proyectos se financian.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
   ['¿Si aporto más, mi Fundador es más raro?', 'No. Tu Fundador sale de tu butaca, no de cuánto aportás. Hay uno por butaca y por año, y no se vende ni se transfiere.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
