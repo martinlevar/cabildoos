@@ -3815,10 +3815,12 @@ async function vpDocCapturarFrame(_unused) {
     document.getElementById('vp-doc-analizando').style.display = 'none'
 
     if (resp.status === 409) {
-      vpDocMsg('Este documento ya fue usado para verificar otra cuenta', '#ef4444')
+      // verif-manual-auto: el servidor dice si es otra cuenta (con su email a medias) o la misma
+      const det = await resp.json().catch(() => ({}))
+      vpDocMsg('Este documento ya fue usado', '#ef4444')
       document.getElementById('vp-doc-sin-datos').style.display = ''
       document.getElementById('vp-doc-sin-datos').querySelector('p').textContent =
-        'Cada documento de identidad solo puede usarse una vez en CabildoOS.'
+        (typeof det.detail === 'string' && det.detail.slice(0, 300)) || 'Cada documento de identidad solo puede usarse una vez en CabildoOS.'
       return
     }
     if (!resp.ok) {
@@ -3840,6 +3842,7 @@ async function vpDocCapturarFrame(_unused) {
       panel.querySelector('p').textContent   = data.detail || 'Problemas detectados en el documento. Asegurate de no cubrir ninguna zona y de mostrar el documento original.'
       const btnContinuar = panel.querySelector('.vp-btn-main')
       if (btnContinuar) btnContinuar.style.display = 'none'
+      vpOfrecerManual(panel)   // verif-manual-auto
       return
     }
 
@@ -3853,6 +3856,7 @@ async function vpDocCapturarFrame(_unused) {
     }
 
     vpMostrarResultadoGemini(data)
+    if (!data.match) vpOfrecerManual(document.getElementById('vp-doc-sin-datos'))   // verif-manual-auto
 
   } catch (err) {
     document.getElementById('vp-doc-analizando').style.display = 'none'
@@ -3862,6 +3866,36 @@ async function vpDocCapturarFrame(_unused) {
       : `Error: ${err.message}`
     vpDocMsg(msg, '#ef4444')
     document.getElementById('vp-doc-sin-datos').style.display = ''
+    vpOfrecerManual(document.getElementById('vp-doc-sin-datos'))   // verif-manual-auto
+  }
+}
+
+// verif-manual-auto: después de muchos intentos fallidos (lo decide el servidor), ofrecer la verificación manual
+async function vpOfrecerManual(cont) {
+  try {
+    if (!_authUser || !cont || cont.querySelector('.vp-manual-oferta')) return
+    const { data } = await sb.rpc('vm_puede_solicitar')
+    if (!data?.puede || cont.querySelector('.vp-manual-oferta')) return
+    const box = document.createElement('div')
+    box.className = 'vp-manual-oferta'
+    box.style.cssText = 'margin-top:12px;padding:12px 14px;border-radius:12px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.35);text-align:left;font-size:13px;line-height:1.5;color:inherit'
+    box.innerHTML = '<b style="display:block;margin-bottom:4px">¿Seguís con problemas?</b>Podemos verificarte de forma manual: una persona del equipo revisa tus fotos y te asigna la butaca.'
+      + '<button type="button" style="display:block;width:100%;margin-top:10px;padding:12px;border:0;border-radius:10px;background:#3b82f6;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Pedir verificación manual</button>'
+    box.querySelector('button').addEventListener('click', vpPedirManual)
+    cont.appendChild(box)
+  } catch (e) { console.warn('vpOfrecerManual:', e) }
+}
+async function vpPedirManual(e) {
+  const b = e?.currentTarget
+  if (b) { b.disabled = true; b.textContent = 'Preparando…' }
+  try {
+    const { data, error } = await sb.rpc('vm_autosolicitar')
+    if (error) throw error
+    if (data?.link && /^https:\/\/cabildodevenezuela\.com\/verificacion-manual\?t=[0-9a-f]+$/.test(data.link)) { location.href = data.link; return }
+    throw new Error('No se pudo preparar la verificación manual')
+  } catch (err) {
+    if (b) { b.disabled = false; b.textContent = 'Pedir verificación manual' }
+    showToast(err?.message || 'No se pudo preparar la verificación manual. Escribinos a soporte@cabildodevenezuela.com', 5000)
   }
 }
 
@@ -4985,6 +5019,7 @@ function vpMostrarErrorSelfieDoc(mensaje) {
   `
 
   document.body.appendChild(overlay)
+  vpOfrecerManual(overlay.firstElementChild)   // verif-manual-auto
 
   if (!esFinal) {
     document.getElementById('vp-err-reintentar').onclick = () => {
