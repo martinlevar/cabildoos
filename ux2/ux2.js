@@ -1296,7 +1296,7 @@ async function cargarPropInicio() {
   try {
     const { data, error } = await sb.rpc('v2_propuestas')
     if (error) throw error
-    const ahora = new Date(data.ahora).getTime(), desf = ahora - Date.now(), meta = data.meta || 20
+    const ahora = new Date(data.ahora).getTime(), desf = ahora - Date.now(), meta = data.meta || REGLAS_PROP.meta
     const vivas = (data.propuestas || []).filter(p => p.status === 'pending' && new Date(p.expires_at).getTime() > ahora)
       .sort((a, b) => (meta - a.likes) - (meta - b.likes) || new Date(a.expires_at) - new Date(b.expires_at))
     $('#ip-n').textContent = vivas.length ? `· ${vivas.length}` : ''
@@ -1966,12 +1966,12 @@ function bqIdeas(d) {
 
 // ── Propuestas del bloque
 function bqPropuestas(d) {
-  const host = d.soy_anfitrion, meta = d.meta || 20
+  const host = d.soy_anfitrion, meta = d.meta || REGLAS_PROP.meta
   const ST = { pending: ['En campaña', 'on'], accepted: ['Meta lograda · en revisión', 'pub'], approved: ['En el Hemiciclo', 'pub'], expired: ['No llegó a la meta', ''], rejected: ['No aprobada', ''] }
   const cats = Object.keys(CAT_COLOR)
   const form = host ? `<div class="card bq-compose">
       <label for="bq-prop-txt"><b>Lanzar una propuesta del bloque</b>
-        <small>Sale en Propuestas con el sello del bloque y sigue las mismas reglas que todas: necesita ${meta} apoyos en 48 h para llegar al Hemiciclo. En campaña: <b>${d.en_campana}/3</b>.</small></label>
+        <small>Sale en Propuestas con el sello del bloque y sigue las mismas reglas que todas: necesita ${meta} apoyos en ${d.horas || REGLAS_PROP.horas} h para llegar al Hemiciclo. En campaña: <b>${d.en_campana}/3</b>.</small></label>
       <textarea id="bq-prop-txt" maxlength="280" rows="3" placeholder="La propuesta, clara y en una frase (10 a 280 caracteres)"></textarea>
       <textarea id="bq-prop-ctx" maxlength="1500" rows="2" placeholder="Contexto o fundamentos (opcional)"></textarea>
       <div class="bq-acc"><label class="bq-sel">Categoría <select id="bq-prop-cat">${cats.map(c => `<option ${c === 'General' ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
@@ -2164,7 +2164,7 @@ async function bqAccion(a, el) {
   }
   if (a === 'prop-crear') {
     const t = bqVal('bq-prop-txt'); if (t.length < 10) return aviso('La propuesta tiene que tener al menos 10 caracteres.', 'error')
-    if (!await confirmar('¿Lanzar la propuesta del bloque?', `Sale ya mismo en Propuestas con el sello de "${d.bloque.nombre}" y tiene 48 horas para juntar ${d.meta} apoyos.`, 'Lanzar')) return
+    if (!await confirmar('¿Lanzar la propuesta del bloque?', `Sale ya mismo en Propuestas con el sello de "${d.bloque.nombre}" y tiene ${REGLAS_PROP.horas} horas para juntar ${d.meta} apoyos.`, 'Lanzar')) return
     el.disabled = true
     if (await bqRpc('bloque_propuesta_crear', { p_texto: t, p_cat: $('#bq-prop-cat').value, p_contexto: bqVal('bq-prop-ctx') }, '🚀 Propuesta lanzada')) return cargarMiBloque()
     el.disabled = false; return
@@ -2234,7 +2234,7 @@ function enlazarMiBloque() {
     }
     const pu = t.closest('[data-bq-publicar]')
     if (pu) {
-      if (!await confirmar('¿Publicar esta idea como propuesta?', 'Sale en Propuestas con el sello del bloque, sin mostrar quién la escribió, y tiene 48 horas para juntar apoyos.', 'Publicar')) return
+      if (!await confirmar('¿Publicar esta idea como propuesta?', `Sale en Propuestas con el sello del bloque, sin mostrar quién la escribió, y tiene ${REGLAS_PROP.horas} horas para juntar ${REGLAS_PROP.meta} apoyos.`, 'Publicar')) return
       if (await bqRpc('bloque_idea_publicar', { p_idea: pu.dataset.bqPublicar }, '🚀 La idea ya es propuesta del bloque')) cargarMiBloque()
       return
     }
@@ -3784,7 +3784,7 @@ const fmtResta = ms => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`
 }
 const calor = p => {                          // 0 = recién lanzada … 1 = por apagarse
-  const total = (pr.d?.horas || 48) * 3600e3
+  const total = (pr.d?.horas || REGLAS_PROP.horas) * 3600e3
   return Math.min(1, Math.max(0, 1 - restaMs(p) / total))
 }
 const autorDe = p => {
@@ -3930,7 +3930,7 @@ function pintarPista() {
 function tarjetaPropuesta(p) {
   const meta = pr.d.meta, vive = viva(p)
   const col = CAT_COLOR[p.cat] || CAT_COLOR.General
-  const cal = calor(p), pct = vive ? Math.max(0, restaMs(p) / ((pr.d.horas || 48) * 3600e3)) : 0
+  const cal = calor(p), pct = vive ? Math.max(0, restaMs(p) / ((pr.d.horas || REGLAS_PROP.horas) * 3600e3)) : 0
   const estado_ = p.status === 'accepted' ? '<span class="pr-sello meta">Meta lograda · en revisión</span>'
     : p.status === 'approved' ? '<span class="pr-sello hemi">En el Hemiciclo</span>'
     : p.status === 'expired' ? '<span class="pr-sello fin">No llegó a la meta</span>'
@@ -4036,7 +4036,7 @@ async function abrirPropuesta(id) {
     <div class="mp-carrera" data-prop="${p.id}" style="--cat:${CAT_COLOR[p.cat] || CAT_COLOR.General}">
       ${arcoButacas(Math.min(p.likes, meta), meta, 'grande')}
       <div class="pr-cuenta"><b data-n>${p.likes}</b><small>de ${meta} butacas</small><span data-faltan>${faltanTxt(p)}</span></div>
-      ${vive ? `<div class="mecha" style="--resto:${Math.max(0, restaMs(p) / ((pr.d.horas || 48) * 3600e3)).toFixed(4)};--cal:${calor(p).toFixed(2)}"><i></i></div>
+      ${vive ? `<div class="mecha" style="--resto:${Math.max(0, restaMs(p) / ((pr.d.horas || REGLAS_PROP.horas) * 3600e3)).toFixed(4)};--cal:${calor(p).toFixed(2)}"><i></i></div>
         <div class="pr-plazo"><span>Se apaga en</span><b data-fin="${esc(p.expires_at)}">${fmtResta(restaMs(p))}</b></div>` : ''}
       <div class="pr-pie">${vive ? botonApoyo(p) : ''}<button class="pr-x" data-compartir="${p.id}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.2-8.3L1.8 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><span>Compartir en X</span></button></div>
     </div>
@@ -4081,7 +4081,7 @@ function abrirLanzar() {
   if (pr.d && !pr.d.puedo_lanzar) { aviso('Ya tenés una propuesta en carrera. Cuando termine vas a poder lanzar otra.', 'error'); return }
   const cats = (pr.cats.length ? pr.cats.map(c => c.name) : Object.keys(CAT_COLOR)).filter((c, i, a) => a.indexOf(c) === i)
   $('#ml-cats').innerHTML = cats.map((c, i) => `<button type="button" class="ml-cat ${i === 0 ? 'on' : ''}" data-cat="${esc(c)}" style="--cat:${CAT_COLOR[c] || CAT_COLOR.General}">${esc(c)}</button>`).join('')
-  $('#ml-meta-txt').textContent = `Tenés ${pr.d?.horas || 48} horas para encender ${pr.d?.meta || 20} butacas. Si lo lográs, el moderador la revisa para llevarla a votación del Hemiciclo.`
+  $('#ml-meta-txt').textContent = `Tenés ${pr.d?.horas || REGLAS_PROP.horas} horas para encender ${pr.d?.meta || REGLAS_PROP.meta} butacas. Si lo lográs, el moderador la revisa para llevarla a votación del Hemiciclo.`
   $('#ml-form').reset(); $('#ml-form').hidden = false; $('#ml-listo').hidden = true
   previsualizar()
   $('#modal-lanzar').hidden = false
@@ -4095,9 +4095,9 @@ function previsualizar() {
   $('#ml-prev').innerHTML = `
     <div class="pr-top"><span class="pr-cat" style="--cat:${CAT_COLOR[cat] || CAT_COLOR.General}">${esc(cat)}</span><span class="pr-autor">Tu propuesta</span></div>
     <p class="ml-prev-txt ${t.trim() ? '' : 'vacio'}">${esc(t.trim() || 'Así se va a ver tu propuesta en la pista.')}</p>
-    <div class="pr-medio">${arcoButacas(0, pr.d?.meta || 20)}<div class="pr-cuenta"><b>0</b><small>de ${pr.d?.meta || 20} butacas</small></div></div>
+    <div class="pr-medio">${arcoButacas(0, pr.d?.meta || REGLAS_PROP.meta)}<div class="pr-cuenta"><b>0</b><small>de ${pr.d?.meta || REGLAS_PROP.meta} butacas</small></div></div>
     <div class="mecha" style="--resto:1;--cal:0"><i></i></div>
-    <div class="pr-plazo"><span>Se apaga en</span><b>${String(pr.d?.horas || 48).padStart(2, '0')}:00:00</b></div>`
+    <div class="pr-plazo"><span>Se apaga en</span><b>${String(pr.d?.horas || REGLAS_PROP.horas).padStart(2, '0')}:00:00</b></div>`
   $('#ml-enviar').disabled = t.trim().length < 10
 }
 
@@ -4142,7 +4142,7 @@ function tickPropuestas() {
     const ms = new Date(el.dataset.fin).getTime() - ahoraSrv()
     el.textContent = fmtResta(ms)
     const card = el.closest('[data-prop]'); const m = card?.querySelector('.mecha')
-    if (m) { m.style.setProperty('--resto', Math.max(0, ms / ((pr.d?.horas || 48) * 3600e3)).toFixed(4)) }
+    if (m) { m.style.setProperty('--resto', Math.max(0, ms / ((pr.d?.horas || REGLAS_PROP.horas) * 3600e3)).toFixed(4)) }
     if (ms <= 0 && pr.d && !el.dataset.vencio) { el.dataset.vencio = '1'; setTimeout(refrescarPropuestas, 1500) }
   })
 }
@@ -5639,8 +5639,8 @@ const ESCENAS = {
     <g class="a-lanzar" ${dl(.9)}><rect x="320" y="90" width="260" height="170" rx="18" class="papel borde" stroke-width="3"/>${tx(450, 124, 'MI PROPUESTA', 13, 'azul', 900, 'letter-spacing="2"')}<rect x="344" y="142" width="212" height="12" rx="6" class="suave"/><rect x="344" y="164" width="170" height="12" rx="6" class="suave"/><rect x="344" y="200" width="110" height="36" rx="12" fill="${AC.azul}"/>${tx(399, 224, 'Lanzar 🚀', 14, 'blanco', 900)}</g>
     ${tx(320, 320, 'Una idea en 280 caracteres + contexto y enlaces', 16, 'tenue', 700, `class="a-fade" ${dl(1.4)}`)}`),
   pmeta: () => sv(`<g transform="translate(150 40) scale(3.4)" class="arco-esc">${Array.from({ length: 20 }, (_, i) => { const fila = i < 8 ? 0 : 1, n = fila ? 12 : 8, k = fila ? i - 8 : i, r = fila ? 38 : 24, a = Math.PI - (k + .5) * Math.PI / n; return `<circle cx="${(50 + r * Math.cos(a)).toFixed(1)}" cy="${(46 - r * Math.sin(a)).toFixed(1)}" r="3.6" class="seat on" ${dl((i * .12).toFixed(2))}/>` }).join('')}</g>
-    ${tx(320, 225, '20 butacas', 28, 'tinta', 900, `class="a-pop" ${dl(2.5)}`)}<rect x="170" y="262" width="300" height="12" rx="6" class="suave"/><rect x="170" y="262" width="300" height="12" rx="6" fill="${AC.rojo}" class="a-mecha"/>${tx(320, 310, 'en 48 horas', 18, 'rojo', 800)}`),
-  pcamino: () => sv(`${[['Campaña', '🔥', 80, AC.oro], ['Meta: 20', '🎯', 240, AC.verde], ['Revisión', '🔎', 400, AC.violeta], ['Votación', '🗳️', 560, AC.azul]].map(([t, e, x, c], i) => `<g class="a-pop" ${dl(i * .5)}><circle cx="${x}" cy="160" r="48" fill="${c}" class="borde" stroke-width="3"/><text x="${x}" y="175" font-size="40" text-anchor="middle">${e}</text>${tx(x, 240, t, 17)}</g>${i < 3 ? aFlecha(x + 56, 160, x + 104, 160, `class="a-fade" ${dl(i * .5 + .3)}`) : ''}`).join('')}
+    ${tx(320, 225, `${REGLAS_PROP.meta} butacas`, 28, 'tinta', 900, `class="a-pop" ${dl(2.5)}`)}<rect x="170" y="262" width="300" height="12" rx="6" class="suave"/><rect x="170" y="262" width="300" height="12" rx="6" fill="${AC.rojo}" class="a-mecha"/>${tx(320, 310, `en ${REGLAS_PROP.horas} horas`, 18, 'rojo', 800)}`),
+  pcamino: () => sv(`${[['Campaña', '🔥', 80, AC.oro], [`Meta: ${REGLAS_PROP.meta}`, '🎯', 240, AC.verde], ['Revisión', '🔎', 400, AC.violeta], ['Votación', '🗳️', 560, AC.azul]].map(([t, e, x, c], i) => `<g class="a-pop" ${dl(i * .5)}><circle cx="${x}" cy="160" r="48" fill="${c}" class="borde" stroke-width="3"/><text x="${x}" y="175" font-size="40" text-anchor="middle">${e}</text>${tx(x, 240, t, 17)}</g>${i < 3 ? aFlecha(x + 56, 160, x + 104, 160, `class="a-fade" ${dl(i * .5 + .3)}`) : ''}`).join('')}
     <circle cx="80" cy="100" r="9" fill="${AC.rojo}" class="a-viaje"/>${tx(320, 310, 'Si llega a la meta, el Cabildo la puede votar', 17, 'tenue', 800, `class="a-fade" ${dl(2.2)}`)}`),
   puna: () => sv(`<g class="a-pop"><rect x="230" y="80" width="180" height="190" rx="18" class="papel borde" stroke-width="3" stroke="${AC.oro}"/>${tx(320, 120, 'EN CARRERA', 13, 'oro', 900, 'letter-spacing="2"')}${tx(320, 190, '🔥', 52)}<rect x="262" y="222" width="116" height="12" rx="6" class="suave"/></g>
     ${[110, 530].map((x, i) => `<g class="a-fade" ${dl(.6 + i * .2)} opacity=".45"><rect x="${x - 70}" y="100" width="140" height="150" rx="16" class="papel borde" stroke-width="3" stroke-dasharray="8 8"/>${tx(x, 190, '🔒', 40)}</g>`).join('')}
@@ -5772,10 +5772,10 @@ const LECCIONES = [
     quiz: { q: '¿Qué hacés para escribir en un debate?', o: [['Levanto la mano y espero mi turno', 1], ['Escribo directamente', 0], ['Le pido permiso a un admin', 0]], e: 'Levantás la mano: si hay lugar, hablás enseguida; si no, esperás tu turno.' } },
   { id: 'propuestas', titulo: 'Propuestas', sub: 'Tu idea, al Cabildo', color: AC.rojo, ico: '💡', ir: ['#propuestas', 'Ir a Propuestas'], pasos: [
     { esc: 'pidea', t: 'Tenés una idea: lanzala', p: 'Escribila en hasta 280 caracteres. Podés sumar contexto y enlaces para explicarla mejor.' },
-    { esc: 'pmeta', t: '48 horas para encender 20 butacas', p: 'Durante <b>48 horas</b>, otros ciudadanos pueden <b>apoyarla</b>. Si llega a <b>20 apoyos</b>, logró la meta. Si no, vence. Probalo 👇', sim: 'propuesta' },
+    { esc: 'pmeta', t: '{HORAS} horas para encender {META} butacas', p: 'Durante <b>{HORAS} horas</b>, otros ciudadanos pueden <b>apoyarla</b>. Si llega a <b>{META} apoyos</b>, logró la meta. Si no, vence. Probalo 👇', sim: 'propuesta' },
     { esc: 'pcamino', t: 'De idea a votación', p: 'Las que llegan a la meta pasan a <b>revisión</b>. Si se aprueban, el Cabildo entero las <b>vota</b>.' },
     { esc: 'puna', t: 'Una a la vez', p: 'Cada butaca puede tener <b>una propuesta en carrera</b>. Cuando termina, podés lanzar otra. Elegí tu mejor idea.' }],
-    quiz: { q: 'Tu propuesta llegó a 14 apoyos en 48 horas. ¿Qué pasa?', o: [['Vence: no llegó a la meta', 1], ['Pasa igual a votación', 0], ['Se extiende sola otra semana', 0]], e: 'La meta es 20 apoyos en 48 horas. Si no llega, vence y podés lanzar otra.' } },
+    quiz: { q: 'Tu propuesta llegó a {CASI} apoyos en {HORAS} horas. ¿Qué pasa?', o: [['Vence: no llegó a la meta', 1], ['Pasa igual a votación', 0], ['Se extiende sola otra semana', 0]], e: 'La meta es {META} apoyos en {HORAS} horas. Si no llega, vence y podés lanzar otra.' } },
   { id: 'bloques', titulo: 'Bloques', sub: 'Organizarse', color: AC.violeta, ico: '🚩', ir: ['#inicio', 'Ver bloques'], pasos: [
     { esc: 'bque', t: '¿Qué es un bloque?', p: 'Un grupo de ciudadanos que se junta alrededor de ideas comunes, con un <b>anfitrión</b> que lo lidera. El anfitrión muestra su nombre real; los miembros siguen siendo <b>anónimos</b> para el público, que solo ve cuántos son.' },
     { esc: 'bpedir', t: 'Pedir sumarte', p: 'Tocás <b>“Pedir sumarme”</b> y, si querés, escribís una presentación. El anfitrión te ve con tu <b>alias</b> si lo hiciste público, o como <b>“Ciudadano anónimo”</b>, y decide si entrás. <b>Nunca ve tu número de butaca</b> ni qué votás. Si el bloque está abierto a todos, entrás directo. Probalo 👇', sim: 'sumarme' },
@@ -5807,7 +5807,7 @@ const FAQ = [
   ['¿Por qué no veo quién va ganando?', 'Para que nadie vote “con la mayoría”. Mientras la votación está abierta solo se ve cuántos votaron; el resultado aparece al cerrar.'],
   ['¿Cuántas veces puedo escribir en el Muro?', 'Una opinión por día. Si querés cambiarla, podés borrarla y escribir otra. El Muro se renueva a las 3:00 de Venezuela.'],
   ['¿Puedo cambiar mi voto?', 'No. Hay un voto por butaca y por pregunta, y es definitivo.'],
-  ['¿Qué pasa si mi propuesta no llega a 20 apoyos?', 'Vence a las 48 horas. Podés lanzar otra cuando quieras.'],
+  ['¿Qué pasa si mi propuesta no llega a {META} apoyos?', 'Vence a las {HORAS} horas. Podés lanzar otra cuando quieras.'],
   ['¿Tengo que mostrar mi nombre?', 'No. Tu butaca es anónima. Solo los anfitriones de bloques muestran su nombre real, porque lo eligen.'],
   ['¿El anfitrión de un bloque sabe quién soy?', 'No. Cuando pedís sumarte ve tu alias si lo hiciste público, o “Ciudadano anónimo”, y tu presentación si escribiste una. Nunca ve tu número de butaca ni qué votás.'],
   ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Si cambiás de bloque, esperás 30 días. Si el anfitrión te quita, quedás libre enseguida.'],
@@ -5821,6 +5821,35 @@ const FAQ = [
 const ap = { hechas: new Set(), lec: null, paso: 0, sim: {} }
 try { JSON.parse(localStorage.getItem('ux2_aprende_v1') || '[]').forEach(id => ap.hechas.add(id)) } catch (e) {}
 const apGuardar = () => { try { localStorage.setItem('ux2_aprende_v1', JSON.stringify([...ap.hechas])) } catch (e) {} }
+
+// reglas-prop: la meta y las horas de las propuestas salen de la configuración (antes decía «20» escrito a mano)
+const REGLAS_PROP = { meta: 50, horas: 48 }
+const _rpTpl = { lec: null, faq: null }
+const rpTexto = s => String(s ?? '').replace(/\{META\}/g, REGLAS_PROP.meta).replace(/\{HORAS\}/g, REGLAS_PROP.horas).replace(/\{CASI\}/g, Math.max(1, Math.round(REGLAS_PROP.meta * 0.7)))
+function aplicarReglasProp(meta, horas) {
+  if (Number(meta) > 0) REGLAS_PROP.meta = Number(meta)
+  if (Number(horas) > 0) REGLAS_PROP.horas = Number(horas)
+  if (!_rpTpl.lec) {
+    _rpTpl.lec = LECCIONES.map(l => ({ pasos: l.pasos.map(p => [p.t, p.p]), quiz: l.quiz ? [l.quiz.q, l.quiz.e] : null }))
+    _rpTpl.faq = FAQ.map(f => [f[0], f[1]])
+  }
+  LECCIONES.forEach((l, i) => {
+    const t = _rpTpl.lec[i]
+    l.pasos.forEach((p, j) => { p.t = rpTexto(t.pasos[j][0]); p.p = rpTexto(t.pasos[j][1]) })
+    if (l.quiz && t.quiz) { l.quiz.q = rpTexto(t.quiz[0]); l.quiz.e = rpTexto(t.quiz[1]) }
+  })
+  FAQ.forEach((f, i) => { f[0] = rpTexto(_rpTpl.faq[i][0]); f[1] = rpTexto(_rpTpl.faq[i][1]) })
+  $$('[data-reglas="meta"]').forEach(e => { e.textContent = REGLAS_PROP.meta })
+  $$('[data-reglas="horas"]').forEach(e => { e.textContent = REGLAS_PROP.horas })
+}
+aplicarReglasProp()
+async function cargarReglasProp() {
+  try {
+    const { data } = await sb.rpc('v2_reglas_propuestas')
+    if (data) aplicarReglasProp(data.meta, data.horas)
+    if (vistaActual() === 'aprende' && !ap.lec) pintarAprende()
+  } catch (e) {}
+}
 
 function pintarAprende() {
   const c = $('#ap-cuerpo'); if (!c) return
@@ -5931,8 +5960,8 @@ function simHTML(tipo) {
       <span class="sim-corte">✂</span>
       <div><small>CONTADOR</small><b id="sim-cont"></b></div>
     </div><p class="sim-nota" id="sim-nota" hidden>Fijate: <b>nada une tu butaca con tu opción</b>. Y si intentás votar otra vez, no te deja.</p></div>`
-  if (tipo === 'propuesta') return `<div class="sim-prop"><div class="sim-prop-arco" id="sim-arco">${arcoButacas(3, 20, 'grande')}</div>
-    <div class="sim-prop-datos"><b id="sim-apoyos">3 / 20 apoyos</b><span id="sim-reloj">⏳ 47:59:59</span></div>
+  if (tipo === 'propuesta') return `<div class="sim-prop"><div class="sim-prop-arco" id="sim-arco">${arcoButacas(3, REGLAS_PROP.meta, 'grande')}</div>
+    <div class="sim-prop-datos"><b id="sim-apoyos">3 / ${REGLAS_PROP.meta} apoyos</b><span id="sim-reloj">⏳ ${String(REGLAS_PROP.horas - 1).padStart(2, '0')}:59:59</span></div>
     <button class="btn btn-dark" id="sim-apoyar">🔥 Simular apoyos</button><p class="sim-nota" id="sim-prop-nota">Tocá varias veces: cada toque es otra butaca apoyando.</p></div>`
   if (tipo === 'sumarme') return `<div class="sim-sumar"><div class="sim-sumar-yo">
       <label class="sim-sw"><input type="checkbox" id="sim-sum-alias" checked><span></span> Mi alias “Ayn Rand” es público</label>
@@ -5955,7 +5984,7 @@ function iniciarSim(tipo) {
   }
   if (tipo === 'sumarme') { ap.sim.pedido = 0; simSumarVista() }
   if (tipo === 'socio') ap.sim.plata = 0
-  if (tipo === 'propuesta') { ap.sim.n = 3; ap.sim.seg = 48 * 3600 - 1; ap.sim.t = setInterval(() => { ap.sim.seg = Math.max(0, ap.sim.seg - 977); const h = Math.floor(ap.sim.seg / 3600), m = Math.floor(ap.sim.seg % 3600 / 60), s = ap.sim.seg % 60; const r = $('#sim-reloj'); if (r) r.textContent = `⏳ ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; if (!ap.sim.seg && ap.sim.n < 20) { clearInterval(ap.sim.t); $('#sim-prop-nota').innerHTML = '⌛ <b>Se acabó el tiempo.</b> La propuesta venció. Volvé a intentarlo con “Atrás” y “Siguiente”.'; $('#sim-apoyar').disabled = true } }, 100) }
+  if (tipo === 'propuesta') { ap.sim.n = 3; ap.sim.seg = REGLAS_PROP.horas * 3600 - 1; ap.sim.t = setInterval(() => { ap.sim.seg = Math.max(0, ap.sim.seg - Math.round(977 * REGLAS_PROP.horas / 48)); const h = Math.floor(ap.sim.seg / 3600), m = Math.floor(ap.sim.seg % 3600 / 60), s = ap.sim.seg % 60; const r = $('#sim-reloj'); if (r) r.textContent = `⏳ ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`; if (!ap.sim.seg && ap.sim.n < REGLAS_PROP.meta) { clearInterval(ap.sim.t); $('#sim-prop-nota').innerHTML = '⌛ <b>Se acabó el tiempo.</b> La propuesta venció. Volvé a intentarlo con “Atrás” y “Siguiente”.'; $('#sim-apoyar').disabled = true } }, 100) }
 }
 function simSumarVista() {
   const el = $('#sim-sum-vista'); if (!el) return
@@ -6002,12 +6031,13 @@ function enlazarAprende() {
       return
     }
     if (e.target.closest('#sim-apoyar')) {
-      if (ap.sim.n >= 20) return
-      ap.sim.n++; $('#sim-arco').innerHTML = arcoButacas(ap.sim.n, 20, 'grande' + (ap.sim.n >= 20 ? ' completo' : ''))
+      const M = REGLAS_PROP.meta   // reglas-prop
+      if (ap.sim.n >= M) return
+      ap.sim.n = Math.min(M, ap.sim.n + Math.max(1, Math.round(M / 17))); $('#sim-arco').innerHTML = arcoButacas(ap.sim.n, M, 'grande' + (ap.sim.n >= M ? ' completo' : ''))
       $(`#sim-arco circle[data-i="${ap.sim.n - 1}"]`)?.classList.add('nueva')
-      $('#sim-apoyos').textContent = `${ap.sim.n} / 20 apoyos`
-      if (ap.sim.n >= 20) { clearInterval(ap.sim.t); $('#sim-prop-nota').innerHTML = '🎯 <b>¡Meta lograda!</b> Ahora pasa a revisión y puede convertirse en votación del Cabildo.'; $('#sim-apoyar').disabled = true }
-      else if (ap.sim.n >= 15) $('#sim-prop-nota').innerHTML = `🔥 ¡Faltan <b>${20 - ap.sim.n}</b>!`
+      $('#sim-apoyos').textContent = `${ap.sim.n} / ${M} apoyos`
+      if (ap.sim.n >= M) { clearInterval(ap.sim.t); $('#sim-prop-nota').innerHTML = '🎯 <b>¡Meta lograda!</b> Ahora pasa a revisión y puede convertirse en votación del Cabildo.'; $('#sim-apoyar').disabled = true }
+      else if (ap.sim.n >= M * 0.75) $('#sim-prop-nota').innerHTML = `🔥 ¡Faltan <b>${M - ap.sim.n}</b>!`
       return
     }
     if (e.target.closest('#sim-sum-pedir')) {
@@ -6990,6 +7020,7 @@ async function iniciar() {
   if (vistaActual() === 'propuestas' && pr.d) refrescarPropuestas()
   if (vistaActual() === 'debates' && dbt.q) { pintarHilo(); if (dbAbierto(dbt.q) && estado.user && !dbt.canal) entrarAlCanal(dbt.q.id) }
   await Promise.all([cargarHemiciclo(), cargarVotacion(), cargarMuro(), cargarBloques(), cargarPropInicio(), cargarPortada()])
+  cargarReglasProp()   // reglas-prop
   iniciarPresencia()
   iniciarTiempoReal()
   if (vistaActual() === 'butaca') cargarMiButaca()
