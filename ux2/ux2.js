@@ -711,7 +711,12 @@ async function cargarHemiciclo() {
     $('#st-butacas').textContent = fmtNum(totalButacas)
     asientos = calcularAsientos(Math.max(totalButacas, estado.butaca))
     dibujarHemiciclo()
-    estado.perfilesListos = cargarPerfiles().then(() => { if (vistaActual() === 'playroom') pintarPlayroom() })
+    estado.perfilesListos = cargarPerfiles().then(() => {
+      // hemiciclo-maxima: dibujar hasta la butaca de número más alto (el total público no cuenta las butacas de prueba)
+      const maxN = [...perfiles.keys()].reduce((m, k) => Math.max(m, Number(k) || 0), 0)
+      if (maxN > asientos.length) { asientos = calcularAsientos(maxN); dibujarHemiciclo() }
+      if (vistaActual() === 'playroom') pintarPlayroom()
+    })
   } catch (e) { console.warn('cargarHemiciclo:', e) }
 }
 
