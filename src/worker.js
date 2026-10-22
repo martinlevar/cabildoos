@@ -158,6 +158,21 @@ export default {
     // ─── Static assets ───
     const assetResponse = mBloque ? await env.ASSETS.fetch(new URL('/bloque', request.url).toString()) : await env.ASSETS.fetch(request);
 
+    // v1-cerrada: una dirección que no existe ya no cae en la v1. Con la v2 abierta, la v1 solo se sirve en
+    // /cuenta (registro, login, verificación) y /auth/* (recuperar contraseña); lo demás va a la v2.
+    if (assetResponse.status === 404 && !mBloque) {
+      const p = url.pathname.replace(/\/+$/, '') || '/';
+      const rutaV1 = p === '/cuenta' || p.startsWith('/auth/');
+      if (!rutaV1 && await v2Abierta(env, url)) {
+        const m = p.match(/^\/ux2\/([a-z0-9-]{1,40})(?:\.html)?$/);   // /ux2/press → /press (si esa página existe)
+        if (m && !['index', 'bloque'].includes(m[1])) {
+          const pag = await env.ASSETS.fetch(new URL('/' + m[1], request.url).toString(), { method: 'HEAD' });
+          if (pag.status === 200) return redirigir('/' + m[1] + url.search, 301);
+        }
+        return redirigir('/ux2/' + url.search);
+      }
+    }
+
     // SPA fallback: rutas como /auth/recovery no son archivos → servir index.html
     const targetResponse = (assetResponse.status === 404)
       ? await env.ASSETS.fetch(new URL('/', request.url).toString())
