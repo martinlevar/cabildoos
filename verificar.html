@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Verificación — Cabildo de Venezuela</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f3f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0e1d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* verificar-v2: verificación en 2 pasos (documento + selfie en vivo con gesto), estética de la v2 */
+:root {
+  --bg:#f3f4f8; --surface:#fff; --surface-2:#f6f7fb; --line:#e7e9f1; --ink:#12162e; --ink-2:#3b4160; --muted:#7a8099;
+  --navy:#141a3c; --accent:#4f46e5; --accent-bg:#eef0ff; --green:#16a34a; --green-bg:#e9f8ef; --red:#e11d48; --red-bg:#fdecef;
+  --amber:#8a5300; --amber-bg:#fff4d6; --skin:#e0a77e; --hair:#3f3a36; --card:#f8fafc; --card-line:#94a3b8;
+  --shadow:0 1px 2px rgba(18,22,46,.04), 0 8px 24px rgba(18,22,46,.06); --radius:18px; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#0b0e1d; --surface:#141830; --surface-2:#1a1f3b; --line:#262c4d; --ink:#eef0fb; --ink-2:#c3c8e3; --muted:#8b91b3;
+    --navy:#2b3478; --accent:#8b8cff; --accent-bg:#23285a; --green:#34d399; --green-bg:#12301f; --red:#fb7185; --red-bg:#3a1520;
+    --amber:#f5c26b; --amber-bg:#3a2c0b; --card:#232948; --card-line:#5b6390;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25); color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--ink); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+button { font: inherit; color: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+.wrap { max-width: 600px; margin: 0 auto; padding: 18px 16px calc(40px + env(safe-area-inset-bottom)); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.marca { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 15px; }
+.marca img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.top small { color: var(--muted); font-size: 13px; }
+
+/* Progreso */
+.pasos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 16px; padding: 0; list-style: none; }
+.pasos li { display: grid; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: center; }
+.pasos li::before { content: ''; height: 5px; border-radius: 99px; background: var(--line); transition: background .3s; }
+.pasos li.hecho::before { background: var(--green); }
+.pasos li.actual { color: var(--ink); }
+.pasos li.actual::before { background: var(--accent); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 20px; }
+h1 { margin: 0 0 6px; font-size: 24px; line-height: 1.2; letter-spacing: -.02em; }
+h2 { margin: 18px 0 8px; font-size: 16px; letter-spacing: -.01em; }
+p { margin: 0 0 12px; color: var(--ink-2); }
+.muted { color: var(--muted); font-size: 13.5px; }
+.ilus { display: block; width: 100%; height: auto; max-height: 220px; margin: 0 0 14px; border-radius: 14px; background: var(--surface-2); }
+.lista { margin: 10px 0 14px; padding: 0; list-style: none; display: grid; gap: 10px; }
+.lista li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; font-size: 14.5px; color: var(--ink-2); align-items: start; }
+.lista b { color: var(--ink); }
+.lista .ico { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-bg); color: var(--accent); font-size: 13px; font-weight: 800; }
+.caja { margin: 14px 0; padding: 12px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; }
+.caja.riesgo { background: var(--amber-bg); color: var(--amber); }
+.caja.error { background: var(--red-bg); color: var(--red); font-weight: 600; }
+.caja.ok { background: var(--green-bg); color: var(--green); font-weight: 600; }
+.caja.info { background: var(--accent-bg); color: var(--ink); }
+.detalles { border: 1px solid var(--line); border-radius: 14px; margin: 10px 0; background: var(--surface-2); }
+.detalles summary { padding: 12px 14px; font-weight: 700; font-size: 14px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 8px; }
+.detalles summary::-webkit-details-marker { display: none; }
+.detalles summary::after { content: '＋'; color: var(--muted); }
+.detalles[open] summary::after { content: '－'; }
+.detalles .cuerpo { padding: 0 14px 12px; font-size: 13.5px; color: var(--ink-2); }
+.detalles .cuerpo p { font-size: 13.5px; margin-bottom: 8px; }
+.check { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; font-size: 14px; color: var(--ink-2); cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 1px; accent-color: var(--accent); flex: none; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px 18px; border-radius: 12px; border: 0; background: var(--navy); color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; transition: transform .1s, opacity .2s; }
+.btn:active { transform: scale(.98); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn.sec { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); }
+.btn.acento { background: var(--accent); }
+.fila-btns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 14px; }
+.campo { display: grid; gap: 6px; margin-bottom: 12px; }
+.campo label { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.campo input, .campo select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.campo input:focus, .campo select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.campo .ayuda { font-size: 12px; color: var(--muted); }
+.campo.err .ayuda { color: var(--red); }
+.doble { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.triple { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 9px 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg); color: var(--ink); }
+.datos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+.datos div { padding: 10px 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.datos small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted); text-transform: uppercase; }
+.datos b { font-size: 14.5px; word-break: break-word; }
+.gesto-grande { display: flex; align-items: center; gap: 14px; margin: 6px 0 14px; padding: 14px; border-radius: 16px; background: var(--accent-bg); }
+.gesto-grande .emo { font-size: 44px; line-height: 1; flex: none; }
+.gesto-grande b { display: block; font-size: 17px; }
+.gesto-grande small { color: var(--ink-2); font-size: 13px; }
+.cargando { display: grid; place-items: center; gap: 12px; padding: 18px 0; text-align: center; }
+.spin { width: 38px; height: 38px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: girar .9s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }
+.miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.miniaturas img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
+.estado { text-align: center; }
+.estado .grande { width: 72px; height: 72px; margin: 6px auto 14px; border-radius: 50%; display: grid; place-items: center; font-size: 32px; background: var(--accent-bg); color: var(--accent); }
+.estado .grande.ok { background: var(--green-bg); color: var(--green); }
+.butaca-num { font-size: 56px; font-weight: 800; letter-spacing: -.03em; margin: 4px 0 10px; }
+.pie { margin-top: 16px; text-align: center; font-size: 12.5px; color: var(--muted); }
+.manual { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--accent-bg); font-size: 13.5px; }
+.manual .btn { margin-top: 10px; }
+
+/* Cámara a pantalla completa */
+.cam { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; flex-direction: column; color: #fff; }
+.cam-vista { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.cam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam video.espejo { transform: scaleX(-1); }
+.cam-top { position: relative; z-index: 2; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; background: linear-gradient(rgba(0,0,0,.75), rgba(0,0,0,.35)); font-size: 14px; line-height: 1.45; }
+.cam-top b { font-size: 16px; }
+.cam-bot { position: relative; z-index: 2; display: flex; gap: 10px; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.8)); }
+.cam-bot .btn { flex: 1; }
+.cam-bot .btn.sec { flex: 0 0 auto; width: auto; background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.25); }
+.guia { position: absolute; inset: 0; pointer-events: none; }
+.guia .tarjeta { position: absolute; left: 50%; top: 50%; width: min(86%, 560px); aspect-ratio: 1.586; transform: translate(-50%, -50%); border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); border: 3px solid rgba(255,255,255,.9); }
+.guia .ovalo { position: absolute; left: 30%; top: 46%; width: min(42%, 260px); aspect-ratio: .78; transform: translate(-50%, -50%); border-radius: 50%; border: 3px dashed rgba(255,255,255,.85); }
+.guia .doc { position: absolute; left: 74%; top: 52%; width: min(36%, 230px); aspect-ratio: 1.586; transform: translate(-50%, -50%); border-radius: 10px; border: 3px dashed rgba(255,255,255,.85); }
+.guia .doc::after { content: 'Tu documento'; position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 3px #000; }
+.guia .ovalo::after { content: 'Tu cara'; position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 3px #000; }
+.cuenta { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; pointer-events: none; }
+.cuenta span { font-size: 120px; font-weight: 800; text-shadow: 0 4px 30px rgba(0,0,0,.6); animation: latido .9s ease-out; }
+.cuenta .gesto-cam { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: rgba(79,70,229,.92); font-size: 15px; font-weight: 700; white-space: nowrap; }
+@keyframes latido { from { transform: scale(1.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.flash { position: absolute; inset: 0; background: #fff; z-index: 4; opacity: 0; pointer-events: none; }
+.flash.on { animation: flash .35s ease-out; }
+@keyframes flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+
+/* Ilustraciones animadas */
+.a-sube { animation: sube 2.8s ease-in-out infinite; }
+@keyframes sube { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.a-entra { animation: entra 4s ease-in-out infinite; }
+@keyframes entra { 0% { transform: translateX(-60px) rotate(-8deg); opacity: 0; } 25%, 75% { transform: translateX(0) rotate(0); opacity: 1; } 100% { transform: translateX(0) rotate(0); opacity: 1; } }
+.a-flash { animation: aflash 4s ease-in-out infinite; }
+@keyframes aflash { 0%, 55% { opacity: 0; } 60% { opacity: .9; } 70%, 100% { opacity: 0; } }
+.a-check { animation: acheck 4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes acheck { 0%, 65% { transform: scale(0); } 75%, 100% { transform: scale(1); } }
+.a-esquinas { animation: esquinas 4s ease-in-out infinite; }
+@keyframes esquinas { 0%, 20% { stroke: var(--card-line); } 30%, 100% { stroke: var(--green); } }
+.a-mano { animation: mano 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes mano { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(8deg); } }
+.a-linea { stroke-dasharray: 120; animation: linea 3.2s ease-in-out infinite; }
+@keyframes linea { 0% { stroke-dashoffset: 120; } 50%, 100% { stroke-dashoffset: 0; } }
+.a-pulso { animation: pulso 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes pulso { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.a-cuenta { opacity: 0; animation: cuenta3 3s linear infinite; }
+@keyframes cuenta3 { 0%, 32% { opacity: 1; } 33.3%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top"><a class="marca" href="/ux2/"><img src="/logo-cabildo.jpg" alt="">Cabildo de Venezuela</a><small id="quien"></small></div>
+  <ol class="pasos" id="pasos" hidden><li>Aceptar</li><li>Tus datos</li><li>Documento</li><li>Selfie en vivo</li></ol>
+  <section class="card" id="vista"><div class="cargando"><div class="spin"></div><p class="muted">Cargando…</p></div></section>
+  <p class="pie">¿Problemas? Escribinos a <a href="mailto:soporte@cabildodevenezuela.com">soporte@cabildodevenezuela.com</a> · <a href="/privacidad.html">Privacidad</a> · <a href="/terminos.html">Términos</a></p>
+</main>
+<script src="/ux2/vendor/supabase-2.117.2.js"></script>
+<script>
+(() => {
+  const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:8787' : 'https://verify.cabildodevenezuela.com'
+  const CONSENT_VERSION = 'verificacion-2026-10-22-vivo'
+  const sb = window.supabase.createClient(window.__ENV.SUPABASE_URL, window.__ENV.SUPABASE_KEY)
+  const $ = s => document.querySelector(s)
+  const vista = $('#vista')
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16; return (c === 'x' ? r : (r & 3 | 8)).toString(16) })
+  const GESTOS = { dos_dedos: '✌️', pulgar: '👍', mano_abierta: '✋', tres_dedos: '🤟', senalar: '☝️' }
+  const PAISES = ['Venezuela', 'Argentina', 'Colombia', 'Chile', 'Perú', 'Ecuador', 'México', 'España', 'USA', 'Panamá', 'Costa Rica', 'Puerto Rico', 'Uruguay']
+  const PAIS_ENVIO = { 'Perú': 'Peru', 'México': 'Mexico', 'Panamá': 'Panama' }   // como los espera el verificador
+  const TIPO_POR_PAIS = { Argentina: 'DNI_AR', Venezuela: 'CEDULA_VE' }
+  const TIPOS = [['CEDULA_VE', '🇻🇪 Cédula venezolana'], ['DNI_AR', '🇦🇷 DNI argentino'], ['CEDULA', '🪪 Cédula / ID'], ['PASAPORTE', '🛂 Pasaporte']]
+
+  // Estado del proceso (solo en memoria: nada de esto se guarda en el navegador)
+  const st = { user: null, vid: null, token: null, datos: {}, extraido: null, faceBox: null, docDataUrl: null, caraDoc: null, gesto: null, gestoTexto: '', fallos: 0 }
+
+  function pasos(n) {
+    const ol = $('#pasos'); ol.hidden = n < 0
+    ;[...ol.children].forEach((li, i) => { li.className = i < n ? 'hecho' : i === n ? 'actual' : '' })
+  }
+  function pintar(html, paso) { pasos(paso); vista.innerHTML = html; window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  function estado(ico, titulo, texto, extra = '', ok = false, paso = -1) {
+    pintar(`<div class="estado"><div class="grande ${ok ? 'ok' : ''}">${ico}</div><h1>${titulo}</h1><p>${texto}</p>${extra}</div>`, paso)
+  }
+  async function cabeceras() {
+    const { data: { session } } = await sb.auth.getSession()
+    return { 'Content-Type': 'application/json', ...(session ? { Authorization: 'Bearer ' + session.access_token } : {}) }
+  }
+  async function api(ruta, cuerpo, ms = 60000) {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms)
+    try {
+      const r = await fetch(API + ruta, { method: 'POST', headers: await cabeceras(), body: JSON.stringify(cuerpo), signal: ctl.signal })
+      const j = await r.json().catch(() => ({}))
+      return { status: r.status, ok: r.ok, j }
+    } catch (e) {
+      return { status: 0, ok: false, j: { detail: e.name === 'AbortError' ? 'Se agotó el tiempo de espera. Revisá tu conexión y probá de nuevo.' : 'No pudimos conectarnos. Revisá tu conexión y probá de nuevo.' } }
+    } finally { clearTimeout(t) }
+  }
+
+  // ── Ilustraciones (SVG animado, respetan claro/oscuro) ──
+  const persona = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-46 92c4-30 22-44 46-44s42 14 46 44" fill="var(--accent)" opacity=".85"/><ellipse cx="0" cy="0" rx="30" ry="36" fill="var(--skin)"/><path d="M-30-6c2-30 58-32 60 0-10-14-50-14-60 0z" fill="var(--hair)"/><circle cx="-11" cy="2" r="3" fill="#2b2522"/><circle cx="11" cy="2" r="3" fill="#2b2522"/><path d="M-10 17c6 5 14 5 20 0" stroke="#7a3e2b" stroke-width="3" fill="none" stroke-linecap="round"/></g>`
+  const tarjeta = (x, y, w = 120, extra = '') => { const h = w / 1.586; return `<g transform="translate(${x} ${y})" ${extra}><rect width="${w}" height="${h}" rx="8" fill="var(--card)" stroke="var(--card-line)" stroke-width="2"/><rect x="${w * .07}" y="${h * .2}" width="${w * .26}" height="${h * .52}" rx="4" fill="var(--card-line)" opacity=".5"/><rect x="${w * .4}" y="${h * .22}" width="${w * .5}" height="${h * .09}" rx="3" fill="var(--ink-2)" opacity=".7"/><rect x="${w * .4}" y="${h * .4}" width="${w * .38}" height="${h * .09}" rx="3" fill="var(--ink-2)" opacity=".5"/><rect x="${w * .4}" y="${h * .58}" width="${w * .44}" height="${h * .09}" rx="3" fill="#ff9b55"/></g>` }
+  const ILUS = {
+    intro: `<svg class="ilus" viewBox="0 0 560 200" role="img" aria-label="Tres pasos: documento, selfie en vivo y revisión"><rect width="560" height="200" fill="var(--surface-2)"/>
+      ${[['🪪', 'Documento', 110], ['🤳', 'Selfie en vivo', 280], ['✅', 'Tu butaca', 450]].map(([e, t, x], i) => `<g class="a-sube" style="animation-delay:${i * .3}s"><circle cx="${x}" cy="88" r="44" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="${x}" y="104" text-anchor="middle" font-size="40">${e}</text><text x="${x}" y="160" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">${t}</text></g>`).join('')}
+      <path d="M162 88h62M332 88h62" stroke="var(--line)" stroke-width="3" stroke-dasharray="6 6"/></svg>`,
+    datos: `<svg class="ilus" viewBox="0 0 560 200" role="img" aria-label="Completá los datos tal como figuran en tu documento"><rect width="560" height="200" fill="var(--surface-2)"/>
+      ${tarjeta(70, 40, 190)}
+      <g transform="translate(310 46)">${[0, 1, 2].map(i => `<rect x="0" y="${i * 40}" width="190" height="28" rx="8" fill="var(--surface)" stroke="var(--line)"/><path d="M12 ${i * 40 + 14}h${[120, 90, 70][i]}" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" class="a-linea" style="animation-delay:${i * .5}s"/>`).join('')}</g>
+      <path d="M266 100h34" stroke="var(--muted)" stroke-width="2.5" stroke-dasharray="5 5"/></svg>`,
+    documento: `<svg class="ilus" viewBox="0 0 560 210" role="img" aria-label="Encuadrá tu documento dentro del marco"><rect width="560" height="210" fill="var(--surface-2)"/>
+      <rect x="170" y="14" width="220" height="182" rx="26" fill="var(--navy)"/><rect x="182" y="30" width="196" height="150" rx="14" fill="#0b0e1d"/>
+      <g class="a-entra">${tarjeta(205, 60, 150)}</g>
+      <path class="a-esquinas" d="M200 72v-14h18M342 58h18v14M360 140v14h-18M218 154h-18v-14" fill="none" stroke-width="4" stroke-linecap="round"/>
+      <rect x="182" y="30" width="196" height="150" rx="14" fill="#fff" class="a-flash"/>
+      <g class="a-check"><circle cx="390" cy="40" r="20" fill="var(--green)"/><path d="M380 40l7 7 13-14" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`,
+    selfie: (emo = '✌️') => `<svg class="ilus" viewBox="0 0 560 230" role="img" aria-label="Sostené el documento al costado de tu cara y hacé el gesto con la otra mano"><rect width="560" height="230" fill="var(--surface-2)"/>
+      <g class="a-sube">${persona(250, 104, 1.25)}${tarjeta(318, 108, 118)}<rect x="424" y="118" width="18" height="38" rx="9" fill="var(--skin)"/></g>
+      <g transform="translate(160 78)"><g class="a-mano"><circle cx="0" cy="0" r="36" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="0" y="14" text-anchor="middle" font-size="38">${emo}</text></g></g>
+      <g transform="translate(486 40)"><rect x="-34" y="-20" width="68" height="40" rx="12" fill="var(--accent)"/>${['3', '2', '1'].map((n, i) => `<text class="a-cuenta" style="animation-delay:${i}s" x="0" y="8" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${n}</text>`).join('')}</g></svg>`,
+    listo: `<svg class="ilus" viewBox="0 0 560 190" role="img" aria-label="Verificación enviada"><rect width="560" height="190" fill="var(--surface-2)"/>
+      ${[...Array(15)].map((_, i) => { const a = Math.PI * (i / 14), x = 280 - 150 * Math.cos(a), y = 160 - 120 * Math.sin(a); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="${i === 7 ? 'var(--green)' : 'var(--line)'}" ${i === 7 ? 'class="a-pulso"' : ''}/>` }).join('')}
+      <text x="280" y="150" text-anchor="middle" font-size="40">🪑</text></svg>`,
+  }
+
+  // ── Inicio ──
+  async function iniciar() {
+    const { data: { session } } = await sb.auth.getSession()
+    if (!session) return pintarLogin()
+    st.user = session.user
+    $('#quien').textContent = session.user.email || ''
+    try {
+      const { data } = await sb.rpc('get_my_seat')
+      if (Number(data) > 0) return estado('✓', `Ya tenés tu butaca #${esc(data)}`, 'Tu identidad ya está verificada. No hace falta hacer nada más.', '<a class="btn" href="/ux2/">Entrar al Cabildo</a>', true)
+    } catch (e) {}
+    pintarIntro()
+  }
+
+  function pintarLogin(msg = '') {
+    pintar(`<h1>Verificá tu identidad</h1><p>Para continuar, entrá con tu cuenta del Cabildo.</p>
+      <form id="f-login"><div class="campo"><label for="em">Email</label><input id="em" type="email" autocomplete="email" required></div>
+      <div class="campo"><label for="pw">Contraseña</label><input id="pw" type="password" autocomplete="current-password" required></div>
+      <button class="btn" type="submit" id="b-login">Entrar</button></form>
+      <p class="muted" style="margin-top:12px">¿Todavía no tenés cuenta? <a href="/cuenta">Creala acá</a> y después volvé a esta página.</p>
+      ${msg ? `<p class="caja error">${esc(msg)}</p>` : ''}`, -1)
+    $('#f-login').addEventListener('submit', async ev => {
+      ev.preventDefault(); const b = $('#b-login'); b.disabled = true; b.textContent = 'Entrando…'
+      const { error } = await sb.auth.signInWithPassword({ email: $('#em').value.trim(), password: $('#pw').value })
+      if (error) return pintarLogin('Email o contraseña incorrectos.')
+      iniciar()
+    })
+  }
+
+  // ── Paso 0 · Qué vamos a hacer + términos y riesgos ──
+  function pintarIntro() {
+    pintar(`${ILUS.intro}<h1>Conseguí tu butaca</h1>
+      <p>Para que cada butaca sea <b>una persona real y única</b>, comprobamos tu identidad en dos pasos. Lleva unos 3 minutos.</p>
+      <ul class="lista">
+        <li><span class="ico">1</span><span><b>Foto de tu documento.</b> Cédula, DNI o pasaporte, el original (sirve aunque esté vencido).</span></li>
+        <li><span class="ico">2</span><span><b>Selfie en vivo.</b> Con el mismo documento al costado de tu cara y un gesto que te pedimos en el momento.</span></li>
+        <li><span class="ico">3</span><span><b>Revisión.</b> Una persona del equipo confirma y te asignamos tu butaca.</span></li>
+      </ul>
+      <h2>Antes de empezar, leé cómo usamos tus datos</h2>
+      <details class="detalles" open><summary>Qué hacemos con tus imágenes</summary><div class="cuerpo">
+        <p>Las fotos de tu documento y la toma en vivo las analiza automáticamente <b>Google Gemini</b> (un servicio de inteligencia artificial de Google) para leer los datos del documento, comprobar que sos una persona real y que el documento que mostrás es el mismo, y comparar tu cara con la foto del documento. Google no usa estas imágenes para mejorar sus productos.</p>
+        <p>Para la revisión humana guardamos solo <b>la selfie con el documento pixelado</b> y <b>el recorte de la cara de tu documento</b>. Se borran cuando termina la revisión.</p>
+      </div></details>
+      <details class="detalles"><summary>Qué guardamos y qué no</summary><div class="cuerpo">
+        <p><b>No guardamos</b> tu nombre, tu número de documento ni tu fecha de nacimiento. La foto completa del documento nunca se guarda.</p>
+        <p>Del número guardamos solo una <b>huella cifrada</b>, para que un mismo documento no se use en dos cuentas.</p>
+        <p>Tu voto sigue siendo secreto: el Cabildo no guarda qué vota cada butaca.</p>
+      </div></details>
+      <details class="detalles" open><summary>Los riesgos</summary><div class="cuerpo">
+        <p>Enviar imágenes de tu documento y de tu cara a un servicio externo y que una persona del equipo las vea siempre implica un riesgo: errores humanos, accesos indebidos o fallas de seguridad. Lo reducimos al mínimo (acceso restringido y registrado, borrado al terminar), pero no lo podemos eliminar del todo.</p>
+        <p>El análisis automático puede equivocarse y rechazarte por error. Si te pasa, podés pedir una verificación manual.</p>
+        <p>Podés retirar tu consentimiento cuando quieras escribiendo a <a href="mailto:recinto@cabildodevenezuela.com">recinto@cabildodevenezuela.com</a>.</p>
+      </div></details>
+      <label class="check"><input type="checkbox" id="c1"><span>Leí y acepto los <a href="/terminos.html" target="_blank" rel="noopener">Términos y Condiciones</a> y la <a href="/privacidad.html" target="_blank" rel="noopener">Política de Privacidad</a>.</span></label>
+      <label class="check"><input type="checkbox" id="c2"><span>Doy mi <b>consentimiento expreso</b> para que se procesen las imágenes de mi documento y de mi cara con este fin, como se explica arriba, y entiendo los riesgos.</span></label>
+      <label class="check"><input type="checkbox" id="c3"><span>Tengo <b>18 años o más</b> y el documento que voy a mostrar es mío.</span></label>
+      <button class="btn" id="aceptar" disabled style="margin-top:6px">Acepto y empiezo</button>`, 0)
+    const upd = () => { $('#aceptar').disabled = !['#c1', '#c2', '#c3'].every(s => $(s).checked) }
+    ;['#c1', '#c2', '#c3'].forEach(s => $(s).addEventListener('change', upd))
+    $('#aceptar').addEventListener('click', async () => {
+      const b = $('#aceptar'); b.disabled = true; b.textContent = 'Guardando…'
+      const { error } = await sb.rpc('registrar_consentimiento', { p_tipo: 'verificacion', p_version: CONSENT_VERSION })
+      if (error) { b.disabled = false; b.textContent = 'Acepto y empiezo'; return mostrarError('No pudimos registrar tu consentimiento. Revisá tu conexión y probá de nuevo.') }
+      pintarDatos()
+    })
+  }
+  function mostrarError(m, dentro = vista) { dentro.querySelector('.caja.error.temp')?.remove(); const p = document.createElement('p'); p.className = 'caja error temp'; p.textContent = m; dentro.appendChild(p) }
+
+  // ── Paso 1 · Datos del documento ──
+  function pintarDatos() {
+    const d = st.datos, maxAno = new Date().getFullYear() - 18
+    pintar(`${ILUS.datos}<h1>Tus datos</h1><p>Escribilos <b>tal como figuran en tu documento</b>. Los usamos solo para comprobar que coinciden con la foto; no los guardamos.</p>
+      <div class="campo"><label for="pais">País del documento</label><select id="pais"><option value="">Elegí el país…</option>${PAISES.map(p => `<option ${d.pais === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+      <div class="campo"><label>Tipo de documento</label><div class="chips" id="tipos">${TIPOS.map(([k, t]) => `<button type="button" class="chip" data-tipo="${k}" aria-pressed="${d.tipo === k}">${t}</button>`).join('')}</div></div>
+      <div class="doble"><div class="campo"><label for="nombre">Nombres</label><input id="nombre" autocomplete="given-name" value="${esc(d.nombre || '')}"></div>
+      <div class="campo"><label for="apellido">Apellidos</label><input id="apellido" autocomplete="family-name" value="${esc(d.apellido || '')}"></div></div>
+      <div class="campo"><label for="numero">Número de documento</label><input id="numero" autocomplete="off" value="${esc(d.numero || '')}"><span class="ayuda" id="numero-ayuda">Solo números, sin puntos ni espacios.</span></div>
+      <div class="campo" id="fecha-campo"><label>Fecha de nacimiento</label><div class="triple">
+        <select id="dia" aria-label="Día"><option value="">Día</option>${[...Array(31)].map((_, i) => { const v = String(i + 1).padStart(2, '0'); return `<option ${d.dia === v ? 'selected' : ''}>${v}</option>` }).join('')}</select>
+        <select id="mes" aria-label="Mes"><option value="">Mes</option>${['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'].map((m, i) => { const v = String(i + 1).padStart(2, '0'); return `<option value="${v}" ${d.mes === v ? 'selected' : ''}>${m}</option>` }).join('')}</select>
+        <select id="ano" aria-label="Año"><option value="">Año</option>${[...Array(maxAno - 1919)].map((_, i) => { const v = String(maxAno - i); return `<option ${d.ano === v ? 'selected' : ''}>${v}</option>` }).join('')}</select></div>
+        <span class="ayuda">Tenés que tener 18 años o más.</span></div>
+      <div class="fila-btns"><button class="btn sec" id="atras">Atrás</button><button class="btn" id="seguir" disabled>Seguir</button></div>`, 1)
+    const tipo = k => { d.tipo = k; vista.querySelectorAll('[data-tipo]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tipo === k))); $('#numero-ayuda').textContent = k === 'PASAPORTE' ? 'Letras y números, sin espacios.' : 'Solo números, sin puntos ni espacios.'; $('#numero').inputMode = k === 'PASAPORTE' ? 'text' : 'numeric'; limpiarNumero(); validar() }
+    const limpiarNumero = () => { const el = $('#numero'); const v = d.tipo === 'PASAPORTE' ? el.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() : el.value.replace(/\D/g, ''); if (v !== el.value) el.value = v }
+    const limpiarNombre = el => { const v = el.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚàèìòùâêîôûäëïöüÄËÏÖÜñÑçÇ'\- .]/g, ''); if (v !== el.value) el.value = v }
+    function validar() {
+      d.pais = $('#pais').value; d.nombre = $('#nombre').value.trim(); d.apellido = $('#apellido').value.trim(); d.numero = $('#numero').value.trim()
+      d.dia = $('#dia').value; d.mes = $('#mes').value; d.ano = $('#ano').value
+      const fecha = d.dia && d.mes && d.ano ? `${d.ano}-${d.mes}-${d.dia}` : ''
+      const nac = fecha && new Date(fecha + 'T12:00:00'), lim = new Date(); lim.setFullYear(lim.getFullYear() - 18)
+      const fechaOk = !!(nac && !isNaN(nac) && nac.getDate() === Number(d.dia) && nac <= lim)
+      $('#fecha-campo').classList.toggle('err', !!fecha && !fechaOk)
+      d.fecha = fechaOk ? fecha : ''
+      $('#seguir').disabled = !(d.pais && d.tipo && d.nombre.length > 1 && d.apellido.length > 1 && d.numero.length > 3 && d.fecha)
+    }
+    $('#pais').addEventListener('change', () => { const t = TIPO_POR_PAIS[$('#pais').value]; if (t) tipo(t); else if (d.tipo === 'CEDULA_VE' || d.tipo === 'DNI_AR' || !d.tipo) tipo('CEDULA'); validar() })
+    vista.querySelectorAll('[data-tipo]').forEach(b => b.addEventListener('click', () => tipo(b.dataset.tipo)))
+    ;['#nombre', '#apellido'].forEach(s => $(s).addEventListener('input', e => { limpiarNombre(e.target); validar() }))
+    $('#numero').addEventListener('input', () => { limpiarNumero(); validar() })
+    ;['#dia', '#mes', '#ano'].forEach(s => $(s).addEventListener('change', validar))
+    $('#atras').addEventListener('click', pintarIntro)
+    $('#seguir').addEventListener('click', () => { st.vid = st.vid || uuid(); pintarDocumento() })
+    if (d.tipo) tipo(d.tipo); validar()
+  }
+
+  // ── Cámara ──
+  let flujo = null
+  function cerrarCamara() { try { flujo?.getTracks().forEach(t => t.stop()) } catch (e) {} flujo = null; document.querySelector('.cam')?.remove(); document.body.style.overflow = '' }
+  window.addEventListener('pagehide', cerrarCamara)
+  async function abrirCamara(cara) {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('sin-camara')
+    flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: cara }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
+    return flujo
+  }
+  const AYUDA_CAMARA = `<div class="caja riesgo"><b>No pudimos abrir la cámara.</b>
+    <ol style="margin:6px 0 0;padding-left:18px"><li>Abrí esta página en <b>Chrome</b> (Android) o <b>Safari</b> (iPhone), no dentro de Gmail, WhatsApp o Instagram.</li>
+    <li>Permití la cámara: en Chrome, tocá el candado 🔒 junto a la dirección → Permisos → Cámara. En iPhone: Ajustes → Safari → Cámara → Permitir.</li>
+    <li>Cerrá otras apps que usen la cámara y recargá la página.</li><li>También podés hacerlo desde una computadora con cámara.</li></ol></div>`
+  function vistaCamara({ cara, titulo, texto, guia }) {
+    const cam = document.createElement('div'); cam.className = 'cam'
+    cam.innerHTML = `<div class="cam-top"><b>${titulo}</b><br>${texto}</div>
+      <div class="cam-vista"><video playsinline autoplay muted class="${cara === 'user' ? 'espejo' : ''}"></video><div class="guia">${guia}</div><div class="cuenta"></div><div class="flash"></div></div>
+      <div class="cam-bot"><button type="button" class="btn sec" data-c="cerrar">Cancelar</button><button type="button" class="btn acento" data-c="foto" disabled>Sacar foto</button></div>`
+    document.body.appendChild(cam); document.body.style.overflow = 'hidden'
+    const v = cam.querySelector('video'); v.srcObject = flujo
+    v.addEventListener('loadedmetadata', () => { v.play().catch(() => {}); cam.querySelector('[data-c="foto"]').disabled = false }, { once: true })
+    return { cam, v, bFoto: cam.querySelector('[data-c="foto"]'), bCerrar: cam.querySelector('[data-c="cerrar"]'), cuenta: cam.querySelector('.cuenta'), flash: cam.querySelector('.flash') }
+  }
+  function cuadro(v, max, calidad) {
+    const r = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight))
+    const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * r); c.height = Math.round(v.videoHeight * r)
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height)   // sin espejo: la imagen real
+    return c.toDataURL('image/jpeg', calidad)
+  }
+  const b64 = d => d.split(',')[1]
+  const cargarImg = src => new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mal; i.src = src })
+
+  // ── Paso 2 · Documento ──
+  function pintarDocumento(msg = '', ayudaCam = false) {
+    pintar(`${ILUS.documento}<h1>Foto de tu documento</h1>
+      <p>Sacale una foto al <b>frente</b> de tu ${st.datos.tipo === 'PASAPORTE' ? 'pasaporte (la página con tu foto)' : 'documento'}.</p>
+      <ul class="lista"><li><span class="ico">💡</span><span>Buena luz y <b>sin reflejos</b> sobre el plástico.</span></li>
+        <li><span class="ico">🔍</span><span>Que entre <b>completo</b> en el marco y se lean el nombre, el número y la foto.</span></li>
+        <li><span class="ico">✋</span><span>Sostenelo por el borde, sin tapar ningún dato.</span></li></ul>
+      ${msg ? `<div class="caja error">${msg}</div>` : ''}${ayudaCam ? AYUDA_CAMARA : ''}<div id="manual"></div>
+      <div class="fila-btns"><button class="btn sec" id="atras">Atrás</button><button class="btn" id="abrir">📷 Abrir cámara</button></div>`, 2)
+    $('#atras').addEventListener('click', pintarDatos)
+    $('#abrir').addEventListener('click', capturarDocumento)
+    if (msg) ofrecerManual()
+  }
+  async function capturarDocumento() {
+    try { await abrirCamara('environment') } catch (e) { return pintarDocumento('', true) }
+    const c = vistaCamara({ cara: 'environment', titulo: 'Frente de tu documento', texto: 'Encuadralo dentro del marco, con buena luz y sin reflejos.', guia: '<div class="tarjeta"></div>' })
+    c.bCerrar.addEventListener('click', () => { cerrarCamara(); pintarDocumento() })
+    c.bFoto.addEventListener('click', () => {
+      if (!c.v.videoWidth) return
+      c.flash.classList.add('on')
+      const foto = cuadro(c.v, 1920, 0.9)
+      setTimeout(() => { cerrarCamara(); analizarDocumento(foto) }, 250)
+    })
+  }
+  async function analizarDocumento(foto) {
+    pintar(`<div class="cargando"><img src="${foto}" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:var(--surface-2)"><div class="spin"></div><h1 style="font-size:20px">Leyendo tu documento…</h1><p class="muted">Puede tardar hasta 30 segundos.</p></div>`, 2)
+    const d = st.datos
+    const r = await api('/verify/documento', { verification_id: st.vid, image_b64: b64(foto), tipo_doc: d.tipo, nombre_declarado: d.nombre, apellido_declarado: d.apellido,
+      numero_declarado: d.numero, pais_declarado: PAIS_ENVIO[d.pais] || d.pais, fecha_nac_declarada: d.fecha, user_id: st.user?.id || null }, 60000)
+    if (r.status === 409) return pintarDocumento(esc(r.j.detail || 'Este documento ya se usó para verificar otra cuenta. Cada documento solo puede usarse una vez.'))
+    if (r.status === 403) return pintarDocumento(esc(r.j.detail || 'Este documento no se puede usar.'))
+    if (!r.ok) return pintarDocumento(esc(r.j.detail || 'No pudimos analizar la foto. Probá de nuevo.'))
+    if (r.j.blocked || r.j.consensus?.blocked) return pintarDocumento(esc(r.j.detail || 'No pudimos validar el documento. Usá el documento original (no una foto, fotocopia ni pantalla) y no tapes ninguna parte.'))
+    const x = r.j.extracted || {}
+    const falta = []
+    if (!x.es_documento_real) falta.push('que sea un documento original')
+    if (!x.nombre_coincide) falta.push('el nombre')
+    if (!x.numero_coincide) falta.push('el número')
+    if (!x.fecha_coincide) falta.push('la fecha de nacimiento')
+    if (falta.length) {
+      st.fallos++
+      return pintarDocumento(`No pudimos confirmar ${falta.join(', ').replace(/, ([^,]*)$/, ' y $1')}. Revisá que los datos que escribiste sean <b>exactamente</b> los del documento, y sacá la foto con más luz y sin reflejos.
+        <div style="margin-top:8px"><button class="btn sec" id="corregir" type="button">Corregir mis datos</button></div>`)
+    }
+    st.token = r.j.session_token; st.extraido = x; st.faceBox = r.j.face_box || null; st.docDataUrl = foto
+    st.caraDoc = await recortarCara(foto, st.faceBox).catch(() => null)
+    st.docDataUrl = null   // la foto completa del documento no se guarda ni se reutiliza
+    pintar(`<div class="estado"><div class="grande ok">✓</div><h1>Leímos tu documento</h1></div>
+      <div class="datos"><div><small>Nombre</small><b>${esc(x.nombre_completo || `${d.nombre} ${d.apellido}`)}</b></div><div><small>Número</small><b>${esc(x.numero_documento || d.numero)}</b></div>
+      <div><small>Nacimiento</small><b>${esc(x.fecha_nacimiento || d.fecha)}</b></div><div><small>País</small><b>${esc(x.pais_emisor || d.pais)}</b></div></div>
+      <p class="muted">Estos datos no se guardan. Ahora, el último paso.</p><button class="btn" id="seguir">Seguir a la selfie en vivo</button>`, 2)
+    $('#seguir').addEventListener('click', () => pintarSelfie())
+  }
+  document.addEventListener('click', e => { if (e.target.id === 'corregir') pintarDatos() })
+  async function recortarCara(foto, fb) {
+    const img = await cargarImg(foto)
+    let x1 = .01, y1 = .14, x2 = .38, y2 = .8
+    if (fb && fb.x1 != null) { x1 = Math.max(0, fb.x1 - .02); y1 = Math.max(0, fb.y1 - .02); x2 = Math.min(1, fb.x2 + .02); y2 = Math.min(1, fb.y2 + .02) }
+    const fx = img.width * x1, fy = img.height * y1, fw = img.width * (x2 - x1), fh = img.height * (y2 - y1)
+    const s = Math.min(500 / fw, 500 / fh, 1), c = document.createElement('canvas'); c.width = Math.round(fw * s); c.height = Math.round(fh * s)
+    const ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, fx, fy, fw, fh, 0, 0, c.width, c.height)
+    return c.toDataURL('image/jpeg', .9)
+  }
+
+  // ── Paso 3 · Selfie en vivo (documento + gesto, una sola toma) ──
+  async function pedirGesto() {
+    const r = await api('/verify/desafio', { session_token: st.token }, 20000)
+    if (r.status === 401) { st.token = null; return { vencido: true } }
+    if (!r.ok) return { error: r.j.detail || 'No pudimos preparar el paso. Probá de nuevo.' }
+    st.token = r.j.session_token; st.gesto = r.j.gesto; st.gestoTexto = r.j.texto
+    return { ok: true }
+  }
+  async function pintarSelfie(msg = '', ayudaCam = false) {
+    if (!st.token) return pintarDocumento('Tu sesión de verificación venció. Volvé a sacar la foto del documento.')
+    if (!st.gesto) {
+      pintar(`<div class="cargando"><div class="spin"></div><p class="muted">Preparando el gesto…</p></div>`, 3)
+      const g = await pedirGesto()
+      if (g.vencido) return pintarDocumento('Tu sesión de verificación venció. Volvé a sacar la foto del documento.')
+      if (g.error) return pintar(`<div class="caja error">${esc(g.error)}</div><button class="btn" id="otra">Probar de nuevo</button>`, 3), $('#otra').addEventListener('click', () => pintarSelfie())
+    }
+    const emo = GESTOS[st.gesto] || '✋'
+    pintar(`${ILUS.selfie(emo)}<h1>Selfie en vivo</h1>
+      <p>Una sola toma: vos, <b>tu documento al costado de la cara</b> y un gesto que te pedimos ahora.</p>
+      <div class="gesto-grande"><span class="emo">${emo}</span><div><small>Con la mano libre</small><b>${esc(st.gestoTexto)}</b><small>Vale para este intento: cada vez te pedimos uno distinto.</small></div></div>
+      <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior, con el frente hacia la cámara, <b>al costado de tu cara</b> (sin taparla).</span></li>
+        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y sacamos 3 fotos seguidas. <b>Mantené el gesto</b> hasta que termine.</span></li>
+        <li><span class="ico">💡</span><span>Buena luz de frente, sin lentes de sol ni gorra.</span></li></ul>
+      ${msg ? `<div class="caja error">${msg}</div>` : ''}${ayudaCam ? AYUDA_CAMARA : ''}<div id="manual"></div>
+      <button class="btn" id="abrir">📷 Abrir cámara</button>`, 3)
+    $('#abrir').addEventListener('click', capturarSelfie)
+    if (msg) ofrecerManual()
+  }
+  async function capturarSelfie() {
+    try { await abrirCamara('user') } catch (e) { return pintarSelfie('', true) }
+    const emo = GESTOS[st.gesto] || '✋'
+    const c = vistaCamara({ cara: 'user', titulo: `${emo} ${esc(st.gestoTexto)}`, texto: 'Tu cara en el óvalo y el documento al costado, con el frente hacia la cámara.', guia: '<div class="ovalo"></div><div class="doc"></div>' })
+    c.bFoto.textContent = 'Empezar'
+    c.bCerrar.addEventListener('click', () => { cerrarCamara(); pintarSelfie() })
+    c.bFoto.addEventListener('click', async () => {
+      if (!c.v.videoWidth) return
+      c.bFoto.disabled = true; c.bCerrar.disabled = true; c.cam.querySelector('.guia').style.opacity = '.35'
+      for (const n of [3, 2, 1]) { c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)}</div><span>${n}</span>`; await new Promise(r => setTimeout(r, 900)) }
+      c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ¡Mantenelo!</div>`
+      const cuadros = []
+      for (let i = 0; i < 3; i++) {
+        cuadros.push(cuadro(c.v, 1280, .85)); c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
+        if (i < 2) await new Promise(r => setTimeout(r, 500))
+      }
+      cerrarCamara(); enviarSelfie(cuadros)
+    })
+  }
+  async function pixelar(foto, caja) {
+    const img = await cargarImg(foto), c = document.createElement('canvas'); c.width = img.width; c.height = img.height
+    const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0)
+    const bx = caja.x1 * img.width, by = caja.y1 * img.height, bw = (caja.x2 - caja.x1) * img.width, bh = (caja.y2 - caja.y1) * img.height
+    const t = Math.max(Math.floor(Math.min(bw, bh) / 14), 10)
+    for (let py = by; py < by + bh; py += t) for (let px = bx; px < bx + bw; px += t) {
+      const [r, g, b] = ctx.getImageData(Math.min(px + (t >> 1), img.width - 1), Math.min(py + (t >> 1), img.height - 1), 1, 1).data
+      ctx.fillStyle = `rgb(${r},${g},${b})`; ctx.fillRect(px, py, t, t)
+    }
+    return c.toDataURL('image/jpeg', .8)
+  }
+  async function enviarSelfie(cuadros) {
+    pintar(`<div class="miniaturas">${cuadros.map(f => `<img src="${f}" alt="">`).join('')}</div>
+      <div class="cargando"><div class="spin"></div><h1 style="font-size:20px" id="fase">Ubicando tu documento…</h1><p class="muted">Puede tardar hasta 40 segundos. No cierres esta página.</p></div>`, 3)
+    // 1 · Ubicar el documento para pixelarlo en la copia que ve el revisor
+    const cz = await api('/verify/censurar-campos', { image_b64: b64(cuadros[1]), session_token: st.token }, 40000)
+    const caja = cz.ok && cz.j.document && cz.j.document.x1 != null ? cz.j.document : null
+    if (!caja) { st.fallos++; st.gesto = null; return pintarSelfie('No encontramos tu documento en la foto. Sostenelo <b>al costado de tu cara</b>, con el frente hacia la cámara, un poco más cerca.') }
+    const anonima = await pixelar(cuadros[1], caja)
+    $('#fase').textContent = 'Comprobando que seas vos…'
+    // 2 · Análisis de las fotos originales (no se guardan) + copia pixelada para la revisión
+    const r = await api('/verify/vivo', { verification_id: st.vid, cuadros: cuadros.map(b64), anonima_b64: b64(anonima), cara_doc_b64: st.caraDoc ? b64(st.caraDoc) : null, session_token: st.token }, 75000)
+    if (r.j.session_token) st.token = r.j.session_token
+    st.gesto = null
+    if (r.ok) { st.caraDoc = null; return enviado() }
+    if (r.status === 401) { st.token = null; return pintarDocumento('Tu sesión de verificación venció. Volvé a sacar la foto del documento.') }
+    if (r.status === 409 && /aprobada/.test(r.j.detail || '')) return enviado()
+    st.fallos++
+    pintarSelfie(esc(r.j.detail || 'No pudimos comprobar la toma. Probá de nuevo.'))
+  }
+
+  // ── Enviado y seguimiento ──
+  let sondeo = null
+  async function enviado() {
+    try { await sb.rpc('claim_seat', { p_verification_id: st.vid }) } catch (e) {}
+    estado('⏳', '¡Listo! Ya está en revisión', `Una persona del equipo revisa tu verificación. Suele tardar pocos minutos. Esta página se actualiza sola, y también lo vas a ver la próxima vez que entres al Cabildo.`,
+      `${ILUS.listo}<a class="btn sec" href="/ux2/">Ir al Cabildo mientras tanto</a>`, false, 4)
+    clearInterval(sondeo)
+    sondeo = setInterval(async () => {
+      try {
+        const r = await fetch(`${API}/verify/status/${st.vid}`, { headers: st.token ? { 'X-Session-Token': st.token } : {} })
+        if (!r.ok) return
+        const d = await r.json()
+        if (d.status === 'aprobado' && d.butaca_numero) {
+          clearInterval(sondeo)
+          try { await sb.rpc('claim_seat', { p_verification_id: st.vid }) } catch (e) {}
+          estado('✓', '¡Bienvenido al Cabildo!', 'Tu identidad está verificada. Esta es tu butaca:', `<div class="butaca-num">#${esc(d.butaca_numero)}</div><a class="btn" href="/ux2/">Entrar al Cabildo</a>`, true, 4)
+        } else if (d.status === 'rechazado') {
+          clearInterval(sondeo)
+          estado('✕', 'No pudimos aprobar tu verificación', 'Tus fotos ya se borraron. Podés intentarlo de nuevo o escribirnos a soporte.', '<button class="btn" id="de-nuevo">Intentar de nuevo</button>', false, -1)
+          $('#de-nuevo').addEventListener('click', () => { Object.assign(st, { vid: null, token: null, gesto: null, caraDoc: null }); pintarIntro() })
+        }
+      } catch (e) {}
+    }, 8000)
+  }
+
+  // ── Verificación manual (si fallaste muchas veces, lo decide el servidor) ──
+  async function ofrecerManual() {
+    const cont = $('#manual'); if (!cont || st.fallos < 3) return
+    try {
+      const { data } = await sb.rpc('vm_puede_solicitar')
+      if (!data?.puede || !$('#manual')) return
+      $('#manual').innerHTML = `<div class="manual"><b>¿Seguís con problemas?</b> Podemos verificarte de forma manual: una persona del equipo revisa tus fotos y te asigna la butaca.<button class="btn sec" id="pedir-manual" type="button">Pedir verificación manual</button></div>`
+      $('#pedir-manual').addEventListener('click', async e => {
+        const b = e.currentTarget; b.disabled = true; b.textContent = 'Preparando…'
+        const { data: d, error } = await sb.rpc('vm_autosolicitar')
+        if (!error && d?.link && /^https:\/\/cabildodevenezuela\.com\/verificacion-manual(\.html)?\?t=[0-9a-f]+$/.test(d.link)) { location.href = d.link; return }
+        b.disabled = false; b.textContent = 'Pedir verificación manual'; mostrarError((error && error.message) || 'No pudimos prepararla. Escribinos a soporte@cabildodevenezuela.com', $('#manual'))
+      })
+    } catch (e) {}
+  }
+
+  iniciar()
+})()
+</script>
+</body>
+</html>

@@ -5365,6 +5365,8 @@ function crearIdentidad() {
 let _verifyOverlayOpenedAt = 0
 
 function abrirVerificacion() {
+  // verificar-v2: la verificación nueva (2 pasos) está en /verificar
+  if (_authUser) { location.href = '/verificar'; return }
   _verifyOverlayOpenedAt = Date.now()   // time-gate: bloquea ghost clicks del primer segundo
   vpCurrentStep = 1
   vpAnonBlob = null

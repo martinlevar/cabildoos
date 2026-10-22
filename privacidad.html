@@ -253,7 +253,7 @@ body {
       <p>Qué datos usa Cabildo de Venezuela, para qué, cuánto tiempo los conserva y cuáles son los límites reales de su privacidad.</p>
       <div class="version-tag">
         <span class="dot"></span>
-        Versión 2.0 · Octubre 2026 · Última actualización: 18/10/2026
+        Versión 2.0 · Octubre 2026 · Última actualización: 22/10/2026
       </div>
     </div>
 
@@ -336,8 +336,8 @@ body {
       <h2><span class="num">06</span>Lo que pasa en tu teléfono</h2>
       <p>Parte del proceso ocurre en tu propio dispositivo y nunca llega a nuestros servidores en esa forma:</p>
       <ul>
-        <li>La <strong>comparación de tu cara</strong> con la del documento se calcula en el navegador de tu teléfono; al servidor llega el resultado (un número de similitud). No guardamos plantillas ni mediciones de tu rostro.</li>
-        <li>El <strong>pixelado del documento</strong> en la selfie y el recorte de la cara se hacen en tu teléfono antes de enviar las imágenes.</li>
+        <li>La <strong>comparación de tu cara</strong> con la foto del documento la hace el análisis automático (Google Gemini) en el momento de la verificación, solo como aviso para la persona que revisa. No guardamos plantillas ni mediciones de tu rostro.</li><!-- verificar-v2 -->
+        <li>El <strong>pixelado del documento</strong> en la copia de la selfie que ve el revisor y el recorte de la cara del documento se hacen en tu teléfono. Las fotos originales de la selfie en vivo se analizan y no se guardan.</li>
         <li>El comprobante de tu voto queda solo en tu dispositivo.</li>
       </ul>
     </div>
@@ -415,7 +415,7 @@ body {
       <h2><span class="num">11</span>Proveedores y transferencias internacionales</h2>
       <ul>
         <li><strong>Supabase</strong> — base de datos, cuentas y almacenamiento de archivos. Servidores en Estados Unidos.</li>
-        <li><strong>Google (API de Gemini)</strong> — análisis automático de las imágenes de la verificación (documento, prueba de vida y selfie). Usamos el servicio pago de la API: según sus condiciones, Google no usa ese contenido para mejorar sus productos y lo conserva por un tiempo limitado solo para detectar abusos.</li>
+        <li><strong>Google (API de Gemini)</strong> — análisis automático de las imágenes de la verificación (documento y selfie en vivo con el documento). Usamos el servicio pago de la API: según sus condiciones, Google no usa ese contenido para mejorar sus productos y lo conserva por un tiempo limitado solo para detectar abusos.</li>
         <li><strong>Cloudflare</strong> — alojamiento del sitio, red y protección contra ataques. Procesa datos técnicos de conexión, como la dirección IP.</li>
         <li><strong>Google Fonts</strong> — tipografías. Puede registrar tu dirección IP al cargarlas.</li>
         <li><strong>X (Twitter)</strong> — publicamos el resultado de cada votación en <a href="https://x.com/cabildoven">@cabildoven</a>. Solo se publican totales, nunca datos de personas.</li>
