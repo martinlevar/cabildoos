@@ -173,7 +173,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
   const vista = $('#vista')
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16; return (c === 'x' ? r : (r & 3 | 8)).toString(16) })
-  const GESTOS = { sonreir: '😁', boca: '😮', ojos: '😌', girar: '↔️' }
+  const GESTOS = { sonreir: '😁', boca: '😮', ojos: '😌' }   // doc-visual
   const PAISES = ['Venezuela', 'Argentina', 'Colombia', 'Chile', 'Perú', 'Ecuador', 'México', 'España', 'USA', 'Panamá', 'Costa Rica', 'Puerto Rico', 'Uruguay']
   const PAIS_ENVIO = { 'Perú': 'Peru', 'México': 'Mexico', 'Panamá': 'Panama' }   // como los espera el verificador
   const TIPO_POR_PAIS = { Argentina: 'DNI_AR', Venezuela: 'CEDULA_VE' }
@@ -414,7 +414,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     }
     st.token = r.j.session_token; st.extraido = x; st.faceBox = r.j.face_box || null; st.docDataUrl = foto
     st.caraDoc = await recortarCara(foto, st.faceBox).catch(() => null)
-    st.docDataUrl = null   // la foto completa del documento no se guarda ni se reutiliza
+    st.docDataUrl = await reducir(foto, 1280).catch(() => null)   // doc-visual: solo en memoria, para comparar en la selfie; no se guarda
     pintar(`<div class="estado"><div class="grande ok">✓</div><h1>Leímos tu documento</h1></div>
       <div class="datos"><div><small>Nombre</small><b>${esc(x.nombre_completo || `${d.nombre} ${d.apellido}`)}</b></div><div><small>Número</small><b>${esc(x.numero_documento || d.numero)}</b></div>
       <div><small>Nacimiento</small><b>${esc(x.fecha_nacimiento || d.fecha)}</b></div><div><small>País</small><b>${esc(x.pais_emisor || d.pais)}</b></div></div>
@@ -422,6 +422,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     $('#seguir').addEventListener('click', () => pintarSelfie())
   }
   document.addEventListener('click', e => { if (e.target.id === 'corregir') pintarDatos() })
+  async function reducir(src, max) { const img = await cargarImg(src), r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .85) }
   async function recortarCara(foto, fb) {
     const img = await cargarImg(foto)
     let x1 = .01, y1 = .14, x2 = .38, y2 = .8
@@ -452,7 +453,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     pintar(`${ILUS.selfie(emo)}<h1>Selfie en vivo</h1>
       <p>Una sola toma: vos, <b>tu documento debajo de la cara</b> y un gesto con la cara que te pedimos ahora. No hace falta usar las manos.</p>
       <div class="gesto-grande"><span class="emo">${emo}</span><div><small>Con tu cara</small><b>${esc(st.gestoTexto)}</b><small>Vale para este intento: cada vez te pedimos uno distinto.</small></div></div>
-      <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior <b>debajo de tu cara, a la altura del pecho</b>, con el frente hacia la cámara y bien cerca, para que se lea el número.</span></li>
+      <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior <b>debajo de tu cara, a la altura del pecho</b>, con el frente hacia la cámara. No hace falta acercarlo mucho: lo comparamos con la foto que sacaste recién.</span></li>
         <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y sacamos 3 fotos seguidas. <b>Mantené el gesto</b> hasta que termine.</span></li>
         <li><span class="ico">💡</span><span>Buena luz de frente, sin lentes de sol ni gorra.</span></li></ul>
       ${msg ? `<div class="caja error">${msg}</div>` : ''}${ayudaCam ? AYUDA_CAMARA : ''}<div id="manual"></div>
@@ -500,10 +501,10 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     const anonima = await pixelar(cuadros[1], caja)
     $('#fase').textContent = 'Comprobando que seas vos…'
     // 2 · Análisis de las fotos originales (no se guardan) + copia pixelada para la revisión
-    const r = await api('/verify/vivo', { verification_id: st.vid, cuadros: cuadros.map(b64), anonima_b64: b64(anonima), cara_doc_b64: st.caraDoc ? b64(st.caraDoc) : null, session_token: st.token }, 75000)
+    const r = await api('/verify/vivo', { verification_id: st.vid, cuadros: cuadros.map(b64), anonima_b64: b64(anonima), cara_doc_b64: st.caraDoc ? b64(st.caraDoc) : null, documento_b64: st.docDataUrl ? b64(st.docDataUrl) : null, session_token: st.token }, 75000)
     if (r.j.session_token) st.token = r.j.session_token
     st.gesto = null
-    if (r.ok) { st.caraDoc = null; return enviado() }
+    if (r.ok) { st.caraDoc = null; st.docDataUrl = null; return enviado() }
     if (r.status === 401) { st.token = null; return pintarDocumento('Tu sesión de verificación venció. Volvé a sacar la foto del documento.') }
     if (r.status === 409 && /aprobada/.test(r.j.detail || '')) return enviado()
     st.fallos++
