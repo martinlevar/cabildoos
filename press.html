@@ -9,7 +9,7 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Cabildo de Venezuela lanza su versión 2">
-<meta property="og:description" content="Más de 1.100 ciudadanos verificados, voto secreto rediseñado y nuevas herramientas para organizarse. Gacetilla de prensa.">
+<meta property="og:description" content="Más de mil ciudadanos verificados, voto secreto rediseñado y nuevas herramientas para organizarse. Gacetilla de prensa.">
 <meta property="og:url" content="https://cabildodevenezuela.com/press">
 <meta property="og:image" content="https://cabildodevenezuela.com/logo-cabildo.jpg">
 <meta name="twitter:card" content="summary_large_image">
@@ -546,6 +546,14 @@
 
   function pintar(d) {
     S = d.stats || {}; CFG = d.config || {}
+    // prensa-viva: marcadores con las cifras del día (se recalculan todas las mañanas). Ej.: «ya reúne a {butacas} venezolanos»
+    const T = S.totales || {}
+    const fechaDatos = S.calculado ? new Date(S.calculado.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-VE', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
+    const vivo = s => typeof s !== 'string' ? s : s.replace(/\{([a-z_]+)\}/g, (m, k) => k === 'fecha_datos' ? (fechaDatos || m) : (T[k] != null && T[k] !== '' && !isNaN(T[k]) ? num(T[k]) : m))
+    ;(d.notas || []).forEach(x => {
+      ['titulo', 'bajada', 'cuerpo', 'cifras_nota', 'cita_texto'].forEach(k => { x[k] = vivo(x[k]) })
+      if (Array.isArray(x.cifras)) x.cifras.forEach(c => { c.valor = vivo(c.valor); c.texto = vivo(c.texto) })
+    })
     const notas = d.notas || [], q = new URLSearchParams(location.search).get('n') || location.hash.slice(1)
     const n = notas.find(x => x.slug === q) || notas[0]
     const art = $('nota')
