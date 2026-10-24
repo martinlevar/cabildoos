@@ -227,6 +227,22 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       <g class="a-sube">${persona(280, 78, 1.15)}${tarjeta(220, 138, 120)}<rect x="206" y="146" width="18" height="34" rx="9" fill="var(--skin)"/><rect x="336" y="146" width="18" height="34" rx="9" fill="var(--skin)"/></g>
       <g transform="translate(140 80)"><g class="a-mano"><circle cx="0" cy="0" r="36" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="0" y="14" text-anchor="middle" font-size="38">${emo}</text></g></g>
       <g transform="translate(486 40)"><rect x="-34" y="-20" width="68" height="40" rx="12" fill="var(--accent)"/>${['3', '2', '1'].map((n, i) => `<text class="a-cuenta" style="animation-delay:${i}s" x="0" y="8" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${n}</text>`).join('')}</g></svg>`,
+    // copy-imagenes: lo que ve el revisor (dibujo): la selfie con el documento pixelado y el recorte de la cara del documento
+    revisor: (() => {
+      const tonos = ['#9aa3b8', '#b8c0d2', '#7d87a0', '#c9cfdc', '#8e98b0', '#aab2c6']
+      let mosaico = ''
+      for (let f = 0; f < 5; f++) for (let c = 0; c < 9; c++) mosaico += `<rect x="${128 + c * 14}" y="${126 + f * 14}" width="14" height="14" fill="${tonos[(f * 7 + c * 3 + f * c) % tonos.length]}"/>`
+      return `<svg class="ilus" viewBox="0 0 560 250" role="img" aria-label="Ejemplo de lo que ve el revisor: tu selfie con el documento pixelado y el recorte de la cara de tu documento"><rect width="560" height="250" fill="var(--surface-2)"/>
+      <rect x="70" y="14" width="240" height="196" rx="16" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/>
+      <g>${persona(190, 72, 1.05)}${tarjeta(128, 126, 126)}${mosaico}<rect x="116" y="134" width="16" height="30" rx="8" fill="var(--skin)"/><rect x="250" y="134" width="16" height="30" rx="8" fill="var(--skin)"/></g>
+      <g transform="translate(278 40)"><circle r="16" fill="var(--accent)"/><text y="6" text-anchor="middle" font-size="17">🔒</text></g>
+      <text x="190" y="238" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)">Selfie, documento pixelado</text>
+      <rect x="370" y="38" width="120" height="140" rx="14" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/>
+      <clipPath id="recorte"><rect x="380" y="48" width="100" height="120" rx="10"/></clipPath>
+      <g clip-path="url(#recorte)"><rect x="380" y="48" width="100" height="120" fill="var(--accent-bg)"/>${persona(430, 112, 1.0)}</g>
+      <text x="430" y="212" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)">Cara de tu</text><text x="430" y="238" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)">documento</text>
+      <path d="M318 108h40" stroke="var(--muted)" stroke-width="2.5" stroke-dasharray="5 5"/></svg>`
+    })(),
     listo: `<svg class="ilus" viewBox="0 0 560 190" role="img" aria-label="Verificación enviada"><rect width="560" height="190" fill="var(--surface-2)"/>
       ${[...Array(15)].map((_, i) => { const a = Math.PI * (i / 14), x = 280 - 150 * Math.cos(a), y = 160 - 120 * Math.sin(a); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="${i === 7 ? 'var(--green)' : 'var(--line)'}" ${i === 7 ? 'class="a-pulso"' : ''}/>` }).join('')}
       <text x="280" y="150" text-anchor="middle" font-size="40">🪑</text></svg>`,
@@ -271,8 +287,9 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       </ul>
       <h2>Antes de empezar, leé cómo usamos tus datos</h2>
       <details class="detalles" open><summary>Qué hacemos con tus imágenes</summary><div class="cuerpo">
-        <p>Las fotos de tu documento y la toma en vivo las analiza automáticamente <b>Google Gemini</b> (un servicio de inteligencia artificial de Google) para leer los datos del documento, comprobar que sos una persona real y que el documento que mostrás es el mismo, y comparar tu cara con la foto del documento. Google no usa estas imágenes para mejorar sus productos.</p>
+        <p>Las fotos de tu documento y la toma en vivo las analiza automáticamente nuestro sistema <b>VaV</b> (<i>Verification Anonymous Votes</i>), que junto con <b>Google Gemini</b> se encarga de leer los datos del documento, comprobar que sos una persona real y que el documento que mostrás es el mismo, y comparar tu cara con la foto del documento. Google no usa estas imágenes para mejorar sus productos.</p>
         <p>Para la revisión humana guardamos solo <b>la selfie con el documento pixelado</b> y <b>el recorte de la cara de tu documento</b>. Se borran cuando termina la revisión.</p>
+        ${ILUS.revisor}<p class="muted" style="font-size:12px;margin-top:-8px">Ilustración de ejemplo: esto es todo lo que ve la persona que revisa.</p>
       </div></details>
       <details class="detalles"><summary>Qué guardamos y qué no</summary><div class="cuerpo">
         <p><b>No guardamos</b> tu nombre, tu número de documento ni tu fecha de nacimiento. La foto completa del documento nunca se guarda.</p>
@@ -280,7 +297,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
         <p>Tu voto sigue siendo secreto: el Cabildo no guarda qué vota cada butaca.</p>
       </div></details>
       <details class="detalles" open><summary>Los riesgos</summary><div class="cuerpo">
-        <p>Enviar imágenes de tu documento y de tu cara a un servicio externo y que una persona del equipo las vea siempre implica un riesgo: errores humanos, accesos indebidos o fallas de seguridad. Lo reducimos al mínimo (acceso restringido y registrado, borrado al terminar), pero no lo podemos eliminar del todo.</p>
+        <p>Enviar imágenes de tu documento y de tu cara a un servicio externo y que una persona del equipo las vea siempre implica un riesgo: errores humanos, accesos indebidos o fallas de seguridad. Lo reducimos al mínimo: acceso restringido y registrado, borrado al terminar y auditoría de la base de datos.</p>
         <p>El análisis automático puede equivocarse y rechazarte por error. Si te pasa, podés pedir una verificación manual.</p>
         <p>Podés retirar tu consentimiento cuando quieras escribiendo a <a href="mailto:recinto@cabildodevenezuela.com">recinto@cabildodevenezuela.com</a>.</p>
       </div></details>
