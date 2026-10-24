@@ -226,7 +226,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     selfie: (emo = '😁') => `<svg class="ilus" viewBox="0 0 560 230" role="img" aria-label="Sostené el documento debajo de tu cara y hacé el gesto con la cara"><rect width="560" height="230" fill="var(--surface-2)"/>
       <g class="a-sube">${persona(280, 78, 1.15)}${tarjeta(220, 138, 120)}<rect x="206" y="146" width="18" height="34" rx="9" fill="var(--skin)"/><rect x="336" y="146" width="18" height="34" rx="9" fill="var(--skin)"/></g>
       <g transform="translate(140 80)"><g class="a-mano"><circle cx="0" cy="0" r="36" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="0" y="14" text-anchor="middle" font-size="38">${emo}</text></g></g>
-      <g transform="translate(486 40)"><rect x="-34" y="-20" width="68" height="40" rx="12" fill="var(--accent)"/>${['3', '2', '1'].map((n, i) => `<text class="a-cuenta" style="animation-delay:${i}s" x="0" y="8" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${n}</text>`).join('')}</g></svg>`,
+      <g transform="translate(486 40)"><rect x="-34" y="-20" width="68" height="40" rx="12" fill="var(--accent)"/><text x="0" y="8" text-anchor="middle" font-size="20" font-weight="800" fill="#fff">⏱ 6 s</text></g></svg>`,
     // copy-imagenes: lo que ve el revisor (dibujo): la selfie con el documento pixelado y el recorte de la cara del documento
     revisor: (() => {
       const tonos = ['#9aa3b8', '#b8c0d2', '#7d87a0', '#c9cfdc', '#8e98b0', '#aab2c6']
@@ -478,7 +478,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       <p>Una sola toma: vos, <b>tu documento debajo de la cara</b> y un gesto con la cara que te pedimos ahora. No hace falta usar las manos.</p>
       <div class="gesto-grande"><span class="emo">${emo}</span><div><small>Con tu cara</small><b>${esc(st.gestoTexto)}</b><small>Vale para este intento: cada vez te pedimos uno distinto.</small></div></div>
       <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior <b>debajo de tu cara, a la altura del pecho</b>, con el frente hacia la cámara. No hace falta acercarlo mucho: lo comparamos con la foto que sacaste recién.</span></li>
-        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y después tenés <b>6 segundos</b> en los que vamos sacando fotos. <b>Hacé el gesto y mantenelo</b> hasta que termine.</span></li>
+        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>, <b>hacé el gesto enseguida y mantenelo</b> mientras corre la cuenta de 6 segundos. Vamos sacando fotos durante la cuenta.</span></li>
         <li><span class="ico">💡</span><span>Buena luz de frente, sin lentes de sol ni gorra.</span></li></ul>
       ${msg ? `<div class="caja error">${msg}</div>` : ''}${ayudaCam ? AYUDA_CAMARA : ''}<div id="manual"></div>
       <button class="btn" id="abrir">📷 Abrir cámara</button>`, 3)
@@ -494,11 +494,11 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     c.bFoto.addEventListener('click', async () => {
       if (!c.v.videoWidth) return
       c.bFoto.disabled = true; c.bCerrar.disabled = true; c.cam.querySelector('.guia').style.opacity = '.35'
-      for (const n of [3, 2, 1]) { c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)}</div><span>${n}</span>`; await new Promise(r => setTimeout(r, 900)) }
+      // selfie-sin321: sin cuenta previa; arranca directo la cuenta de la toma
       // selfie-8s: 8 segundos con cuenta regresiva; 5 fotos repartidas (la primera 1 s después de empezar)
       // selfie-8s-c: al ritmo de la pantalla (requestAnimationFrame) y nunca dos fotos juntas (mínimo 1 s entre fotos)
       const lienzos = [], tiempos = [], t0 = performance.now(), total = TOMA_SEG * 1000, MIN_ENTRE = 1000
-      const momentos = Array.from({ length: TOMA_CUADROS }, (_, i) => 1000 + i * (total - 1000) / (TOMA_CUADROS - 1))
+      const momentos = Array.from({ length: TOMA_CUADROS }, (_, i) => 1200 + i * (total - 1200) / (TOMA_CUADROS - 1))
       let ultimo = -1, ultimaFoto = -Infinity
       await new Promise(listo => {
         const paso = () => {
