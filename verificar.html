@@ -99,7 +99,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
 .cargando { display: grid; place-items: center; gap: 12px; padding: 18px 0; text-align: center; }
 .spin { width: 38px; height: 38px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: girar .9s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
-.miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.miniaturas { display: grid; grid-template-columns: repeat(5, 1fr);   /* selfie-8s */ gap: 6px; margin: 10px 0; }
 .miniaturas img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
 .estado { text-align: center; }
 .estado .grande { width: 72px; height: 72px; margin: 6px auto 14px; border-radius: 50%; display: grid; place-items: center; font-size: 32px; background: var(--accent-bg); color: var(--accent); }
@@ -174,6 +174,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16; return (c === 'x' ? r : (r & 3 | 8)).toString(16) })
   const GESTOS = { sonreir: '😁', boca: '😮', ojos: '😌' }   // doc-visual
+  const TOMA_SEG = 8, TOMA_CUADROS = 5   // selfie-8s: 8 segundos, 5 fotos repartidas
   const PAISES = ['Venezuela', 'Argentina', 'Colombia', 'Chile', 'Perú', 'Ecuador', 'México', 'España', 'USA', 'Panamá', 'Costa Rica', 'Puerto Rico', 'Uruguay']
   const PAIS_ENVIO = { 'Perú': 'Peru', 'México': 'Mexico', 'Panamá': 'Panama' }   // como los espera el verificador
   const TIPO_POR_PAIS = { Argentina: 'DNI_AR', Venezuela: 'CEDULA_VE' }
@@ -454,7 +455,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       <p>Una sola toma: vos, <b>tu documento debajo de la cara</b> y un gesto con la cara que te pedimos ahora. No hace falta usar las manos.</p>
       <div class="gesto-grande"><span class="emo">${emo}</span><div><small>Con tu cara</small><b>${esc(st.gestoTexto)}</b><small>Vale para este intento: cada vez te pedimos uno distinto.</small></div></div>
       <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior <b>debajo de tu cara, a la altura del pecho</b>, con el frente hacia la cámara. No hace falta acercarlo mucho: lo comparamos con la foto que sacaste recién.</span></li>
-        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y sacamos 3 fotos seguidas. <b>Mantené el gesto</b> hasta que termine.</span></li>
+        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y después tenés <b>8 segundos</b> en los que sacamos 5 fotos. <b>Hacé el gesto y mantenelo</b> hasta que termine.</span></li>
         <li><span class="ico">💡</span><span>Buena luz de frente, sin lentes de sol ni gorra.</span></li></ul>
       ${msg ? `<div class="caja error">${msg}</div>` : ''}${ayudaCam ? AYUDA_CAMARA : ''}<div id="manual"></div>
       <button class="btn" id="abrir">📷 Abrir cámara</button>`, 3)
@@ -471,11 +472,17 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       if (!c.v.videoWidth) return
       c.bFoto.disabled = true; c.bCerrar.disabled = true; c.cam.querySelector('.guia').style.opacity = '.35'
       for (const n of [3, 2, 1]) { c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)}</div><span>${n}</span>`; await new Promise(r => setTimeout(r, 900)) }
-      c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ¡Mantenelo!</div>`
-      const cuadros = []
-      for (let i = 0; i < 3; i++) {
-        cuadros.push(cuadro(c.v, 1600, .88)); c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
-        if (i < 2) await new Promise(r => setTimeout(r, 600))
+      // selfie-8s: 8 segundos con cuenta regresiva; 5 fotos repartidas (la primera 1 s después de empezar)
+      const cuadros = [], t0 = Date.now(), total = TOMA_SEG * 1000
+      const momentos = Array.from({ length: TOMA_CUADROS }, (_, i) => 1000 + i * (total - 1000) / (TOMA_CUADROS - 1))
+      let ultimo = -1
+      while (cuadros.length < TOMA_CUADROS) {
+        const pasado = Date.now() - t0, quedan = Math.max(1, Math.ceil((total - pasado) / 1000))
+        if (quedan !== ultimo) { ultimo = quedan; c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)} · ¡mantenelo!</div><span style="font-size:72px">${quedan}</span>` }
+        if (pasado >= momentos[cuadros.length] - 40) {
+          cuadros.push(cuadro(c.v, 1600, .88)); c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
+        }
+        await new Promise(r => setTimeout(r, 100))
       }
       cerrarCamara(); enviarSelfie(cuadros)
     })
@@ -495,10 +502,11 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     pintar(`<div class="miniaturas">${cuadros.map(f => `<img src="${f}" alt="">`).join('')}</div>
       <div class="cargando"><div class="spin"></div><h1 style="font-size:20px" id="fase">Ubicando tu documento…</h1><p class="muted">Puede tardar hasta 40 segundos. No cierres esta página.</p></div>`, 3)
     // 1 · Ubicar el documento para pixelarlo en la copia que ve el revisor
-    const cz = await api('/verify/censurar-campos', { image_b64: b64(cuadros[1]), session_token: st.token }, 40000)
+    const medio = cuadros[Math.floor(cuadros.length / 2)]   // selfie-8s
+    const cz = await api('/verify/censurar-campos', { image_b64: b64(medio), session_token: st.token }, 40000)
     const caja = cz.ok && cz.j.document && cz.j.document.x1 != null ? cz.j.document : null
     if (!caja) { st.fallos++; st.gesto = null; return pintarSelfie('No encontramos tu documento en la foto. Sostenelo <b>debajo de tu cara</b>, con el frente hacia la cámara, un poco más cerca.') }
-    const anonima = await pixelar(cuadros[1], caja)
+    const anonima = await pixelar(medio, caja)
     $('#fase').textContent = 'Comprobando que seas vos…'
     // 2 · Análisis de las fotos originales (no se guardan) + copia pixelada para la revisión
     const r = await api('/verify/vivo', { verification_id: st.vid, cuadros: cuadros.map(b64), anonima_b64: b64(anonima), cara_doc_b64: st.caraDoc ? b64(st.caraDoc) : null, documento_b64: st.docDataUrl ? b64(st.docDataUrl) : null, session_token: st.token }, 75000)
