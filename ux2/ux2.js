@@ -5689,6 +5689,34 @@ const ESCENAS = {
     ${['👏', '🔥', '❤️', '✊', '💯'].map((e, i) => `<text x="${200 + i * 60}" y="270" font-size="30" text-anchor="middle" class="a-flotar" ${dl(i * .5)}>${e}</text>`).join('')}`),
   play: () => sv(`<g class="a-pop"><rect x="150" y="50" width="340" height="260" rx="24" fill="#0b0e1d"/>${tx(320, 104, 'NIVEL', 13, 'blanco', 800, 'opacity=".6" letter-spacing="3"')}<text x="320" y="158" font-size="52" font-weight="900" fill="#fff" text-anchor="middle" class="a-nivel"></text>
     <rect x="190" y="200" width="120" height="80" rx="16" fill="#fff" opacity=".08"/><rect x="330" y="200" width="120" height="80" rx="16" fill="#fff" opacity=".08"/>${tx(250, 252, '✕', 36, 'blanco', 300)}${tx(390, 252, '○', 36, 'blanco', 300)}</g>`),
+  // ── aprende-ezc-est: Las Escalinatas y Estadísticas ──
+  ezsubir: () => sv(`${[0, 1, 2, 3, 4].map(i => `<rect x="${90 + i * 84}" y="${292 - i * 42}" width="${460 - i * 84}" height="42" class="papel borde" stroke-width="3"/>`).join('')}
+    <g class="a-pop" ${dl(.9)}><path d="M418 112l66-40l66 40z" fill="${AC.oro}" class="borde" stroke-width="3"/><rect x="430" y="112" width="108" height="14" class="papel borde" stroke-width="3"/>${[446, 470, 494, 518].map(x => `<rect x="${x}" y="126" width="10" height="24" class="suave"/>`).join('')}</g>
+    ${tx(484, 56, 'Cabildo', 17, 'tinta', 900, `class="a-fade" ${dl(1.1)}`)}
+    <g class="a-pop" ${dl(.4)}>${aPer(250, 250, 1, AC.teal)}</g>${tx(112, 222, 'Vos, en las', 15, 'tenue', 800, `class="a-fade" ${dl(.6)}`)}${tx(112, 242, 'Escalinatas', 15, 'tenue', 800, `class="a-fade" ${dl(.6)}`)}
+    ${tx(160, 352, 'Registro con tu email', 14, 'tenue', 800)}${tx(500, 352, 'Verificación aprobada ↑', 14, 'verde', 800, `class="a-fade" ${dl(1.4)}`)}`),
+  ezcharla: () => {
+    const canales = [['general', AC.azul], ['economía', AC.teal], ['elecciones', AC.violeta], ['cultura', AC.oro], ['diáspora', AC.verde]]
+    let x = 22; const chips = canales.map(([n, c], i) => { const w = n.length * 10.8 + 28, cx = x + w / 2; x += w + 10; return aChip(cx, 46, n, c, `class="a-pop" ${dl(i * .12)}`) }).join('')
+    return sv(`${chips}
+    ${aBurbuja(40, 104, 330, 'Escalinata #12: ¿cómo me verifico?', false, `class="a-pop" ${dl(.7)}`)}
+    ${aBurbuja(270, 164, 330, 'Butaca #250: te ayudo, mirá Ayuda 👇', true, `class="a-pop" ${dl(1.2)}`)}
+    ${aBurbuja(40, 224, 280, 'Escalinata #40: ¡ya subí! 🎉', false, `class="a-pop" ${dl(1.7)}`)}
+    ${tx(320, 318, 'Sin butaca hablás como «Escalinata #N»', 15, 'tenue', 800, `class="a-fade" ${dl(2.1)}`)}`)
+  },
+  ezreglas: () => sv(`${[['⏳', 'Los mensajes', 'duran 24 horas'], ['🚫', 'Sin links', 'ni teléfonos'], ['🪪', 'Nunca compartas', 'tu documento']].map(([e, a, b], i) => `<g class="a-pop" ${dl(i * .35)}>${aCaja(120 + i * 200, 150, 176, 170)}<text x="${120 + i * 200}" y="140" font-size="46" text-anchor="middle">${e}</text>${tx(120 + i * 200, 192, a, 15, 'tinta', 800)}${tx(120 + i * 200, 212, b, 15, 'tinta', 800)}</g>`).join('')}
+    ${tx(320, 300, 'Si varias butacas reportan un mensaje, se oculta', 15, 'tenue', 800, `class="a-fade" ${dl(1.3)}`)}`),
+  esnum: () => sv(`${[['💺', 'butacas ocupadas'], ['🗳️', 'votos emitidos'], ['💡', 'propuestas lanzadas']].map(([e, s], i) => { const x = 120 + i * 200; return `<g class="a-pop" ${dl(i * .25)}>${aCaja(x, 150, 176, 160)}<text x="${x}" y="128" font-size="42" text-anchor="middle">${e}</text><rect x="${x - 46}" y="152" width="92" height="16" rx="8" fill="${AC.azul}" opacity=".35"/>${tx(x, 200, s, 14, 'tenue', 800)}</g>` }).join('')}
+    ${tx(320, 290, 'Todo es agregado: nada identifica a ninguna butaca', 16, 'tinta', 800, `class="a-fade" ${dl(1.2)}`)}`),
+  esnube: () => sv(`${['1h', '3h', '24h'].map((n, i) => aChip(250 + i * 70, 40, n, i === 2 ? AC.azul : AC.gris)).join('')}
+    ${[['economía', 220, 140, 34, 'rojo'], ['salud', 420, 128, 26, 'verde'], ['luz', 140, 196, 38, 'rojo'], ['educación', 330, 196, 28, 'verde'], ['agua', 510, 190, 24, 'tenue'], ['trabajo', 230, 252, 24, 'tenue'], ['diáspora', 430, 250, 26, 'verde']]
+      .map(([w, x, y, s, c], i) => tx(x, y, w, s, c, 900, `class="a-pop" ${dl(.3 + i * .15)}`)).join('')}
+    ${tx(320, 318, 'Temas de los debates y el Muro, sin autores', 15, 'tenue', 800, `class="a-fade" ${dl(1.6)}`)}`),
+  esvoto: () => sv(`${tx(320, 52, 'Cómo votó el Cabildo', 18, 'tinta', 900)}
+    ${[[0.62, 0.30], [0.41, 0.47], [0.70, 0.18]].map(([si, no], i) => { const y = 92 + i * 66, W = 440, x0 = 150, a = W * si, b = W * no, c = W - a - b
+      return `<rect x="${x0}" y="${y}" width="${W}" height="30" rx="8" class="suave"/><g class="a-crecer" ${dl(.3 + i * .3)}><rect x="${x0}" y="${y}" width="${a}" height="30" fill="#2563eb"/><rect x="${x0 + a}" y="${y}" width="${b}" height="30" fill="#ea580c"/><rect x="${x0 + a + b}" y="${y}" width="${c}" height="30" fill="${AC.gris}"/></g>${tx(96, y + 21, 'Votación ' + (i + 1), 14, 'tenue', 800)}` }).join('')}
+    ${[['■ Sí', 220, '#2563eb'], ['■ No', 320, '#ea580c'], ['■ Abstención', 440, AC.gris]].map(([n, x, c]) => `<text x="${x}" y="318" font-size="15" font-weight="800" text-anchor="middle" style="fill:${c}">${n}</text>`).join('')}
+    ${tx(320, 348, 'Solo votaciones cerradas', 14, 'tenue', 800)}`),
   // ── Bloques: qué ve el anfitrión cuando pedís sumarte ──
   bpedir: () => sv(`${aPer(105, 196, 1.3, AC.teal, 'class="a-pop"')}${tx(105, 228, 'Vos', 16, 'tinta', 900, 'class="a-fade"')}
     <g class="a-pop" ${dl(.3)}>${aChip(105, 276, 'Butaca #250', AC.oro)}</g>${aTacha(105, 274, 1.1, dl(1.2))}
@@ -5755,8 +5783,8 @@ const LECCIONES = [
     { esc: 'uno', t: '1 persona = 1 butaca = 1 voto', p: 'Nadie puede tener dos butacas. Por eso lo que vota el Cabildo <b>no se puede inflar ni falsificar</b>: es la voz real de la gente.' }],
     quiz: { q: '¿Cuántas butacas puede tener una persona?', o: [['Una sola', 1], ['Las que quiera', 0], ['Tres', 0]], e: 'Una persona, una butaca. Así cada voto vale lo mismo.' } },
   { id: 'butaca', titulo: 'Tu butaca', sub: 'Anónima y tuya', color: AC.oro, ico: '💺', ir: ['#butaca', 'Ir a Mi Butaca'], pasos: [
-    { esc: 'verif', t: 'Primero, mostrás que sos una persona real', p: 'Una sola vez, con tu documento y una selfie. Así sabemos que sos una persona y que no tenés otra butaca. Después recibís tu número.' },
-    { esc: 'anonimo', t: 'Y después, participás con tu número', p: 'No guardamos tu nombre ni tu número de documento, y las fotos se borran. Frente a los demás, tu butaca queda identificada solo por su número.' },
+    { esc: 'verif', t: 'Primero, mostrás que sos una persona real', p: 'Una sola vez, con una foto de tu documento y una <b>selfie en vivo</b> con un gesto que te pedimos en el momento. Así sabemos que sos una persona real y que no tenés otra butaca. Si la revisión automática falla, podés pedir una verificación manual. Después recibís tu número.' },   // aprende-24-10
+    { esc: 'anonimo', t: 'Y después, participás con tu número', p: 'No guardamos tu nombre ni tu número de documento, y las fotos se borran cuando termina la revisión. Frente a los demás, tu butaca queda identificada solo por su número.' },
     { esc: 'mostrar', t: 'Vos elegís qué mostrar', p: 'Podés ponerle un <b>alias</b>, una frase y un color, o no mostrar nada. Probalo acá abajo 👇', sim: 'alias' }],
     quiz: { q: '¿Tu nombre real aparece en tu butaca?', o: [['No, solo si elijo mostrar un alias', 1], ['Sí, siempre', 0], ['Solo para los que me siguen', 0]], e: 'Tu butaca es anónima. El alias es opcional y lo elegís vos.' } },
   { id: 'votar', titulo: 'Cómo votar', sub: 'Paso a paso', color: AC.verde, ico: '🗳️', ir: ['#votaciones', 'Ir a votar'], pasos: [
@@ -5783,12 +5811,12 @@ const LECCIONES = [
     { esc: 'pcamino', t: 'De idea a votación', p: 'Las que llegan a la meta pasan a <b>revisión</b>. Si se aprueban, el Cabildo entero las <b>vota</b>.' },
     { esc: 'puna', t: 'Una a la vez', p: 'Cada butaca puede tener <b>una propuesta en carrera</b>. Cuando termina, podés lanzar otra. Elegí tu mejor idea.' }],
     quiz: { q: 'Tu propuesta llegó a {CASI} apoyos en {HORAS} horas. ¿Qué pasa?', o: [['Vence: no llegó a la meta', 1], ['Pasa igual a votación', 0], ['Se extiende sola otra semana', 0]], e: 'La meta es {META} apoyos en {HORAS} horas. Si no llega, vence y podés lanzar otra.' } },
-  { id: 'bloques', titulo: 'Bloques', sub: 'Organizarse', color: AC.violeta, ico: '🚩', ir: ['#inicio', 'Ver bloques'], pasos: [
-    { esc: 'bque', t: '¿Qué es un bloque?', p: 'Un grupo de ciudadanos que se junta alrededor de ideas comunes, con un <b>anfitrión</b> que lo lidera. El anfitrión muestra su nombre real; los miembros siguen siendo <b>anónimos</b> para el público, que solo ve cuántos son.' },
+  { id: 'bloques', titulo: 'Bloques', sub: 'Organizarse', color: AC.violeta, ico: '🚩', ir: ['#bloques', 'Ver bloques'], pasos: [
+    { esc: 'bque', t: '¿Qué es un bloque?', p: 'Un grupo de ciudadanos que se junta alrededor de ideas comunes, con un <b>anfitrión</b> que lo lidera. El anfitrión muestra su nombre real; los miembros siguen siendo <b>anónimos</b> para el público, que solo ve cuántos son. ¿Primera vez? Practicá con Claria en el <b>Bloque Simulador</b>: nada se guarda y no te suma a ninguno.' },
     { esc: 'bpedir', t: 'Pedir sumarte', p: 'Tocás <b>“Pedir sumarme”</b> y, si querés, escribís una presentación. El anfitrión te ve con tu <b>alias</b> si lo hiciste público, o como <b>“Ciudadano anónimo”</b>, y decide si entrás. <b>Nunca ve tu número de butaca</b> ni qué votás. Si el bloque está abierto a todos, entrás directo. Probalo 👇', sim: 'sumarme' },
     { esc: 'bsumar', t: 'Un bloque a la vez', p: 'Podés estar en <b>un bloque a la vez</b>. Si te vas, podés sumarte enseguida a otro, pero <b>no volver al mismo durante 30 días</b>. Si el anfitrión te quita, quedás libre <b>sin esperar</b>. Y siempre seguís votando todo lo del Cabildo.' },
     { esc: 'badentro', t: 'Adentro, todo en vivo', p: 'Comunicados del anfitrión, debates, una sala para charlar e ideas que los miembros apoyan. <b>Todo se actualiza solo</b>, sin recargar. Si el anfitrión lo habilita, una idea con suficientes apoyos sale como <b>propuesta del bloque</b>; si no, <b>el anfitrión decide</b> qué impulsar.' },
-    { esc: 'bcrear', t: 'Crear tu propio bloque', p: 'Para ser anfitrión mostrás tu <b>nombre real</b> y verificás tu identidad otra vez con tu DNI, que queda bajo llave y se borra si el bloque cierra. Desde <b>Administrar</b> elegís si pedís aprobación, aceptás o quitás miembros, y cambiás tu foto, la portada y la frase del bloque.' }],
+    { esc: 'bcrear', t: 'Crear tu propio bloque', p: 'Para ser anfitrión mostrás tu <b>nombre real</b> y verificás tu identidad otra vez con tu DNI, que queda bajo llave y se borra si el bloque cierra. Desde <b>Administrar</b> elegís si pedís aprobación, aceptás o quitás miembros, cambiás tu foto, la portada y la frase del bloque, y elegís <b>qué se ve afuera</b>: el contador de ideas y las propuestas del bloque.' }],
     quiz: { q: 'Pedís sumarte a un bloque. ¿Qué ve el anfitrión?', o: [['Mi alias si es público, o “Ciudadano anónimo”', 1], ['Mi número de butaca', 0], ['Mi nombre real', 0]], e: 'El anfitrión decide quién entra, pero nunca ve tu butaca ni cómo votás.' } },
   { id: 'comunidad', titulo: 'Muro, Ciudadanos, Auditorio y Playroom', sub: 'Lo demás', color: AC.teal, ico: '🎟️', ir: ['#playroom', 'Ir al Playroom'], pasos: [
     { esc: 'muro', t: 'El Muro del día', p: 'Cada butaca puede dejar <b>una opinión por día</b> (hasta 280 caracteres). Los demás la leen, le dan me gusta y responden. A las 3:00 de Venezuela empieza un Muro nuevo.' },
@@ -5796,6 +5824,16 @@ const LECCIONES = [
     { esc: 'aud', t: 'El Auditorio', p: 'Sesiones <b>en vivo</b>: mirás, reaccionás y podés pedir la palabra en el chat de la sala.' },
     { esc: 'play', t: 'El Playroom', p: '<b>Nerdocrasy</b>: 90 niveles de preguntas sobre democracia. Un error y empezás de nuevo. ¿Hasta dónde llegás?' }],
     quiz: { q: '¿Cuándo podés mandarle un mensaje a otra butaca?', o: [['Cuando acepta que la sigas', 1], ['Siempre, a cualquiera', 0], ['Nunca', 0]], e: 'Primero mandás una solicitud de seguimiento; si la acepta, pueden escribirse.' } },
+  { id: 'escalinatas', titulo: 'Las Escalinatas', sub: 'La antesala', color: AC.teal, ico: '🪜', ir: ['#escalinatas', 'Ir a las Escalinatas'], pasos: [   // aprende-ezc-est
+    { esc: 'ezsubir', t: 'Antes de entrar al Cabildo', p: 'Quien crea su cuenta con un email y todavía no tiene butaca espera en las <b>Escalinatas</b>: desde ahí charla, sigue cómo va su verificación y sube al Cabildo cuando la aprueban.' },
+    { esc: 'ezcharla', t: 'Charla por temas', p: 'Hay canales de <b>general, economía, elecciones, cultura y diáspora</b>, y una pestaña de <b>Ayuda</b>. Sin butaca hablás como «Escalinata #N», y ese nombre no queda unido a la butaca que consigas después. Con tu butaca entrás <b>de visita</b> y podés ayudar a los que esperan.' },
+    { esc: 'ezreglas', t: 'Reglas cortas', p: 'Los mensajes <b>duran 24 horas</b>. No se permiten links ni teléfonos, y <b>nunca compartas tu documento</b> por el chat. Si varias butacas reportan un mensaje, se oculta.' }],
+    quiz: { q: 'Escribiste como «Escalinata #N» y después conseguiste tu butaca. ¿Alguien puede saber que eras vos?', o: [['No, ese nombre no queda unido a mi butaca', 1], ['Sí, aparece en mi perfil', 0], ['Solo los anfitriones de bloques', 0]], e: 'El nombre de las Escalinatas no queda unido a la butaca que conseguís después.' } },
+  { id: 'estadisticas', titulo: 'Estadísticas', sub: 'El Cabildo en números', color: AC.azul, ico: '📊', ir: ['#estadisticas', 'Ver Estadísticas'], pasos: [
+    { esc: 'esnum', t: 'Lo que pasa, en números', p: 'En <b>Estadísticas</b> ves cuántas butacas hay ocupadas, cuántos votos se emitieron, cuántas propuestas se lanzaron y cuánto se habla en los debates y el Muro. Todo es <b>agregado</b>: nada identifica a ninguna butaca.' },
+    { esc: 'esnube', t: '¿De qué se habla?', p: 'Una <b>nube de palabras</b> resume los temas de los debates y el Muro de la última hora, las últimas 3 horas o el último día, con colores según el tono: crítica, apoyo o neutro. La arma un análisis automático sin autores, que nunca nombra a ciudadanos.' },
+    { esc: 'esvoto', t: 'Cómo votó el Cabildo', p: 'Los resultados de las últimas votaciones <b>cerradas</b>. Las abiertas no aparecen: mientras se vota, nadie ve quién va ganando.' }],
+    quiz: { q: '¿Las Estadísticas muestran qué votó cada butaca?', o: [['No, solo totales', 1], ['Sí, con el número de butaca', 0], ['Solo de las butacas que sigo', 0]], e: 'Todo es agregado. Además, el Cabildo no guarda qué votó cada butaca.' } },
   { id: 'funding', titulo: 'Funding', sub: 'Sostener el Cabildo', color: AC.oro, ico: '💛', ir: ['#funding', 'Ir a Funding'], si: () => FUNDING_ABIERTO && !!fd.cfg?.activo, pasos: [
     { esc: 'ffondo', t: 'El Cabildo se sostiene entre todos', p: 'En <b>Funding</b> hay una meta anual para mantener el Cabildo: infraestructura y seguridad, una app nativa y una auditoría independiente. Cualquiera puede aportar <b>desde $1</b>. Las <b>marcas</b> también aportan y su logo aparece en la franja, pero <b>no votan ni deciden</b>.' },
     { esc: 'ffundador', t: 'Tu Fundador, para siempre', p: 'Con tu primer aporte al Fondo recibís tu <b>Fundador</b>: un avatar pixel único, numerado por orden de llegada. Es <b>sorpresa</b> y sale de tu butaca: aportar más <b>no lo hace más raro</b>. No se vende ni se transfiere, y queda en el <b>Libro de Fundadores</b>, sellado cada año en Bitcoin para probar que nadie lo alteró.' },
@@ -5818,7 +5856,8 @@ const FAQ = [
   ['¿Tengo que mostrar mi nombre?', 'No. Tu butaca es anónima. Solo los anfitriones de bloques muestran su nombre real, porque lo eligen.'],
   ['¿El anfitrión de un bloque sabe quién soy?', 'No. Cuando pedís sumarte ve tu alias si lo hiciste público, o “Ciudadano anónimo”, y tu presentación si escribiste una. Nunca ve tu número de butaca ni qué votás.'],
   ['¿Puedo estar en dos bloques?', 'No, en uno a la vez. Podés cambiarte cuando quieras, pero al bloque que dejaste no podés volver durante 30 días. Si el anfitrión te quita, quedás libre enseguida.'],
-  ['¿Qué guardan de mí?', 'Tu email (para entrar) y tu butaca. No guardamos tu nombre ni tu número de documento, y las fotos de la verificación se borran.'],
+  ['¿Qué guardan de mí?', 'Tu email (para entrar) y tu butaca. No guardamos tu nombre ni tu número de documento, y las fotos de la verificación se borran cuando termina la revisión.'],
+  ['¿Qué son las Escalinatas?', 'La antesala del Cabildo: ahí charlan y piden ayuda quienes tienen cuenta pero todavía no tienen butaca. Con tu butaca podés entrar de visita y ayudarlos a subir.'],
   ['¿Tengo que aportar para votar?', 'No. Votar, proponer y debatir en el Cabildo es gratis para todas las butacas. Ser socio solo sirve para decidir qué proyectos se financian.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
   ['¿Si aporto más, mi Fundador es más raro?', 'No. Tu Fundador sale de tu butaca, no de cuánto aportás. Hay uno por butaca y por año, y no se vende ni se transfiere.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
   ['¿Las marcas deciden algo?', 'No. Las marcas aportan y su logo aparece en la franja, pero no votan ni deciden proyectos.', () => FUNDING_ABIERTO && !!fd.cfg?.activo],
@@ -6749,10 +6788,10 @@ function enlazarRevelacion() {
 //  · Se ocultan con 3 reportes de butacas (o 6 con al menos uno de una butaca).
 // ══════════════════════════════════════════════════════════════
 const EZC_CANALES = [['general', 'general'], ['economia', 'economía'], ['elecciones', 'elecciones'], ['cultura', 'cultura'], ['diaspora', 'diáspora']]
-const EZC_PASOS = ['Documento', 'Gestos', 'Selfie con documento', 'Revisión']
+const EZC_PASOS = ['Documento', 'Selfie en vivo', 'Revisión']   // aprende-ezc-est: flujo de 2 pasos + revisión
 const EZC_FAQ = [
   ['doc', '¿Por qué piden mi documento?', 'Para que cada persona tenga una sola butaca. Así nadie puede votar dos veces ni inflar una votación.'],
-  ['guardan', '¿Qué guardan de mí?', 'Tu email para entrar y tu butaca. No se guarda tu nombre ni tu número de documento, y las fotos de la verificación se borran.'],
+  ['guardan', '¿Qué guardan de mí?', 'Tu email para entrar y tu butaca. No se guarda tu nombre ni tu número de documento, y las fotos de la verificación se borran cuando termina la revisión.'],
   ['secreto', '¿Mi voto es secreto?', 'Sí. Se anota que tu butaca participó y tu voto se suma al total, por separado. No se guarda qué votó cada butaca.'],
   ['tarda', '¿Cuánto tarda?', 'Completar los pasos lleva unos minutos. Después una persona del equipo revisa tu verificación.'],
 ]
@@ -6763,12 +6802,12 @@ const ezcCanalActual = () => ezc.tab === 'ayuda' ? 'ayuda' : ezc.canal
 // En qué paso quedó la verificación (dato que ya guarda el verificador: ultimo_paso / status)
 function ezcPaso(v) {
   if (!v) return { i: 0, txt: 'Todavía no empezaste. Tené a mano tu cédula o pasaporte: son unos minutos.', btn: 'Empezar mi verificación' }
-  if (v.status === 'aprobado') return { i: 4, txt: 'Tu verificación está aprobada. Recargá la página para entrar con tu butaca.', btn: null }
-  if (v.status === 'pendiente_revision' || v.paso === 'enviado') return { i: 3, txt: 'Ya enviaste todo. Una persona del equipo está revisando tu verificación.', btn: null }
+  if (v.status === 'aprobado') return { i: 3, txt: 'Tu verificación está aprobada. Recargá la página para entrar con tu butaca.', btn: null }
+  if (v.status === 'pendiente_revision' || v.paso === 'enviado') return { i: 2, txt: 'Ya enviaste todo. Una persona del equipo está revisando tu verificación.', btn: null }
   if (v.status === 'rechazado') return { i: 0, txt: 'Tu verificación no fue aprobada. Podés intentarlo de nuevo con fotos más claras.', btn: 'Intentar de nuevo' }
   if (v.paso === 'documento_sin_detalle' || v.paso === 'documento_fallido') return { i: 0, txt: 'No pudimos leer bien tu documento. Probá con buena luz, sin reflejos y con el documento entero en la foto.', btn: 'Reintentar' }
-  if (v.paso === 'documento') return { i: 1, txt: 'Tu documento ya está validado. Te falta el paso de los gestos frente a la cámara.', btn: 'Seguir donde quedé' }
-  if (/liveness|gesto/.test(v.paso || '')) return { i: 2, txt: 'Te falta la selfie sosteniendo tu documento.', btn: 'Seguir donde quedé' }
+  if (v.paso === 'documento') return { i: 1, txt: 'Tu documento ya está validado. Te falta la selfie en vivo con tu documento.', btn: 'Seguir donde quedé' }
+  if (/liveness|gesto|presencia/.test(v.paso || '')) return { i: 1, txt: 'Te falta la selfie en vivo con tu documento.', btn: 'Seguir donde quedé' }
   return { i: 1, txt: 'Quedaste a mitad de camino. Retomá tu verificación cuando quieras.', btn: 'Seguir donde quedé' }
 }
 
