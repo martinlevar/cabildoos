@@ -5,6 +5,8 @@
 'use strict'
 
 const sb = window.supabase.createClient(window.__ENV.SUPABASE_URL, window.__ENV.SUPABASE_KEY)
+// verificar-v2: con sesión iniciada, la verificación es la página nueva /verificar
+const urlVerificar = () => (typeof estado !== 'undefined' && estado.user) ? '/verificar' : APP_ACTUAL
 const APP_ACTUAL = '/cuenta'    // login, registro y verificación siguen en la v1, que vive en /cuenta
 
 const $  = (s, el = document) => el.querySelector(s)
@@ -348,7 +350,7 @@ function pintarMenuUsuario() {
   const nombre = estado.alias || (estado.butaca ? `Butaca #${estado.butaca}` : 'Mi cuenta')
   pop.innerHTML = `<header class="hp-yo"><span class="avatar">${esc(nombre.charAt(0).toUpperCase())}</span><span><b>${esc(nombre)}</b><small>${estado.butaca ? `Butaca #${estado.butaca}` : 'Sin butaca todavía'}</small></span></header>
     <nav class="hp-nav">
-      ${estado.butaca ? `<a href="#butaca">💺 Mi Butaca</a><a href="#ciudadanos/${estado.butaca}">👤 Mi perfil público</a><a href="#ciudadanos/mensajes">💬 Mensajes</a>` : `<a href="${APP_ACTUAL}">🪪 Conseguir mi butaca</a>`}
+      ${estado.butaca ? `<a href="#butaca">💺 Mi Butaca</a><a href="#ciudadanos/${estado.butaca}">👤 Mi perfil público</a><a href="#ciudadanos/mensajes">💬 Mensajes</a>` : `<a href="${urlVerificar()}">🪪 Conseguir mi butaca</a>`}
       <a href="#aprende">🎓 Cómo funciona el Cabildo</a>
       <button data-um="tema">${oscuro ? '☀️ Tema claro' : '🌙 Tema oscuro'}</button>
       <button data-um="salir" class="hp-salir">↩ Cerrar sesión</button>
@@ -838,7 +840,7 @@ function pintarVotacionesInicio() {
       <p title="${esc(q.text)}">${esc(q.text)}</p>
       <div class="iq-acc">
         <a class="iq-deb" href="#debates/${q.id}"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>Debate</a>
-        ${vote ? '<span class="iq-ok">✓ Votaste</span>' : !estado.butaca ? `<a class="btn btn-dark iq-btn" href="${APP_ACTUAL}">Conseguí tu butaca</a>` : `<button class="btn btn-dark iq-btn" data-iq-votar="${q.id}">Votar</button>`}
+        ${vote ? '<span class="iq-ok">✓ Votaste</span>' : !estado.butaca ? `<a class="btn btn-dark iq-btn" href="${urlVerificar()}">Conseguí tu butaca</a>` : `<button class="btn btn-dark iq-btn" data-iq-votar="${q.id}">Votar</button>`}
       </div></li>`
   }).join('') + (n > IQ_MAX ? `<li class="iq-mas"><a href="#votaciones">Ver las ${n} votaciones abiertas${pend ? ` · te faltan ${pend}` : ''} →</a></li>` : '') + cerradas
 }
@@ -1036,7 +1038,7 @@ async function pasoVoto() {
     c.innerHTML = `<div class="mv-nota">Para votar tenés que iniciar sesión.</div><a class="btn btn-dark" style="width:100%" href="${APP_ACTUAL}">Iniciar sesión</a>`; return
   }
   if (!estado.butaca) {
-    c.innerHTML = `<div class="mv-nota">Para votar necesitás tener butaca: completá la verificación de identidad.</div><a class="btn btn-dark" style="width:100%" href="${APP_ACTUAL}">Verificarme</a>`; return
+    c.innerHTML = `<div class="mv-nota">Para votar necesitás tener butaca: completá la verificación de identidad.</div><a class="btn btn-dark" style="width:100%" href="${urlVerificar()}">Verificarme</a>`; return
   }
   if (!abierta(q)) { c.innerHTML = '<div class="mv-nota">Esta votación ya cerró.</div>'; return }
   if (!vMisVotos.has(q.id) && !mvConsultado) {   // una sola consulta por apertura: tocar una opción no espera al servidor
@@ -3358,7 +3360,7 @@ function pintarMiButaca() {
   if (!estado.butaca) {
     c.innerHTML = `<div class="card soon"><h3 style="margin:0 0 6px">Todavía no tenés butaca</h3>
       <p class="muted">Completá la verificación de identidad y se te asigna tu lugar en el hemiciclo.</p>
-      <a class="btn btn-dark" href="${APP_ACTUAL}">Verificarme</a></div>`
+      <a class="btn btn-dark" href="${urlVerificar()}">Verificarme</a></div>`
     return
   }
   const id = estado.ident || {}
@@ -3658,7 +3660,7 @@ function pintarHilo(cargando = false) {
   let pie
   if (!abierto) pie = '<div class="db-cerrado">🔒 Este debate cerró. Podés leerlo, pero ya no se puede participar.</div>'
   else if (!estado.user) pie = `<div class="db-cerrado">Para participar <a href="${APP_ACTUAL}">iniciá sesión</a>.</div>`
-  else if (!estado.butaca) pie = `<div class="db-cerrado">Para participar necesitás tu butaca: <a href="${APP_ACTUAL}">completá la verificación</a>.</div>`
+  else if (!estado.butaca) pie = `<div class="db-cerrado">Para participar necesitás tu butaca: <a href="${urlVerificar()}">completá la verificación</a>.</div>`
   else pie = `
     <div class="db-cola" id="db-cola"></div>
     <div class="db-compo">
@@ -4240,7 +4242,7 @@ function pintarCiudadanos() {
   $('#ci-busca').hidden = ciu.tab !== 'directorio'
   const caja = $('#ci-lista')
   if (!estado.butaca && ciu.tab !== 'directorio') {
-    caja.innerHTML = `<div class="card soon"><h3>Necesitás tu butaca</h3><p class="muted">Para seguir ciudadanos y enviar mensajes completá la verificación.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Verificarme</a></div>`
+    caja.innerHTML = `<div class="card soon"><h3>Necesitás tu butaca</h3><p class="muted">Para seguir ciudadanos y enviar mensajes completá la verificación.</p><a class="btn btn-dark" href="${urlVerificar()}">Verificarme</a></div>`
     return
   }
   if (ciu.tab === 'solicitudes') {
@@ -4497,7 +4499,7 @@ function vistaCrear() {
       <li><span class="n">4</span><span><b>Aprobación.</b> El equipo del Cabildo revisa tu solicitud.</span></li>
     </ul>
     ${estado.butaca ? '<button class="btn btn-accent" data-cb="empezar">Empezar solicitud</button>'
-      : `<a class="btn btn-accent" href="${APP_ACTUAL}">Primero conseguí tu butaca</a>`}
+      : `<a class="btn btn-accent" href="${urlVerificar()}">Primero conseguí tu butaca</a>`}
   </div>`
 }
 
@@ -5021,7 +5023,7 @@ function pintarAuditorio() {
         </div>
         <div class="db-estado"><span id="au-estado"></span><em id="au-cont">0/280</em></div>
         <div class="db-cd" id="au-cd" hidden><i id="au-cd-fill"></i></div>
-      </div>` : `<div class="db-cerrado">Para hablar necesitás tu butaca: <a href="${APP_ACTUAL}">completá la verificación</a>.</div>`}
+      </div>` : `<div class="db-cerrado">Para hablar necesitás tu butaca: <a href="${urlVerificar()}">completá la verificación</a>.</div>`}
     </aside>
   </div>`
   pintarPresencia(); pintarManos(); pintarChat(); pintarMiMano()
@@ -5283,7 +5285,7 @@ function pintarPlayroom() {
       <div class="nd-hero-pie">
         <p class="nd-meta-txt">${esc(proximaMeta(est, nd.rank))}</p>
         ${puede ? `<button class="nd-jugar" id="nd-jugar"><span>▶</span> ${r ? 'Jugar de nuevo' : 'Jugar'}</button>`
-          : `<a class="nd-jugar" href="${APP_ACTUAL}">Conseguí tu butaca para jugar</a>`}
+          : `<a class="nd-jugar" href="${urlVerificar()}">Conseguí tu butaca para jugar</a>`}
       </div>
     </section>
 
@@ -6164,7 +6166,7 @@ function pintarMuroDia() {
   const mio = miPostHoy(), ident = estado.ident || {}
   const miAlias = ident.show_alias && ident.alias ? ident.alias : `Butaca #${estado.butaca}`
   if (!estado.user) esc_.innerHTML = `<div class="card mu-caja mu-caja-info"><p>Iniciá sesión para leer y escribir en el Muro.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a></div>`
-  else if (!estado.butaca) esc_.innerHTML = `<div class="card mu-caja mu-caja-info"><p>Para escribir en el Muro necesitás tu butaca.</p><a class="btn btn-dark" href="${APP_ACTUAL}">Completar verificación</a></div>`
+  else if (!estado.butaca) esc_.innerHTML = `<div class="card mu-caja mu-caja-info"><p>Para escribir en el Muro necesitás tu butaca.</p><a class="btn btn-dark" href="${urlVerificar()}">Completar verificación</a></div>`
   else if (mio) esc_.innerHTML = `<div class="card mu-caja mu-hecho"><span class="mu-ok">✓</span><div><b>Ya dejaste tu opinión de hoy.</b><p>Mañana a las 3:00 se abre un Muro nuevo. Si querés cambiarla, podés borrarla y escribir otra.</p></div>
       <button class="btn" data-mu-borrar="${mio.id}">Borrar y escribir otra</button></div>`
   else if (!esc_.querySelector('#mu-txt')) esc_.innerHTML = `<div class="card mu-caja">
@@ -6803,7 +6805,7 @@ function ezcCamino(d) {
       : 'Desde acá mirás y charlás. Para <b>votar, proponer y debatir</b>, subí al Cabildo verificando tu identidad.'}</p>
     <div class="ezc-camino-pie">
       <span class="ezc-cifras"><b>${fmtNum(d.esperando)}</b> esperan en las Escalinatas · <b>${fmtNum(d.subieron_semana)}</b> subieron esta semana</span>
-      ${visita ? '<a class="btn btn-ghost" href="#inicio">Volver al Cabildo</a>' : `<a class="btn btn-dark" href="${APP_ACTUAL}">${ICO_EZC}Subir al Cabildo</a>`}
+      ${visita ? '<a class="btn btn-ghost" href="#inicio">Volver al Cabildo</a>' : `<a class="btn btn-dark" href="${urlVerificar()}">${ICO_EZC}Subir al Cabildo</a>`}
     </div>
   </div>`
 }
@@ -6827,7 +6829,7 @@ function ezcLado(d) {
     <div class="ezc-verif-cab"><b class="ezc-lado-tit">Tu verificación</b><span class="muted">${p.i >= 4 ? 'Completa' : `Paso ${p.i + 1} de 4`}</span></div>
     <div class="ezc-barras">${EZC_PASOS.map((n, i) => `<div class="${i < p.i ? 'hecho' : i === p.i ? 'actual' : ''}"><i></i><span>${n}</span></div>`).join('')}</div>
     <p class="ezc-verif-txt">${esc(p.txt)}</p>
-    ${p.btn ? `<a class="btn btn-dark ezc-verif-btn" href="${APP_ACTUAL}">${esc(p.btn)}</a>` : ''}
+    ${p.btn ? `<a class="btn btn-dark ezc-verif-btn" href="${urlVerificar()}">${esc(p.btn)}</a>` : ''}
     ${p.i === 0 ? `<ul class="ezc-tips"><li>Tu cédula o pasaporte vigente</li><li>Un lugar con buena luz</li><li>Unos minutos y la cámara del teléfono</li></ul>` : ''}
     ${faq}</div>`
 }
@@ -6892,7 +6894,7 @@ function pintarEscalinatasSolo(v, d, canal, sil, nombreCanal) {
       <div class="ezc-solo-verif">
         <div class="ezc-verif-cab"><b class="ezc-lado-tit">Tu verificación</b><span class="muted">${p.i >= 4 ? 'Completa' : `Paso ${p.i + 1} de 4`}</span></div>
         <div class="ezc-barras">${EZC_PASOS.map((n, i) => `<div class="${i < p.i ? 'hecho' : i === p.i ? 'actual' : ''}"><i></i><span>${n}</span></div>`).join('')}</div>
-        <div class="ezc-solo-verif-pie"><p class="ezc-verif-txt">${esc(p.txt)}</p>${p.btn ? `<a class="btn btn-dark" href="${APP_ACTUAL}">${esc(p.btn)}</a>` : ''}</div>
+        <div class="ezc-solo-verif-pie"><p class="ezc-verif-txt">${esc(p.txt)}</p>${p.btn ? `<a class="btn btn-dark" href="${urlVerificar()}">${esc(p.btn)}</a>` : ''}</div>
       </div>
       <div class="ezc-solo-faq">${EZC_FAQ.map(([id, q]) => `<button type="button" data-ezc-faq="${id}" aria-expanded="${ezc.faq === id}" class="${ezc.faq === id ? 'on' : ''}">${esc(q)}</button>`).join('')}</div>
       ${ezc.faq ? `<p class="ezc-solo-faq-r">${esc((EZC_FAQ.find(f => f[0] === ezc.faq) || [])[2] || '')}</p>` : ''}
@@ -6905,7 +6907,7 @@ function pintarEscalinatasSolo(v, d, canal, sil, nombreCanal) {
         <h1>Las Escalinatas</h1>
         <p><b>${fmtNum(d.esperando)}</b> esperan · <b>${fmtNum(d.subieron_semana)}</b> subieron esta semana</p>
       </div>
-      <a class="btn btn-dark ezc-solo-subir" href="${APP_ACTUAL}">Subir al Cabildo</a>
+      <a class="btn btn-dark ezc-solo-subir" href="${urlVerificar()}">Subir al Cabildo</a>
     </header>
     <p class="ezc-solo-bajada">Desde acá charlás y te ayudamos a verificarte. Con tu butaca vas a poder <b>votar, proponer y debatir</b>.</p>
     <div class="ezc-tabs" role="tablist">
