@@ -479,17 +479,25 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       c.bFoto.disabled = true; c.bCerrar.disabled = true; c.cam.querySelector('.guia').style.opacity = '.35'
       for (const n of [3, 2, 1]) { c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)}</div><span>${n}</span>`; await new Promise(r => setTimeout(r, 900)) }
       // selfie-8s: 8 segundos con cuenta regresiva; 5 fotos repartidas (la primera 1 s después de empezar)
-      const lienzos = [], t0 = Date.now(), total = TOMA_SEG * 1000
+      // selfie-8s-c: al ritmo de la pantalla (requestAnimationFrame) y nunca dos fotos juntas (mínimo 1 s entre fotos)
+      const lienzos = [], tiempos = [], t0 = performance.now(), total = TOMA_SEG * 1000, MIN_ENTRE = 1000
       const momentos = Array.from({ length: TOMA_CUADROS }, (_, i) => 1000 + i * (total - 1000) / (TOMA_CUADROS - 1))
-      let ultimo = -1
-      while (lienzos.length < TOMA_CUADROS) {
-        const pasado = Date.now() - t0, quedan = Math.max(1, Math.ceil((total - pasado) / 1000))
-        if (quedan !== ultimo) { ultimo = quedan; c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)} · ¡mantenelo!</div><span style="font-size:72px">${quedan}</span>` }
-        if (pasado >= momentos[lienzos.length] - 40) {
-          lienzos.push(lienzo(c.v, 1600)); c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
+      let ultimo = -1, ultimaFoto = -Infinity
+      await new Promise(listo => {
+        const paso = () => {
+          const ahora = performance.now(), pasado = ahora - t0
+          const quedan = Math.max(1, Math.ceil((total - pasado) / 1000))
+          if (quedan !== ultimo) { ultimo = quedan; c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)} · ¡mantenelo!</div><span style="font-size:72px">${quedan}</span>` }
+          if (pasado >= momentos[lienzos.length] - 30 && ahora - ultimaFoto >= MIN_ENTRE) {
+            lienzos.push(lienzo(c.v, 1600)); tiempos.push(pasado); ultimaFoto = performance.now()
+            c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
+          }
+          if (lienzos.length >= TOMA_CUADROS) return listo()
+          requestAnimationFrame(paso)
         }
-        await new Promise(r => setTimeout(r, 50))
-      }
+        requestAnimationFrame(paso)
+      })
+      st.tiempos = tiempos
       c.cuenta.innerHTML = `<div class="gesto-cam">✅ ¡Listo!</div>`
       await new Promise(r => setTimeout(r, 60))
       cerrarCamara()
@@ -509,7 +517,8 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     return c.toDataURL('image/jpeg', .8)
   }
   async function enviarSelfie(cuadros) {
-    pintar(`<div class="miniaturas">${cuadros.map(f => `<img src="${f}" alt="">`).join('')}</div>
+    const seg = (st.tiempos || []).map(x => (x / 1000).toFixed(1).replace('.', ','))   // selfie-8s-c
+    pintar(`<div class="miniaturas">${cuadros.map((f, i) => `<figure style="margin:0"><img src="${f}" alt=""><figcaption style="text-align:center;font-size:11px;color:var(--muted)">${seg[i] ? seg[i] + ' s' : ''}</figcaption></figure>`).join('')}</div>
       <div class="cargando"><div class="spin"></div><h1 style="font-size:20px" id="fase">Ubicando tu documento…</h1><p class="muted">Puede tardar hasta 40 segundos. No cierres esta página.</p></div>`, 3)
     // 1 · Ubicar el documento para pixelarlo en la copia que ve el revisor
     const medio = cuadros[Math.floor(cuadros.length / 2)]   // selfie-8s
