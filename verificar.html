@@ -174,7 +174,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16; return (c === 'x' ? r : (r & 3 | 8)).toString(16) })
   const GESTOS = { sonreir: '😁', boca: '😮', ojos: '😌' }   // doc-visual
-  const TOMA_SEG = 8, TOMA_CUADROS = 5   // selfie-8s: 8 segundos, 5 fotos repartidas
+  const TOMA_SEG = 6, TOMA_CUADROS = 5   // selfie-6s: 6 segundos, 5 fotos repartidas, sin destello
   const PAISES = ['Venezuela', 'Argentina', 'Colombia', 'Chile', 'Perú', 'Ecuador', 'México', 'España', 'USA', 'Panamá', 'Costa Rica', 'Puerto Rico', 'Uruguay']
   const PAIS_ENVIO = { 'Perú': 'Peru', 'México': 'Mexico', 'Panamá': 'Panama' }   // como los espera el verificador
   const TIPO_POR_PAIS = { Argentina: 'DNI_AR', Venezuela: 'CEDULA_VE' }
@@ -461,7 +461,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       <p>Una sola toma: vos, <b>tu documento debajo de la cara</b> y un gesto con la cara que te pedimos ahora. No hace falta usar las manos.</p>
       <div class="gesto-grande"><span class="emo">${emo}</span><div><small>Con tu cara</small><b>${esc(st.gestoTexto)}</b><small>Vale para este intento: cada vez te pedimos uno distinto.</small></div></div>
       <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior <b>debajo de tu cara, a la altura del pecho</b>, con el frente hacia la cámara. No hace falta acercarlo mucho: lo comparamos con la foto que sacaste recién.</span></li>
-        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y después tenés <b>8 segundos</b> en los que sacamos 5 fotos. <b>Hacé el gesto y mantenelo</b> hasta que termine.</span></li>
+        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y después tenés <b>6 segundos</b> en los que vamos sacando fotos. <b>Hacé el gesto y mantenelo</b> hasta que termine.</span></li>
         <li><span class="ico">💡</span><span>Buena luz de frente, sin lentes de sol ni gorra.</span></li></ul>
       ${msg ? `<div class="caja error">${msg}</div>` : ''}${ayudaCam ? AYUDA_CAMARA : ''}<div id="manual"></div>
       <button class="btn" id="abrir">📷 Abrir cámara</button>`, 3)
@@ -489,8 +489,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
           const quedan = Math.max(1, Math.ceil((total - pasado) / 1000))
           if (quedan !== ultimo) { ultimo = quedan; c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)} · ¡mantenelo!</div><span style="font-size:72px">${quedan}</span>` }
           if (pasado >= momentos[lienzos.length] - 30 && ahora - ultimaFoto >= MIN_ENTRE) {
-            lienzos.push(lienzo(c.v, 1600)); tiempos.push(pasado); ultimaFoto = performance.now()
-            c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
+            lienzos.push(lienzo(c.v, 1600)); tiempos.push(pasado); ultimaFoto = performance.now()   // sin destello
           }
           if (lienzos.length >= TOMA_CUADROS) return listo()
           requestAnimationFrame(paso)
@@ -535,7 +534,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     if (r.status === 401) { st.token = null; return pintarDocumento('Tu sesión de verificación venció. Volvé a sacar la foto del documento.') }
     if (r.status === 409 && /aprobada/.test(r.j.detail || '')) return enviado()
     st.fallos++
-    pintarSelfie(esc(r.j.detail || 'No pudimos comprobar la toma. Probá de nuevo.'))
+    pintarSelfie(esc((r.j.detail || 'No pudimos comprobar la toma. Probá de nuevo.').replace(/de \d+ segundos/, `de ${TOMA_SEG} segundos`)))
   }
 
   // ── Enviado y seguimiento ──
