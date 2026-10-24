@@ -360,6 +360,12 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     v.addEventListener('loadedmetadata', () => { v.play().catch(() => {}); cam.querySelector('[data-c="foto"]').disabled = false }, { once: true })
     return { cam, v, bFoto: cam.querySelector('[data-c="foto"]'), bCerrar: cam.querySelector('[data-c="cerrar"]'), cuenta: cam.querySelector('.cuenta'), flash: cam.querySelector('.flash') }
   }
+  function lienzo(v, max) {   // selfie-8s-b: copia instantánea del cuadro (sin convertir)
+    const r = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight))
+    const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * r); c.height = Math.round(v.videoHeight * r)
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height)
+    return c
+  }
   function cuadro(v, max, calidad) {
     const r = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight))
     const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * r); c.height = Math.round(v.videoHeight * r)
@@ -473,18 +479,22 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       c.bFoto.disabled = true; c.bCerrar.disabled = true; c.cam.querySelector('.guia').style.opacity = '.35'
       for (const n of [3, 2, 1]) { c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)}</div><span>${n}</span>`; await new Promise(r => setTimeout(r, 900)) }
       // selfie-8s: 8 segundos con cuenta regresiva; 5 fotos repartidas (la primera 1 s después de empezar)
-      const cuadros = [], t0 = Date.now(), total = TOMA_SEG * 1000
+      const lienzos = [], t0 = Date.now(), total = TOMA_SEG * 1000
       const momentos = Array.from({ length: TOMA_CUADROS }, (_, i) => 1000 + i * (total - 1000) / (TOMA_CUADROS - 1))
       let ultimo = -1
-      while (cuadros.length < TOMA_CUADROS) {
+      while (lienzos.length < TOMA_CUADROS) {
         const pasado = Date.now() - t0, quedan = Math.max(1, Math.ceil((total - pasado) / 1000))
         if (quedan !== ultimo) { ultimo = quedan; c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)} · ¡mantenelo!</div><span style="font-size:72px">${quedan}</span>` }
-        if (pasado >= momentos[cuadros.length] - 40) {
-          cuadros.push(cuadro(c.v, 1600, .88)); c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
+        if (pasado >= momentos[lienzos.length] - 40) {
+          lienzos.push(lienzo(c.v, 1600)); c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
         }
-        await new Promise(r => setTimeout(r, 100))
+        await new Promise(r => setTimeout(r, 50))
       }
-      cerrarCamara(); enviarSelfie(cuadros)
+      c.cuenta.innerHTML = `<div class="gesto-cam">✅ ¡Listo!</div>`
+      await new Promise(r => setTimeout(r, 60))
+      cerrarCamara()
+      const cuadros = lienzos.map(l => l.toDataURL('image/jpeg', .85))   // la conversión, al final
+      enviarSelfie(cuadros)
     })
   }
   async function pixelar(foto, caja) {
