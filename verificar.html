@@ -99,7 +99,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
 .cargando { display: grid; place-items: center; gap: 12px; padding: 18px 0; text-align: center; }
 .spin { width: 38px; height: 38px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: girar .9s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
-.miniaturas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.miniaturas { display: grid; grid-template-columns: repeat(5, 1fr);   /* selfie-8s */ gap: 6px; margin: 10px 0; }
 .miniaturas img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
 .estado { text-align: center; }
 .estado .grande { width: 72px; height: 72px; margin: 6px auto 14px; border-radius: 50%; display: grid; place-items: center; font-size: 32px; background: var(--accent-bg); color: var(--accent); }
@@ -121,13 +121,14 @@ p { margin: 0 0 12px; color: var(--ink-2); }
 .cam-bot .btn.sec { flex: 0 0 auto; width: auto; background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.25); }
 .guia { position: absolute; inset: 0; pointer-events: none; }
 .guia .tarjeta { position: absolute; left: 50%; top: 50%; width: min(86%, 560px); aspect-ratio: 1.586; transform: translate(-50%, -50%); border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); border: 3px solid rgba(255,255,255,.9); }
-.guia .ovalo { position: absolute; left: 30%; top: 46%; width: min(42%, 260px); aspect-ratio: .78; transform: translate(-50%, -50%); border-radius: 50%; border: 3px dashed rgba(255,255,255,.85); }
-.guia .doc { position: absolute; left: 74%; top: 52%; width: min(36%, 230px); aspect-ratio: 1.586; transform: translate(-50%, -50%); border-radius: 10px; border: 3px dashed rgba(255,255,255,.85); }
+/* gestos-cara: cara arriba y documento debajo, a la altura del pecho */
+.guia .ovalo { position: absolute; left: 50%; top: 31%; width: min(46%, 250px); aspect-ratio: .78; transform: translate(-50%, -50%); border-radius: 50%; border: 3px dashed rgba(255,255,255,.85); }
+.guia .doc { position: absolute; left: 50%; top: 73%; width: min(66%, 380px); aspect-ratio: 1.586; transform: translate(-50%, -50%); border-radius: 10px; border: 3px dashed rgba(255,255,255,.85); }
 .guia .doc::after { content: 'Tu documento'; position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 3px #000; }
 .guia .ovalo::after { content: 'Tu cara'; position: absolute; left: 50%; top: 100%; transform: translate(-50%, 6px); font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: 0 1px 3px #000; }
 .cuenta { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; pointer-events: none; }
 .cuenta span { font-size: 120px; font-weight: 800; text-shadow: 0 4px 30px rgba(0,0,0,.6); animation: latido .9s ease-out; }
-.cuenta .gesto-cam { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: rgba(79,70,229,.92); font-size: 15px; font-weight: 700; white-space: nowrap; }
+.cuenta .gesto-cam { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: 999px; background: rgba(79,70,229,.92); font-size: 15px; font-weight: 700; white-space: normal; width: max-content; max-width: calc(100% - 24px); text-align: center; line-height: 1.3; }   /* selfie-angosto */
 @keyframes latido { from { transform: scale(1.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .flash { position: absolute; inset: 0; background: #fff; z-index: 4; opacity: 0; pointer-events: none; }
 .flash.on { animation: flash .35s ease-out; }
@@ -172,7 +173,8 @@ p { margin: 0 0 12px; color: var(--ink-2); }
   const vista = $('#vista')
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = crypto.getRandomValues(new Uint8Array(1))[0] % 16; return (c === 'x' ? r : (r & 3 | 8)).toString(16) })
-  const GESTOS = { dos_dedos: '✌️', pulgar: '👍', mano_abierta: '✋', tres_dedos: '🤟', senalar: '☝️' }
+  const GESTOS = { sonreir: '😁', boca: '😮', ojos: '😌' }   // doc-visual
+  const TOMA_SEG = 6, TOMA_CUADROS = 5   // selfie-6s: 6 segundos, 5 fotos repartidas, sin destello
   const PAISES = ['Venezuela', 'Argentina', 'Colombia', 'Chile', 'Perú', 'Ecuador', 'México', 'España', 'USA', 'Panamá', 'Costa Rica', 'Puerto Rico', 'Uruguay']
   const PAIS_ENVIO = { 'Perú': 'Peru', 'México': 'Mexico', 'Panamá': 'Panama' }   // como los espera el verificador
   const TIPO_POR_PAIS = { Argentina: 'DNI_AR', Venezuela: 'CEDULA_VE' }
@@ -221,10 +223,26 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       <path class="a-esquinas" d="M200 72v-14h18M342 58h18v14M360 140v14h-18M218 154h-18v-14" fill="none" stroke-width="4" stroke-linecap="round"/>
       <rect x="182" y="30" width="196" height="150" rx="14" fill="#fff" class="a-flash"/>
       <g class="a-check"><circle cx="390" cy="40" r="20" fill="var(--green)"/><path d="M380 40l7 7 13-14" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg>`,
-    selfie: (emo = '✌️') => `<svg class="ilus" viewBox="0 0 560 230" role="img" aria-label="Sostené el documento al costado de tu cara y hacé el gesto con la otra mano"><rect width="560" height="230" fill="var(--surface-2)"/>
-      <g class="a-sube">${persona(250, 104, 1.25)}${tarjeta(318, 108, 118)}<rect x="424" y="118" width="18" height="38" rx="9" fill="var(--skin)"/></g>
-      <g transform="translate(160 78)"><g class="a-mano"><circle cx="0" cy="0" r="36" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="0" y="14" text-anchor="middle" font-size="38">${emo}</text></g></g>
-      <g transform="translate(486 40)"><rect x="-34" y="-20" width="68" height="40" rx="12" fill="var(--accent)"/>${['3', '2', '1'].map((n, i) => `<text class="a-cuenta" style="animation-delay:${i}s" x="0" y="8" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">${n}</text>`).join('')}</g></svg>`,
+    selfie: (emo = '😁') => `<svg class="ilus" viewBox="0 0 560 230" role="img" aria-label="Sostené el documento debajo de tu cara y hacé el gesto con la cara"><rect width="560" height="230" fill="var(--surface-2)"/>
+      <g class="a-sube">${persona(280, 78, 1.15)}${tarjeta(220, 138, 120)}<rect x="206" y="146" width="18" height="34" rx="9" fill="var(--skin)"/><rect x="336" y="146" width="18" height="34" rx="9" fill="var(--skin)"/></g>
+      <g transform="translate(140 80)"><g class="a-mano"><circle cx="0" cy="0" r="36" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/><text x="0" y="14" text-anchor="middle" font-size="38">${emo}</text></g></g>
+      <g transform="translate(486 40)"><rect x="-34" y="-20" width="68" height="40" rx="12" fill="var(--accent)"/><text x="0" y="8" text-anchor="middle" font-size="20" font-weight="800" fill="#fff">⏱ 6 s</text></g></svg>`,
+    // copy-imagenes: lo que ve el revisor (dibujo): la selfie con el documento pixelado y el recorte de la cara del documento
+    revisor: (() => {
+      const tonos = ['#9aa3b8', '#b8c0d2', '#7d87a0', '#c9cfdc', '#8e98b0', '#aab2c6']
+      let mosaico = ''
+      for (let f = 0; f < 5; f++) for (let c = 0; c < 9; c++) mosaico += `<rect x="${128 + c * 14}" y="${126 + f * 14}" width="14" height="14" fill="${tonos[(f * 7 + c * 3 + f * c) % tonos.length]}"/>`
+      return `<svg class="ilus" viewBox="0 0 560 250" role="img" aria-label="Ejemplo de lo que ve el revisor: tu selfie con el documento pixelado y el recorte de la cara de tu documento"><rect width="560" height="250" fill="var(--surface-2)"/>
+      <rect x="70" y="14" width="240" height="196" rx="16" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/>
+      <g>${persona(190, 72, 1.05)}${tarjeta(128, 126, 126)}${mosaico}<rect x="116" y="134" width="16" height="30" rx="8" fill="var(--skin)"/><rect x="250" y="134" width="16" height="30" rx="8" fill="var(--skin)"/></g>
+      <g transform="translate(278 40)"><circle r="16" fill="var(--accent)"/><text y="6" text-anchor="middle" font-size="17">🔒</text></g>
+      <text x="190" y="238" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)">Selfie, documento pixelado</text>
+      <rect x="370" y="38" width="120" height="140" rx="14" fill="var(--surface)" stroke="var(--line)" stroke-width="2"/>
+      <clipPath id="recorte"><rect x="380" y="48" width="100" height="120" rx="10"/></clipPath>
+      <g clip-path="url(#recorte)"><rect x="380" y="48" width="100" height="120" fill="var(--accent-bg)"/>${persona(430, 112, 1.0)}</g>
+      <text x="430" y="212" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)">Cara de tu</text><text x="430" y="238" text-anchor="middle" font-size="19" font-weight="700" fill="var(--ink)">documento</text>
+      <path d="M318 108h40" stroke="var(--muted)" stroke-width="2.5" stroke-dasharray="5 5"/></svg>`
+    })(),
     listo: `<svg class="ilus" viewBox="0 0 560 190" role="img" aria-label="Verificación enviada"><rect width="560" height="190" fill="var(--surface-2)"/>
       ${[...Array(15)].map((_, i) => { const a = Math.PI * (i / 14), x = 280 - 150 * Math.cos(a), y = 160 - 120 * Math.sin(a); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="9" fill="${i === 7 ? 'var(--green)' : 'var(--line)'}" ${i === 7 ? 'class="a-pulso"' : ''}/>` }).join('')}
       <text x="280" y="150" text-anchor="middle" font-size="40">🪑</text></svg>`,
@@ -264,13 +282,14 @@ p { margin: 0 0 12px; color: var(--ink-2); }
       <p>Para que cada butaca sea <b>una persona real y única</b>, comprobamos tu identidad en dos pasos. Lleva unos 3 minutos.</p>
       <ul class="lista">
         <li><span class="ico">1</span><span><b>Foto de tu documento.</b> Cédula, DNI o pasaporte, el original (sirve aunque esté vencido).</span></li>
-        <li><span class="ico">2</span><span><b>Selfie en vivo.</b> Con el mismo documento al costado de tu cara y un gesto que te pedimos en el momento.</span></li>
+        <li><span class="ico">2</span><span><b>Selfie en vivo.</b> Con el mismo documento debajo de tu cara y un gesto con la cara que te pedimos en el momento.</span></li>
         <li><span class="ico">3</span><span><b>Revisión.</b> Una persona del equipo confirma y te asignamos tu butaca.</span></li>
       </ul>
       <h2>Antes de empezar, leé cómo usamos tus datos</h2>
       <details class="detalles" open><summary>Qué hacemos con tus imágenes</summary><div class="cuerpo">
-        <p>Las fotos de tu documento y la toma en vivo las analiza automáticamente <b>Google Gemini</b> (un servicio de inteligencia artificial de Google) para leer los datos del documento, comprobar que sos una persona real y que el documento que mostrás es el mismo, y comparar tu cara con la foto del documento. Google no usa estas imágenes para mejorar sus productos.</p>
+        <p>Las fotos de tu documento y la toma en vivo las analiza automáticamente nuestro sistema <b>VaV</b> (<i>Verification Anonymous Votes</i>), que junto con <b>Google Gemini</b> se encarga de leer los datos del documento, comprobar que sos una persona real y que el documento que mostrás es el mismo, y comparar tu cara con la foto del documento. Google no usa estas imágenes para mejorar sus productos.</p>
         <p>Para la revisión humana guardamos solo <b>la selfie con el documento pixelado</b> y <b>el recorte de la cara de tu documento</b>. Se borran cuando termina la revisión.</p>
+        ${ILUS.revisor}<p class="muted" style="font-size:12px;margin-top:-8px">Ilustración de ejemplo: esto es todo lo que ve la persona que revisa.</p>
       </div></details>
       <details class="detalles"><summary>Qué guardamos y qué no</summary><div class="cuerpo">
         <p><b>No guardamos</b> tu nombre, tu número de documento ni tu fecha de nacimiento. La foto completa del documento nunca se guarda.</p>
@@ -278,7 +297,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
         <p>Tu voto sigue siendo secreto: el Cabildo no guarda qué vota cada butaca.</p>
       </div></details>
       <details class="detalles" open><summary>Los riesgos</summary><div class="cuerpo">
-        <p>Enviar imágenes de tu documento y de tu cara a un servicio externo y que una persona del equipo las vea siempre implica un riesgo: errores humanos, accesos indebidos o fallas de seguridad. Lo reducimos al mínimo (acceso restringido y registrado, borrado al terminar), pero no lo podemos eliminar del todo.</p>
+        <p>Enviar imágenes de tu documento y de tu cara a un servicio externo y que una persona del equipo las vea siempre implica un riesgo: errores humanos, accesos indebidos o fallas de seguridad. Lo reducimos al mínimo: acceso restringido y registrado, borrado al terminar y auditoría de la base de datos.</p>
         <p>El análisis automático puede equivocarse y rechazarte por error. Si te pasa, podés pedir una verificación manual.</p>
         <p>Podés retirar tu consentimiento cuando quieras escribiendo a <a href="mailto:recinto@cabildodevenezuela.com">recinto@cabildodevenezuela.com</a>.</p>
       </div></details>
@@ -358,6 +377,12 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     v.addEventListener('loadedmetadata', () => { v.play().catch(() => {}); cam.querySelector('[data-c="foto"]').disabled = false }, { once: true })
     return { cam, v, bFoto: cam.querySelector('[data-c="foto"]'), bCerrar: cam.querySelector('[data-c="cerrar"]'), cuenta: cam.querySelector('.cuenta'), flash: cam.querySelector('.flash') }
   }
+  function lienzo(v, max) {   // selfie-8s-b: copia instantánea del cuadro (sin convertir)
+    const r = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight))
+    const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * r); c.height = Math.round(v.videoHeight * r)
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height)
+    return c
+  }
   function cuadro(v, max, calidad) {
     const r = Math.min(1, max / Math.max(v.videoWidth, v.videoHeight))
     const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * r); c.height = Math.round(v.videoHeight * r)
@@ -413,7 +438,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     }
     st.token = r.j.session_token; st.extraido = x; st.faceBox = r.j.face_box || null; st.docDataUrl = foto
     st.caraDoc = await recortarCara(foto, st.faceBox).catch(() => null)
-    st.docDataUrl = null   // la foto completa del documento no se guarda ni se reutiliza
+    st.docDataUrl = await reducir(foto, 1280).catch(() => null)   // doc-visual: solo en memoria, para comparar en la selfie; no se guarda
     pintar(`<div class="estado"><div class="grande ok">✓</div><h1>Leímos tu documento</h1></div>
       <div class="datos"><div><small>Nombre</small><b>${esc(x.nombre_completo || `${d.nombre} ${d.apellido}`)}</b></div><div><small>Número</small><b>${esc(x.numero_documento || d.numero)}</b></div>
       <div><small>Nacimiento</small><b>${esc(x.fecha_nacimiento || d.fecha)}</b></div><div><small>País</small><b>${esc(x.pais_emisor || d.pais)}</b></div></div>
@@ -421,6 +446,7 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     $('#seguir').addEventListener('click', () => pintarSelfie())
   }
   document.addEventListener('click', e => { if (e.target.id === 'corregir') pintarDatos() })
+  async function reducir(src, max) { const img = await cargarImg(src), r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .85) }
   async function recortarCara(foto, fb) {
     const img = await cargarImg(foto)
     let x1 = .01, y1 = .14, x2 = .38, y2 = .8
@@ -449,10 +475,10 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     }
     const emo = GESTOS[st.gesto] || '✋'
     pintar(`${ILUS.selfie(emo)}<h1>Selfie en vivo</h1>
-      <p>Una sola toma: vos, <b>tu documento al costado de la cara</b> y un gesto que te pedimos ahora.</p>
-      <div class="gesto-grande"><span class="emo">${emo}</span><div><small>Con la mano libre</small><b>${esc(st.gestoTexto)}</b><small>Vale para este intento: cada vez te pedimos uno distinto.</small></div></div>
-      <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior, con el frente hacia la cámara, <b>al costado de tu cara</b> (sin taparla).</span></li>
-        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>: corre una cuenta de 3 y sacamos 3 fotos seguidas. <b>Mantené el gesto</b> hasta que termine.</span></li>
+      <p>Una sola toma: vos, <b>tu documento debajo de la cara</b> y un gesto con la cara que te pedimos ahora. No hace falta usar las manos.</p>
+      <div class="gesto-grande"><span class="emo">${emo}</span><div><small>Con tu cara</small><b>${esc(st.gestoTexto)}</b><small>Vale para este intento: cada vez te pedimos uno distinto.</small></div></div>
+      <ul class="lista"><li><span class="ico">🪪</span><span>Sostené <b>el mismo documento</b> del paso anterior <b>debajo de tu cara, a la altura del pecho</b>, con el frente hacia la cámara. No hace falta acercarlo mucho: lo comparamos con la foto que sacaste recién.</span></li>
+        <li><span class="ico">⏱️</span><span>Tocá <b>Empezar</b>, <b>hacé el gesto enseguida y mantenelo</b> mientras corre la cuenta de 6 segundos. Vamos sacando fotos durante la cuenta.</span></li>
         <li><span class="ico">💡</span><span>Buena luz de frente, sin lentes de sol ni gorra.</span></li></ul>
       ${msg ? `<div class="caja error">${msg}</div>` : ''}${ayudaCam ? AYUDA_CAMARA : ''}<div id="manual"></div>
       <button class="btn" id="abrir">📷 Abrir cámara</button>`, 3)
@@ -462,20 +488,37 @@ p { margin: 0 0 12px; color: var(--ink-2); }
   async function capturarSelfie() {
     try { await abrirCamara('user') } catch (e) { return pintarSelfie('', true) }
     const emo = GESTOS[st.gesto] || '✋'
-    const c = vistaCamara({ cara: 'user', titulo: `${emo} ${esc(st.gestoTexto)}`, texto: 'Tu cara en el óvalo y el documento al costado, con el frente hacia la cámara.', guia: '<div class="ovalo"></div><div class="doc"></div>' })
+    const c = vistaCamara({ cara: 'user', titulo: `${emo} ${esc(st.gestoTexto)}`, texto: 'Tu cara en el óvalo y el documento abajo, en el rectángulo, con el frente hacia la cámara.', guia: '<div class="ovalo"></div><div class="doc"></div>' })
     c.bFoto.textContent = 'Empezar'
     c.bCerrar.addEventListener('click', () => { cerrarCamara(); pintarSelfie() })
     c.bFoto.addEventListener('click', async () => {
       if (!c.v.videoWidth) return
       c.bFoto.disabled = true; c.bCerrar.disabled = true; c.cam.querySelector('.guia').style.opacity = '.35'
-      for (const n of [3, 2, 1]) { c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)}</div><span>${n}</span>`; await new Promise(r => setTimeout(r, 900)) }
-      c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ¡Mantenelo!</div>`
-      const cuadros = []
-      for (let i = 0; i < 3; i++) {
-        cuadros.push(cuadro(c.v, 1280, .85)); c.flash.classList.remove('on'); void c.flash.offsetWidth; c.flash.classList.add('on')
-        if (i < 2) await new Promise(r => setTimeout(r, 500))
-      }
-      cerrarCamara(); enviarSelfie(cuadros)
+      // selfie-sin321: sin cuenta previa; arranca directo la cuenta de la toma
+      // selfie-8s: 8 segundos con cuenta regresiva; 5 fotos repartidas (la primera 1 s después de empezar)
+      // selfie-8s-c: al ritmo de la pantalla (requestAnimationFrame) y nunca dos fotos juntas (mínimo 1 s entre fotos)
+      const lienzos = [], tiempos = [], t0 = performance.now(), total = TOMA_SEG * 1000, MIN_ENTRE = 1000
+      const momentos = Array.from({ length: TOMA_CUADROS }, (_, i) => 1200 + i * (total - 1200) / (TOMA_CUADROS - 1))
+      let ultimo = -1, ultimaFoto = -Infinity
+      await new Promise(listo => {
+        const paso = () => {
+          const ahora = performance.now(), pasado = ahora - t0
+          const quedan = Math.max(1, Math.ceil((total - pasado) / 1000))
+          if (quedan !== ultimo) { ultimo = quedan; c.cuenta.innerHTML = `<div class="gesto-cam">${emo} ${esc(st.gestoTexto)} · ¡mantenelo!</div><span style="font-size:72px">${quedan}</span>` }
+          if (pasado >= momentos[lienzos.length] - 30 && ahora - ultimaFoto >= MIN_ENTRE) {
+            lienzos.push(lienzo(c.v, 1600)); tiempos.push(pasado); ultimaFoto = performance.now()   // sin destello
+          }
+          if (lienzos.length >= TOMA_CUADROS) return listo()
+          requestAnimationFrame(paso)
+        }
+        requestAnimationFrame(paso)
+      })
+      st.tiempos = tiempos
+      c.cuenta.innerHTML = `<div class="gesto-cam">✅ ¡Listo!</div>`
+      await new Promise(r => setTimeout(r, 60))
+      cerrarCamara()
+      const cuadros = lienzos.map(l => l.toDataURL('image/jpeg', .85))   // la conversión, al final
+      enviarSelfie(cuadros)
     })
   }
   async function pixelar(foto, caja) {
@@ -490,23 +533,25 @@ p { margin: 0 0 12px; color: var(--ink-2); }
     return c.toDataURL('image/jpeg', .8)
   }
   async function enviarSelfie(cuadros) {
-    pintar(`<div class="miniaturas">${cuadros.map(f => `<img src="${f}" alt="">`).join('')}</div>
+    const seg = (st.tiempos || []).map(x => (x / 1000).toFixed(1).replace('.', ','))   // selfie-8s-c
+    pintar(`<div class="miniaturas">${cuadros.map((f, i) => `<figure style="margin:0"><img src="${f}" alt=""><figcaption style="text-align:center;font-size:11px;color:var(--muted)">${seg[i] ? seg[i] + ' s' : ''}</figcaption></figure>`).join('')}</div>
       <div class="cargando"><div class="spin"></div><h1 style="font-size:20px" id="fase">Ubicando tu documento…</h1><p class="muted">Puede tardar hasta 40 segundos. No cierres esta página.</p></div>`, 3)
     // 1 · Ubicar el documento para pixelarlo en la copia que ve el revisor
-    const cz = await api('/verify/censurar-campos', { image_b64: b64(cuadros[1]), session_token: st.token }, 40000)
+    const medio = cuadros[Math.floor(cuadros.length / 2)]   // selfie-8s
+    const cz = await api('/verify/censurar-campos', { image_b64: b64(medio), session_token: st.token }, 40000)
     const caja = cz.ok && cz.j.document && cz.j.document.x1 != null ? cz.j.document : null
-    if (!caja) { st.fallos++; st.gesto = null; return pintarSelfie('No encontramos tu documento en la foto. Sostenelo <b>al costado de tu cara</b>, con el frente hacia la cámara, un poco más cerca.') }
-    const anonima = await pixelar(cuadros[1], caja)
+    if (!caja) { st.fallos++; st.gesto = null; return pintarSelfie('No encontramos tu documento en la foto. Sostenelo <b>debajo de tu cara</b>, con el frente hacia la cámara, un poco más cerca.') }
+    const anonima = await pixelar(medio, caja)
     $('#fase').textContent = 'Comprobando que seas vos…'
     // 2 · Análisis de las fotos originales (no se guardan) + copia pixelada para la revisión
-    const r = await api('/verify/vivo', { verification_id: st.vid, cuadros: cuadros.map(b64), anonima_b64: b64(anonima), cara_doc_b64: st.caraDoc ? b64(st.caraDoc) : null, session_token: st.token }, 75000)
+    const r = await api('/verify/vivo', { verification_id: st.vid, cuadros: cuadros.map(b64), anonima_b64: b64(anonima), cara_doc_b64: st.caraDoc ? b64(st.caraDoc) : null, documento_b64: st.docDataUrl ? b64(st.docDataUrl) : null, session_token: st.token }, 75000)
     if (r.j.session_token) st.token = r.j.session_token
     st.gesto = null
-    if (r.ok) { st.caraDoc = null; return enviado() }
+    if (r.ok) { st.caraDoc = null; st.docDataUrl = null; return enviado() }
     if (r.status === 401) { st.token = null; return pintarDocumento('Tu sesión de verificación venció. Volvé a sacar la foto del documento.') }
     if (r.status === 409 && /aprobada/.test(r.j.detail || '')) return enviado()
     st.fallos++
-    pintarSelfie(esc(r.j.detail || 'No pudimos comprobar la toma. Probá de nuevo.'))
+    pintarSelfie(esc((r.j.detail || 'No pudimos comprobar la toma. Probá de nuevo.').replace(/de \d+ segundos/, `de ${TOMA_SEG} segundos`)))
   }
 
   // ── Enviado y seguimiento ──
