@@ -1282,6 +1282,16 @@ function ponerAnuncio(a) {
 }
 // ── votacion-urgente: SÍ/NO/ABSTENCIÓN en el lugar del título (mismo voto secreto y misma ceremonia) ──
 const HV_CANDADO = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'
+// votacion-urgente-x: enlace para publicar la pregunta en X (abierta → a votar en Inicio; cerrada → a la revelación)
+const HV_LOGO_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>'
+function hvCompartirX(q) {
+  const corta = q.text.length > 180 ? q.text.slice(0, 177).trimEnd() + '…' : q.text
+  const url = q.abierta ? `${location.origin}/ux2/#inicio` : `${location.origin}/ux2/#revelacion/${q.id}`
+  const text = q.abierta ? `🗳️ Votación urgente en el Cabildo de Venezuela:\n\n«${corta}»\n\n¿SÍ, NO o ABSTENCIÓN?`
+    : `Resultado de la votación urgente en el Cabildo de Venezuela:\n\n«${corta}»`
+  const qs = new URLSearchParams({ text, url, via: 'cabildoven' })
+  return `<a class="hv-x" href="https://x.com/intent/post?${esc(qs.toString())}" target="_blank" rel="noopener noreferrer">${HV_LOGO_X}Compartir en X</a>`
+}
 function ponerUrgente(u) {
   const flip = $('#hero-flip'), vu = $('#hero-vu')
   portada.urgente = u?.id ? { id: u.id, text: String(u.text || ''), category: u.category || 'Votación urgente', description: u.description || '',
@@ -1299,7 +1309,7 @@ function ponerUrgente(u) {
   let cuerpo
   if (!q.abierta) {
     cuerpo = `<p class="hv-pie">${pie.replace('ya votaron', 'votaron')}<span>${HV_CANDADO}Cada voto fue secreto</span></p>
-      <a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>Ver la revelación</a>`
+      <div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>Ver la revelación</a>${hvCompartirX(q)}</div>`   // votacion-urgente-x
   } else {
     const reloj = q.ends_at ? `<span class="hv-reloj">Cierra en <b data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b></span>`
       : '<span>Sin cuenta regresiva: el equipo avisa cuándo cierra</span>'
@@ -1309,7 +1319,7 @@ function ponerUrgente(u) {
         ? `<div class="hv-nota">Para votar necesitás una butaca verificada. <a href="${urlVerificar()}">Verificarme</a></div>`
         : `<div class="hv-ops" role="group" aria-label="Tu voto">${['si', 'no', 'abs'].map(k =>
             `<button type="button" class="hv-op ${k}" data-hv="${k}"><i aria-hidden="true"></i>${OPC[k][0]}</button>`).join('')}</div>`
-    cuerpo = `${accion}<p class="hv-pie">${pie}<span>${HV_CANDADO}El voto es secreto</span>${reloj}</p>`
+    cuerpo = `${accion}<p class="hv-pie">${pie}<span>${HV_CANDADO}El voto es secreto</span>${reloj}${hvCompartirX(q)}</p>`   // votacion-urgente-x
     if (q.ends_at) portada.tFin = setTimeout(cargarPortada, Math.max(1500, new Date(q.ends_at) - Date.now() + 1500))   // al llegar a cero: revelación
   }
   vu.innerHTML = (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '') + cuerpo
