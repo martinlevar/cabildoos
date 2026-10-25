@@ -1289,13 +1289,15 @@ function hvCompartirX(q) {
   const url = q.abierta ? `${location.origin}/ux2/#inicio` : `${location.origin}/ux2/#revelacion/${q.id}`
   const text = q.abierta ? `🗳️ Votación urgente en el Cabildo de Venezuela:\n\n«${corta}»\n\n¿SÍ, NO o ABSTENCIÓN?`
     : `Resultado de la votación urgente en el Cabildo de Venezuela:\n\n«${corta}»`
-  const qs = new URLSearchParams({ text, url, via: 'cabildoven' })
+  const firma = q.por ? `\n\n${q.por_tipo === 'patrocinada' ? 'Patrocinada' : 'Propuesta'} por ${q.por}` : ''   // votacion-urgente-por
+  const qs = new URLSearchParams({ text: text + firma, url, via: 'cabildoven' })
   return `<a class="hv-x" href="https://x.com/intent/post?${esc(qs.toString())}" target="_blank" rel="noopener noreferrer">${HV_LOGO_X}Compartir en X</a>`
 }
 function ponerUrgente(u) {
   const flip = $('#hero-flip'), vu = $('#hero-vu')
   portada.urgente = u?.id ? { id: u.id, text: String(u.text || ''), category: u.category || 'Votación urgente', description: u.description || '',
-    ends_at: u.ends_at || null, status: u.status || 'urgente', abierta: !!u.abierta, votos: Number(u.votos) || 0 } : null
+    ends_at: u.ends_at || null, status: u.status || 'urgente', abierta: !!u.abierta, votos: Number(u.votos) || 0,
+    por: String(u.por || '').trim(), por_tipo: u.por_tipo === 'patrocinada' ? 'patrocinada' : 'propuesta' } : null   // votacion-urgente-por
   clearTimeout(portada.tFin)
   if (!flip || !vu) return !!portada.urgente
   if (!portada.urgente) { vu.hidden = true; vu.innerHTML = ''; return false }
@@ -1322,7 +1324,8 @@ function ponerUrgente(u) {
     cuerpo = `${accion}<p class="hv-pie">${pie}<span>${HV_CANDADO}El voto es secreto</span>${reloj}${hvCompartirX(q)}</p>`   // votacion-urgente-x
     if (q.ends_at) portada.tFin = setTimeout(cargarPortada, Math.max(1500, new Date(q.ends_at) - Date.now() + 1500))   // al llegar a cero: revelación
   }
-  vu.innerHTML = (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '') + cuerpo
+  const porHtml = q.por ? `<p class="hv-por">${q.por_tipo === 'patrocinada' ? '<span class="hv-pat">Patrocinada</span> por' : 'Propuesta por'} <b>${esc(q.por)}</b></p>` : ''   // votacion-urgente-por
+  vu.innerHTML = porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '') + cuerpo
   $$('[data-hv]', vu).forEach(b => b.onclick = () => abrirVoto({ ...q }, b.dataset.hv))
   vu.hidden = false
   $('#hero-anuncio').textContent = q.text
