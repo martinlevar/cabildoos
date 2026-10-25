@@ -6261,11 +6261,44 @@ function tarjetaMuro(p) {
   </article>`
 }
 
+// muro-destacado: la más apoyada del día (al menos 1 «me gusta»; empate → la que llegó primero)
+function muDestacado() {
+  let m = null
+  for (const p of mu.posts) if (p.likes_count > 0 && (!m || p.likes_count > m.likes_count || (p.likes_count === m.likes_count && new Date(p.created_at) < new Date(m.created_at)))) m = p
+  return m
+}
+function muEnlaceX(p) {
+  const autor = String(p.alias || `Butaca #${p.seat_number}`).trim()
+  const cuerpo = p.body.length > 170 ? p.body.slice(0, 167).trimEnd() + '…' : p.body
+  const text = `«${cuerpo}»\n\n— ${autor}, la voz más apoyada hoy en el Muro del Cabildo de Venezuela`
+  return 'https://x.com/intent/post?' + new URLSearchParams({ text, url: `${location.origin}/ux2/#muro`, via: 'cabildoven' })
+}
+function muPintarDestacado(p) {
+  const box = $('#mu-destacado'); if (!box) return
+  const cambio = !!(p && mu._destId && mu._destId !== p.id)
+  mu._destId = p?.id || null
+  if (!p) { box.hidden = true; box.innerHTML = ''; return }
+  const mia = p.seat_number === estado.butaca, resp = p.muro_replies.length
+  box.innerHTML = `<article class="mu-dest${cambio ? ' cambio' : ''}" style="--c:${colorDe(p.card_color, p.seat_number)}" data-mu-abrir="${p.id}" tabindex="0" aria-label="Opinión destacada del día">
+    <span class="mu-dest-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Destacada del día · la más apoyada</span>
+    <p class="mu-dest-txt">${esc(p.body)}</p>
+    <div class="mu-dest-pie">
+      <div class="mu-dest-autor">${muAv(p.alias, p.card_color, p.seat_number)}<div><b>${mia ? 'Vos' : esc(p.alias)}</b><small>#${p.seat_number} · ${haceCuanto(p.created_at)}</small></div></div>
+      <div class="mu-dest-acc">
+        <button class="mu-like ${mu.mios.has(p.id) ? 'on' : ''}" data-mu-like="${p.id}" aria-label="Me gusta"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>${fmtNum(p.likes_count)}</span></button>
+        <span class="mu-resp"><svg viewBox="0 0 24 24"><path d="M5 5h14v10H9l-4 4z"/></svg>${resp ? fmtNum(resp) : 'Responder'}</span>
+        <a class="mu-x" href="${esc(muEnlaceX(p))}" target="_blank" rel="noopener noreferrer">${HV_LOGO_X}Compartir en X</a>
+      </div>
+    </div>
+  </article>`
+  box.hidden = false
+}
+
 function pintarMuroDia() {
   const esc_ = $('#mu-escribir'), grid = $('#mu-grid'); if (!grid) return
   tickMuro()
   const muaB = $('#mua-btn'); if (muaB) muaB.hidden = !estado.user   // muros-anteriores
-  if (mua.dia) return muaPintar()
+  if (mua.dia) { muPintarDestacado(null); return muaPintar() }   // muro-destacado: no en Muros anteriores
   const hoy = new Date(Date.now() - 7 * 3600e3)
   $('#mu-sub').textContent = `${hoy.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).replace(/^./, c => c.toUpperCase())} · Una opinión por butaca, por día.`
   if (!mu.cargado) { grid.innerHTML = '<p class="muted">Cargando…</p>'; return }
@@ -6281,11 +6314,12 @@ function pintarMuroDia() {
       <div class="mu-caja-cuerpo">
         <label for="mu-txt" class="mu-caja-tit">¿Qué pensás hoy, <b>${esc(miAlias)}</b>?</label>
         <textarea id="mu-txt" maxlength="280" rows="3" placeholder="Tu opinión del día. Tenés una sola: que valga."></textarea>
-        <div class="mu-caja-pie"><small>Publicás como <b>${esc(miAlias)}</b>${ident.show_alias ? '' : ' (tu alias está oculto)'} · mañana a las 3:00 pasa a Muros anteriores</small>
+        <div class="mu-caja-pie"><small>Publicás como <b>${esc(miAlias)}</b>${ident.show_alias ? '' : ' (tu alias está oculto)'} · mañana a las 3:00 pasa a Muros anteriores · la más apoyada del día se puede compartir en X</small>
           <span class="mu-cont" id="mu-cont">280</span><button class="btn btn-dark" id="mu-publicar" disabled>Publicar</button></div>
       </div></div>`
   // Lista
-  const lista = [...mu.posts].sort(mu.orden === 'apoyadas' ? (a, b) => b.likes_count - a.likes_count || new Date(b.created_at) - new Date(a.created_at) : (a, b) => new Date(b.created_at) - new Date(a.created_at))
+  const dest = muDestacado(); muPintarDestacado(dest)   // muro-destacado: arriba, y no se repite en la grilla
+  const lista = [...mu.posts].filter(p => p !== dest).sort(mu.orden === 'apoyadas' ? (a, b) => b.likes_count - a.likes_count || new Date(b.created_at) - new Date(a.created_at) : (a, b) => new Date(b.created_at) - new Date(a.created_at))
   $('#mu-cuenta').textContent = mu.posts.length ? `${fmtNum(mu.posts.length)} ${mu.posts.length === 1 ? 'voz' : 'voces'} hoy` : ''
   grid.innerHTML = lista.length ? lista.map(tarjetaMuro).join('') : '<div class="card au-vacio"><span class="au-vacio-ico"><svg viewBox="0 0 24 24">' + ICONOS.muro + '</svg></span><h3>El Muro de hoy está vacío</h3><p class="muted">Sé la primera voz del día.</p></div>'
   mu.posts.forEach(p => { delete p.nueva })
@@ -6336,6 +6370,7 @@ async function likeMuro(id, btn) {
   if (error) { mu.mios[antes ? 'add' : 'delete'](id); p.likes_count += antes ? 1 : -1 }
   else { mu.mios[data.liked ? 'add' : 'delete'](id); p.likes_count = data.likes_count }
   pinta(); $$(`[data-mu-like="${id}"]`).forEach(b => { b.disabled = false; setTimeout(() => b.classList.remove('late'), 400) })
+  if ((muDestacado()?.id || null) !== (mu._destId || null) && vistaActual() === 'muro') pintarMuroDia()   // muro-destacado: cambió la más apoyada
 }
 
 function abrirHiloMuro(id) { mu.abierto = id; $('#modal-muro').hidden = false; document.body.style.overflow = 'hidden'; pintarHiloMuro(); setTimeout(() => $('#mu-resp-txt')?.focus(), 50) }
@@ -6371,6 +6406,7 @@ async function responderMuro() {
 function enlazarMuro() {
   const v = $('#mu-vista'); if (!v) return
   v.addEventListener('click', e => {
+    if (e.target.closest('.mu-x')) return   // muro-destacado: el enlace a X no abre el hilo
     if (e.target.closest('#mu-publicar')) return publicarMuro()
     const b = e.target.closest('[data-mu-borrar]'); if (b) return borrarMuro(b.dataset.muBorrar)
     const l = e.target.closest('[data-mu-like]'); if (l) return likeMuro(l.dataset.muLike, l)
