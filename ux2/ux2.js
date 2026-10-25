@@ -1284,6 +1284,8 @@ function ponerAnuncio(a) {
 const HV_CANDADO = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'
 // votacion-urgente-x: enlace para publicar la pregunta en X (abierta → a votar en Inicio; cerrada → a la revelación)
 const HV_LOGO_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>'
+// votacion-urgente-debate: el debate de la votación urgente (mismas reglas que el resto)
+const hvDebate = q => `<a class="hv-deb" href="#debates/${esc(q.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg>${q.abierta ? 'Debate' : 'Ver el debate'}</a>`
 function hvCompartirX(q) {
   const corta = q.text.length > 180 ? q.text.slice(0, 177).trimEnd() + '…' : q.text
   const url = q.abierta ? `${location.origin}/ux2/#inicio` : `${location.origin}/ux2/#revelacion/${q.id}`
@@ -1311,7 +1313,7 @@ function ponerUrgente(u) {
   let cuerpo
   if (!q.abierta) {
     cuerpo = `<p class="hv-pie">${pie.replace('ya votaron', 'votaron')}<span>${HV_CANDADO}Cada voto fue secreto</span></p>
-      <div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>Ver la revelación</a>${hvCompartirX(q)}</div>`   // votacion-urgente-x
+      <div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>Ver la revelación</a>${hvDebate(q)}${hvCompartirX(q)}</div>`   // votacion-urgente-x
   } else {
     const reloj = q.ends_at ? `<span class="hv-reloj">Cierra en <b data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b></span>`
       : '<span>Sin cuenta regresiva: el equipo avisa cuándo cierra</span>'
@@ -1321,7 +1323,7 @@ function ponerUrgente(u) {
         ? `<div class="hv-nota">Para votar necesitás una butaca verificada. <a href="${urlVerificar()}">Verificarme</a></div>`
         : `<div class="hv-ops" role="group" aria-label="Tu voto">${['si', 'no', 'abs'].map(k =>
             `<button type="button" class="hv-op ${k}" data-hv="${k}"><i aria-hidden="true"></i>${OPC[k][0]}</button>`).join('')}</div>`
-    cuerpo = `${accion}<p class="hv-pie">${pie}<span>${HV_CANDADO}El voto es secreto</span>${reloj}${hvCompartirX(q)}</p>`   // votacion-urgente-x
+    cuerpo = `${accion}<p class="hv-pie">${pie}<span>${HV_CANDADO}El voto es secreto</span>${reloj}${hvDebate(q)}${hvCompartirX(q)}</p>`   // votacion-urgente-x
     if (q.ends_at) portada.tFin = setTimeout(cargarPortada, Math.max(1500, new Date(q.ends_at) - Date.now() + 1500))   // al llegar a cero: revelación
   }
   const porHtml = q.por ? `<p class="hv-por">${q.por_tipo === 'patrocinada' ? '<span class="hv-pat">Patrocinada</span> por' : 'Propuesta por'} <b>${esc(q.por)}</b></p>` : ''   // votacion-urgente-por
@@ -3619,14 +3621,17 @@ const DB_COOLDOWN = 60        // segundos entre mensajes (igual que la versión 
 const DB_DIRECTO  = 3         // con ≤3 manos levantadas se habla directo
 const dbt = { lista: [], q: null, msgs: [], canal: null, mano: 'idle', cola: [], finCd: 0, tick: null }
 
-const dbAbierto = q => q && q.status === 'activa' && new Date(q.ends_at) > new Date()
+const dbAbierto = q => q && (q.status === 'activa' || q.status === 'urgente') && (!q.ends_at || new Date(q.ends_at) > new Date())   // votacion-urgente-debate
+// abiertas primero; entre las abiertas, la urgente arriba; después por cierre (sin reloj = la más lejana)
+const dbOrden = (a, b) => (dbAbierto(b) - dbAbierto(a)) || ((dbAbierto(b) && b.status === 'urgente') - (dbAbierto(a) && a.status === 'urgente'))
+  || (new Date(b.ends_at || 8.64e15) - new Date(a.ends_at || 8.64e15))
 
 async function cargarDebates(id) {
   try {
     const { data, error } = await sb.from('questions').select('id, text, category, ends_at, status')
-      .in('status', ['activa', 'cerrada']).order('ends_at', { ascending: false }).limit(30)
+      .in('status', ['activa', 'cerrada', 'urgente']).order('ends_at', { ascending: false }).limit(30)
     if (error) throw error
-    dbt.lista = (data || []).sort((a, b) => (dbAbierto(b) - dbAbierto(a)) || (new Date(b.ends_at) - new Date(a.ends_at)))
+    dbt.lista = (data || []).sort(dbOrden)
   } catch (e) { console.warn('cargarDebates:', e) }
   pintarListaDebates()
   const elegido = id || (window.innerWidth > 860 ? dbt.lista.find(dbAbierto)?.id || dbt.lista[0]?.id : null)
@@ -7306,9 +7311,9 @@ const rtLuego = (k, fn, ms) => { clearTimeout(rt.t[k]); rt.t[k] = setTimeout(() 
 
 async function rtListaDebates() {   // solo la lista (no reabre el hilo que la persona está leyendo)
   try {
-    const { data } = await sb.from('questions').select('id, text, category, ends_at, status').in('status', ['activa', 'cerrada']).order('ends_at', { ascending: false }).limit(30)
+    const { data } = await sb.from('questions').select('id, text, category, ends_at, status').in('status', ['activa', 'cerrada', 'urgente']).order('ends_at', { ascending: false }).limit(30)
     if (!data) return
-    dbt.lista = data.sort((a, b) => (dbAbierto(b) - dbAbierto(a)) || (new Date(b.ends_at) - new Date(a.ends_at)))
+    dbt.lista = data.sort(dbOrden)
     pintarListaDebates()
     if (dbt.q) { const n = data.find(x => x.id === dbt.q.id); if (n) dbt.q = { ...dbt.q, ...n } }
   } catch (e) {}
