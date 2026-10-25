@@ -307,7 +307,7 @@ async function cargarNotificaciones() {
 const NOTIF = {
   new_proposal:      ['💡', n => `#propuestas/${n.proposal_id}`],
   proposal_approved: ['✅', n => `#propuestas/${n.proposal_id}`],
-  proposal_rejected: ['⚠️', n => `#propuestas/${n.proposal_id}`],
+  proposal_rejected: ['🌱', () => '#propuestas'],   // mensaje-rechazo-2: amable, y lleva a proponer otra
   proposal_consent:  ['✍️', () => APP_ACTUAL + '?v1'],   // login-a-v2: se acepta en la v1
   question_active:   ['🗳️', () => '#votaciones'],
   moderation:        ['🛡️', () => null],
