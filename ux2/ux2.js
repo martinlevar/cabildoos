@@ -861,9 +861,10 @@ function tickVotacion() {
 // por separado. No se guarda qué votó cada butaca, ni en la base ni en el dispositivo. El sello SHA-256 es solo visual.
 let vPreguntas = [], vResultados = new Map(), vMisVotos = new Set(), vFiltro = 'abiertas'
 const OPC = { si: ['Sí', '✓'], no: ['No', '✕'], abs: ['Abstención', '—'] }
-const abierta = q => q.status === 'activa' && new Date(q.ends_at) > new Date()
+const abierta = q => (q.status === 'activa' || q.status === 'urgente') && (!q.ends_at || new Date(q.ends_at) > new Date())   // votacion-urgente: sin reloj = ends_at vacío
 
 function cuentaRegresiva(ends) {
+  if (!ends) return 'Sin cuenta regresiva'   // votacion-urgente: la cierra el equipo
   const s = Math.floor((new Date(ends) - Date.now()) / 1000)
   if (s <= 0) return 'Finalizada'
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60
@@ -1020,8 +1021,8 @@ function tickCuentas() {
 
 // ── Modal de voto ──
 let mvPregunta = null, mvEleccion = null, mvConsultado = false
-function abrirVoto(q) {
-  mvPregunta = q; mvEleccion = null; mvConsultado = false
+function abrirVoto(q, pre) {
+  mvPregunta = q; mvEleccion = ['si', 'no', 'abs'].includes(pre) ? pre : null; mvConsultado = false   // votacion-urgente: llega con la opción tocada en Inicio
   $('#mv-cat').textContent = q.category || 'General'
   $('#mv-timer').textContent = cuentaRegresiva(q.ends_at)
   $('#mv-pregunta').textContent = q.text
@@ -1102,6 +1103,7 @@ async function confirmarVotoUnaVez() {
   if (err) { aviso(err, 'error'); pasoVoto(); return }
   // Qué votaste no se guarda en este dispositivo: si alguien toma el teléfono, no puede verlo.
   vMisVotos.add(q.id)
+  if (portada.urgente?.id === q.id) setTimeout(cargarPortada, 400)   // votacion-urgente
   $('#mv-cuerpo').innerHTML = `<div class="mv-ok"><div class="sello"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></div>
     <h3>¡Voto enviado!</h3><p>Tu participación quedó registrada. Los resultados se publican al cerrar la votación.</p>
     <button class="btn btn-dark" id="mv-listo">Listo</button></div>`
@@ -1241,13 +1243,13 @@ async function cargarMuro() {
 }
 
 // ── Portada (textos editables desde el admin) + anuncio global con giro ──
-const portada = { anuncio: null, mostrandoAnuncio: false, visto: '' }
+const portada = { anuncio: null, mostrandoAnuncio: false, visto: '', urgente: null, misCargadas: false, tFin: 0 }
 async function cargarPortada() {
   try {
     const { data, error } = await sb.rpc('v2_portada')
     if (error) throw error
     pintarPortada(data?.portada)
-    ponerAnuncio(data?.anuncio)
+    if (!ponerUrgente(data?.urgente)) ponerAnuncio(data?.anuncio)   // votacion-urgente: tiene prioridad sobre el anuncio
     fdConfig(data?.funding)
   } catch (e) { console.warn('portada:', e) }
 }
@@ -1278,17 +1280,80 @@ function ponerAnuncio(a) {
     flip.classList.remove('girada'); requestAnimationFrame(() => setTimeout(() => flip.classList.add('girada'), 600))
   }
 }
+// ── votacion-urgente: SÍ/NO/ABSTENCIÓN en el lugar del título (mismo voto secreto y misma ceremonia) ──
+const HV_CANDADO = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'
+// votacion-urgente-x: enlace para publicar la pregunta en X (abierta → a votar en Inicio; cerrada → a la revelación)
+const HV_LOGO_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>'
+// votacion-urgente-debate: el debate de la votación urgente (mismas reglas que el resto)
+const hvDebate = q => `<a class="hv-deb" href="#debates/${esc(q.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg>${q.abierta ? 'Debate' : 'Ver el debate'}</a>`
+function hvCompartirX(q) {
+  const corta = q.text.length > 180 ? q.text.slice(0, 177).trimEnd() + '…' : q.text
+  const url = q.abierta ? `${location.origin}/ux2/#inicio` : `${location.origin}/ux2/#revelacion/${q.id}`
+  const text = q.abierta ? `🗳️ Votación urgente en el Cabildo de Venezuela:\n\n«${corta}»\n\n¿SÍ, NO o ABSTENCIÓN?`
+    : `Resultado de la votación urgente en el Cabildo de Venezuela:\n\n«${corta}»`
+  const firma = q.por ? `\n\n${q.por_tipo === 'patrocinada' ? 'Patrocinada' : 'Propuesta'} por ${q.por}` : ''   // votacion-urgente-por
+  const qs = new URLSearchParams({ text: text + firma, url, via: 'cabildoven' })
+  return `<a class="hv-x" href="https://x.com/intent/post?${esc(qs.toString())}" target="_blank" rel="noopener noreferrer">${HV_LOGO_X}Compartir en X</a>`
+}
+function ponerUrgente(u) {
+  const flip = $('#hero-flip'), vu = $('#hero-vu')
+  portada.urgente = u?.id ? { id: u.id, text: String(u.text || ''), category: u.category || 'Votación urgente', description: u.description || '',
+    ends_at: u.ends_at || null, status: u.status || 'urgente', abierta: !!u.abierta, votos: Number(u.votos) || 0,
+    por: String(u.por || '').trim(), por_tipo: u.por_tipo === 'patrocinada' ? 'patrocinada' : 'propuesta' } : null   // votacion-urgente-por
+  clearTimeout(portada.tFin)
+  if (!flip || !vu) return !!portada.urgente
+  if (!portada.urgente) { vu.hidden = true; vu.innerHTML = ''; return false }
+  const q = portada.urgente
+  if (q.abierta && estado.butaca && !portada.misCargadas) {   // ¿ya votó esta butaca? (solo dice que participó, nunca qué)
+    portada.misCargadas = true
+    sb.rpc('v2_mis_participaciones').then(({ data }) => { (data || []).forEach(id => vMisVotos.add(id)); if (portada.urgente) ponerUrgente(portada.urgente) }, () => {})
+  }
+  const n = q.votos.toLocaleString('es-VE')
+  const pie = `<span><b>${n}</b> ${q.votos === 1 ? 'butaca votó' : 'butacas ya votaron'}</span>`
+  let cuerpo
+  if (!q.abierta) {
+    cuerpo = `<p class="hv-pie">${pie.replace('ya votaron', 'votaron')}<span>${HV_CANDADO}Cada voto fue secreto</span></p>
+      <div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>Ver la revelación</a>${hvDebate(q)}${hvCompartirX(q)}</div>`   // votacion-urgente-x
+  } else {
+    const reloj = q.ends_at ? `<span class="hv-reloj">Cierra en <b data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b></span>`
+      : '<span>Sin cuenta regresiva: el equipo avisa cuándo cierra</span>'
+    const accion = vMisVotos.has(q.id)
+      ? `<div class="hv-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Ya votaste. Tu voto es secreto: nadie puede ver qué elegiste.</div>`
+      : estado.user && !estado.butaca
+        ? `<div class="hv-nota">Para votar necesitás una butaca verificada. <a href="${urlVerificar()}">Verificarme</a></div>`
+        : `<div class="hv-ops" role="group" aria-label="Tu voto">${['si', 'no', 'abs'].map(k =>
+            `<button type="button" class="hv-op ${k}" data-hv="${k}"><i aria-hidden="true"></i>${OPC[k][0]}</button>`).join('')}</div>`
+    cuerpo = `${accion}<p class="hv-pie">${pie}<span>${HV_CANDADO}El voto es secreto</span>${reloj}${hvDebate(q)}${hvCompartirX(q)}</p>`   // votacion-urgente-x
+    if (q.ends_at) portada.tFin = setTimeout(cargarPortada, Math.max(1500, new Date(q.ends_at) - Date.now() + 1500))   // al llegar a cero: revelación
+  }
+  const porHtml = q.por ? `<p class="hv-por">${q.por_tipo === 'patrocinada' ? '<span class="hv-pat">Patrocinada</span> por' : 'Propuesta por'} <b>${esc(q.por)}</b></p>` : ''   // votacion-urgente-por
+  vu.innerHTML = porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '') + cuerpo
+  $$('[data-hv]', vu).forEach(b => b.onclick = () => abrirVoto({ ...q }, b.dataset.hv))
+  vu.hidden = false
+  $('#hero-anuncio').textContent = q.text
+  $('#hero-anuncio-tag').innerHTML = `<i></i>${q.abierta ? 'Votación urgente' : 'Votación cerrada'}`
+  flip.dataset.tipo = q.abierta ? 'urgente' : 'cerrada'
+  flip.classList.add('tiene-anuncio')
+  const clave = `vu:${q.id}:${q.abierta}`
+  if (portada.visto !== clave) {
+    portada.visto = clave; portada.mostrandoAnuncio = true
+    flip.classList.remove('girada'); requestAnimationFrame(() => setTimeout(() => flip.classList.add('girada'), 600))
+  }
+  return true
+}
+
 function vigilarPortada() {
   if (estado.user) sb.channel('portada-v2')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, ({ new: n }) => {
       if (n?.key === 'portada') pintarPortada(n.value)
       if (n?.key === 'funding') fdConfig({ activo: !!n.value?.activo, simulado: n.value?.simulado !== false, meta: Number(n.value?.meta) || 30000 })
-      if (n?.key === 'announcement') ponerAnuncio(n.value?.active ? n.value : null)
+      if (n?.key === 'announcement' || n?.key === 'votacion_urgente') cargarPortada()   // votacion-urgente: la urgente manda sobre el anuncio
     }).subscribe()
   setInterval(() => { if (!document.hidden) cargarPortada() }, 120_000)   // respaldo (y para quien no inició sesión)
+  setInterval(() => { if (!document.hidden && portada.urgente?.abierta) cargarPortada() }, 30_000)   // votacion-urgente: contador de butacas que votaron
   $('#hero-girar')?.addEventListener('click', () => {
     const f = $('#hero-flip'); f.classList.remove('girada'); portada.mostrandoAnuncio = false
-    setTimeout(() => { if (portada.anuncio) { portada.mostrandoAnuncio = true; f.classList.add('girada') } }, 8000)
+    setTimeout(() => { if (portada.anuncio || portada.urgente) { portada.mostrandoAnuncio = true; f.classList.add('girada') } }, 8000)
   })
 }
 
@@ -3556,14 +3621,17 @@ const DB_COOLDOWN = 60        // segundos entre mensajes (igual que la versión 
 const DB_DIRECTO  = 3         // con ≤3 manos levantadas se habla directo
 const dbt = { lista: [], q: null, msgs: [], canal: null, mano: 'idle', cola: [], finCd: 0, tick: null }
 
-const dbAbierto = q => q && q.status === 'activa' && new Date(q.ends_at) > new Date()
+const dbAbierto = q => q && (q.status === 'activa' || q.status === 'urgente') && (!q.ends_at || new Date(q.ends_at) > new Date())   // votacion-urgente-debate
+// abiertas primero; entre las abiertas, la urgente arriba; después por cierre (sin reloj = la más lejana)
+const dbOrden = (a, b) => (dbAbierto(b) - dbAbierto(a)) || ((dbAbierto(b) && b.status === 'urgente') - (dbAbierto(a) && a.status === 'urgente'))
+  || (new Date(b.ends_at || 8.64e15) - new Date(a.ends_at || 8.64e15))
 
 async function cargarDebates(id) {
   try {
     const { data, error } = await sb.from('questions').select('id, text, category, ends_at, status')
-      .in('status', ['activa', 'cerrada']).order('ends_at', { ascending: false }).limit(30)
+      .in('status', ['activa', 'cerrada', 'urgente']).order('ends_at', { ascending: false }).limit(30)
     if (error) throw error
-    dbt.lista = (data || []).sort((a, b) => (dbAbierto(b) - dbAbierto(a)) || (new Date(b.ends_at) - new Date(a.ends_at)))
+    dbt.lista = (data || []).sort(dbOrden)
   } catch (e) { console.warn('cargarDebates:', e) }
   pintarListaDebates()
   const elegido = id || (window.innerWidth > 860 ? dbt.lista.find(dbAbierto)?.id || dbt.lista[0]?.id : null)
@@ -6594,7 +6662,7 @@ async function abrirRevelacion(id) {
     q = qq.data
     if (!rv.abierto) return
     if (!q) { $('#rv-preg').innerHTML = '<p class="rv-cargando">No encontramos esa votación.</p>'; return }
-    if (new Date(q.ends_at) > new Date() && q.status === 'activa') { $('#rv-preg').innerHTML = `<p class="rv-cargando">Esta votación sigue abierta. La revelación llega cuando cierre.</p><a class="rv-cta" href="#votaciones" data-rv="cerrar">Ir a votar</a>`; return }
+    if (abierta(q)) { $('#rv-preg').innerHTML = `<p class="rv-cargando">Esta votación sigue abierta. La revelación llega cuando cierre.</p><a class="rv-cta" href="#votaciones" data-rv="cerrar">Ir a votar</a>`; return }
     const r = { si: 0, no: 0, abs: 0 }; let soloTotal = false
     ;(votos.data || []).forEach(x => { if (x.vote_plain in r) r[x.vote_plain] = Number(x.total) || 0; if (x.vote_plain === 'total') soloTotal = true })
     r.total = r.si + r.no + r.abs
@@ -7243,9 +7311,9 @@ const rtLuego = (k, fn, ms) => { clearTimeout(rt.t[k]); rt.t[k] = setTimeout(() 
 
 async function rtListaDebates() {   // solo la lista (no reabre el hilo que la persona está leyendo)
   try {
-    const { data } = await sb.from('questions').select('id, text, category, ends_at, status').in('status', ['activa', 'cerrada']).order('ends_at', { ascending: false }).limit(30)
+    const { data } = await sb.from('questions').select('id, text, category, ends_at, status').in('status', ['activa', 'cerrada', 'urgente']).order('ends_at', { ascending: false }).limit(30)
     if (!data) return
-    dbt.lista = data.sort((a, b) => (dbAbierto(b) - dbAbierto(a)) || (new Date(b.ends_at) - new Date(a.ends_at)))
+    dbt.lista = data.sort(dbOrden)
     pintarListaDebates()
     if (dbt.q) { const n = data.find(x => x.id === dbt.q.id); if (n) dbt.q = { ...dbt.q, ...n } }
   } catch (e) {}
