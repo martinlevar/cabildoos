@@ -3419,3 +3419,8 @@ html.bd-peek-abierto { overflow: hidden; }
 .app.side-plegado .nav a .nav-num { position: absolute; top: 4px; right: 6px; margin: 0; min-width: 18px; height: 18px; line-height: 18px; font-size: 10px; padding: 0 5px; }
 .menu-btn { position: relative; }
 .menu-btn.con-aviso::after { content: ''; position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 2px var(--surface); }
+
+/* bloques-iguales: los bloques del panel lateral entran suavemente al rotar */
+.b-hero.b-entra { animation: bEntra .5s ease both; }
+@keyframes bEntra { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .b-hero.b-entra { animation: none; } }
