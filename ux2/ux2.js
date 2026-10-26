@@ -74,6 +74,7 @@ function pintarNav() {
   }
   const sec = (location.hash || '#inicio').slice(1).split('/')[0]
   $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.sec === sec))
+  pintarAvisoBlog()   // blog-noleidas
 }
 
 function ruta() {
@@ -110,7 +111,7 @@ function ruta() {
   else if (ap.lec) cerrarLeccion()
   if (valida === 'funding' && FUNDING_ABIERTO) entrarFunding(arg); else if (fd.vivo) salirFunding()
   if (valida === 'escalinatas') entrarEscalinatas()
-  if (valida === 'blog') entrarBlog(arg)
+  if (valida === 'blog') { entrarBlog(arg); marcarBlogLeido() }
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
@@ -123,6 +124,28 @@ function ruta() {
     else if (window.innerWidth <= 860 && dbt.q) { salirDelCanal(); dbt.q = null; $('.db-wrap')?.classList.remove('con-hilo'); pintarListaDebates() }
   }
   else if (dbt.canal) salirDelCanal()
+}
+
+// blog-noleidas: contador de notas sin leer en el menú. Se apaga al entrar al Blog.
+// Lo leído se recuerda en este navegador; quien nunca entró ve todas las notas publicadas como nuevas.
+const BLOG_VISTAS = 'ux2_blog_vistas'
+let _blogSlugs = null
+function blogVistas() { try { const v = JSON.parse(localStorage.getItem(BLOG_VISTAS) || '[]'); return Array.isArray(v) ? v : [] } catch (e) { return [] } }
+function pintarAvisoBlog() {
+  const a = $('#nav a[data-sec="blog"]'); if (!a) return
+  a.querySelector('.nav-num')?.remove()
+  const vistas = new Set(blogVistas())
+  const n = _blogSlugs && vistaActual() !== 'blog' ? _blogSlugs.filter(s => !vistas.has(s)).length : 0
+  if (n) a.insertAdjacentHTML('beforeend', `<b class="nav-num" aria-label="${n} ${n === 1 ? 'nota sin leer' : 'notas sin leer'}">${n > 9 ? '9+' : n}</b>`)
+  $('#menu-btn')?.classList.toggle('con-aviso', n > 0)
+}
+function marcarBlogLeido() {
+  if (_blogSlugs) try { localStorage.setItem(BLOG_VISTAS, JSON.stringify([...new Set([..._blogSlugs, ...blogVistas()])].slice(0, 300))) } catch (e) {}
+  pintarAvisoBlog()
+}
+async function cargarAvisoBlog() {
+  try { const { data, error } = await sb.rpc('blog_slugs'); if (error) return; _blogSlugs = Array.isArray(data) ? data : [] } catch (e) { return }
+  if (vistaActual() === 'blog') marcarBlogLeido(); else pintarAvisoBlog()
 }
 
 // blog-v2: el Blog (las notas de /press). Su código y estilos se cargan recién la primera vez que se entra.
@@ -7171,6 +7194,7 @@ async function iniciar() {
   else if (vistaActual() === 'escalinatas') entrarEscalinatas()
   vigilarSesion()
   vigilarPortada()
+  cargarAvisoBlog(); setInterval(() => { if (document.visibilityState === 'visible') cargarAvisoBlog() }, 10 * 60e3)   // blog-noleidas
   au.usuarioListo = true
   vigilarAuditorio()
   if (vistaActual() === 'auditorio') entrarAuditorio()
