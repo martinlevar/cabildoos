@@ -56,7 +56,7 @@ async function v2Abierta(env, url) {
 const redirigir = (destino, status = 302) => new Response(null, { status, headers: { Location: destino, 'Cache-Control': 'no-store' } })
 
 // ─── Vigía externo (vigia-externo) ───
-// Cada 2 min (cron en wrangler.prod.toml) prueba Supabase desde afuera y avisa en #alertas-infra si no responde
+// Cada 2 min (cron en wrangler.prod.toml) prueba Supabase desde afuera y avisa en #alertas-backend-db (antes #alertas-infra, que no existía) si no responde
 // o si el vigía interno (pg_cron) dejó de correr. Cubre el caso en que la base no puede disparar sus propias alertas.
 // Necesita el secreto SLACK_BOT_TOKEN y el KV VIGIA (guarda si ya avisó); si falta alguno, no hace nada.
 async function vigiaProbar(env) {
@@ -81,7 +81,7 @@ async function vigiaProbar(env) {
 async function vigiaSlack(env, texto) {
   const h = { Authorization: `Bearer ${env.SLACK_BOT_TOKEN}` }
   const l = await (await fetch('https://slack.com/api/conversations.list', { method: 'POST', headers: { ...h, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ types: 'public_channel,private_channel', exclude_archived: 'true', limit: '1000' }) })).json()
-  const canal = (l.channels || []).find(c => c.name === 'alertas-infra')?.id
+  const canal = (l.channels || []).find(c => c.name === 'alertas-backend-db')?.id
   if (!canal) return
   await fetch('https://slack.com/api/chat.postMessage', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify({ channel: canal, text: texto, unfurl_links: false }) })
 }
