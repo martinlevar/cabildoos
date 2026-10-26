@@ -3413,3 +3413,9 @@ html.bd-peek-abierto { overflow: hidden; }
   .bd-peek { align-items: flex-end; }
   .bd-peek-panel { width: 100%; height: auto; max-height: 92%; border-radius: 22px 22px 0 0; animation-name: bdSube; }
 }
+
+/* blog-noleidas: notas del Blog sin leer */
+.nav a .nav-num { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 99px; background: var(--red); color: #fff; font-size: 11px; font-weight: 800; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px var(--surface); }
+.app.side-plegado .nav a .nav-num { position: absolute; top: 4px; right: 6px; margin: 0; min-width: 18px; height: 18px; line-height: 18px; font-size: 10px; padding: 0 5px; }
+.menu-btn { position: relative; }
+.menu-btn.con-aviso::after { content: ''; position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 2px var(--surface); }
