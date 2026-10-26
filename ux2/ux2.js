@@ -34,18 +34,19 @@ const ICONOS = {
   playroom:     '<path d="M6 9h12a3 3 0 0 1 3 3v3a2 2 0 0 1-3.5 1.3L15 14H9l-2.5 2.3A2 2 0 0 1 3 15v-3a3 3 0 0 1 3-3z"/><path d="M8 11v2M7 12h2M16 12h.01"/>',
   funding:     '<path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/><path d="M3 21h18"/>',
   escalinatas: '<path d="M3 20h18M6 16h15M9 12h12M12 8h9M15 4h6"/>',
+  blog:        '<path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8 12h8M8 16h5"/>',   // blog-v2
 }
 const SECCIONES = [
   ['inicio', 'Inicio'], ['butaca', 'Mi Butaca'], ['bloque', 'Mi bloque'], ['bloques', 'Bloques'], ['muro', 'Muro del día'], ['debates', 'Debates'], ['votaciones', 'Votaciones'],
   ['propuestas', 'Propuestas'], ['ciudadanos', 'Ciudadanos'], ['estadisticas', 'Estadísticas'],
   ['aprende', 'Aprendé'], ['noticias', 'Noticias'], ['auditorio', 'Auditorio'], ['playroom', 'Playroom'],
-  ['escalinatas', 'Escalinatas'], ['funding', 'Funding'],
+  ['escalinatas', 'Escalinatas'], ['funding', 'Funding'], ['blog', 'Blog'],
 ]
 
 // Funding es solo para inversores: por ahora se abre únicamente en dev (y local). En stage y producción aparece como «pronto».
 const FUNDING_ABIERTO = ['dev.cabildodevenezuela.com', 'localhost', '127.0.0.1'].includes(location.hostname)
 
-const LISTAS = new Set(['escalinatas', 'inicio', 'votaciones', 'butaca', 'bloque', 'bloques', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding'])   // secciones ya rediseñadas
+const LISTAS = new Set(['escalinatas', 'inicio', 'votaciones', 'butaca', 'bloque', 'bloques', 'debates', 'propuestas', 'ciudadanos', 'estadisticas', 'auditorio', 'playroom', 'aprende', 'muro', 'funding', 'blog'])   // secciones ya rediseñadas
 if (!FUNDING_ABIERTO) LISTAS.delete('funding')
 
 // Sin butaca, las Escalinatas van segundas y marcadas: es el lugar desde donde se sube al Cabildo.
@@ -109,6 +110,7 @@ function ruta() {
   else if (ap.lec) cerrarLeccion()
   if (valida === 'funding' && FUNDING_ABIERTO) entrarFunding(arg); else if (fd.vivo) salirFunding()
   if (valida === 'escalinatas') entrarEscalinatas()
+  if (valida === 'blog') entrarBlog(arg)
   if (valida === 'playroom') { pintarPlayroom(); if (nd.cargado || estado.user) cargarPlayroom() }
   else if (nd.abierto) cerrarJuego()
   else if (au.canal || au.vigia) salirAuditorio()
@@ -121,6 +123,17 @@ function ruta() {
     else if (window.innerWidth <= 860 && dbt.q) { salirDelCanal(); dbt.q = null; $('.db-wrap')?.classList.remove('con-hilo'); pintarListaDebates() }
   }
   else if (dbt.canal) salirDelCanal()
+}
+
+// blog-v2: el Blog (las notas de /press). Su código y estilos se cargan recién la primera vez que se entra.
+let _blogCarga = null
+function entrarBlog(arg) {
+  if (window.cabildoBlog) return window.cabildoBlog.entrar(arg)
+  if (!_blogCarga) _blogCarga = new Promise((ok, mal) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/ux2/blog.css?v=1'; document.head.appendChild(css)
+    const s = document.createElement('script'); s.src = '/ux2/blog.js?v=1'; s.onload = ok; s.onerror = mal; document.body.appendChild(s)
+  })
+  _blogCarga.then(() => window.cabildoBlog?.entrar(arg), () => { _blogCarga = null; const c = $('#bl-cuerpo'); if (c) c.innerHTML = '<div class="card bl-vacio" style="padding:40px;text-align:center"><p class="muted">No pudimos abrir el Blog. Probá de nuevo en un momento.</p></div>' })
 }
 
 function abrirMenu()  { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show') }
