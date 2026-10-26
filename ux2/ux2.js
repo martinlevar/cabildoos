@@ -1490,6 +1490,28 @@ function bannerMiBloque() {
     <em>${estado.miBloque.soy_anfitrion ? 'Administrar' : 'Entrar'} →</em></a>`
 }
 
+// bloques-iguales: el panel lateral muestra bloques al azar. La elección se mantiene entre repintados
+// (llegan muchos por tiempo real) y cambia sola cada 20 s, siempre por bloques distintos a los que se ven.
+const bqAzar = { ids: [] }
+function bloquesAlAzar(lista, n) {
+  const hay = new Map(lista.map(b => [b.id, b]))
+  let ids = bqAzar.ids.filter(id => hay.has(id))
+  if (ids.length < Math.min(n, lista.length)) ids = bqAzar.ids = [...ids, ...barajarBloques(lista.filter(b => !ids.includes(b.id))).map(b => b.id)].slice(0, n)
+  return ids.map(id => hay.get(id))
+}
+function barajarBloques(l) { const a = [...l]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]] } return a }
+function rotarBloquesAzar() {
+  const p = $('#panel-bloques'), body = $('#bloques-body')
+  if (!p || !body || estado.tab !== 'destacados' || document.visibilityState !== 'visible' || !p.getClientRects().length) return
+  if (p.matches(':hover') || p.contains(document.activeElement) || ($('#bloque-buscar')?.value || '').trim()) return
+  const L = estado.bloques || []; if (L.length <= 2) return
+  const otros = L.filter(b => !bqAzar.ids.includes(b.id))
+  bqAzar.ids = barajarBloques(otros.length >= 2 ? otros : L).slice(0, 2).map(b => b.id)
+  pintarBloques()
+  body.querySelectorAll('.b-hero').forEach((h, i) => { h.style.animationDelay = (i * 90) + 'ms'; h.classList.add('b-entra') })
+}
+setInterval(rotarBloquesAzar, 20000)
+
 function pintarBloques() {
   const body = $('#bloques-body')
   if (estado.tab === 'crear') { body.innerHTML = vistaCrear(); return }
@@ -1503,7 +1525,7 @@ function pintarBloques() {
   }
   if (!lista.length) { body.innerHTML = bannerMiBloque() + simTarjeta(q) + '<p class="muted">No hay bloques que coincidan con tu búsqueda.</p>'; return }
   body.innerHTML = bannerMiBloque() + simTarjeta(q) + (estado.tab === 'destacados'
-    ? lista.slice(0, 2).map(heroBloque).join('') +   // bloques-portadas: 2 destacados con portada; en «Todos», todos con portada
+    ? (q ? lista.slice(0, 2) : bloquesAlAzar(lista, 2)).map(heroBloque).join('') +   // bloques-iguales: sin búsqueda, 2 al azar que van rotando   // bloques-portadas: 2 destacados con portada; en «Todos», todos con portada
       (lista.length > 2 ? `<button class="btn btn-ghost b-ver-todos" data-tab-go="todos">Ver todos los bloques (${fmtNum(lista.length)}) →</button>` : '')
     : lista.map(heroBloque).join(''))
 }
@@ -1517,7 +1539,7 @@ const bdTono = id => BD_TONOS[Math.abs([...String(id)].reduce((a, ch) => (a * 31
 const bdIniciales = s => { const w = String(s || '').replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean); return [w[0], ...w.slice(1).filter(x => x.length >= 4)].filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase() || 'B' }
 const bdUrlOk = u => /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\//.test(String(u || ''))
 const BD_FILTROS = [['todos', 'Todos'], ['nuevos', 'Recién creados'], ['abiertos', 'Abiertos a todos'], ['ideas', 'Con ideas en debate'], ['propuestas', 'Con propuestas']]
-const bdDestacadoDe = () => { const L = bd.lista || []; return L.length > 1 && L[0].miembros > 1 ? L[0] : null }
+const bdDestacadoDe = () => null   // bloques-iguales: sin tarjeta gigante; el más grande va primero en la grilla (la lista ya viene por ciudadanos)
 
 async function cargarDirectorio() {
   const t = ++bd.t
