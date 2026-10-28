@@ -7817,6 +7817,12 @@ function rkAnillo() {
 }
 function rkTick() {
   const ahora = Date.now(), dt = ahora - rk.ult; rk.ult = ahora
+  // ranking-giro-retoma: elegir un lado pausa el giro 40 s desde el último toque; después vuelve a girar solo
+  if (rk.fijo) {
+    if ($('#rk-ayuda')) rk.fijoHasta = ahora + RK_PAUSA
+    else if (!rk.fijoHasta) rk.fijoHasta = ahora + RK_PAUSA
+    else if (ahora > rk.fijoHasta) { rk.fijo = false; rk.fijoHasta = 0; rk.acum = 0; rkAnillo() }
+  }
   if (rk.fijo || rk.girando || vistaActual() !== 'inicio' || document.visibilityState !== 'visible') return
   const card = rkCard(); if (!card || !card.getClientRects().length) return
   const ocupada = rk.sobre || card.contains(document.activeElement) || ahora - rk.toque < 15000 || ($('#seat-card') && !$('#seat-card').hidden)
@@ -7932,3 +7938,8 @@ function rkCabecera() {
   document.fonts?.ready?.then(luego)
   luego()
 })()
+
+
+// ranking-giro-retoma
+const RK_PAUSA = 40000
+document.addEventListener('click', e => { if (e.target.closest('[data-rk-lado], [data-rk-per], [data-rk-ayuda]')) rk.fijoHasta = 0 }, true)   // cada toque reinicia la pausa
