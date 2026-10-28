@@ -3495,10 +3495,8 @@ html.bd-peek-abierto { overflow: hidden; }
   .rk-lista a { grid-template-columns: 22px 52px minmax(0, 1fr) auto 48px; gap: 6px; }
 }
 @media (prefers-reduced-motion: reduce) { .rk-llama svg { animation: none; } }
-/* en la cabecera del hemiciclo el botón va compacto, para no correr nada de lugar */
-.hemi-head .rk-seg button span { display: none; }
-.hemi-head .rk-seg button { padding: 0 9px; }
-@container hemi (min-width: 900px) { .hemi-head .rk-seg button span { display: inline; } .hemi-head .rk-seg button { padding: 0 11px; } }
+/* ranking-cabecera: el botón muestra texto si entra; si no, la cabecera se compacta sola (ver rkCabecera) */
+.hemi-head .rk-seg button { padding: 0 11px; }
 @container hemi (max-width: 540px) { .hemi-head .rk-seg { padding: 2px; order: 9; } .hemi-head .rk-seg button[aria-pressed="true"] { display: none; } }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .rk-tit small b { color: #fbbf24; }
@@ -3666,3 +3664,26 @@ html.bd-peek-abierto { overflow: hidden; }
 @container hemi (max-width: 900px) { .rk-como span { display: none; } .rk-como { padding: 0 5px; } }
 .rk-sub small { white-space: nowrap; }
 .rk-nota u { color: var(--accent); text-underline-offset: 2px; font-weight: 600; }
+
+/* ══ ranking-cabecera: nada se sale de la tarjeta ══ */
+.hemi-head > * { flex-shrink: 0; }
+.hemi-head .stat small { white-space: nowrap; }
+.hemi-head.hc1 .rk-seg button span, .hemi-head.hc1 .hemi-expand span { display: none; }
+.hemi-head.hc1 .rk-seg button { padding: 0 9px; }
+.hemi-head.hc1 .hemi-expand { padding: 0 9px; }
+.hemi-head.hc1 { gap: 18px; }
+.hemi-head.hc2 .btn-luz span { display: none; }
+.hemi-head.hc2 .btn-luz { padding: 0 9px; }
+.hemi-head.hc2 { gap: 14px; }
+.hemi-head.hc3 { flex-wrap: wrap; row-gap: 10px; }
+/* teléfonos chicos (iPhone SE y similares): todo en dos renglones */
+@container hemi (max-width: 380px) { .hemi-head { column-gap: 10px; } .hemi-head .pill-live { padding: 6px 9px; letter-spacing: .03em; } }
+/* el ranking en pantallas angostas: los controles bajan a su renglón y no se cortan */
+@container hemi (max-width: 620px) { .rk-head { flex-wrap: wrap; } .rk-ctrl { flex: 1 1 100%; margin-left: 0; justify-content: space-between; flex-wrap: nowrap; } .rk-pers { flex-wrap: nowrap; } .rk-pers button { padding: 0 9px; } }
+@container hemi (max-width: 360px) { .rk-pers button { padding: 0 7px; font-size: 11.5px; } .rk-ctrl { gap: 6px; } .rk-cara .rk-seg button { padding: 0 7px; } }
+/* pantallas muy angostas: «Sesión en vivo» pasa a «En vivo» para que todo entre en dos renglones */
+@container hemi (max-width: 300px) {
+  .hemi-head .pill-live { font-size: 0; gap: 5px; }
+  .hemi-head .pill-live::before { content: 'En vivo'; font-size: 10px; order: 1; }
+  .hemi-head .pill-live i { order: 0; } .hemi-head .pill-live svg { order: 2; width: 14px; height: 14px; }
+}

@@ -7912,3 +7912,23 @@ function rkAbrirAyuda() {
   setTimeout(() => m.querySelector('.modal-x')?.focus(), 30)
 }
 document.addEventListener('click', e => { if (e.target.closest('[data-rk-ayuda]')) { e.preventDefault(); rkAbrirAyuda() } })
+
+
+// ranking-cabecera: si la cabecera del hemiciclo no entra en la tarjeta, se compacta por pasos (nunca se sale)
+function rkCabecera() {
+  const h = $('.hemi-head'); if (!h || !h.getClientRects().length) return
+  h.classList.remove('hc1', 'hc2', 'hc3')
+  const sale = () => h.scrollWidth > h.clientWidth + 1 || [...h.children].some(el => el.getClientRects().length && el.getBoundingClientRect().right > h.getBoundingClientRect().right + 1)
+  for (const c of ['hc1', 'hc2', 'hc3']) { if (!sale()) break; h.classList.add(c) }
+}
+;(() => {
+  const h = $('.hemi-head'); if (!h) return
+  let t = 0; const luego = () => { cancelAnimationFrame(t); t = requestAnimationFrame(rkCabecera) }
+  let ancho = 0   // solo el ANCHO importa (al pasar a dos renglones cambia el alto y no debe volver a medir)
+  if (window.ResizeObserver) new ResizeObserver(es => { const w = Math.round(es[0].contentRect.width); if (w !== ancho) { ancho = w; luego() } }).observe(h)
+  // cambia el contenido (se enciende la butaca, aparece «Sesión en vivo», cambian las cifras)
+  if (window.MutationObserver) new MutationObserver(ms => { if (ms.some(m => !(m.target === h && m.attributeName === 'class'))) luego() }).observe(h, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class'] })
+  window.addEventListener('resize', luego)
+  document.fonts?.ready?.then(luego)
+  luego()
+})()
