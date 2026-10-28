@@ -100,7 +100,7 @@ function ruta() {
   window.scrollTo(0, 0)
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
   if (valida === 'votaciones') cargarVotaciones()
-  if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
+  if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca(); rkCargarVisibilidad() }
   if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'bloques') cargarDirectorio(); else if (bd.peek) bdCerrarPeek()   // bloques-directorio
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
@@ -3558,6 +3558,7 @@ function pintarMiButaca() {
       ${interruptor('alias', !!id.show_alias, 'Mostrar mi alias', 'Tu butaca deja de ser anónima')}
       ${interruptor('phrase', !!id.show_phrase, 'Mostrar mi frase', 'Aparece en tu tarjeta del hemiciclo')}
       ${interruptor('votes', !!id.show_votes, 'Mostrar en cuántas votaciones participé', 'Solo la cantidad, nunca el voto')}
+      ${interruptor('ranking', rk.visible !== false, 'Aparecer en el ranking de participación', 'Se ve tu butaca y tus puntos por participar. Nunca qué votaste')}
       ${interruptor('presencia', pres.mia, 'Encender mi butaca cuando estoy presente', 'Se ve con luz blanca en el hemiciclo y en el Monitor mientras tenés el Cabildo abierto')}
     </article>
     <article class="card mb-sec mb-o5">
@@ -3611,6 +3612,7 @@ async function guardarColor(color) {
 }
 
 async function cambiarVisibilidad(campo) {
+  if (campo === 'ranking') return rkCambiarVisibilidad()   // ranking-participacion
   const id = estado.ident || {}
   const llave = { alias: 'show_alias', phrase: 'show_phrase', votes: 'show_votes' }[campo]
   const nuevo = !id[llave]
@@ -7677,3 +7679,167 @@ document.addEventListener('click', e => {
   const c = e.target.closest('[data-bq-copiar]'); if (!c) return
   navigator.clipboard.writeText(c.dataset.bqCopiar).then(() => aviso('Link copiado'), () => aviso(c.dataset.bqCopiar))
 })
+
+// ══ ranking-participacion: la tarjeta del hemiciclo se da vuelta y muestra las butacas más participativas.
+// Mide participación (votar, debatir, proponer, apoyar, días activos), nunca el sentido del voto. Cada butaca puede
+// salir del ranking en Mi Butaca › Privacidad. Los datos los calcula la base cada 10 minutos (v2_ranking).
+const RK_SEG = 20000
+const rk = { lado: 'hemi', fijo: false, acum: 0, ult: Date.now(), datos: {}, cuando: {}, periodo: 'semana', girando: false, sobre: false, toque: 0, visible: undefined, pidiendo: {} }
+const RK_PER = [['semana', 'Semana'], ['mes', 'Mes'], ['historico', 'Histórico']]
+const rkCard = () => $('.hemi-card')
+const rkReducido = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+
+async function rkCargar(per, forzar) {
+  if (!forzar && rk.datos[per] && Date.now() - (rk.cuando[per] || 0) < 120e3) return rk.datos[per]
+  if (rk.pidiendo[per]) return rk.pidiendo[per]
+  rk.pidiendo[per] = (async () => {
+    try {
+      const { data, error } = await sb.rpc('v2_ranking', { p_periodo: per })
+      if (error) throw error
+      rk.datos[per] = data; rk.cuando[per] = Date.now()
+      if (data?.yo && typeof data.yo.visible === 'boolean') rk.visible = data.yo.visible
+    } catch (e) { console.warn('ranking:', e) }
+    rk.pidiendo[per] = null
+    return rk.datos[per]
+  })()
+  return rk.pidiendo[per]
+}
+
+function rkFalta(iso) {
+  const ms = new Date(iso) - Date.now(); if (!(ms > 0)) return 'en breve'
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4)
+  return d ? `${d} d ${String(h).padStart(2, '0')} h` : h ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`
+}
+function rkRango(d) {
+  if (!d?.desde || d.periodo === 'historico') return 'Desde que abrió el Cabildo'
+  const f = x => new Date(x).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: 'numeric', month: 'numeric' })
+  if (d.periodo === 'mes') return new Date(d.desde).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', month: 'long' }).replace(/^./, c => c.toUpperCase())
+  return `Semana del ${f(d.desde)} al ${f(new Date(new Date(d.reinicia) - 864e5))}`
+}
+const rkNombre = f => f.nombre ? esc(f.nombre) : `Butaca #${f.butaca}`
+function rkMov(m, hayFoto) {
+  if (m == null) return hayFoto ? '<span class="rk-mov nueva">nueva</span>' : ''
+  if (m > 0) return `<span class="rk-mov sube" aria-label="subió ${m}">▲ ${m}</span>`
+  if (m < 0) return `<span class="rk-mov baja" aria-label="bajó ${-m}">▼ ${-m}</span>`
+  return '<span class="rk-mov igual" aria-label="sin cambios">—</span>'
+}
+
+function rkSeg(lado) {
+  return `<div class="rk-seg" role="group" aria-label="Qué mostrar en la tarjeta">
+    <button type="button" data-rk-lado="hemi" aria-pressed="${lado === 'hemi'}" title="Hemiciclo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18a9 9 0 0 1 18 0"/><path d="M7 18a5 5 0 0 1 10 0"/></svg><span>Hemiciclo</span></button>
+    <button type="button" data-rk-lado="rank" aria-pressed="${lado === 'rank'}" title="Ranking de participación"><svg class="rk-anillo" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15"/><circle class="rk-anillo-v" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2" transform="rotate(-90 18 18)"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/></svg><span>Ranking</span></button>
+  </div>`
+}
+
+function rkYo(d) {
+  if (!estado.user) return `<div class="rk-yo"><span class="rk-yo-n">?</span><div class="rk-yo-t"><b>¿Dónde quedaría tu butaca?</b><small>Entrá al Cabildo y sumá puntos votando, debatiendo y proponiendo.</small></div><a class="rk-cta" href="#escalinatas">Entrar</a></div>`
+  if (!estado.butaca) return `<div class="rk-yo"><span class="rk-yo-n">?</span><div class="rk-yo-t"><b>Conseguí tu butaca para entrar al ranking</b><small>Verificá tu identidad y empezá a sumar puntos.</small></div><a class="rk-cta" href="#escalinatas">Verificarme</a></div>`
+  const y = d?.yo; if (!y) return ''
+  const pos = y.pos && y.pts > 0 ? `${fmtNum(y.pos)}º` : '—'
+  const mov = y.mov > 0 ? ` · <span class="rk-v">▲ ${y.mov} desde ayer</span>` : y.mov < 0 ? ` · <span class="rk-r">▼ ${-y.mov} desde ayer</span>` : ''
+  const meta = y.meta === 1 ? 'el primer puesto' : `entrar al top ${y.meta}`
+  const falta = y.faltan ? ` · te faltan <b class="rk-o">${fmtNum(y.faltan)} pts</b> para ${meta}` : y.pos === 1 ? ' · <b class="rk-o">¡Primer puesto!</b>' : ''
+  const prog = y.meta_pts ? Math.max(4, Math.min(100, Math.round(y.pts * 100 / y.meta_pts))) : 100
+  return `<div class="rk-yo">
+    <span class="rk-yo-n">${pos}</span>
+    <div class="rk-yo-t"><span><b>Tu butaca #${y.butaca}</b> · ${fmtNum(y.pts)} pts${mov}${falta}</span>
+      <i class="rk-barra"><i style="width:${prog}%"></i></i>
+      ${y.visible === false ? '<small>No aparecés en el ranking público: este puesto lo ves solo vos. <a href="#butaca">Cambiarlo en Privacidad</a></small>' : ''}</div>
+    <a class="rk-cta" href="#votaciones">Votá ahora · +10 pts</a></div>`
+}
+
+function rkPintar() {
+  const c = $('#rk-cara'); if (!c) return
+  const d = rk.datos[rk.periodo]
+  const per = `<div class="rk-pers" role="group" aria-label="Período">${RK_PER.map(([k, t]) => `<button type="button" data-rk-per="${k}" aria-pressed="${rk.periodo === k}">${t}</button>`).join('')}</div>`
+  const cab = `<div class="rk-tri" aria-hidden="true"><i></i><i></i><i></i></div>
+    <header class="rk-head"><div class="rk-tit"><h3>Las butacas más participativas</h3>
+      <small>${esc(rkRango(d))}${d?.reinicia ? ` · <b>se reinicia en ${rkFalta(d.reinicia)}</b>` : ''}</small></div>
+      <div class="rk-ctrl">${per}${rkSeg('rank')}</div></header>`
+  const nota = `<p class="rk-nota"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span><b>Esto mide la participación en la plataforma.</b> Nunca conocemos tus datos ni a quién votaste. Podés salir del ranking en Mi Butaca › Privacidad. · Puntos: voto 10 · debate 5 · propuesta 15 · apoyo 2 · día activo 5</span></p>`
+  if (!d) { c.innerHTML = cab + '<div class="rk-vacio"><p class="muted">Cargando el ranking…</p></div>' + nota; rkAnillo(); return }
+  const top = d.top || [], hayFoto = top.some(f => f.mov != null)
+  if (!top.length) { c.innerHTML = cab + '<div class="rk-vacio"><p><b>Todavía nadie sumó puntos en este período.</b></p><p class="muted">El primero que vote, debata o proponga encabeza el ranking.</p></div>' + rkYo(d) + nota; rkAnillo(); return }
+  const orden = [top[1], top[0], top[2]].filter(Boolean)
+  const podio = `<div class="rk-podio">${orden.map(f => `<a class="rk-p rk-p${f.pos}" href="#ciudadanos/${f.butaca}" aria-label="Puesto ${f.pos}: ${f.nombre ? esc(f.nombre) : 'Butaca ' + f.butaca}, ${fmtNum(f.pts)} puntos">
+      ${f.pos === 1 && f.racha >= 3 ? `<span class="rk-llama" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z"/></svg></span>` : ''}
+      <span class="rk-av">#${f.butaca}</span><b class="rk-pn">${rkNombre(f)}</b>
+      <small>${fmtNum(f.pts)} pts${f.racha >= 3 ? ` · ${f.racha} días seguidos` : ''}</small>
+      <span class="rk-escalon">${f.pos}</span></a>`).join('')}</div>`
+  const lista = `<ol class="rk-lista" start="4">${top.slice(3, 10).map(f => `<li><a href="#ciudadanos/${f.butaca}">
+      <b class="rk-n">${f.pos}</b><span class="rk-b">#${f.butaca}</span><span class="rk-nom">${rkNombre(f)}</span>${rkMov(f.mov, hayFoto)}<b class="rk-pts">${fmtNum(f.pts)}</b></a></li>`).join('')}</ol>`
+  c.innerHTML = cab + `<div class="rk-cuerpo">${podio}${lista}</div>` + rkYo(d) + nota
+  rkAnillo()
+}
+
+function rkAplicar(lado) {
+  const card = rkCard(), cara = $('#rk-cara'); if (!card || !cara) return
+  rk.lado = lado
+  card.classList.toggle('rk-on', lado === 'rank'); cara.hidden = lado !== 'rank'
+  $$('[data-rk-lado]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rkLado === lado)))
+  if (lado === 'rank') { rkPintar(); rkCargar(rk.periodo).then(() => { if (rk.lado === 'rank') rkPintar() }) }
+}
+function rkGirar(lado, porUsuario) {
+  if (porUsuario) rk.fijo = true
+  rk.acum = 0
+  if (lado === rk.lado || rk.girando) { rkAnillo(); return }
+  const card = rkCard()
+  if (!card?.animate || rkReducido()) { rkAplicar(lado); rkAnillo(); return }
+  rk.girando = true
+  const p = 'perspective(1800px) '
+  // la mitad del giro tapa el cambio de cara; los tiempos van por reloj (no dependen de que termine la animación)
+  card.animate([{ transform: p + 'rotateY(0deg)' }, { transform: p + 'rotateY(90deg)' }], { duration: 260, easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' })
+  setTimeout(() => {
+    rkAplicar(lado)
+    card.getAnimations().forEach(a => a.cancel())
+    card.animate([{ transform: p + 'rotateY(-90deg)' }, { transform: p + 'rotateY(0deg)' }], { duration: 340, easing: 'cubic-bezier(.1,.6,.3,1)' })
+    setTimeout(() => { rk.girando = false }, 360)
+  }, 260)
+  rkAnillo()
+}
+function rkAnillo() {
+  const v = rk.fijo ? 94.2 : (94.2 * (1 - Math.min(1, rk.acum / RK_SEG))).toFixed(1)
+  $$('.rk-anillo-v').forEach(c => c.setAttribute('stroke-dashoffset', v))
+  $$('.rk-anillo').forEach(s => s.classList.toggle('apagado', rk.fijo))
+}
+function rkTick() {
+  const ahora = Date.now(), dt = ahora - rk.ult; rk.ult = ahora
+  if (rk.fijo || rk.girando || vistaActual() !== 'inicio' || document.visibilityState !== 'visible') return
+  const card = rkCard(); if (!card || !card.getClientRects().length) return
+  const ocupada = rk.sobre || card.contains(document.activeElement) || ahora - rk.toque < 15000 || ($('#seat-card') && !$('#seat-card').hidden)
+  if (ocupada) return
+  rk.acum += Math.min(dt, 1000)
+  if (rk.lado === 'hemi' && rk.acum > RK_SEG - 2500) rkCargar(rk.periodo)   // los datos llegan antes del giro
+  if (rk.acum >= RK_SEG) rkGirar(rk.lado === 'hemi' ? 'rank' : 'hemi', false)
+  else rkAnillo()
+}
+setInterval(rkTick, 250)
+setInterval(() => { if (rk.lado === 'rank' && vistaActual() === 'inicio' && document.visibilityState === 'visible') rkCargar(rk.periodo).then(rkPintar) }, 120e3)
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-rk-lado]'); if (b) { e.preventDefault(); return rkGirar(b.dataset.rkLado, true) }
+  const p = e.target.closest('[data-rk-per]'); if (p) {
+    rk.periodo = p.dataset.rkPer; rk.fijo = true; rkPintar()
+    rkCargar(rk.periodo).then(() => { if (rk.lado === 'rank') rkPintar() })
+  }
+})
+document.addEventListener('pointerover', e => { const c = rkCard(); if (c) rk.sobre = c.contains(e.target) })
+document.addEventListener('touchstart', e => { const c = rkCard(); if (c && c.contains(e.target)) rk.toque = Date.now() }, { passive: true })
+
+async function rkCargarVisibilidad() {
+  if (!estado.butaca || rk.visible !== undefined) return
+  try { const { data, error } = await sb.rpc('v2_ranking_mi_visibilidad'); if (!error && typeof data === 'boolean') { rk.visible = data; if (vistaActual() === 'butaca') pintarMiButaca() } } catch (e) {}
+}
+async function rkCambiarVisibilidad() {
+  const nuevo = rk.visible === false
+  const ok = await confirmar(nuevo ? '¿Volver a aparecer en el ranking?' : '¿Salir del ranking?',
+    nuevo ? 'Tu butaca y tus puntos por participar vuelven a verse en el ranking. Nunca se muestra qué votaste.'
+          : 'Tu butaca deja de verse en el ranking público. Vos vas a seguir viendo tu puesto.',
+    nuevo ? 'Sí, aparecer' : 'Sí, salir')
+  if (!ok) return
+  const { error } = await sb.rpc('v2_ranking_mostrar', { p_mostrar: nuevo })
+  if (error) { aviso('No se pudo guardar. Intentá de nuevo.', 'error'); return }
+  rk.visible = nuevo; rk.datos = {}; rk.cuando = {}
+  pintarMiButaca()
+  aviso(nuevo ? '✓ Volviste al ranking' : '✓ Saliste del ranking')
+}
