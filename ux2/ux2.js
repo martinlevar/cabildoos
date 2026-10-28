@@ -7731,44 +7731,38 @@ function rkSeg(lado) {
   </div>`
 }
 
-function rkYo(d) {
-  if (!estado.user) return `<div class="rk-yo"><span class="rk-yo-n">?</span><div class="rk-yo-t"><b>¿Dónde quedaría tu butaca?</b><small>Entrá al Cabildo y sumá puntos votando, debatiendo y proponiendo.</small></div><a class="rk-cta" href="#escalinatas">Entrar</a></div>`
-  if (!estado.butaca) return `<div class="rk-yo"><span class="rk-yo-n">?</span><div class="rk-yo-t"><b>Conseguí tu butaca para entrar al ranking</b><small>Verificá tu identidad y empezá a sumar puntos.</small></div><a class="rk-cta" href="#escalinatas">Verificarme</a></div>`
+function rkYo(d) {   // ranking-limpio
+  if (!estado.user) return `<div class="rk-yo"><div class="rk-yo-t"><b>¿Dónde quedaría tu butaca?</b><small>Entrá y sumá puntos votando, debatiendo y proponiendo.</small></div><a class="rk-cta" href="#escalinatas">Entrar</a></div>`
+  if (!estado.butaca) return `<div class="rk-yo"><div class="rk-yo-t"><b>Conseguí tu butaca para entrar al ranking</b><small>Verificá tu identidad y empezá a sumar puntos.</small></div><a class="rk-cta" href="#escalinatas">Verificarme</a></div>`
   const y = d?.yo; if (!y) return ''
   const pos = y.pos && y.pts > 0 ? `${fmtNum(y.pos)}º` : '—'
-  const mov = y.mov > 0 ? ` · <span class="rk-v">▲ ${y.mov} desde ayer</span>` : y.mov < 0 ? ` · <span class="rk-r">▼ ${-y.mov} desde ayer</span>` : ''
-  const meta = y.meta === 1 ? 'el primer puesto' : `entrar al top ${y.meta}`
-  const falta = y.faltan ? ` · te faltan <b class="rk-o">${fmtNum(y.faltan)} pts</b> para ${meta}` : y.pos === 1 ? ' · <b class="rk-o">¡Primer puesto!</b>' : ''
+  const meta = y.meta === 1 ? 'el primer puesto' : `el top ${y.meta}`
+  const linea = y.faltan ? `Te faltan <b class="rk-o">${fmtNum(y.faltan)} pts</b> para ${meta}` : y.pos === 1 ? '<b class="rk-o">¡Primer puesto!</b>' : 'Sumá puntos participando'
   const prog = y.meta_pts ? Math.max(4, Math.min(100, Math.round(y.pts * 100 / y.meta_pts))) : 100
   return `<div class="rk-yo">
     <span class="rk-yo-n">${pos}</span>
-    <div class="rk-yo-t"><span><b>Tu butaca #${y.butaca}</b> · ${fmtNum(y.pts)} pts${mov}${falta}</span>
-      <i class="rk-barra"><i style="width:${prog}%"></i></i>
-      ${y.visible === false ? '<small>No aparecés en el ranking público: este puesto lo ves solo vos. <a href="#butaca">Cambiarlo en Privacidad</a></small>' : ''}</div>
-    <a class="rk-cta" href="#votaciones">Votá ahora · +10 pts</a></div>`
+    <div class="rk-yo-t"><span><b>Tu butaca</b> · ${fmtNum(y.pts)} pts · ${linea}</span><i class="rk-barra"><i style="width:${prog}%"></i></i>
+      ${y.visible === false ? '<small>Solo vos ves tu puesto. <a href="#butaca">Privacidad</a></small>' : ''}</div>
+    <a class="rk-cta" href="#votaciones">Votá · +10 pts</a></div>`
 }
 
 function rkPintar() {
   const c = $('#rk-cara'); if (!c) return
   const d = rk.datos[rk.periodo]
   const per = `<div class="rk-pers" role="group" aria-label="Período">${RK_PER.map(([k, t]) => `<button type="button" data-rk-per="${k}" aria-pressed="${rk.periodo === k}">${t}</button>`).join('')}</div>`
+  const sub = rk.periodo === 'historico' ? 'Desde que abrió el Cabildo' : d?.reinicia ? `Se reinicia en ${rkFalta(d.reinicia)}` : ''
   const cab = `<div class="rk-tri" aria-hidden="true"><i></i><i></i><i></i></div>
-    <header class="rk-head"><div class="rk-tit"><h3>Las butacas más participativas</h3>
-      <small>${esc(rkRango(d))}${d?.reinicia ? ` · <b>se reinicia en ${rkFalta(d.reinicia)}</b>` : ''}</small></div>
+    <header class="rk-head"><div class="rk-tit"><h3>Las más participativas</h3>${sub ? `<small>${sub}</small>` : ''}</div>
       <div class="rk-ctrl">${per}${rkSeg('rank')}</div></header>`
-  const nota = `<p class="rk-nota"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span><b>Esto mide la participación en la plataforma.</b> Nunca conocemos tus datos ni a quién votaste. Podés salir del ranking en Mi Butaca › Privacidad. · Puntos: voto 10 · debate 5 · propuesta 15 · apoyo 2 · día activo 5</span></p>`
+  const nota = `<p class="rk-nota" title="Puntos: voto 10 · debate 5 · propuesta 15 · apoyo 2 · día activo 5"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Mide la participación. Nunca conocemos tus datos ni a quién votaste.</p>`
   if (!d) { c.innerHTML = cab + '<div class="rk-vacio"><p class="muted">Cargando el ranking…</p></div>' + nota; rkAnillo(); return }
-  const top = d.top || [], hayFoto = top.some(f => f.mov != null)
-  if (!top.length) { c.innerHTML = cab + '<div class="rk-vacio"><p><b>Todavía nadie sumó puntos en este período.</b></p><p class="muted">El primero que vote, debata o proponga encabeza el ranking.</p></div>' + rkYo(d) + nota; rkAnillo(); return }
-  const orden = [top[1], top[0], top[2]].filter(Boolean)
-  const podio = `<div class="rk-podio">${orden.map(f => `<a class="rk-p rk-p${f.pos}" href="#ciudadanos/${f.butaca}" aria-label="Puesto ${f.pos}: ${f.nombre ? esc(f.nombre) : 'Butaca ' + f.butaca}, ${fmtNum(f.pts)} puntos">
-      ${f.pos === 1 && f.racha >= 3 ? `<span class="rk-llama" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z"/></svg></span>` : ''}
-      <span class="rk-av">#${f.butaca}</span><b class="rk-pn">${rkNombre(f)}</b>
-      <small>${fmtNum(f.pts)} pts${f.racha >= 3 ? ` · ${f.racha} días seguidos` : ''}</small>
-      <span class="rk-escalon">${f.pos}</span></a>`).join('')}</div>`
-  const lista = `<ol class="rk-lista" start="4">${top.slice(3, 10).map(f => `<li><a href="#ciudadanos/${f.butaca}">
-      <b class="rk-n">${f.pos}</b><span class="rk-b">#${f.butaca}</span><span class="rk-nom">${rkNombre(f)}</span>${rkMov(f.mov, hayFoto)}<b class="rk-pts">${fmtNum(f.pts)}</b></a></li>`).join('')}</ol>`
-  c.innerHTML = cab + `<div class="rk-cuerpo">${podio}${lista}</div>` + rkYo(d) + nota
+  const top = (d.top || []).slice(0, 10)
+  if (!top.length) { c.innerHTML = cab + '<div class="rk-vacio"><p><b>Todavía nadie sumó puntos.</b></p><p class="muted">El primero que participe encabeza el ranking.</p></div>' + rkYo(d) + nota; rkAnillo(); return }
+  const fila = f => {
+    const mov = f.mov > 0 ? `<span class="rk-mov sube" aria-label="subió ${f.mov}">▲${f.mov}</span>` : f.mov < 0 ? `<span class="rk-mov baja" aria-label="bajó ${-f.mov}">▼${-f.mov}</span>` : '<span class="rk-mov"></span>'
+    return `<li><a href="#ciudadanos/${f.butaca}"><span class="rk-n${f.pos <= 3 ? ' m' + f.pos : ''}">${f.pos}</span><span class="rk-nom">${rkNombre(f)}</span>${mov}<b class="rk-pts">${fmtNum(f.pts)}</b></a></li>`
+  }
+  c.innerHTML = cab + `<ol class="rk-diez">${top.map(fila).join('')}</ol>` + rkYo(d) + nota
   rkAnillo()
 }
 
