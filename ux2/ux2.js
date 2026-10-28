@@ -7694,7 +7694,7 @@ async function rkCargar(per, forzar) {
   if (rk.pidiendo[per]) return rk.pidiendo[per]
   rk.pidiendo[per] = (async () => {
     try {
-      const { data, error } = await sb.rpc('v2_ranking', { p_periodo: per })
+      const { data, error } = await sb.rpc('v2_ranking', { p_periodo: per, p_limite: 40 })   // ranking-fluido: hasta 40 para llenar el espacio
       if (error) throw error
       rk.datos[per] = data; rk.cuando[per] = Date.now()
       if (data?.yo && typeof data.yo.visible === 'boolean') rk.visible = data.yo.visible
@@ -7731,9 +7731,16 @@ function rkSeg(lado) {
   </div>`
 }
 
-function rkYo(d) { return '' }   // ranking-vertical: mi butaca va como última fila de la lista
+function rkYo(d) { return '' }
 
-function rkPintar() {   // ranking-vertical
+// ranking-fluido: una sola lista; mínimo 10 filas y, si entra, más. La última es siempre mi butaca.
+const RK_FILA = 30
+function rkCuantas() {
+  const c = $('#rk-cara'); if (!c) return 10
+  const fijo = (c.querySelector('.rk-tri')?.offsetHeight || 4) + (c.querySelector('.rk-head')?.offsetHeight || 56) + (c.querySelector('.rk-nota')?.offsetHeight || 26) + 66 + 14
+  return Math.max(10, Math.floor((c.clientHeight - fijo) / RK_FILA))
+}
+function rkPintar() {   // ranking-fluido
   const c = $('#rk-cara'); if (!c) return
   const d = rk.datos[rk.periodo]
   const per = `<div class="rk-pers" role="group" aria-label="Período">${RK_PER.map(([k, t]) => `<button type="button" data-rk-per="${k}" aria-pressed="${rk.periodo === k}">${t}</button>`).join('')}</div>`
@@ -7743,34 +7750,40 @@ function rkPintar() {   // ranking-vertical
       <div class="rk-ctrl">${per}${rkSeg('rank')}</div></header>`
   const nota = `<p class="rk-nota" title="Puntos: voto 10 · debate 5 · propuesta 15 · apoyo 2 · día activo 5"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Mide la participación. Nunca conocemos tus datos ni a quién votaste.</p>`
   if (!d) { c.innerHTML = cab + '<div class="rk-vacio"><p class="muted">Cargando el ranking…</p></div>' + nota; rkAnillo(); return }
-  const top = (d.top || []).slice(0, 10)
-  if (!top.length) { c.innerHTML = cab + '<div class="rk-vacio"><p><b>Todavía nadie sumó puntos.</b></p><p class="muted">El primero que participe encabeza el ranking.</p></div>' + nota; rkAnillo(); return }
+  const todos = d.top || []
+  if (!todos.length) { c.innerHTML = cab + '<div class="rk-vacio"><p><b>Todavía nadie sumó puntos.</b></p><p class="muted">El primero que participe encabeza el ranking.</p></div>' + nota; rkAnillo(); return }
+  const y = d.yo, yoNum = y && estado.butaca ? y.butaca : null
   const pts = n => `${fmtNum(n)} <small>pts</small>`
-  const fila = f => `<li><a href="#ciudadanos/${f.butaca}"><span class="rk-n${f.pos <= 3 ? ' m' + f.pos : ''}">${f.pos}</span><span class="rk-nom">${rkNombre(f)}</span><b class="rk-pts">${pts(f.pts)}</b></a></li>`
-  // mi butaca, siempre al final
-  const y = d.yo
-  let mia = ''
-  if (y && estado.butaca) {
-    const enTop = top.some(f => f.butaca === y.butaca)
-    mia = `<li class="rk-mia"><a href="#butaca"><span class="rk-n">${y.pos && y.pts > 0 ? fmtNum(y.pos) : '—'}</span><span class="rk-nom">Tu butaca${enTop ? ' · ¡estás en el top 10!' : ''}${y.visible === false ? ' <em>(solo la ves vos)</em>' : ''}</span><b class="rk-pts">${pts(y.pts)}</b></a></li>`
-  } else {
-    mia = `<li class="rk-mia"><a href="#escalinatas"><span class="rk-n">?</span><span class="rk-nom">${estado.user ? 'Conseguí tu butaca para entrar' : 'Entrá y sumá puntos'}</span><b class="rk-pts"></b></a></li>`
-  }
-  const lista = `<ol class="rk-vert">${top.map(fila).join('')}${mia}</ol>`
-  // los tres primeros
-  const tres = [top[1], top[0], top[2]].filter(Boolean)
-  const podio = `<div class="rk-tres">${tres.map(f => `<a class="rk-t rk-t${f.pos}" href="#ciudadanos/${f.butaca}"><span class="rk-med">${f.pos}</span><b>${rkNombre(f)}</b><small>${pts(f.pts)}</small><i class="rk-col" aria-hidden="true"></i></a>`).join('')}</div>`
-  let meta = ''
-  if (y && estado.butaca) {
+  const fila = f => `<li${f.butaca === yoNum ? ' class="rk-soy"' : ''}><a href="#ciudadanos/${f.butaca}"><span class="rk-n${f.pos <= 3 ? ' m' + f.pos : ''}">${f.pos}</span><span class="rk-nom">${rkNombre(f)}${f.butaca === yoNum ? ' <em>· vos</em>' : ''}</span><b class="rk-pts">${pts(f.pts)}</b></a></li>`
+  let mia
+  if (yoNum) {
     const prog = y.meta_pts ? Math.max(4, Math.min(100, Math.round(y.pts * 100 / y.meta_pts))) : 100
-    const txtMeta = y.faltan ? `Te faltan <b>${fmtNum(y.faltan)} pts</b> para ${y.meta === 1 ? 'el primer puesto' : `el top ${y.meta}`}` : y.pos === 1 ? '<b>¡Vas primero!</b>' : 'Sumá puntos participando'
-    meta = `<div class="rk-meta"><span>${txtMeta}</span><i class="rk-barra"><i style="width:${prog}%"></i></i><a class="rk-cta" href="#votaciones">Votá · +10 pts</a></div>`
+    const falta = y.faltan ? `Te faltan <b>${fmtNum(y.faltan)} pts</b> para ${y.meta === 1 ? 'el primer puesto' : `el top ${y.meta}`}` : y.pos === 1 ? '<b>¡Vas primero!</b>' : 'Participá para sumar puntos'
+    mia = `<a class="rk-mia" href="#votaciones" title="Votá, debatí o proponé para sumar puntos">
+      <span class="rk-n">${y.pos && y.pts > 0 ? fmtNum(y.pos) : '—'}</span>
+      <span class="rk-mia-t"><span class="rk-mia-l"><b>Tu butaca</b>${y.visible === false ? ' <em>(solo la ves vos)</em>' : ''}<b class="rk-pts">${pts(y.pts)}</b></span>
+        <i class="rk-barra"><i style="width:${prog}%"></i></i><small>${falta}</small></span></a>`
   } else {
-    meta = `<div class="rk-meta"><span>Verificá tu identidad y empezá a sumar puntos.</span><a class="rk-cta" href="#escalinatas">${estado.user ? 'Verificarme' : 'Entrar'}</a></div>`
+    mia = `<a class="rk-mia" href="#escalinatas"><span class="rk-n">?</span><span class="rk-mia-t"><span class="rk-mia-l"><b>${estado.user ? 'Conseguí tu butaca para entrar al ranking' : 'Entrá y sumá puntos'}</b></span><small>Votá, debatí y proponé para subir.</small></span></a>`
   }
-  c.innerHTML = cab + `<div class="rk-dos">${lista}<div class="rk-lado">${podio}${meta}</div></div>` + nota
+  c.innerHTML = cab + `<ol class="rk-una"></ol>` + mia + nota
+  // primero 10; después, si sobra lugar en la tarjeta, se agregan más filas hasta llenarla
+  const ol = c.querySelector('.rk-una')
+  let n = Math.min(todos.length, 10)
+  ol.innerHTML = todos.slice(0, n).map(fila).join('')
+  const alto = ol.lastElementChild?.offsetHeight || RK_FILA
+  const mi = c.querySelector('.rk-mia')
+  const sobra = (mi ? mi.offsetTop - 6 : c.clientHeight) - (ol.offsetTop + ol.offsetHeight) - Math.max(0, c.scrollHeight - c.clientHeight)
+  if (sobra >= alto && n < todos.length) {
+    const mas = Math.min(todos.length - n, Math.floor(sobra / alto))
+    ol.insertAdjacentHTML('beforeend', todos.slice(n, n + mas).map(fila).join('')); n += mas
+  }
+  rk.filas = n; rk.altoTarjeta = c.clientHeight
   rkAnillo()
 }
+// se reacomoda cuando cambia el tamaño de la tarjeta (ventana, rotación del teléfono)
+let _rkRz = 0
+window.addEventListener('resize', () => { clearTimeout(_rkRz); _rkRz = setTimeout(() => { if (rk.lado === 'rank' && $('#rk-cara') && $('#rk-cara').clientHeight !== rk.altoTarjeta) rkPintar() }, 150) })
 
 function rkAplicar(lado) {
   const card = rkCard(), cara = $('#rk-cara'); if (!card || !cara) return
