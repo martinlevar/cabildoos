@@ -3687,3 +3687,17 @@ html.bd-peek-abierto { overflow: hidden; }
   .hemi-head .pill-live::before { content: 'En vivo'; font-size: 10px; order: 1; }
   .hemi-head .pill-live i { order: 0; } .hemi-head .pill-live svg { order: 2; width: 14px; height: 14px; }
 }
+
+/* ══ ranking-cabecera-css ══ */
+.hemi-head .stat small { white-space: nowrap; }
+@container hemi (max-width: 1000px) {
+  .hemi-head .hemi-expand span, .hemi-head .rk-seg button span { display: none; }
+  .hemi-head .hemi-expand, .hemi-head .rk-seg button { padding: 0 9px; }
+  .hemi-head { gap: 20px; }
+}
+@container hemi (max-width: 860px) {
+  .hemi-head .btn-luz span { display: none; }
+  .hemi-head .btn-luz { padding: 0 9px; }
+  .hemi-head { gap: 16px; }
+}
+@container hemi (max-width: 745px) { .hemi-head { flex-wrap: wrap; row-gap: 10px; } }
