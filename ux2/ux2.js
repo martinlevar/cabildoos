@@ -7746,9 +7746,9 @@ function rkPintar() {   // ranking-fluido
   const per = `<div class="rk-pers" role="group" aria-label="Período">${RK_PER.map(([k, t]) => `<button type="button" data-rk-per="${k}" aria-pressed="${rk.periodo === k}">${t}</button>`).join('')}</div>`
   const sub = rk.periodo === 'historico' ? 'Desde que abrió el Cabildo' : d?.reinicia ? `Se reinicia en ${rkFalta(d.reinicia)}` : ''
   const cab = `<div class="rk-tri" aria-hidden="true"><i></i><i></i><i></i></div>
-    <header class="rk-head"><div class="rk-tit"><h3>Las más participativas</h3>${sub ? `<small>${sub}</small>` : ''}</div>
+    <header class="rk-head"><div class="rk-tit"><h3>Las más participativas</h3><span class="rk-sub">${sub ? `<small>${sub}</small>` : ''}<button type="button" class="rk-como" data-rk-ayuda aria-label="¿Cómo sumo puntos?" title="¿Cómo sumo puntos?"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17h.01"/></svg><span>Cómo sumar</span></button></span></div>
       <div class="rk-ctrl">${per}${rkSeg('rank')}</div></header>`
-  const nota = `<p class="rk-nota" title="Puntos: voto 10 · debate 5 · propuesta 15 · apoyo 2 · día activo 5"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Mide la participación. Nunca conocemos tus datos ni a quién votaste.</p>`
+  const nota = `<p class="rk-nota" data-rk-ayuda title="Ver cómo se suman los puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Mide la participación. Nunca conocemos tus datos ni a quién votaste. <u>¿Cómo sumo puntos?</u></span></p>`
   if (!d) { c.innerHTML = cab + '<div class="rk-vacio"><p class="muted">Cargando el ranking…</p></div>' + nota; rkAnillo(); return }
   const todos = d.top || []
   if (!todos.length) { c.innerHTML = cab + '<div class="rk-vacio"><p><b>Todavía nadie sumó puntos.</b></p><p class="muted">El primero que participe encabeza el ranking.</p></div>' + nota; rkAnillo(); return }
@@ -7856,3 +7856,59 @@ async function rkCambiarVisibilidad() {
   pintarMiButaca()
   aviso(nuevo ? '✓ Volviste al ranking' : '✓ Saliste del ranking')
 }
+
+
+// ranking-ayuda: ventana que explica cómo se suman los puntos
+function rkAbrirAyuda() {
+  if ($('#rk-ayuda')) return
+  const quien = document.activeElement
+  const item = (ico, t, d, p) => `<li><span class="rka-ico" aria-hidden="true">${ico}</span><div><b>${t}</b><small>${d}</small></div><em>${p}</em></li>`
+  const I = {
+    voto: '<svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><rect x="4" y="4" width="16" height="16" rx="4"/></svg>',
+    debate: '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+    prop: '<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M12 10v6M9 13h6"/></svg>',
+    apoyo: '<svg viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7c1.5 0 2.5 1 2.2 2.6L12.6 10H19a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 20H7"/></svg>',
+    dia: '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+  }
+  const m = document.createElement('div')
+  m.className = 'modal rk-modal'; m.id = 'rk-ayuda'
+  m.innerHTML = `<div class="modal-box rka" role="dialog" aria-modal="true" aria-labelledby="rka-t">
+    <button type="button" class="modal-x" data-rka-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <span class="rka-kicker">Ranking de participación</span>
+    <h2 id="rka-t">¿Cómo sumo puntos?</h2>
+    <p class="rka-intro">Cada vez que participás en el Cabildo, tu butaca suma puntos. Cuanto más participás, más subís.</p>
+    <ul class="rka-lista">
+      ${item(I.voto, 'Votar', 'En cada votación en la que participás. Tu voto sigue siendo secreto: solo cuenta que votaste.', '+10')}
+      ${item(I.prop, 'Lanzar una propuesta', 'Cada propuesta nueva que publicás para que el Cabildo la apoye.', '+15')}
+      ${item(I.debate, 'Escribir en un debate', 'Por mensaje. Suman hasta 10 mensajes por día, para que escribir de más no cuente.', '+5')}
+      ${item(I.apoyo, 'Apoyar una propuesta', 'Cada propuesta de otra butaca que apoyás.', '+2')}
+      ${item(I.dia, 'Participar un día', 'Cada día que debatís, proponés, apoyás o escribís en el Muro, sumás un extra.', '+5')}
+    </ul>
+    <div class="rka-tip"><b>Lo que más suma:</b> votar en todas las votaciones abiertas y volver todos los días.</div>
+    <h3>Cómo funciona</h3>
+    <ul class="rka-reglas">
+      <li><b>Semana:</b> se reinicia cada lunes a las 00:00, hora de Venezuela. <b>Mes:</b> el día 1. <b>Histórico:</b> suma todo desde el comienzo.</li>
+      <li>Los puntos se actualizan cada 10 minutos.</li>
+      <li>Un voto cuenta en el período en que cierra la votación.</li>
+      <li>Si dos butacas empatan, va primero la más antigua.</li>
+    </ul>
+    <div class="rka-priv"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <span>El ranking mide <b>cuánto participás</b>, nunca <b>qué votaste</b>. Se ve tu número de butaca, y tu alias solo si lo hiciste público. Si no querés aparecer, lo desactivás en <a href="#butaca" data-rka-cerrar>Mi Butaca › Privacidad</a>.</span></div>
+    <div class="rka-pie"><button type="button" class="btn btn-ghost" data-rka-cerrar>Entendido</button><a class="btn btn-dark" href="#votaciones" data-rka-cerrar>Ir a votar</a></div>
+  </div>`
+  document.body.appendChild(m)
+  const cerrar = () => { m.remove(); document.removeEventListener('keydown', tecla, true); quien?.focus?.() }
+  const tecla = e => {
+    if (e.key === 'Escape') { e.preventDefault(); cerrar() }
+    if (e.key === 'Tab') {   // el foco no se escapa de la ventana
+      const f = [...m.querySelectorAll('button, a[href]')]; if (!f.length) return
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus() }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus() }
+    }
+  }
+  document.addEventListener('keydown', tecla, true)
+  m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-rka-cerrar]')) cerrar() })
+  rk.fijo = true; rkAnillo()   // mientras lee, la tarjeta no gira
+  setTimeout(() => m.querySelector('.modal-x')?.focus(), 30)
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-rk-ayuda]')) { e.preventDefault(); rkAbrirAyuda() } })
