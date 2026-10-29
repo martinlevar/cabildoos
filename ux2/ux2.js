@@ -100,7 +100,7 @@ function ruta() {
   window.scrollTo(0, 0)
   if (valida === 'inicio') requestAnimationFrame(dibujarHemiciclo)
   if (valida === 'votaciones') cargarVotaciones()
-  if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca() }
+  if (valida === 'butaca') { pintarMiButaca(); cargarMiButaca(); rkCargarVisibilidad() }
   if (valida === 'estadisticas') cargarEstadisticas()
   if (valida === 'bloques') cargarDirectorio(); else if (bd.peek) bdCerrarPeek()   // bloques-directorio
   if (valida === 'auditorio') { pintarAuditorio(); entrarAuditorio() }
@@ -3558,6 +3558,7 @@ function pintarMiButaca() {
       ${interruptor('alias', !!id.show_alias, 'Mostrar mi alias', 'Tu butaca deja de ser anónima')}
       ${interruptor('phrase', !!id.show_phrase, 'Mostrar mi frase', 'Aparece en tu tarjeta del hemiciclo')}
       ${interruptor('votes', !!id.show_votes, 'Mostrar en cuántas votaciones participé', 'Solo la cantidad, nunca el voto')}
+      ${interruptor('ranking', rk.visible !== false, 'Aparecer en el ranking de participación', 'Se ve tu butaca y tus puntos por participar. Nunca qué votaste')}
       ${interruptor('presencia', pres.mia, 'Encender mi butaca cuando estoy presente', 'Se ve con luz blanca en el hemiciclo y en el Monitor mientras tenés el Cabildo abierto')}
     </article>
     <article class="card mb-sec mb-o5">
@@ -3611,6 +3612,7 @@ async function guardarColor(color) {
 }
 
 async function cambiarVisibilidad(campo) {
+  if (campo === 'ranking') return rkCambiarVisibilidad()   // ranking-participacion
   const id = estado.ident || {}
   const llave = { alias: 'show_alias', phrase: 'show_phrase', votes: 'show_votes' }[campo]
   const nuevo = !id[llave]
@@ -7677,3 +7679,365 @@ document.addEventListener('click', e => {
   const c = e.target.closest('[data-bq-copiar]'); if (!c) return
   navigator.clipboard.writeText(c.dataset.bqCopiar).then(() => aviso('Link copiado'), () => aviso(c.dataset.bqCopiar))
 })
+
+// ══ ranking-participacion: la tarjeta del hemiciclo se da vuelta y muestra las butacas más participativas.
+// Mide participación (votar, debatir, proponer, apoyar, días activos), nunca el sentido del voto. Cada butaca puede
+// salir del ranking en Mi Butaca › Privacidad. Los datos los calcula la base cada 10 minutos (v2_ranking).
+const RK_SEG = 40000   // flip-muro: 40 s en cada cara
+const rk = { lado: 'hemi', fijo: false, acum: 0, ult: Date.now(), datos: {}, cuando: {}, periodo: 'semana', girando: false, sobre: false, toque: 0, visible: undefined, pidiendo: {} }
+const RK_PER = [['semana', 'Semana'], ['mes', 'Mes'], ['historico', 'Histórico']]
+const rkCard = () => $('.hemi-card')
+const rkReducido = () => matchMedia('(prefers-reduced-motion: reduce)').matches
+
+async function rkCargar(per, forzar) {
+  if (!forzar && rk.datos[per] && Date.now() - (rk.cuando[per] || 0) < 120e3) return rk.datos[per]
+  if (rk.pidiendo[per]) return rk.pidiendo[per]
+  rk.pidiendo[per] = (async () => {
+    try {
+      const { data, error } = await sb.rpc('v2_ranking', { p_periodo: per, p_limite: 40 })   // ranking-fluido: hasta 40 para llenar el espacio
+      if (error) throw error
+      rk.datos[per] = data; rk.cuando[per] = Date.now()
+      if (data?.yo && typeof data.yo.visible === 'boolean') rk.visible = data.yo.visible
+    } catch (e) { console.warn('ranking:', e) }
+    rk.pidiendo[per] = null
+    return rk.datos[per]
+  })()
+  return rk.pidiendo[per]
+}
+
+function rkFalta(iso) {
+  const ms = new Date(iso) - Date.now(); if (!(ms > 0)) return 'en breve'
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4)
+  return d ? `${d} d ${String(h).padStart(2, '0')} h` : h ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`
+}
+function rkRango(d) {
+  if (!d?.desde || d.periodo === 'historico') return 'Desde que abrió el Cabildo'
+  const f = x => new Date(x).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: 'numeric', month: 'numeric' })
+  if (d.periodo === 'mes') return new Date(d.desde).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', month: 'long' }).replace(/^./, c => c.toUpperCase())
+  return `Semana del ${f(d.desde)} al ${f(new Date(new Date(d.reinicia) - 864e5))}`
+}
+const rkNombre = f => f.nombre ? esc(f.nombre) : `Butaca #${f.butaca}`
+function rkMov(m, hayFoto) {
+  if (m == null) return hayFoto ? '<span class="rk-mov nueva">nueva</span>' : ''
+  if (m > 0) return `<span class="rk-mov sube" aria-label="subió ${m}">▲ ${m}</span>`
+  if (m < 0) return `<span class="rk-mov baja" aria-label="bajó ${-m}">▼ ${-m}</span>`
+  return '<span class="rk-mov igual" aria-label="sin cambios">—</span>'
+}
+
+function rkSeg(lado) {   // flip-muro: tres caras
+  return `<div class="rk-seg" role="group" aria-label="Qué mostrar en la tarjeta">
+    <button type="button" data-rk-lado="hemi" aria-pressed="${lado === 'hemi'}" title="Hemiciclo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18a9 9 0 0 1 18 0"/><path d="M7 18a5 5 0 0 1 10 0"/></svg><span>Hemiciclo</span></button>
+    <button type="button" data-rk-lado="rank" aria-pressed="${lado === 'rank'}" title="Ranking de participación"><svg class="rk-anillo" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15"/><circle class="rk-anillo-v" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2" transform="rotate(-90 18 18)"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/></svg><span>Ranking</span></button>
+    <button type="button" data-rk-lado="muro" aria-pressed="${lado === 'muro'}" title="Muro del día: la opinión destacada"><svg class="rk-anillo" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15"/><circle class="rk-anillo-v" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2" transform="rotate(-90 18 18)"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/></svg><span>Muro</span></button>
+  </div>`
+}
+
+function rkYo(d) { return '' }
+
+// ranking-fluido: una sola lista; mínimo 10 filas y, si entra, más. La última es siempre mi butaca.
+const RK_FILA = 30
+function rkCuantas() {
+  const c = $('#rk-cara'); if (!c) return 10
+  const fijo = (c.querySelector('.rk-tri')?.offsetHeight || 4) + (c.querySelector('.rk-head')?.offsetHeight || 56) + (c.querySelector('.rk-nota')?.offsetHeight || 26) + 66 + 14
+  return Math.max(10, Math.floor((c.clientHeight - fijo) / RK_FILA))
+}
+function rkPintar() {   // ranking-fluido
+  const c = $('#rk-cara'); if (!c) return
+  const d = rk.datos[rk.periodo]
+  const per = `<div class="rk-pers" role="group" aria-label="Período">${RK_PER.map(([k, t]) => `<button type="button" data-rk-per="${k}" aria-pressed="${rk.periodo === k}">${t}</button>`).join('')}</div>`
+  const sub = rk.periodo === 'historico' ? 'Desde que abrió el Cabildo' : d?.reinicia ? `Se reinicia en ${rkFalta(d.reinicia)}` : ''
+  const cab = `<div class="rk-tri" aria-hidden="true"><i></i><i></i><i></i></div>
+    <header class="rk-head"><div class="rk-tit"><h3>Las más participativas</h3><span class="rk-sub">${sub ? `<small>${sub}</small>` : ''}<button type="button" class="rk-como" data-rk-ayuda aria-label="¿Cómo sumo puntos?" title="¿Cómo sumo puntos?"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17h.01"/></svg><span>Cómo sumar</span></button></span></div>
+      <div class="rk-ctrl">${per}${rkSeg('rank')}</div></header>`
+  const nota = `<p class="rk-nota" data-rk-ayuda title="Ver cómo se suman los puntos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Mide la participación. Nunca conocemos tus datos ni a quién votaste. <u>¿Cómo sumo puntos?</u></span></p>`
+  if (!d) { c.innerHTML = cab + '<div class="rk-vacio"><p class="muted">Cargando el ranking…</p></div>' + nota; rkAnillo(); return }
+  const todos = d.top || []
+  if (!todos.length) { c.innerHTML = cab + '<div class="rk-vacio"><p><b>Todavía nadie sumó puntos.</b></p><p class="muted">El primero que participe encabeza el ranking.</p></div>' + nota; rkAnillo(); return }
+  const y = d.yo, yoNum = y && estado.butaca ? y.butaca : null
+  const pts = n => `${fmtNum(n)} <small>pts</small>`
+  const fila = f => `<li${f.butaca === yoNum ? ' class="rk-soy"' : ''}><a href="#ciudadanos/${f.butaca}"><span class="rk-n${f.pos <= 3 ? ' m' + f.pos : ''}">${f.pos}</span><span class="rk-nom">${rkNombre(f)}${f.butaca === yoNum ? ' <em>· vos</em>' : ''}</span><b class="rk-pts">${pts(f.pts)}</b></a></li>`
+  let mia
+  if (yoNum) {
+    const prog = y.meta_pts ? Math.max(4, Math.min(100, Math.round(y.pts * 100 / y.meta_pts))) : 100
+    const falta = y.faltan ? `Te faltan <b>${fmtNum(y.faltan)} pts</b> para ${y.meta === 1 ? 'el primer puesto' : `el top ${y.meta}`}` : y.pos === 1 ? '<b>¡Vas primero!</b>' : 'Participá para sumar puntos'
+    mia = `<a class="rk-mia" href="#votaciones" title="Votá, debatí o proponé para sumar puntos">
+      <span class="rk-n">${y.pos && y.pts > 0 ? fmtNum(y.pos) : '—'}</span>
+      <span class="rk-mia-t"><span class="rk-mia-l"><b>Tu butaca</b>${y.visible === false ? ' <em>(solo la ves vos)</em>' : ''}<b class="rk-pts">${pts(y.pts)}</b></span>
+        <i class="rk-barra"><i style="width:${prog}%"></i></i><small>${falta}</small></span></a>`
+  } else {
+    mia = `<a class="rk-mia" href="#escalinatas"><span class="rk-n">?</span><span class="rk-mia-t"><span class="rk-mia-l"><b>${estado.user ? 'Conseguí tu butaca para entrar al ranking' : 'Entrá y sumá puntos'}</b></span><small>Votá, debatí y proponé para subir.</small></span></a>`
+  }
+  c.innerHTML = cab + `<ol class="rk-una"></ol>` + mia + nota
+  // primero 10; después, si sobra lugar en la tarjeta, se agregan más filas hasta llenarla
+  const ol = c.querySelector('.rk-una')
+  let n = Math.min(todos.length, 10)
+  ol.innerHTML = todos.slice(0, n).map(fila).join('')
+  const alto = ol.lastElementChild?.offsetHeight || RK_FILA
+  const mi = c.querySelector('.rk-mia')
+  const sobra = (mi ? mi.offsetTop - 6 : c.clientHeight) - (ol.offsetTop + ol.offsetHeight) - Math.max(0, c.scrollHeight - c.clientHeight)
+  if (sobra >= alto && n < todos.length) {
+    const mas = Math.min(todos.length - n, Math.floor(sobra / alto))
+    ol.insertAdjacentHTML('beforeend', todos.slice(n, n + mas).map(fila).join('')); n += mas
+  }
+  rk.filas = n; rk.altoTarjeta = c.clientHeight
+  rkAnillo()
+}
+// se reacomoda cuando cambia el tamaño de la tarjeta (ventana, rotación del teléfono)
+let _rkRz = 0
+window.addEventListener('resize', () => { clearTimeout(_rkRz); _rkRz = setTimeout(() => { if (rk.lado === 'rank' && $('#rk-cara') && $('#rk-cara').clientHeight !== rk.altoTarjeta) rkPintar() }, 150) })
+
+function rkAplicar(lado) {   // flip-muro
+  const card = rkCard(), cara = $('#rk-cara'), muro = $('#rk-muro'); if (!card || !cara) return
+  rk.lado = lado
+  card.classList.toggle('rk-on', lado !== 'hemi'); cara.hidden = lado !== 'rank'; if (muro) muro.hidden = lado !== 'muro'
+  $$('[data-rk-lado]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rkLado === lado)))
+  if (lado === 'rank') { rkPintar(); rkCargar(rk.periodo).then(() => { if (rk.lado === 'rank') rkPintar() }) }
+  if (lado === 'muro') { rkPintarMuro(); rkCargarMuro().then(() => { if (rk.lado === 'muro') rkPintarMuro() }) }
+}
+function rkGirar(lado, porUsuario) {
+  if (porUsuario) { rk.fijo = true; rk.fin = true }
+  else if (lado === 'hemi') rk.fin = true   // flip-muro: la vuelta automática termina al volver al hemiciclo
+  rk.acum = 0
+  if (lado === rk.lado || rk.girando) { rkAnillo(); return }
+  const card = rkCard()
+  if (!card?.animate || rkReducido()) { rkAplicar(lado); rkAnillo(); return }
+  rk.girando = true
+  const p = 'perspective(1800px) '
+  // la mitad del giro tapa el cambio de cara; los tiempos van por reloj (no dependen de que termine la animación)
+  card.animate([{ transform: p + 'rotateY(0deg)' }, { transform: p + 'rotateY(90deg)' }], { duration: 260, easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' })
+  setTimeout(() => {
+    rkAplicar(lado)
+    card.getAnimations().forEach(a => a.cancel())
+    card.animate([{ transform: p + 'rotateY(-90deg)' }, { transform: p + 'rotateY(0deg)' }], { duration: 340, easing: 'cubic-bezier(.1,.6,.3,1)' })
+    setTimeout(() => { rk.girando = false }, 360)
+  }, 260)
+  rkAnillo()
+}
+function rkAnillo() {   // flip-muro: el anillo se ve en el botón de la próxima cara
+  const quieto = rk.fijo || rk.fin
+  const v = quieto ? 94.2 : (94.2 * (1 - Math.min(1, rk.acum / RK_SEG))).toFixed(1)
+  $$('.rk-anillo-v').forEach(c => c.setAttribute('stroke-dashoffset', v))
+  $$('.rk-anillo').forEach(s => s.classList.toggle('apagado', quieto))
+  const prox = rkProximo()
+  $$('[data-rk-lado]').forEach(b => b.classList.toggle('rk-prox', b.dataset.rkLado === prox))
+}
+function rkTick() {
+  const ahora = Date.now(), dt = ahora - rk.ult; rk.ult = ahora
+  // ranking-giro-retoma: elegir un lado pausa el giro 40 s desde el último toque; después vuelve a girar solo
+  if (rk.fijo) {
+    if ($('#rk-ayuda')) rk.fijoHasta = ahora + RK_PAUSA
+    else if (!rk.fijoHasta) rk.fijoHasta = ahora + RK_PAUSA
+    else if (ahora > rk.fijoHasta) { rk.fijo = false; rk.fijoHasta = 0; rk.acum = 0; rkAnillo() }
+  }
+  if (rk.fin || rk.fijo || rk.girando || vistaActual() !== 'inicio' || document.visibilityState !== 'visible') return
+  const card = rkCard(); if (!card || !card.getClientRects().length) return
+  const ocupada = rk.sobre || card.contains(document.activeElement) || ahora - rk.toque < 15000 || ($('#seat-card') && !$('#seat-card').hidden)
+  if (ocupada) return
+  rk.acum += Math.min(dt, 1000)
+  if (rk.acum > RK_SEG - 2500) { const p = rkProximo(); if (p === 'rank') rkCargar(rk.periodo); if (p === 'muro') rkCargarMuro() }   // los datos llegan antes del giro
+  if (rk.acum >= RK_SEG) rkGirar(rkProximo(), false)
+  else rkAnillo()
+}
+setInterval(rkTick, 250)
+setInterval(() => { if (rk.lado === 'rank' && vistaActual() === 'inicio' && document.visibilityState === 'visible') rkCargar(rk.periodo).then(rkPintar) }, 120e3)
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-rk-lado]'); if (b) { e.preventDefault(); return rkGirar(b.dataset.rkLado, true) }
+  const p = e.target.closest('[data-rk-per]'); if (p) {
+    rk.periodo = p.dataset.rkPer; rk.fijo = true; rkPintar()
+    rkCargar(rk.periodo).then(() => { if (rk.lado === 'rank') rkPintar() })
+  }
+})
+document.addEventListener('pointerover', e => { const c = rkCard(); if (c) rk.sobre = c.contains(e.target) })
+document.addEventListener('touchstart', e => { const c = rkCard(); if (c && c.contains(e.target)) rk.toque = Date.now() }, { passive: true })
+
+async function rkCargarVisibilidad() {
+  if (!estado.butaca || rk.visible !== undefined) return
+  try { const { data, error } = await sb.rpc('v2_ranking_mi_visibilidad'); if (!error && typeof data === 'boolean') { rk.visible = data; if (vistaActual() === 'butaca') pintarMiButaca() } } catch (e) {}
+}
+async function rkCambiarVisibilidad() {
+  const nuevo = rk.visible === false
+  const ok = await confirmar(nuevo ? '¿Volver a aparecer en el ranking?' : '¿Salir del ranking?',
+    nuevo ? 'Tu butaca y tus puntos por participar vuelven a verse en el ranking. Nunca se muestra qué votaste.'
+          : 'Tu butaca deja de verse en el ranking público. Vos vas a seguir viendo tu puesto.',
+    nuevo ? 'Sí, aparecer' : 'Sí, salir')
+  if (!ok) return
+  const { error } = await sb.rpc('v2_ranking_mostrar', { p_mostrar: nuevo })
+  if (error) { aviso('No se pudo guardar. Intentá de nuevo.', 'error'); return }
+  rk.visible = nuevo; rk.datos = {}; rk.cuando = {}
+  pintarMiButaca()
+  aviso(nuevo ? '✓ Volviste al ranking' : '✓ Saliste del ranking')
+}
+
+
+// ranking-ayuda: ventana que explica cómo se suman los puntos
+function rkAbrirAyuda() {
+  if ($('#rk-ayuda')) return
+  const quien = document.activeElement
+  const item = (ico, t, d, p) => `<li><span class="rka-ico" aria-hidden="true">${ico}</span><div><b>${t}</b><small>${d}</small></div><em>${p}</em></li>`
+  const I = {
+    voto: '<svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><rect x="4" y="4" width="16" height="16" rx="4"/></svg>',
+    debate: '<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+    prop: '<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M12 10v6M9 13h6"/></svg>',
+    apoyo: '<svg viewBox="0 0 24 24"><path d="M7 11v9H4v-9zM7 11l4-7c1.5 0 2.5 1 2.2 2.6L12.6 10H19a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 17.8 20H7"/></svg>',
+    dia: '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+  }
+  const m = document.createElement('div')
+  m.className = 'modal rk-modal'; m.id = 'rk-ayuda'
+  m.innerHTML = `<div class="modal-box rka" role="dialog" aria-modal="true" aria-labelledby="rka-t">
+    <button type="button" class="modal-x" data-rka-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <span class="rka-kicker">Ranking de participación</span>
+    <h2 id="rka-t">¿Cómo sumo puntos?</h2>
+    <p class="rka-intro">Cada vez que participás en el Cabildo, tu butaca suma puntos. Cuanto más participás, más subís.</p>
+    <ul class="rka-lista">
+      ${item(I.voto, 'Votar', 'En cada votación en la que participás. Tu voto sigue siendo secreto: solo cuenta que votaste.', '+10')}
+      ${item(I.prop, 'Lanzar una propuesta', 'Cada propuesta nueva que publicás para que el Cabildo la apoye.', '+15')}
+      ${item(I.debate, 'Escribir en un debate', 'Por mensaje. Suman hasta 10 mensajes por día, para que escribir de más no cuente.', '+5')}
+      ${item(I.apoyo, 'Apoyar una propuesta', 'Cada propuesta de otra butaca que apoyás.', '+2')}
+      ${item(I.dia, 'Participar un día', 'Cada día que debatís, proponés, apoyás o escribís en el Muro, sumás un extra.', '+5')}
+    </ul>
+    <div class="rka-tip"><b>Lo que más suma:</b> votar en todas las votaciones abiertas y volver todos los días.</div>
+    <h3>Cómo funciona</h3>
+    <ul class="rka-reglas">
+      <li><b>Semana:</b> se reinicia cada lunes a las 00:00, hora de Venezuela. <b>Mes:</b> el día 1. <b>Histórico:</b> suma todo desde el comienzo.</li>
+      <li>Los puntos se actualizan cada 10 minutos.</li>
+      <li>Un voto cuenta en el período en que cierra la votación.</li>
+      <li>Si dos butacas empatan, va primero la más antigua.</li>
+    </ul>
+    <div class="rka-priv"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <span>El ranking mide <b>cuánto participás</b>, nunca <b>qué votaste</b>. Se ve tu número de butaca, y tu alias solo si lo hiciste público. Si no querés aparecer, lo desactivás en <a href="#butaca" data-rka-cerrar>Mi Butaca › Privacidad</a>.</span></div>
+    <div class="rka-pie"><button type="button" class="btn btn-ghost" data-rka-cerrar>Entendido</button><a class="btn btn-dark" href="#votaciones" data-rka-cerrar>Ir a votar</a></div>
+  </div>`
+  document.body.appendChild(m)
+  const cerrar = () => { m.remove(); document.removeEventListener('keydown', tecla, true); quien?.focus?.() }
+  const tecla = e => {
+    if (e.key === 'Escape') { e.preventDefault(); cerrar() }
+    if (e.key === 'Tab') {   // el foco no se escapa de la ventana
+      const f = [...m.querySelectorAll('button, a[href]')]; if (!f.length) return
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus() }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus() }
+    }
+  }
+  document.addEventListener('keydown', tecla, true)
+  m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-rka-cerrar]')) cerrar() })
+  rk.fijo = true; rkAnillo()   // mientras lee, la tarjeta no gira
+  setTimeout(() => m.querySelector('.modal-x')?.focus(), 30)
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-rk-ayuda]')) { e.preventDefault(); rkAbrirAyuda() } })
+
+
+// ranking-cabecera: si la cabecera del hemiciclo no entra en la tarjeta, se compacta por pasos (nunca se sale)
+function rkCabecera() {
+  const h = $('.hemi-head'); if (!h || !h.getClientRects().length) return
+  h.classList.remove('hc1', 'hc2', 'hc3')
+  const sale = () => h.scrollWidth > h.clientWidth + 1 || [...h.children].some(el => el.getClientRects().length && el.getBoundingClientRect().right > h.getBoundingClientRect().right + 1)
+  for (const c of ['hc1', 'hc2', 'hc3']) { if (!sale()) break; h.classList.add(c) }
+}
+;(() => {
+  const h = $('.hemi-head'); if (!h) return
+  let t = 0; const luego = () => { cancelAnimationFrame(t); t = requestAnimationFrame(rkCabecera) }
+  let ancho = 0   // solo el ANCHO importa (al pasar a dos renglones cambia el alto y no debe volver a medir)
+  if (window.ResizeObserver) new ResizeObserver(es => { const w = Math.round(es[0].contentRect.width); if (w !== ancho) { ancho = w; luego() } }).observe(h)
+  // cambia el contenido (se enciende la butaca, aparece «Sesión en vivo», cambian las cifras)
+  if (window.MutationObserver) new MutationObserver(ms => { if (ms.some(m => !(m.target === h && m.attributeName === 'class'))) luego() }).observe(h, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden', 'class'] })
+  window.addEventListener('resize', luego)
+  document.fonts?.ready?.then(luego)
+  luego()
+})()
+
+
+// ranking-giro-retoma
+const RK_PAUSA = 40000
+document.addEventListener('click', e => { if (e.target.closest('[data-rk-lado], [data-rk-per], [data-rk-ayuda]')) rk.fijoHasta = 0 }, true)   // cada toque reinicia la pausa
+
+
+// ══ flip-muro: tercera cara de la tarjeta — la opinión más apoyada del Muro del día ══
+const RK_ORDEN = ['hemi', 'rank', 'muro']
+// la cara del Muro entra en el giro automático solo si hoy hay una destacada (y hay sesión para leerla)
+function rkProximo() {
+  const ok = l => l !== 'muro' || !!rk.muro
+  let i = RK_ORDEN.indexOf(rk.lado)
+  for (let k = 0; k < RK_ORDEN.length; k++) { i = (i + 1) % RK_ORDEN.length; if (ok(RK_ORDEN[i])) return RK_ORDEN[i] }
+  return 'hemi'
+}
+let _rkMuroCuando = 0, _rkMuroPidiendo = null
+async function rkCargarMuro(forzar) {
+  if (!estado.user) { rk.muro = null; return null }
+  if (mu.cargado && Array.isArray(mu.posts)) {   // si el Muro ya está cargado, se usa lo mismo que ve la sección
+    const d = muDestacado(); rk.muro = d ? { ...d, resp: (d.muro_replies || []).length } : null; return rk.muro
+  }
+  if (!forzar && Date.now() - _rkMuroCuando < 60e3) return rk.muro
+  if (_rkMuroPidiendo) return _rkMuroPidiendo
+  _rkMuroPidiendo = (async () => {
+    try {
+      const { data, error } = await sb.from('muro_posts').select('id, seat_number, alias, card_color, body, created_at, likes_count, muro_replies(count)')
+        .eq('day_key', diaMuro()).gt('likes_count', 0).order('likes_count', { ascending: false }).order('created_at', { ascending: true }).limit(1)
+      if (error) throw error
+      const d = data?.[0]
+      rk.muro = d ? { ...d, resp: d.muro_replies?.[0]?.count || 0 } : null
+      _rkMuroCuando = Date.now()
+    } catch (e) { console.warn('muro destacado:', e) }
+    _rkMuroPidiendo = null
+    return rk.muro
+  })()
+  return _rkMuroPidiendo
+}
+function rkPintarMuro() {
+  const c = $('#rk-muro'); if (!c) return
+  const p = rk.muro
+  const cab = `<div class="rk-tri" aria-hidden="true"><i></i><i></i><i></i></div>
+    <header class="rk-head"><div class="rk-tit"><h3>Muro del día</h3><span class="rk-sub"><small class="rkm-sub">La opinión más apoyada de hoy</small></span></div>
+      <div class="rk-ctrl">${rkSeg('muro')}</div></header>`
+  if (!p) {
+    c.innerHTML = cab + `<div class="rk-vacio"><p><b>${estado.user ? 'Todavía no hay una opinión destacada hoy.' : 'Iniciá sesión para leer el Muro del día.'}</b></p>
+      <p class="muted">${estado.user ? 'La primera opinión que reciba un apoyo aparece acá.' : 'Cada butaca deja una opinión por día; la más apoyada se destaca acá.'}</p>
+      <a class="btn btn-dark" href="#muro">Ir al Muro</a></div>`
+    rkAnillo(); return
+  }
+  const cambio = !!(rk._muroId && rk._muroId !== p.id); rk._muroId = p.id
+  const largo = p.body.length, tam = largo < 90 ? 'g' : largo < 180 ? 'm' : 'c'
+  const mia = p.seat_number === estado.butaca
+  c.innerHTML = cab + `<a class="rkm-cita${cambio ? ' cambio' : ''} t-${tam}" href="#muro" style="--c:${colorDe(p.card_color, p.seat_number)}" aria-label="Leer y responder en el Muro">
+      <span class="rkm-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Destacada · la más apoyada</span>
+      <p class="rkm-txt">«${esc(p.body)}»</p>
+      <span class="rkm-autor">${muAv(p.alias, p.card_color, p.seat_number)}<span><b>${mia ? 'Vos' : esc(p.alias || `Butaca #${p.seat_number}`)}</b><small>#${p.seat_number} · ${haceCuanto(p.created_at)}</small></span></span>
+    </a>
+    <div class="rkm-pie">
+      <span class="rkm-datos"><span class="rkm-dato"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><b>${fmtNum(p.likes_count)}</b> ${p.likes_count === 1 ? 'apoyo' : 'apoyos'}</span><span class="rkm-dato"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg><b>${fmtNum(p.resp || 0)}</b> ${p.resp === 1 ? 'respuesta' : 'respuestas'}</span></span>
+      <span class="rkm-acc"><a class="btn btn-ghost" href="#muro">Leer y responder</a><a class="mu-x" href="${esc(muEnlaceX(p))}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en X" title="Compartir en X">${HV_LOGO_X}Compartir en X</a></span>
+    </div>
+    <p class="rk-nota">Cambia cuando otra opinión suma más apoyos. El Muro se renueva todos los días a las 3:00.</p>`
+  rkAnillo()
+}
+// tocar cualquier control de la tarjeta termina la vuelta automática (decide la persona)
+document.addEventListener('click', e => { if (e.target.closest('[data-rk-lado], [data-rk-per], [data-rk-ayuda]')) { rk.fin = true; rkAnillo() } }, true)
+// cada minuto se revisa si cambió la destacada (y si apareció la primera del día)
+setInterval(() => {
+  if (vistaActual() !== 'inicio' || document.visibilityState !== 'visible') return
+  const antes = rk.muro?.id || null, likes = rk.muro?.likes_count
+  rkCargarMuro(true).then(() => { if (rk.lado === 'muro' && ((rk.muro?.id || null) !== antes || rk.muro?.likes_count !== likes)) rkPintarMuro(); rkAnillo() })
+}, 60e3)
+setTimeout(() => rkCargarMuro().then(rkAnillo), 4000)
+
+
+// ══ conectados-en-vivo: latido anónimo para contar cuánta gente tiene el Cabildo abierto (solo lo ve el admin) ══
+;(() => {
+  const nuevoId = () => {
+    try { if (crypto.randomUUID) return crypto.randomUUID() } catch (e) {}
+    const b = new Uint8Array(16); try { crypto.getRandomValues(b) } catch (e) { for (let i = 0; i < 16; i++) b[i] = Math.random() * 256 | 0 }
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128
+    const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('')
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+  }
+  let sid = null
+  try { sid = localStorage.getItem('ux2_cx'); if (!/^[0-9a-f-]{36}$/.test(sid || '')) { sid = nuevoId(); localStorage.setItem('ux2_cx', sid) } } catch (e) { sid = sid || nuevoId() }
+  let ult = 0
+  const latir = () => {
+    if (document.visibilityState !== 'visible' || Date.now() - ult < 20000) return
+    ult = Date.now()
+    try { sb.rpc('v2_conexion_latido', { p_sid: sid }).then(() => {}, () => {}) } catch (e) {}
+  }
+  setTimeout(latir, 2500 + Math.random() * 2500)
+  setInterval(latir, 60000)
+  document.addEventListener('visibilitychange', latir)
+})()
