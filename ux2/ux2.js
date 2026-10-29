@@ -7683,7 +7683,7 @@ document.addEventListener('click', e => {
 // ══ ranking-participacion: la tarjeta del hemiciclo se da vuelta y muestra las butacas más participativas.
 // Mide participación (votar, debatir, proponer, apoyar, días activos), nunca el sentido del voto. Cada butaca puede
 // salir del ranking en Mi Butaca › Privacidad. Los datos los calcula la base cada 10 minutos (v2_ranking).
-const RK_SEG = 20000
+const RK_SEG = 40000   // flip-muro: 40 s en cada cara
 const rk = { lado: 'hemi', fijo: false, acum: 0, ult: Date.now(), datos: {}, cuando: {}, periodo: 'semana', girando: false, sobre: false, toque: 0, visible: undefined, pidiendo: {} }
 const RK_PER = [['semana', 'Semana'], ['mes', 'Mes'], ['historico', 'Histórico']]
 const rkCard = () => $('.hemi-card')
@@ -7724,10 +7724,11 @@ function rkMov(m, hayFoto) {
   return '<span class="rk-mov igual" aria-label="sin cambios">—</span>'
 }
 
-function rkSeg(lado) {
+function rkSeg(lado) {   // flip-muro: tres caras
   return `<div class="rk-seg" role="group" aria-label="Qué mostrar en la tarjeta">
     <button type="button" data-rk-lado="hemi" aria-pressed="${lado === 'hemi'}" title="Hemiciclo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18a9 9 0 0 1 18 0"/><path d="M7 18a5 5 0 0 1 10 0"/></svg><span>Hemiciclo</span></button>
     <button type="button" data-rk-lado="rank" aria-pressed="${lado === 'rank'}" title="Ranking de participación"><svg class="rk-anillo" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15"/><circle class="rk-anillo-v" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2" transform="rotate(-90 18 18)"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/></svg><span>Ranking</span></button>
+    <button type="button" data-rk-lado="muro" aria-pressed="${lado === 'muro'}" title="Muro del día: la opinión destacada"><svg class="rk-anillo" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15"/><circle class="rk-anillo-v" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="94.2" transform="rotate(-90 18 18)"/></svg><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v5M15 10v5M9 15v4"/></svg><span>Muro</span></button>
   </div>`
 }
 
@@ -7785,15 +7786,17 @@ function rkPintar() {   // ranking-fluido
 let _rkRz = 0
 window.addEventListener('resize', () => { clearTimeout(_rkRz); _rkRz = setTimeout(() => { if (rk.lado === 'rank' && $('#rk-cara') && $('#rk-cara').clientHeight !== rk.altoTarjeta) rkPintar() }, 150) })
 
-function rkAplicar(lado) {
-  const card = rkCard(), cara = $('#rk-cara'); if (!card || !cara) return
+function rkAplicar(lado) {   // flip-muro
+  const card = rkCard(), cara = $('#rk-cara'), muro = $('#rk-muro'); if (!card || !cara) return
   rk.lado = lado
-  card.classList.toggle('rk-on', lado === 'rank'); cara.hidden = lado !== 'rank'
+  card.classList.toggle('rk-on', lado !== 'hemi'); cara.hidden = lado !== 'rank'; if (muro) muro.hidden = lado !== 'muro'
   $$('[data-rk-lado]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rkLado === lado)))
   if (lado === 'rank') { rkPintar(); rkCargar(rk.periodo).then(() => { if (rk.lado === 'rank') rkPintar() }) }
+  if (lado === 'muro') { rkPintarMuro(); rkCargarMuro().then(() => { if (rk.lado === 'muro') rkPintarMuro() }) }
 }
 function rkGirar(lado, porUsuario) {
-  if (porUsuario) rk.fijo = true
+  if (porUsuario) { rk.fijo = true; rk.fin = true }
+  else if (lado === 'hemi') rk.fin = true   // flip-muro: la vuelta automática termina al volver al hemiciclo
   rk.acum = 0
   if (lado === rk.lado || rk.girando) { rkAnillo(); return }
   const card = rkCard()
@@ -7810,10 +7813,13 @@ function rkGirar(lado, porUsuario) {
   }, 260)
   rkAnillo()
 }
-function rkAnillo() {
-  const v = rk.fijo ? 94.2 : (94.2 * (1 - Math.min(1, rk.acum / RK_SEG))).toFixed(1)
+function rkAnillo() {   // flip-muro: el anillo se ve en el botón de la próxima cara
+  const quieto = rk.fijo || rk.fin
+  const v = quieto ? 94.2 : (94.2 * (1 - Math.min(1, rk.acum / RK_SEG))).toFixed(1)
   $$('.rk-anillo-v').forEach(c => c.setAttribute('stroke-dashoffset', v))
-  $$('.rk-anillo').forEach(s => s.classList.toggle('apagado', rk.fijo))
+  $$('.rk-anillo').forEach(s => s.classList.toggle('apagado', quieto))
+  const prox = rkProximo()
+  $$('[data-rk-lado]').forEach(b => b.classList.toggle('rk-prox', b.dataset.rkLado === prox))
 }
 function rkTick() {
   const ahora = Date.now(), dt = ahora - rk.ult; rk.ult = ahora
@@ -7823,13 +7829,13 @@ function rkTick() {
     else if (!rk.fijoHasta) rk.fijoHasta = ahora + RK_PAUSA
     else if (ahora > rk.fijoHasta) { rk.fijo = false; rk.fijoHasta = 0; rk.acum = 0; rkAnillo() }
   }
-  if (rk.fijo || rk.girando || vistaActual() !== 'inicio' || document.visibilityState !== 'visible') return
+  if (rk.fin || rk.fijo || rk.girando || vistaActual() !== 'inicio' || document.visibilityState !== 'visible') return
   const card = rkCard(); if (!card || !card.getClientRects().length) return
   const ocupada = rk.sobre || card.contains(document.activeElement) || ahora - rk.toque < 15000 || ($('#seat-card') && !$('#seat-card').hidden)
   if (ocupada) return
   rk.acum += Math.min(dt, 1000)
-  if (rk.lado === 'hemi' && rk.acum > RK_SEG - 2500) rkCargar(rk.periodo)   // los datos llegan antes del giro
-  if (rk.acum >= RK_SEG) rkGirar(rk.lado === 'hemi' ? 'rank' : 'hemi', false)
+  if (rk.acum > RK_SEG - 2500) { const p = rkProximo(); if (p === 'rank') rkCargar(rk.periodo); if (p === 'muro') rkCargarMuro() }   // los datos llegan antes del giro
+  if (rk.acum >= RK_SEG) rkGirar(rkProximo(), false)
   else rkAnillo()
 }
 setInterval(rkTick, 250)
@@ -7943,3 +7949,72 @@ function rkCabecera() {
 // ranking-giro-retoma
 const RK_PAUSA = 40000
 document.addEventListener('click', e => { if (e.target.closest('[data-rk-lado], [data-rk-per], [data-rk-ayuda]')) rk.fijoHasta = 0 }, true)   // cada toque reinicia la pausa
+
+
+// ══ flip-muro: tercera cara de la tarjeta — la opinión más apoyada del Muro del día ══
+const RK_ORDEN = ['hemi', 'rank', 'muro']
+// la cara del Muro entra en el giro automático solo si hoy hay una destacada (y hay sesión para leerla)
+function rkProximo() {
+  const ok = l => l !== 'muro' || !!rk.muro
+  let i = RK_ORDEN.indexOf(rk.lado)
+  for (let k = 0; k < RK_ORDEN.length; k++) { i = (i + 1) % RK_ORDEN.length; if (ok(RK_ORDEN[i])) return RK_ORDEN[i] }
+  return 'hemi'
+}
+let _rkMuroCuando = 0, _rkMuroPidiendo = null
+async function rkCargarMuro(forzar) {
+  if (!estado.user) { rk.muro = null; return null }
+  if (mu.cargado && Array.isArray(mu.posts)) {   // si el Muro ya está cargado, se usa lo mismo que ve la sección
+    const d = muDestacado(); rk.muro = d ? { ...d, resp: (d.muro_replies || []).length } : null; return rk.muro
+  }
+  if (!forzar && Date.now() - _rkMuroCuando < 60e3) return rk.muro
+  if (_rkMuroPidiendo) return _rkMuroPidiendo
+  _rkMuroPidiendo = (async () => {
+    try {
+      const { data, error } = await sb.from('muro_posts').select('id, seat_number, alias, card_color, body, created_at, likes_count, muro_replies(count)')
+        .eq('day_key', diaMuro()).gt('likes_count', 0).order('likes_count', { ascending: false }).order('created_at', { ascending: true }).limit(1)
+      if (error) throw error
+      const d = data?.[0]
+      rk.muro = d ? { ...d, resp: d.muro_replies?.[0]?.count || 0 } : null
+      _rkMuroCuando = Date.now()
+    } catch (e) { console.warn('muro destacado:', e) }
+    _rkMuroPidiendo = null
+    return rk.muro
+  })()
+  return _rkMuroPidiendo
+}
+function rkPintarMuro() {
+  const c = $('#rk-muro'); if (!c) return
+  const p = rk.muro
+  const cab = `<div class="rk-tri" aria-hidden="true"><i></i><i></i><i></i></div>
+    <header class="rk-head"><div class="rk-tit"><h3>Muro del día</h3><span class="rk-sub"><small class="rkm-sub">La opinión más apoyada de hoy</small></span></div>
+      <div class="rk-ctrl">${rkSeg('muro')}</div></header>`
+  if (!p) {
+    c.innerHTML = cab + `<div class="rk-vacio"><p><b>${estado.user ? 'Todavía no hay una opinión destacada hoy.' : 'Iniciá sesión para leer el Muro del día.'}</b></p>
+      <p class="muted">${estado.user ? 'La primera opinión que reciba un apoyo aparece acá.' : 'Cada butaca deja una opinión por día; la más apoyada se destaca acá.'}</p>
+      <a class="btn btn-dark" href="#muro">Ir al Muro</a></div>`
+    rkAnillo(); return
+  }
+  const cambio = !!(rk._muroId && rk._muroId !== p.id); rk._muroId = p.id
+  const largo = p.body.length, tam = largo < 90 ? 'g' : largo < 180 ? 'm' : 'c'
+  const mia = p.seat_number === estado.butaca
+  c.innerHTML = cab + `<a class="rkm-cita${cambio ? ' cambio' : ''} t-${tam}" href="#muro" style="--c:${colorDe(p.card_color, p.seat_number)}" aria-label="Leer y responder en el Muro">
+      <span class="rkm-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg>Destacada · la más apoyada</span>
+      <p class="rkm-txt">«${esc(p.body)}»</p>
+      <span class="rkm-autor">${muAv(p.alias, p.card_color, p.seat_number)}<span><b>${mia ? 'Vos' : esc(p.alias || `Butaca #${p.seat_number}`)}</b><small>#${p.seat_number} · ${haceCuanto(p.created_at)}</small></span></span>
+    </a>
+    <div class="rkm-pie">
+      <span class="rkm-datos"><span class="rkm-dato"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><b>${fmtNum(p.likes_count)}</b> ${p.likes_count === 1 ? 'apoyo' : 'apoyos'}</span><span class="rkm-dato"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z"/></svg><b>${fmtNum(p.resp || 0)}</b> ${p.resp === 1 ? 'respuesta' : 'respuestas'}</span></span>
+      <span class="rkm-acc"><a class="btn btn-ghost" href="#muro">Leer y responder</a><a class="mu-x" href="${esc(muEnlaceX(p))}" target="_blank" rel="noopener noreferrer" aria-label="Compartir en X" title="Compartir en X">${HV_LOGO_X}Compartir en X</a></span>
+    </div>
+    <p class="rk-nota">Cambia cuando otra opinión suma más apoyos. El Muro se renueva todos los días a las 3:00.</p>`
+  rkAnillo()
+}
+// tocar cualquier control de la tarjeta termina la vuelta automática (decide la persona)
+document.addEventListener('click', e => { if (e.target.closest('[data-rk-lado], [data-rk-per], [data-rk-ayuda]')) { rk.fin = true; rkAnillo() } }, true)
+// cada minuto se revisa si cambió la destacada (y si apareció la primera del día)
+setInterval(() => {
+  if (vistaActual() !== 'inicio' || document.visibilityState !== 'visible') return
+  const antes = rk.muro?.id || null, likes = rk.muro?.likes_count
+  rkCargarMuro(true).then(() => { if (rk.lado === 'muro' && ((rk.muro?.id || null) !== antes || rk.muro?.likes_count !== likes)) rkPintarMuro(); rkAnillo() })
+}, 60e3)
+setTimeout(() => rkCargarMuro().then(rkAnillo), 4000)
