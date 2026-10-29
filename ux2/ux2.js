@@ -8018,3 +8018,26 @@ setInterval(() => {
   rkCargarMuro(true).then(() => { if (rk.lado === 'muro' && ((rk.muro?.id || null) !== antes || rk.muro?.likes_count !== likes)) rkPintarMuro(); rkAnillo() })
 }, 60e3)
 setTimeout(() => rkCargarMuro().then(rkAnillo), 4000)
+
+
+// ══ conectados-en-vivo: latido anónimo para contar cuánta gente tiene el Cabildo abierto (solo lo ve el admin) ══
+;(() => {
+  const nuevoId = () => {
+    try { if (crypto.randomUUID) return crypto.randomUUID() } catch (e) {}
+    const b = new Uint8Array(16); try { crypto.getRandomValues(b) } catch (e) { for (let i = 0; i < 16; i++) b[i] = Math.random() * 256 | 0 }
+    b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128
+    const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('')
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+  }
+  let sid = null
+  try { sid = localStorage.getItem('ux2_cx'); if (!/^[0-9a-f-]{36}$/.test(sid || '')) { sid = nuevoId(); localStorage.setItem('ux2_cx', sid) } } catch (e) { sid = sid || nuevoId() }
+  let ult = 0
+  const latir = () => {
+    if (document.visibilityState !== 'visible' || Date.now() - ult < 20000) return
+    ult = Date.now()
+    try { sb.rpc('v2_conexion_latido', { p_sid: sid }).then(() => {}, () => {}) } catch (e) {}
+  }
+  setTimeout(latir, 2500 + Math.random() * 2500)
+  setInterval(latir, 60000)
+  document.addEventListener('visibilitychange', latir)
+})()
