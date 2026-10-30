@@ -408,13 +408,33 @@
     iniciarAnimaciones()
   }
 
+  // blog-vistas: cuántos navegadores abren cada nota y cuántos llegaron con el link del email (?de=email)
+  let deEmail = false
+  try { deEmail = new URLSearchParams(location.search).get('de') === 'email' || sessionStorage.getItem('bl_de_email') === '1'
+    if (new URLSearchParams(location.search).get('de') === 'email') { sessionStorage.setItem('bl_de_email', '1'); history.replaceState(null, '', location.pathname + location.hash) } } catch (e) {}
+  const vistas = new Set()
+  function registrarVista(slug) {
+    if (vistas.has(slug)) return; vistas.add(slug)
+    let sid = null
+    try { sid = localStorage.getItem('ux2_cx'); if (!/^[0-9a-f-]{36}$/.test(sid || '')) { sid = crypto.randomUUID(); localStorage.setItem('ux2_cx', sid) } } catch (e) { try { sid = crypto.randomUUID() } catch (e2) { return } }
+    const origen = deEmail ? 'email' : 'web'
+    const E = window.__ENV || {}
+    try { sessionStorage.removeItem('bl_de_email') } catch (e) {}
+    deEmail = false
+    try {
+      fetch(`${E.SUPABASE_URL}/rest/v1/rpc/blog_vista`, { method: 'POST', keepalive: true,
+        headers: { apikey: E.SUPABASE_KEY, Authorization: `Bearer ${E.SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_slug: slug, p_sid: sid, p_origen: origen }) }).catch(() => {})
+    } catch (e) {}
+  }
+
   function entrar(arg) {
     const c = CUERPO(); if (!c) return
     if (!D) c.innerHTML = '<div class="card bl-vacio"><p class="muted">Cargando…</p></div>'
     cargar().then(() => {
       if (!/^blog(\/|$)/.test(location.hash.slice(1))) return   // ya se fue a otra sección
       const n = arg ? D.notas.find(x => x.slug === decodeURIComponent(arg)) : null
-      if (n) { pintarNota(c, n); document.title = n.titulo + ' · Blog del Cabildo' }
+      if (n) { pintarNota(c, n); document.title = n.titulo + ' · Blog del Cabildo'; registrarVista(n.slug) }
       else { if (arg) history.replaceState(null, '', '#blog'); pintarLista(c) }
     }).catch(() => { c.innerHTML = '<div class="card bl-vacio"><p class="muted">No pudimos cargar las notas. Probá de nuevo en un momento.</p></div>' })
   }

@@ -3749,3 +3749,9 @@ html.bd-peek-abierto { overflow: hidden; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rkm-tag { background: #3a2e10; color: #fde68a; } }
 :root[data-theme="dark"] .rkm-tag { background: #3a2e10; color: #fde68a; }
 @media (prefers-reduced-motion: reduce) { .rkm-cita.cambio { animation: none; } }
+
+/* ══ cerradas-urgentes ══ */
+.vc-urg { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 99px; background: #fde8ec; color: #be123c; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.vc-urg::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #e11d48; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .vc-urg { background: #3b1220; color: #fda4af; } }
+:root[data-theme="dark"] .vc-urg { background: #3b1220; color: #fda4af; }

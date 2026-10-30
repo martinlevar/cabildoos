@@ -5,6 +5,7 @@
 'use strict'
 
 const sb = window.supabase.createClient(window.__ENV.SUPABASE_URL, window.__ENV.SUPABASE_KEY)
+try { if (new URLSearchParams(location.search).get('de') === 'email') sessionStorage.setItem('bl_de_email', '1') } catch (e) {}   // blog-vistas
 // verificar-v2: con sesión iniciada, la verificación es la página nueva /verificar
 const urlVerificar = () => (typeof estado !== 'undefined' && estado.user) ? '/verificar' : APP_ACTUAL
 const APP_ACTUAL = '/cuenta'    // login, registro y verificación siguen en la v1, que vive en /cuenta
@@ -154,7 +155,7 @@ function entrarBlog(arg) {
   if (window.cabildoBlog) return window.cabildoBlog.entrar(arg)
   if (!_blogCarga) _blogCarga = new Promise((ok, mal) => {
     const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/ux2/blog.css?v=2'; document.head.appendChild(css)
-    const s = document.createElement('script'); s.src = '/ux2/blog.js?v=2'; s.onload = ok; s.onerror = mal; document.body.appendChild(s)
+    const s = document.createElement('script'); s.src = '/ux2/blog.js?v=3'; s.onload = ok; s.onerror = mal; document.body.appendChild(s)
   })
   _blogCarga.then(() => window.cabildoBlog?.entrar(arg), () => { _blogCarga = null; const c = $('#bl-cuerpo'); if (c) c.innerHTML = '<div class="card bl-vacio" style="padding:40px;text-align:center"><p class="muted">No pudimos abrir el Blog. Probá de nuevo en un momento.</p></div>' })
 }
@@ -995,7 +996,7 @@ async function cargarCerradas(reiniciar = false) {
   vc.cargando = true; pintarCerradas()
   try {
     let qy = sb.from('questions').select('id, text, category, ends_at, status', { count: 'exact' })
-      .in('status', ['activa', 'cerrada']).lt('ends_at', new Date().toISOString())
+      .in('status', ['activa', 'cerrada', 'urgente']).lt('ends_at', new Date().toISOString())   // cerradas-urgentes: también las urgentes ya cerradas
     if (vc.q) qy = qy.ilike('text', `%${vc.q.replace(/[%_]/g, '')}%`)
     const { data, error, count } = await qy.order('ends_at', { ascending: false }).range(vc.items.length, vc.items.length + 24)
     if (error) throw error
@@ -1040,7 +1041,7 @@ function pintarCerradas() {
     const visto = rvVista(q.id), voto = vMisVotos.has(q.id)
     html += `<a class="vc-fila card ${visto ? '' : 'nueva'}" href="#revelacion/${q.id}">
       <span class="vc-fecha"><b>${d.getDate()}</b><small>${d.toLocaleDateString('es-VE', { month: 'short' }).replace('.', '')}</small></span>
-      <span class="vc-txt"><span class="vc-meta"><span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>${voto ? '<span class="vc-voto">✓ Votaste</span>' : ''}</span><b>${esc(q.text)}</b></span>
+      <span class="vc-txt"><span class="vc-meta">${q.status === 'urgente' ? '<span class="vc-urg">Urgente</span>' : `<span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>`}${voto ? '<span class="vc-voto">✓ Votaste</span>' : ''}</span><b>${esc(q.text)}</b></span>
       <span class="vc-der">${visto ? chipResultado(q) : '<span class="vc-revelar">✦ Revelación</span>'}</span>
     </a>`
   })
