@@ -274,7 +274,40 @@
     })
   }
 
-  const GRAFICOS = { '[grafico:crecimiento]': gCrecimiento, '[grafico:actividad]': gActividad, '[grafico:participacion]': gActividad, '[grafico:temas]': gTemas, '[grafico:votaciones]': gVotaciones, '[nube]': gNube, '[totales]': gTotales, '[animacion:verificacion]': gAnimVerificacion }
+  // blog-padron-hemiciclo: padrón (personas identificadas) vs. hemiciclo (butacas sin nombre). Ilustración, sin datos reales.
+  function gPadronHemiciclo() {
+    const fila = (n, cs) => `<li class="pvh-fila"><span class="pvh-av" aria-hidden="true"></span><span class="pvh-cel n"><i style="width:${cs[0]}%"></i></span><span class="pvh-cel c">V-<i style="width:${cs[1]}%"></i></span><span class="pvh-cel b">✓</span><span class="pvh-cel u"><i style="width:${cs[2]}%"></i></span></li>`
+    const filas = [[78, 70, 64], [62, 76, 80], [88, 66, 58], [70, 80, 72], [58, 72, 84], [82, 64, 66]].map((c, i) => fila(i, c)).join('')
+    let puntos = '', k = 0, yo = [150, 100]
+    for (let f = 0; f < 6; f++) {
+      const r = 46 + f * 17, n = Math.floor(Math.PI * r / 11.5)
+      for (let j = 0; j < n; j++) {
+        const a = Math.PI * (j + .5) / n, x = (150 - r * Math.cos(a)).toFixed(1), y = (196 - r * Math.sin(a)).toFixed(1)
+        if (k === 61) yo = [x, y]
+        const h = Math.abs(Math.sin(k * 12.9898) * 43758.5453) % 1
+        puntos += `<circle cx="${x}" cy="${y}" r="4.2" class="${k === 61 ? 'yo' : h < .55 ? 'on' : ''}"/>`; k++
+      }
+    }
+    const hemi = `<svg class="pvh-hemi" viewBox="0 0 300 206" role="img" aria-label="Un hemiciclo de puntos: cada punto es una butaca, con un número y sin nombre">${puntos}
+      <g class="pvh-tag"><path d="M${yo[0]} 32V${+yo[1] - 6}"/><rect x="${yo[0] - 34}" y="6" width="68" height="26" rx="13"/><text x="${yo[0]}" y="23.5" text-anchor="middle">#1.204</text></g></svg>`
+    return `<figure class="grafico pvh" id="g-padron-vs-hemiciclo"><h3>Un padrón o un hemiciclo</h3><p class="g-sub">Ilustración: los datos están tapados y no corresponden a ninguna persona real.</p>
+      <div class="pvh-dos">
+        <section class="pvh-lado padron" aria-label="Constructores: un padrón">
+          <span class="pvh-k">Constructores</span><b class="pvh-t">Un padrón</b>
+          <div class="pvh-cab" aria-hidden="true"><span></span><span>Nombre</span><span>Cédula</span><span>Biom.</span><span>Lugar</span></div>
+          <ul class="pvh-lista" aria-hidden="true">${filas}</ul>
+          <p class="pvh-pie">Cada fila es <b>una persona identificada</b>: sirve para ubicar a los venezolanos y preparar su inscripción electoral.</p>
+        </section>
+        <section class="pvh-lado hemiciclo" aria-label="El Cabildo: un hemiciclo">
+          <span class="pvh-k">El Cabildo</span><b class="pvh-t">Un hemiciclo</b>
+          ${hemi}
+          <ul class="pvh-chips"><li><span class="no">✕</span> Nombre: no se guarda</li><li><span class="no">✕</span> Documento: solo una huella cifrada</li><li><span class="no">✕</span> Qué votaste: no se guarda</li></ul>
+          <p class="pvh-pie">Cada punto es <b>una butaca</b>: un número, sin nombre. Sirve para debatir, proponer y votar sin exponerse.</p>
+        </section>
+      </div></figure>`
+  }
+
+  const GRAFICOS = { '[grafico:padron-vs-hemiciclo]': gPadronHemiciclo, '[grafico:crecimiento]': gCrecimiento, '[grafico:actividad]': gActividad, '[grafico:participacion]': gActividad, '[grafico:temas]': gTemas, '[grafico:votaciones]': gVotaciones, '[nube]': gNube, '[totales]': gTotales, '[animacion:verificacion]': gAnimVerificacion }
   function dibujarTodo() { const c = CUERPO(); if (!c || c.closest('[hidden]')) return; c.querySelectorAll('.g-lienzo[data-g="linea"]').forEach(dibujarLinea); c.querySelectorAll('.g-lienzo[data-g="barras"]').forEach(dibujarBarras) }
   let _rz; addEventListener('resize', () => { clearTimeout(_rz); _rz = setTimeout(dibujarTodo, 150) })
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', dibujarTodo)
