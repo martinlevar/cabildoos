@@ -213,3 +213,28 @@
 .pvh .pvh-pie { margin: auto 0 0; padding-top: 6px; font-size: 13px; line-height: 1.5; color: var(--muted); }
 .pvh .pvh-pie b { color: var(--ink); }
 @media (max-width: 640px) { .pvh .pvh-dos { grid-template-columns: 1fr; } }
+
+/* ══ blog-comentarios ══ */
+.bl-com { margin-top: 16px; padding: 22px clamp(18px, 4vw, 30px); }
+.bl-com h2 { margin: 0 0 14px; font-size: 20px; }
+.bl-com h2 .muted { font-weight: 600; font-size: 16px; }
+.bl-com-form { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); margin-bottom: 18px; }
+.bl-com-yo { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-2); }
+.bl-com-yo .mu-av { width: 32px; height: 32px; border-radius: 10px; font-size: 13px; }
+.bl-com-form textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 84px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; line-height: 1.5; }
+.bl-com-form textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.bl-com-acc { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.bl-com-sin { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 14px; border: 1px dashed var(--line); border-radius: 14px; margin-bottom: 18px; }
+.bl-com-sin p { margin: 0; color: var(--ink-2); }
+.bl-com-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.bl-com-item { display: flex; gap: 12px; padding: 14px 0; border-top: 1px solid var(--line); }
+.bl-com-item:first-child { border-top: 0; }
+.bl-com-item .mu-av { width: 36px; height: 36px; border-radius: 11px; font-size: 14px; }
+.bl-com-c { flex: 1; min-width: 0; }
+.bl-com-cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.bl-com-cab b { font-size: 14px; color: var(--ink); }
+.bl-com-c p { margin: 4px 0 0; font-size: 15px; line-height: 1.55; color: var(--ink); white-space: pre-line; overflow-wrap: anywhere; }
+.bl-com-x { margin-left: auto; background: none; border: 0; padding: 2px 4px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.bl-com-x:hover { color: var(--ink); text-decoration: underline; }
+.bl-com-vacio { margin: 6px 0; }
+.bl-com-mas { margin-top: 10px; }
