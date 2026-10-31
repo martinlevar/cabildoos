@@ -154,8 +154,8 @@ let _blogCarga = null
 function entrarBlog(arg) {
   if (window.cabildoBlog) return window.cabildoBlog.entrar(arg)
   if (!_blogCarga) _blogCarga = new Promise((ok, mal) => {
-    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/ux2/blog.css?v=2'; document.head.appendChild(css)
-    const s = document.createElement('script'); s.src = '/ux2/blog.js?v=3'; s.onload = ok; s.onerror = mal; document.body.appendChild(s)
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/ux2/blog.css?v=3'; document.head.appendChild(css)
+    const s = document.createElement('script'); s.src = '/ux2/blog.js?v=4'; s.onload = ok; s.onerror = mal; document.body.appendChild(s)
   })
   _blogCarga.then(() => window.cabildoBlog?.entrar(arg), () => { _blogCarga = null; const c = $('#bl-cuerpo'); if (c) c.innerHTML = '<div class="card bl-vacio" style="padding:40px;text-align:center"><p class="muted">No pudimos abrir el Blog. Probá de nuevo en un momento.</p></div>' })
 }

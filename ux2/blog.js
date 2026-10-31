@@ -402,10 +402,12 @@
           <button class="btn btn-ghost" type="button" data-bl-copiar="${esc(n.slug)}">Copiar el link</button>
         </div>
       </article>
+      <section class="card bl-com" id="bl-com" aria-label="Opiniones sobre la nota"></section><!-- blog-comentarios -->
       ${otras.length ? `<section class="bl-otras"><h2>Otras notas</h2><div class="bl-grilla">${otras.map(o => tarjeta(o)).join('')}</div></section>` : ''}
     </div>`
     dibujarTodo()
     iniciarAnimaciones()
+    comCargar(n.slug)
   }
 
   // blog-vistas: cuántos navegadores abren cada nota y cuántos llegaron con el link del email (?de=email)
@@ -445,6 +447,78 @@
     const listo = () => { const t = b.textContent; b.textContent = '¡Link copiado!'; setTimeout(() => { b.textContent = t }, 1800) }
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(listo, () => prompt('Copiá el link:', url))
     else prompt('Copiá el link:', url)
+  })
+
+  // ══ blog-comentarios: opiniones de las butacas al pie de cada nota ══
+  const com = { slug: '', items: [], total: 0, ver: 20, enviando: false }
+  const G = () => ({ sb: window.sb || (typeof sb !== 'undefined' ? sb : null), est: typeof estado !== 'undefined' ? estado : {} })
+  async function comCargar(slug) {
+    const box = document.getElementById('bl-com'); if (!box) return
+    if (com.slug !== slug) { com.slug = slug; com.items = []; com.total = 0; com.ver = 20 }
+    comPintar(true)
+    const { sb: cli } = G(); if (!cli) return
+    const { data, error } = await cli.rpc('blog_comentarios_listar', { p_slug: slug })
+    if (com.slug !== slug) return
+    if (!error && data) { com.items = data.items || []; com.total = data.total || 0 }
+    comPintar(false)
+  }
+  const comHace = ts => typeof haceCuanto === 'function' ? haceCuanto(ts) : new Date(ts).toLocaleDateString('es-VE')
+  const comAv = c => typeof muAv === 'function' ? muAv(c.alias || `Butaca #${c.seat}`, c.color, c.seat) : ''
+  function comPintar(cargando) {
+    const box = document.getElementById('bl-com'); if (!box) return
+    const { est } = G()
+    const tieneButaca = !!(est.user && est.butaca)
+    const borrador = document.getElementById('bl-com-txt')?.value || ''
+    const form = tieneButaca
+      ? `<form class="bl-com-form" id="bl-com-form">
+          <div class="bl-com-yo">${comAv({ alias: est.ident?.show_alias ? est.ident?.alias : null, color: est.ident?.card_color, seat: est.butaca })}<span>Opinás como <b>${est.ident?.show_alias && est.ident?.alias ? esc(est.ident.alias) : 'Butaca #' + est.butaca}</b></span></div>
+          <textarea id="bl-com-txt" maxlength="600" rows="3" placeholder="¿Qué te pareció la nota? Dejá tu opinión…">${esc(borrador)}</textarea>
+          <div class="bl-com-acc"><small class="muted"><span id="bl-com-n">${borrador.length}</span>/600 · sin links · respetuoso</small><button class="btn btn-dark" type="submit" ${com.enviando ? 'disabled' : ''}>${com.enviando ? 'Publicando…' : 'Publicar opinión'}</button></div>
+        </form>`
+      : `<div class="bl-com-sin"><p>${est.user ? 'Para opinar necesitás tu butaca verificada.' : 'Iniciá sesión con tu butaca para dejar tu opinión.'}</p>${est.user ? '<a class="btn btn-ghost" href="#escalinatas">Cómo conseguir mi butaca</a>' : `<a class="btn btn-dark" href="${typeof APP_ACTUAL !== 'undefined' ? APP_ACTUAL : '/'}">Iniciar sesión</a>`}</div>`
+    const lista = cargando && !com.items.length ? '<p class="muted bl-com-vacio">Cargando opiniones…</p>'
+      : !com.items.length ? '<p class="muted bl-com-vacio">Todavía no hay opiniones. ¡Dejá la primera!</p>'
+      : `<ul class="bl-com-lista">${com.items.slice(0, com.ver).map(c => `<li class="bl-com-item">
+          ${comAv(c)}<div class="bl-com-c">
+            <div class="bl-com-cab"><b>${c.mio ? 'Vos' : esc(c.alias || `Butaca #${c.seat}`)}</b><small class="muted">#${c.seat} · ${esc(comHace(c.created_at))}</small>
+              ${c.mio ? `<button type="button" class="bl-com-x" data-com-borrar="${esc(c.id)}">Borrar</button>` : tieneButaca ? (c.reportado ? '<small class="muted">Reportada</small>' : `<button type="button" class="bl-com-x" data-com-reportar="${esc(c.id)}">Reportar</button>`) : ''}</div>
+            <p>${esc(c.body)}</p></div></li>`).join('')}</ul>
+        ${com.items.length > com.ver ? `<button type="button" class="btn btn-ghost bl-com-mas" data-com-mas>Ver más opiniones (${com.items.length - com.ver})</button>` : ''}`
+    box.innerHTML = `<h2>Opiniones${com.total ? ` <span class="muted">(${com.total.toLocaleString('es-VE')})</span>` : ''}</h2>${form}${lista}`
+  }
+  document.addEventListener('input', e => { if (e.target.id === 'bl-com-txt') { const n = document.getElementById('bl-com-n'); if (n) n.textContent = e.target.value.length } })
+  document.addEventListener('submit', async e => {
+    if (e.target.id !== 'bl-com-form') return
+    e.preventDefault()
+    const ta = document.getElementById('bl-com-txt'), txt = (ta?.value || '').trim()
+    if (txt.length < 2 || com.enviando) return
+    const { sb: cli } = G(); com.enviando = true; comPintar(false)
+    const { error } = await cli.rpc('blog_comentar', { p_slug: com.slug, p_body: txt })
+    com.enviando = false
+    if (error) { comPintar(false); if (typeof aviso === 'function') aviso(error.message.replace(/^.*?: /, ''), 'error'); return }
+    const t = document.getElementById('bl-com-txt'); if (t) t.value = ''
+    if (typeof aviso === 'function') aviso('Tu opinión se publicó')
+    comCargar(com.slug)
+  })
+  document.addEventListener('click', async e => {
+    const { sb: cli } = G()
+    const mas = e.target.closest('[data-com-mas]'); if (mas) { com.ver += 20; comPintar(false); return }
+    const b = e.target.closest('[data-com-borrar]')
+    if (b) {
+      const ok = typeof confirmar === 'function' ? await confirmar('¿Borrar tu opinión?', 'Deja de verse en la nota.', 'Borrar', true) : window.confirm('¿Borrar tu opinión?')
+      if (!ok) return
+      const { error } = await cli.rpc('blog_comentario_borrar', { p_id: b.dataset.comBorrar })
+      if (error && typeof aviso === 'function') aviso('No se pudo borrar', 'error')
+      return comCargar(com.slug)
+    }
+    const r = e.target.closest('[data-com-reportar]')
+    if (r) {
+      const ok = typeof confirmar === 'function' ? await confirmar('¿Reportar esta opinión?', 'Si varias butacas la reportan, se oculta. Usalo para insultos, spam o datos personales, no para opiniones distintas a la tuya.', 'Reportar') : window.confirm('¿Reportar esta opinión?')
+      if (!ok) return
+      const { error } = await cli.rpc('blog_comentario_reportar', { p_id: r.dataset.comReportar })
+      if (typeof aviso === 'function') aviso(error ? error.message.replace(/^.*?: /, '') : 'Gracias, la reportaste', error ? 'error' : 'ok')
+      return comCargar(com.slug)
+    }
   })
 
   window.cabildoBlog = { entrar }
