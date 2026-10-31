@@ -238,3 +238,18 @@
 .bl-com-x:hover { color: var(--ink); text-decoration: underline; }
 .bl-com-vacio { margin: 6px 0; }
 .bl-com-mas { margin-top: 10px; }
+
+/* ══ blog-comentarios-2 ══ */
+.bl-com-acc2 { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.bl-com-like, .bl-com-resp { display: inline-flex; align-items: center; gap: 5px; background: none; border: 0; padding: 4px 2px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.bl-com-like svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+.bl-com-like:hover, .bl-com-resp:hover { color: var(--ink); }
+.bl-com-like.si { color: #e11d48; } .bl-com-like.si svg { fill: #e11d48; stroke: #e11d48; }
+.bl-com-hilo { list-style: none; padding: 0 0 4px 48px; }
+.bl-com-hilo ul { list-style: none; margin: 0; padding: 0 0 0 12px; border-left: 2px solid var(--line); }
+.bl-com-item.resp { padding: 10px 0; border-top: 0; }
+.bl-com-item.resp .mu-av { width: 28px; height: 28px; border-radius: 9px; font-size: 12px; }
+.bl-com-rform { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.bl-com-rform textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 64px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 14.5px; line-height: 1.5; }
+.bl-com-rform .bl-com-acc { justify-content: flex-end; gap: 8px; }
+@media (max-width: 560px) { .bl-com-hilo { padding-left: 18px; } }
