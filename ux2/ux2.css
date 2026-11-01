@@ -3841,3 +3841,8 @@ html.bd-peek-abierto { overflow: hidden; }
   max-width: calc(100vw - 32px); padding: 10px 10px 10px 16px; border-radius: 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--line);
   box-shadow: 0 10px 30px rgba(10,12,30,.18); font-size: 14px; font-weight: 600; animation: ap-sube .3s; }
 .vn-aviso .btn { height: 36px; font-size: 13.5px; flex: none; }
+
+/* ══ consulta-concurso ══ */
+.cdm-gano { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: #fef3c7; color: #78350f; font-size: 13.5px; line-height: 1.45; margin-bottom: 12px; overflow-wrap: anywhere; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cdm-gano { background: #3a2a0a; color: #fde68a; } }
+:root[data-theme="dark"] .cdm-gano { background: #3a2a0a; color: #fde68a; }
