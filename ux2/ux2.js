@@ -355,6 +355,10 @@ const NOTIF = {
   bloque_aceptado:   ['✅', () => '#bloque'],
   bloque_rechazado:  ['🚪', () => null],
   bloque_quitado:    ['🚪', () => null],
+  debate_mencion:    ['💬', n => n.question_id ? `#debates/${n.question_id}` : '#debates'],   // debate-menciones
+  consulta_elegida:  ['🏆', () => '#inicio'],
+  consulta_ganadora: ['🏆', () => '#inicio'],
+  consulta_publicada: ['🗳️', () => '#inicio'],
 }
 // Si llega un aviso de que me aceptaron o me quitaron de un bloque, se actualiza el estado sin recargar
 const notifBloqueVistas = new Set()
@@ -3860,7 +3864,7 @@ function enlazarMiButaca() {
 // El servidor valida butaca propia, debate abierto, largo y turno; esto es solo la interfaz.
 const DB_COOLDOWN = 60        // segundos entre mensajes (igual que la versión actual)
 const DB_DIRECTO  = 3         // con ≤3 manos levantadas se habla directo
-const dbt = { lista: [], q: null, msgs: [], canal: null, mano: 'idle', cola: [], finCd: 0, tick: null }
+const dbt = { lista: [], q: null, msgs: [], canal: null, mano: 'idle', cola: [], finCd: 0, tick: null, resp: null }   // debate-menciones: resp = butaca a la que respondo
 
 const dbAbierto = q => q && (q.status === 'activa' || q.status === 'urgente') && (!q.ends_at || new Date(q.ends_at) > new Date())   // votacion-urgente-debate
 // abiertas primero; entre las abiertas, la urgente arriba; después por cierre (sin reloj = la más lejana)
@@ -3894,7 +3898,7 @@ async function abrirHilo(id) {
   const q = dbt.lista.find(x => x.id === id)
   if (!q) return
   salirDelCanal()
-  dbt.q = q; dbt.msgs = []
+  dbt.q = q; dbt.msgs = []; dbt.resp = null
   $('.db-wrap')?.classList.add('con-hilo')
   pintarListaDebates(); pintarHilo(true)
   try {
@@ -3938,15 +3942,19 @@ function salirDelCanal() {
 
 const avisarMano = p => { try { dbt.canal?.send({ type: 'broadcast', event: 'hand', payload: p }) } catch (e) {} }
 
+// debate-menciones: «#2147» en el texto (ya escapado; no toca entidades como &#39;)
+const dbMenciones = t => esc(t).replace(/(^|[^&\w])#(\d{1,6})\b/g, (_, a, n) => `${a}<button type="button" class="db-men${+n === estado.butaca ? ' yo' : ''}" data-men="${n}">#${n}</button>`)
+const dbMeMenciona = t => !!estado.butaca && new RegExp(`(^|[^&\\w])#${estado.butaca}\\b`).test(String(t || ''))
 function burbuja(m) {
   const mia = m.seat_number === estado.butaca
   const p = perfiles.get(m.seat_number)
   const alias = p?.show_alias && p.alias ? p.alias : null
-  return `<div class="db-msg ${mia ? 'mia' : ''}" data-id="${m.id}">
+  const resp = !mia && estado.butaca && dbt.q && dbAbierto(dbt.q) ? `<button type="button" class="db-resp" data-resp="${m.seat_number}">Responder</button>` : ''
+  return `<div class="db-msg ${mia ? 'mia' : ''}${!mia && dbMeMenciona(m.text) ? ' me-menciona' : ''}" data-id="${m.id}" data-seat="${m.seat_number}">
     <span class="db-av" style="background:${mia ? 'var(--orange)' : colorDe(p?.card_color, m.seat_number)}">${alias ? esc(alias.charAt(0).toUpperCase()) : '#'}</span>
     <div class="db-cuerpo">
-      <div class="db-cab"><b>${mia ? 'Vos' : esc(alias || 'Ciudadano anónimo')}</b><span>#${m.seat_number}</span><time>${haceCuanto(m.created_at)}</time></div>
-      <p>${esc(m.text)}</p>
+      <div class="db-cab"><b>${mia ? 'Vos' : esc(alias || 'Ciudadano anónimo')}</b><span>#${m.seat_number}</span><time>${haceCuanto(m.created_at)}</time>${resp}</div>
+      <p>${dbMenciones(m.text)}</p>
     </div></div>`
 }
 
@@ -3972,6 +3980,7 @@ function pintarHilo(cargando = false) {
   else if (!estado.butaca) pie = `<div class="db-cerrado">Para participar necesitás tu butaca: <a href="${urlVerificar()}">completá la verificación</a>.</div>`
   else pie = `
     <div class="db-cola" id="db-cola"></div>
+    <div class="db-resp-chip" id="db-resp-chip" hidden></div>
     <div class="db-compo">
       <button class="db-mano" id="db-mano" title="Levantar la mano">✋</button>
       <div class="db-campo">
@@ -4005,6 +4014,8 @@ function pintarMano() {
   const puede = dbt.mano === 'ready'
   txt.disabled = !puede; env.disabled = !puede
   txt.placeholder = puede ? 'Tu argumento (máx. 280 caracteres)…' : 'Levantá la mano para pedir la palabra…'
+  dbRespPintar()
+  if (puede && dbt.resp && !new RegExp(`#${dbt.resp}\\b`).test(txt.value)) { txt.value = `#${dbt.resp} ` + txt.value.replace(/^\s+/, ''); const c = $('#db-cont'); if (c) c.textContent = `${txt.value.length}/280` }
   est.className = ''
   if (dbt.mano === 'ready') { est.innerHTML = '<b>Tu turno</b>: enviá tu argumento'; est.className = 'ok' }
   else if (dbt.mano === 'queued') est.innerHTML = `En cola: posición <b>${pos + 1}</b>`
@@ -4054,7 +4065,7 @@ async function enviarMensaje() {
     aviso(/turno|cerr|butaca|caracteres/i.test(error.message || '') ? error.message : 'No se pudo enviar. Intentá de nuevo.', 'error')
     return
   }
-  el.value = ''; $('#db-cont').textContent = '0/280'
+  el.value = ''; $('#db-cont').textContent = '0/280'; dbt.resp = null   // debate-menciones
   if (data && !dbt.msgs.some(m => m.id === data.id)) { dbt.msgs.push(data); agregarMensaje(data) }
   dbt.cola = dbt.cola.filter(e => e.seat !== estado.butaca)
   avisarMano({ type: 'hand_down', seat: estado.butaca })
@@ -4069,12 +4080,44 @@ async function enviarMensaje() {
   pintarMano()
 }
 
+// ══ debate-menciones ══
+function dbRespPintar() {
+  const c = $('#db-resp-chip'); if (!c) return
+  c.hidden = !dbt.resp
+  c.innerHTML = dbt.resp ? `<span>↩ Respondiendo a <b>#${esc(String(dbt.resp))}</b></span><button type="button" data-resp-quitar aria-label="No responder">✕</button>` : ''
+}
+function dbResponder(seat) {
+  if (!seat || !dbAbierto(dbt.q) || !estado.butaca) return
+  dbt.resp = seat
+  const txt = $('#db-txt')
+  if (dbt.mano === 'ready' && txt) {
+    if (!new RegExp(`#${seat}\\b`).test(txt.value)) txt.value = `#${seat} ` + txt.value.replace(/^#\d{1,6}\s*/, '')
+    $('#db-cont').textContent = `${txt.value.length}/280`
+    txt.focus(); txt.setSelectionRange(txt.value.length, txt.value.length)
+    return dbRespPintar()
+  }
+  if (dbt.mano === 'idle') return alternarMano()   // levanta la mano; al tocarle el turno queda escrito «#N »
+  dbRespPintar()
+  if (dbt.mano === 'cooldown') aviso('Cuando termine la espera, levantá la mano para responder.')
+}
+function dbIrA(seat, desde) {
+  const todas = $$('#db-msgs .db-msg').filter(x => +x.dataset.seat === seat)
+  const antes = desde ? todas.filter(x => x.compareDocumentPosition(desde) & Node.DOCUMENT_POSITION_FOLLOWING) : todas
+  const el = (antes.length ? antes : todas).pop()
+  if (!el) return aviso(`La Butaca #${seat} todavía no habló en este debate.`)
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  el.classList.remove('db-flash'); void el.offsetWidth; el.classList.add('db-flash')
+}
+
 function enlazarDebates() {
   const v = $('#db-vista'); if (!v) return
   v.addEventListener('click', e => {
     const it = e.target.closest('[data-debate]')
     if (it) { location.hash = '#debates/' + it.dataset.debate; return }
     if (e.target.closest('#db-mano')) return alternarMano()
+    const rs = e.target.closest('[data-resp]'); if (rs) return dbResponder(+rs.dataset.resp)   // debate-menciones
+    const mn = e.target.closest('[data-men]'); if (mn) return dbIrA(+mn.dataset.men, mn.closest('.db-msg'))
+    if (e.target.closest('[data-resp-quitar]')) { dbt.resp = null; const t = $('#db-txt'); if (t) { t.value = t.value.replace(/^#\d{1,6}\s*/, ''); $('#db-cont').textContent = `${t.value.length}/280` } return dbRespPintar() }
     if (e.target.closest('#db-enviar')) return enviarMensaje()
     if (e.target.closest('#db-volver')) location.hash = '#debates'
   })
