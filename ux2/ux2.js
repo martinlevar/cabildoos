@@ -1407,12 +1407,12 @@ function ponerUrgente(u) {
   return true
 }
 
-// ══ consulta-del-dia: «Proponé la consulta de mañana» y candidatas ══
+// ══ consulta-del-dia: «Proponé la próxima consulta» y candidatas (consulta-concurso: gana la primera que llega a la meta) ══
 const cdm = { datos: null, tab: 'candidatas', cargando: false, enviando: false, borrador: { q: '', ops: ['', ''] }, desf: 0, t: 0 }
 function cdBarra() {
   const n = cdm.datos?.propuestas?.length
-  return `<div class="cd-prop"><button class="btn btn-dark" type="button" data-cd="proponer">💡 Proponé la consulta de mañana</button>
-    <button class="btn btn-ghost" type="button" data-cd="candidatas">Ver candidatas${n ? ` (${n})` : ''}</button><small>Se elige hoy a las 20:00 (hora de Venezuela)</small></div>`
+  return `<div class="cd-prop"><button class="btn btn-dark" type="button" data-cd="proponer">💡 Proponé la próxima consulta</button>
+    <button class="btn btn-ghost" type="button" data-cd="candidatas">Ver candidatas${n ? ` (${n})` : ''}</button></div>`   // consulta-copy: sin horario
 }
 async function cdCargar() {
   const { data, error } = await sb.rpc('cp_listar').then(r => r, e => ({ error: e }))
@@ -1472,20 +1472,20 @@ function cdPintar(cargando) {
   const b = cdm.borrador
   const form = !conButaca
     ? `<div class="cdm-sin"><p>${estado.user ? 'Para proponer necesitás tu butaca verificada.' : 'Iniciá sesión con tu butaca para proponer.'}</p>${estado.user ? `<a class="btn btn-dark" href="${urlVerificar()}">Verificarme</a>` : `<a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a>`}</div>`
-    : d?.mia_hoy
-      ? `<div class="cdm-sin"><p>Ya propusiste una consulta hoy. Mañana podés proponer otra. Mientras tanto, conseguile apoyos compartiéndola.</p><button class="btn btn-ghost" type="button" data-cdm-tab="candidatas">Ver candidatas</button></div>`
+    : d?.mia_activa
+      ? `<div class="cdm-sin"><p>Ya tenés una propuesta compitiendo. Cuando haya una ganadora, el concurso vuelve a empezar y podés proponer otra. Mientras tanto, conseguile apoyos compartiéndola.</p><button class="btn btn-ghost" type="button" data-cdm-tab="candidatas">Ver candidatas</button></div>`
       : `<form class="cdm-form" id="cdm-form"><label for="cdm-q">Tu pregunta</label>
           <textarea id="cdm-q" rows="2" maxlength="200" placeholder="Ej.: ¿Qué debería ocurrir primero…?">${esc(b.q)}</textarea>
           <label>Respuestas <span class="muted">(de 2 a 6, se elige una sola)</span></label>
           <div class="cdm-opc">${b.ops.map((o, i) => `<div><span class="l">${CD_LETRAS[i]}</span><input data-cdm-op="${i}" maxlength="80" value="${esc(o)}" placeholder="Respuesta ${CD_LETRAS[i]}" aria-label="Respuesta ${CD_LETRAS[i]}">
             ${b.ops.length > 2 ? `<button class="x" type="button" data-cdm-quitar="${i}" aria-label="Quitar la respuesta ${CD_LETRAS[i]}">×</button>` : '<span></span>'}</div>`).join('')}</div>
           ${b.ops.length < 6 ? '<button class="btn btn-ghost cdm-mas" type="button" data-cdm-agregar>+ Agregar respuesta</button>' : ''}
-          <p class="cdm-reglas">Una propuesta por día por butaca. Necesita <b>${fmtNum(meta)} apoyos</b> antes de las 20:00 (hora de Venezuela). La más apoyada que llegue a la meta pasa a revisión del equipo y, si se aprueba, es la Consulta del día siguiente. Las demás vencen. Sin links ni datos personales.</p>
+          <p class="cdm-reglas">Una propuesta compitiendo por butaca. La <b>primera</b> que llegue a <b>${fmtNum(meta)} apoyos</b> gana: pasa al equipo, que la publica como Consulta del día. En ese momento las demás quedan sin efecto, se avisa a quienes participaron y el concurso vuelve a empezar. Sin links ni datos personales.</p>
           <div class="cdm-pie"><button class="btn btn-ghost" type="button" data-cdm-tab="candidatas">Cancelar</button><button class="btn btn-dark" type="submit" ${cdm.enviando ? 'disabled' : ''}>${cdm.enviando ? 'Publicando…' : 'Publicar mi propuesta'}</button></div></form>`
   box.innerHTML = `<button type="button" class="modal-x" data-cdm-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    <span class="cdm-kick">Consulta del día</span><h2 id="cdm-t">La consulta de mañana</h2>
-    <p class="cdm-intro">Las butacas proponen y apoyan. La más apoyada que llegue a ${fmtNum(meta)} apoyos es la candidata para mañana.</p>
-    <div class="cdm-reloj">⏳ Se elige hoy a las 20:00 (hora de Venezuela) · faltan <b id="cdm-falta">${d ? cdFalta() : '…'}</b></div>
+    <span class="cdm-kick">Consulta del día</span><h2 id="cdm-t">La próxima consulta</h2>
+    <p class="cdm-intro">Las butacas proponen y apoyan. La primera que llegue a ${fmtNum(meta)} apoyos gana y el equipo la publica como Consulta del día. Ahí el concurso vuelve a empezar.</p>
+    ${d?.ultima ? `<div class="cdm-gano">🏆 <span>Última ganadora: <b>«${esc(d.ultima.pregunta)}»</b> · Butaca #${esc(String(d.ultima.seat))}${d.ultima.publicada ? '' : ' · el equipo la publica pronto'}</span></div>` : ''}
     <div class="seg cdm-tabs" role="tablist"><button type="button" class="seg-btn ${cdm.tab === 'candidatas' ? 'active' : ''}" data-cdm-tab="candidatas">Candidatas${props.length ? ` (${props.length})` : ''}</button><button type="button" class="seg-btn ${cdm.tab === 'proponer' ? 'active' : ''}" data-cdm-tab="proponer">Proponer la mía</button></div>
     ${cdm.tab === 'candidatas' ? lista : form}`
 }
@@ -1506,6 +1506,7 @@ async function cdClick(e) {
     const { data, error } = await sb.rpc('cp_apoyar', { p_id: c.id }).then(r => r, e => ({ error: e }))
     if (error) { aviso(String(error.message || 'No se pudo').replace(/^.*?: /, ''), 'error'); ap.disabled = false; return }
     c.yo = !!data?.apoyando; c.apoyos = Number(data?.apoyos ?? c.apoyos); cdPintar(false)
+    if (data?.gano) { aviso('🏆 ¡Llegó a la meta y ganó! El equipo la publica como Consulta del día. El concurso vuelve a empezar.'); await cdCargar(); cdPintar(false); cdm.t = 0; cdContar() }
     return
   }
   const rt = e.target.closest('[data-cdm-retirar]')
