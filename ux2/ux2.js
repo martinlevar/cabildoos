@@ -898,6 +898,13 @@ function tickVotacion() {
 // por separado. No se guarda qué votó cada butaca, ni en la base ni en el dispositivo. El sello SHA-256 es solo visual.
 let vPreguntas = [], vResultados = new Map(), vMisVotos = new Set(), vFiltro = 'abiertas'
 const OPC = { si: ['Sí', '✓'], no: ['No', '✕'], abs: ['Abstención', '—'] }
+// consulta-del-dia: respuestas propias (op1…opN), una sola, sin abstención
+const CD_LETRAS = 'ABCDEF', CD_COL = ['#38bdf8', '#a78bfa', '#f472b6', '#34d399', '#fbbf24', '#fb923c']
+const esConsulta = q => Array.isArray(q?.opciones) && q.opciones.length >= 2
+const opClaves = q => esConsulta(q) ? q.opciones.map((_, i) => 'op' + (i + 1)) : ['si', 'no', 'abs']
+const opNombre = (q, k) => esConsulta(q) && /^op[1-6]$/.test(k) ? String(q.opciones[+k.slice(2) - 1] ?? '') : (OPC[k]?.[0] || k)
+const opLetra = k => /^op[1-6]$/.test(k) ? CD_LETRAS[+k.slice(2) - 1] : ''
+const cdCorto = (s, n = 34) => { s = String(s || ''); return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s }
 const abierta = q => (q.status === 'activa' || q.status === 'urgente') && (!q.ends_at || new Date(q.ends_at) > new Date())   // votacion-urgente: sin reloj = ends_at vacío
 
 function cuentaRegresiva(ends) {
@@ -995,7 +1002,7 @@ async function cargarCerradas(reiniciar = false) {
   if (reiniciar) { vc.items = []; vc.fin = false }
   vc.cargando = true; pintarCerradas()
   try {
-    let qy = sb.from('questions').select('id, text, category, ends_at, status', { count: 'exact' })
+    let qy = sb.from('questions').select('id, text, category, ends_at, status, opciones', { count: 'exact' })
       .in('status', ['activa', 'cerrada', 'urgente']).lt('ends_at', new Date().toISOString())   // cerradas-urgentes: también las urgentes ya cerradas
     if (vc.q) qy = qy.ilike('text', `%${vc.q.replace(/[%_]/g, '')}%`)
     const { data, error, count } = await qy.order('ends_at', { ascending: false }).range(vc.items.length, vc.items.length + 24)
@@ -1004,12 +1011,22 @@ async function cargarCerradas(reiniciar = false) {
     if (!vc.q) vc.total = count ?? vc.total
     vc.fin = !data || data.length < 25
     if (!vResultados.size) { const { data: res } = await sb.rpc('get_all_question_results'); vResultados = new Map((res || []).map(r => [r.id, r])) }
+    const faltan = vc.items.filter(q => esConsulta(q) && !cdRes.has(q.id)).map(q => q.id)   // consulta-del-dia: resultado por respuesta
+    if (faltan.length) { const { data: cr } = await sb.rpc('consulta_resultados', { p_ids: faltan }); faltan.forEach(id => cdRes.set(id, cr?.[id] || null)) }
   } catch (e) { console.warn('cerradas:', e) }
   vc.cargando = false
   pintarCerradas()
 }
 
+const cdRes = new Map()
 function chipResultado(q) {
+  if (esConsulta(q)) {   // consulta-del-dia
+    const n = (cdRes.get(q.id) || []).map(Number), T = n.reduce((a, b) => a + b, 0), max = Math.max(0, ...n)
+    if (T < 3) return '<span class="vc-res nula">Sin resultado</span>'
+    if (n.filter(v => v === max).length > 1) return '<span class="vc-res empate">Empate</span>'
+    const i = n.indexOf(max)
+    return `<span class="vc-res cd" title="${esc(q.opciones[i])}">${CD_LETRAS[i]} · ${esc(cdCorto(q.opciones[i], 22))} ${Math.round(max / T * 100)}%</span>`
+  }
   const r = vResultados.get(q.id), t = Number(r?.total || 0)
   if (!t || t < 3) return '<span class="vc-res nula">Sin resultado</span>'
   const si = Number(r.cnt_si || 0), no = Number(r.cnt_no || 0)
@@ -1041,7 +1058,7 @@ function pintarCerradas() {
     const visto = rvVista(q.id), voto = vMisVotos.has(q.id)
     html += `<a class="vc-fila card ${visto ? '' : 'nueva'}" href="#revelacion/${q.id}">
       <span class="vc-fecha"><b>${d.getDate()}</b><small>${d.toLocaleDateString('es-VE', { month: 'short' }).replace('.', '')}</small></span>
-      <span class="vc-txt"><span class="vc-meta">${q.status === 'urgente' ? '<span class="vc-urg">Urgente</span>' : `<span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>`}${voto ? '<span class="vc-voto">✓ Votaste</span>' : ''}</span><b>${esc(q.text)}</b></span>
+      <span class="vc-txt"><span class="vc-meta">${esConsulta(q) ? '<span class="vc-urg cd">Consulta del día</span>' : q.status === 'urgente' ? '<span class="vc-urg">Urgente</span>' : `<span class="tag" style="--cat:${colorCat(q.category)}">${esc(q.category || 'General')}</span>`}${voto ? '<span class="vc-voto">✓ Votaste</span>' : ''}</span><b>${esc(q.text)}</b></span>
       <span class="vc-der">${visto ? chipResultado(q) : '<span class="vc-revelar">✦ Revelación</span>'}</span>
     </a>`
   })
@@ -1059,7 +1076,7 @@ function tickCuentas() {
 // ── Modal de voto ──
 let mvPregunta = null, mvEleccion = null, mvConsultado = false
 function abrirVoto(q, pre) {
-  mvPregunta = q; mvEleccion = ['si', 'no', 'abs'].includes(pre) ? pre : null; mvConsultado = false   // votacion-urgente: llega con la opción tocada en Inicio
+  mvPregunta = q; mvEleccion = opClaves(q).includes(pre) ? pre : null; mvConsultado = false   // votacion-urgente: llega con la opción tocada en Inicio
   $('#mv-cat').textContent = q.category || 'General'
   $('#mv-timer').textContent = cuentaRegresiva(q.ends_at)
   $('#mv-pregunta').textContent = q.text
@@ -1093,19 +1110,20 @@ async function pasoVoto() {
     $('#mv-listo').onclick = cerrarVoto; return
   }
   c.innerHTML = `
-    <div class="opciones">${['si', 'no', 'abs'].map(k => `
+    <div class="opciones${esConsulta(q) ? ' cd' : ''}">${opClaves(q).map(k => esConsulta(q) ? `
+      <button class="opcion cdo${mvEleccion === k ? ' elegida' : ''}" data-op="${k}"><span class="o-ico">${opLetra(k)}</span>${esc(opNombre(q, k))}</button>` : `
       <button class="opcion ${k}${mvEleccion === k ? ' elegida' : ''}" data-op="${k}"><span class="o-ico">${OPC[k][1]}</span>${OPC[k][0]}</button>`).join('')}
     </div>
     <div class="mv-nota"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
       <span>Tu voto es secreto y definitivo: no se guarda qué elegiste y no se puede cambiar.</span></div>
     <div class="mv-acciones">
       <button class="btn btn-ghost" id="mv-cancelar">Cancelar</button>
-      <button class="btn btn-dark" id="mv-confirmar" ${mvEleccion ? '' : 'aria-disabled="true"'}>${mvEleccion ? 'Confirmar: ' + OPC[mvEleccion][0] : 'Elegí una opción'}</button>
+      <button class="btn btn-dark" id="mv-confirmar" ${mvEleccion ? '' : 'aria-disabled="true"'}>${mvEleccion ? 'Confirmar: ' + esc(cdCorto(opNombre(q, mvEleccion))) : esConsulta(q) ? 'Elegí una respuesta' : 'Elegí una opción'}</button>
     </div>`
   $$('[data-op]', c).forEach(b => b.onclick = () => {   // la elección se marca al instante, sin volver a pintar todo
     mvEleccion = b.dataset.op
     $$('[data-op]', c).forEach(x => x.classList.toggle('elegida', x === b))
-    const conf = $('#mv-confirmar'); conf.removeAttribute('aria-disabled'); conf.textContent = 'Confirmar: ' + OPC[mvEleccion][0]
+    const conf = $('#mv-confirmar'); conf.removeAttribute('aria-disabled'); conf.textContent = 'Confirmar: ' + cdCorto(opNombre(q, mvEleccion))
   })
   $('#mv-cancelar').onclick = cerrarVoto
   $('#mv-confirmar').onclick = confirmarVoto
@@ -1184,6 +1202,7 @@ function ceremoniaVoto({ q, voto, hash, nonce, envio }) {
     const rapido = matchMedia('(prefers-reduced-motion: reduce)').matches
     const T = ms => vsEspera(rapido ? Math.min(ms, 120) : ms)
     const nombre = { si: 'SÍ', no: 'NO', abs: 'ABSTENCIÓN' }, badge = { si: '✓ Votaste SÍ', no: '✓ Votaste NO', abs: '✓ Te abstuviste' }
+    if (esConsulta(q) && /^op[1-6]$/.test(voto)) { nombre[voto] = `${opLetra(voto)} · ${esc(cdCorto(opNombre(q, voto), 28))}`; badge[voto] = `✓ Elegiste la ${opLetra(voto)}` }   // consulta-del-dia
     const el = document.createElement('div')
     el.className = 'vv'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Sellando tu voto')
     el.innerHTML = `
@@ -1326,7 +1345,10 @@ const hvDebate = q => `<a class="hv-deb" href="#debates/${esc(q.id)}"><svg viewB
 function hvCompartirX(q) {
   const corta = q.text.length > 180 ? q.text.slice(0, 177).trimEnd() + '…' : q.text
   const url = q.abierta ? `${location.origin}/ux2/#inicio` : `${location.origin}/ux2/#revelacion/${q.id}`
-  const text = q.abierta ? `🗳️ Votación urgente en el Cabildo de Venezuela:\n\n«${corta}»\n\n¿SÍ, NO o ABSTENCIÓN?`
+  const text = esConsulta(q)   // consulta-del-dia
+    ? (q.abierta ? `🗳️ Consulta del día en el Cabildo de Venezuela:\n\n«${corta}»\n\n${q.opciones.map((o, i) => `${CD_LETRAS[i]}) ${cdCorto(o, 60)}`).join('\n')}`
+      : `Resultado de la Consulta del día en el Cabildo de Venezuela:\n\n«${corta}»`)
+    : q.abierta ? `🗳️ Votación urgente en el Cabildo de Venezuela:\n\n«${corta}»\n\n¿SÍ, NO o ABSTENCIÓN?`
     : `Resultado de la votación urgente en el Cabildo de Venezuela:\n\n«${corta}»`
   const firma = q.por ? `\n\n${q.por_tipo === 'patrocinada' ? 'Patrocinada' : 'Propuesta'} por ${q.por}` : ''   // votacion-urgente-por
   const qs = new URLSearchParams({ text: text + firma, url, via: 'cabildoven' })
@@ -1336,7 +1358,8 @@ function ponerUrgente(u) {
   const flip = $('#hero-flip'), vu = $('#hero-vu')
   portada.urgente = u?.id ? { id: u.id, text: String(u.text || ''), category: u.category || 'Votación urgente', description: u.description || '',
     ends_at: u.ends_at || null, status: u.status || 'urgente', abierta: !!u.abierta, votos: Number(u.votos) || 0,
-    por: String(u.por || '').trim(), por_tipo: u.por_tipo === 'patrocinada' ? 'patrocinada' : 'propuesta' } : null   // votacion-urgente-por
+    por: String(u.por || '').trim(), por_tipo: u.por_tipo === 'patrocinada' ? 'patrocinada' : 'propuesta',
+    opciones: Array.isArray(u.opciones) && u.opciones.length >= 2 ? u.opciones.map(String) : null } : null   // votacion-urgente-por · consulta-del-dia
   clearTimeout(portada.tFin)
   if (!flip || !vu) return !!portada.urgente
   if (!portada.urgente) { vu.hidden = true; vu.innerHTML = ''; return false }
@@ -1348,9 +1371,11 @@ function ponerUrgente(u) {
   const n = q.votos.toLocaleString('es-VE')
   const pie = `<span><b>${n}</b> ${q.votos === 1 ? 'butaca votó' : 'butacas ya votaron'}</span>`
   let cuerpo
+  const cd = esConsulta(q)   // consulta-del-dia
   if (!q.abierta) {
-    cuerpo = `<p class="hv-pie">${pie.replace('ya votaron', 'votaron')}<span>${HV_CANDADO}Cada voto fue secreto</span></p>
-      <div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>Ver la revelación</a>${hvDebate(q)}${hvCompartirX(q)}</div>`   // votacion-urgente-x
+    cuerpo = (cd && rvVista(q.id) ? `<div class="cd-res" id="hv-cdres" aria-live="polite"></div>` : '')
+      + `<p class="hv-pie">${pie.replace('ya votaron', 'votaron')}<span>${HV_CANDADO}Cada voto fue secreto</span></p>
+      <div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>${cd && rvVista(q.id) ? 'Ver la revelación otra vez' : 'Ver la revelación'}</a>${hvDebate(q)}${hvCompartirX(q)}</div>`   // votacion-urgente-x
   } else {
     const reloj = q.ends_at ? `<span class="hv-reloj">Cierra en <b data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b></span>`
       : '<span>Sin cuenta regresiva: el equipo avisa cuándo cierra</span>'
@@ -1358,18 +1383,21 @@ function ponerUrgente(u) {
       ? `<div class="hv-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Ya votaste. Tu voto es secreto: nadie puede ver qué elegiste.</div>`
       : estado.user && !estado.butaca
         ? `<div class="hv-nota">Para votar necesitás una butaca verificada. <a href="${urlVerificar()}">Verificarme</a></div>`
+        : cd ? `<div class="cd-ops${q.opciones.length === 3 || q.opciones.length >= 5 ? ' tres' : ''}" role="group" aria-label="Tu respuesta">${q.opciones.map((o, i) =>
+            `<button type="button" class="cd-op" data-hv="op${i + 1}">${esc(o)}</button>`).join('')}</div>`
         : `<div class="hv-ops" role="group" aria-label="Tu voto">${['si', 'no', 'abs'].map(k =>
             `<button type="button" class="hv-op ${k}" data-hv="${k}"><i aria-hidden="true"></i>${OPC[k][0]}</button>`).join('')}</div>`
     cuerpo = `${accion}<p class="hv-pie">${pie}<span>${HV_CANDADO}El voto es secreto</span>${reloj}${hvDebate(q)}${hvCompartirX(q)}</p>`   // votacion-urgente-x
     if (q.ends_at) portada.tFin = setTimeout(cargarPortada, Math.max(1500, new Date(q.ends_at) - Date.now() + 1500))   // al llegar a cero: revelación
   }
   const porHtml = q.por ? `<p class="hv-por">${q.por_tipo === 'patrocinada' ? '<span class="hv-pat">Patrocinada</span> por' : 'Propuesta por'} <b>${esc(q.por)}</b></p>` : ''   // votacion-urgente-por
-  vu.innerHTML = porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '') + cuerpo
+  vu.innerHTML = porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '') + cuerpo + (cd ? cdBarra() : '')
   $$('[data-hv]', vu).forEach(b => b.onclick = () => abrirVoto({ ...q }, b.dataset.hv))
   vu.hidden = false
   $('#hero-anuncio').textContent = q.text
-  $('#hero-anuncio-tag').innerHTML = `<i></i>${q.abierta ? 'Votación urgente' : 'Votación cerrada'}`
-  flip.dataset.tipo = q.abierta ? 'urgente' : 'cerrada'
+  $('#hero-anuncio-tag').innerHTML = `<i></i>${cd ? (q.abierta ? 'Consulta del día' : 'Consulta del día · cerrada') : q.abierta ? 'Votación urgente' : 'Votación cerrada'}`
+  flip.dataset.tipo = cd ? 'consulta' : q.abierta ? 'urgente' : 'cerrada'
+  if (cd) { cdContar(); if (!q.abierta && rvVista(q.id)) cdResultadoHero(q) }
   flip.classList.add('tiene-anuncio')
   const clave = `vu:${q.id}:${q.abierta}`
   if (portada.visto !== clave) {
@@ -1379,7 +1407,134 @@ function ponerUrgente(u) {
   return true
 }
 
-function vigilarPortada() {
+// ══ consulta-del-dia: «Proponé la consulta de mañana» y candidatas ══
+const cdm = { datos: null, tab: 'candidatas', cargando: false, enviando: false, borrador: { q: '', ops: ['', ''] }, desf: 0, t: 0 }
+function cdBarra() {
+  const n = cdm.datos?.propuestas?.length
+  return `<div class="cd-prop"><button class="btn btn-dark" type="button" data-cd="proponer">💡 Proponé la consulta de mañana</button>
+    <button class="btn btn-ghost" type="button" data-cd="candidatas">Ver candidatas${n ? ` (${n})` : ''}</button><small>Se elige hoy a las 20:00 (hora de Venezuela)</small></div>`
+}
+async function cdCargar() {
+  const { data, error } = await sb.rpc('cp_listar').then(r => r, e => ({ error: e }))
+  if (error || !data) return null
+  cdm.datos = data; cdm.desf = new Date(data.ahora).getTime() - Date.now()
+  return data
+}
+async function cdContar() {   // número de candidatas en el botón (sin volver a pintar la portada)
+  if (cdm.t && Date.now() - cdm.t < 60_000) return; cdm.t = Date.now()
+  const d = await cdCargar(); const b = $('#hero-vu [data-cd="candidatas"]')
+  if (d && b) b.textContent = `Ver candidatas${d.propuestas.length ? ` (${d.propuestas.length})` : ''}`
+}
+async function cdResultadoHero(q) {
+  const { data } = await sb.rpc('get_question_votes', { p_question_id: q.id }).then(r => r, () => ({ data: null }))
+  const box = $('#hv-cdres'); if (!box || portada.urgente?.id !== q.id) return
+  const n = q.opciones.map((_, i) => Number((data || []).find(x => x.vote_plain === 'op' + (i + 1))?.total) || 0)
+  const T = n.reduce((a, b) => a + b, 0), max = Math.max(...n)
+  if (T < 3) { box.innerHTML = '<p class="muted" style="margin:0">Hubo menos de 3 votos: el resultado no se publica para proteger el secreto del voto.</p>'; return }
+  const gana = n.filter(v => v === max).length === 1 ? n.indexOf(max) : -1
+  box.innerHTML = q.opciones.map((o, i) => ({ o, i, v: n[i] })).sort((a, b) => b.v - a.v).map(({ o, i, v }) => `<div class="cd-res-f${i === gana ? ' gana' : ''}">
+      <span class="l">${CD_LETRAS[i]}</span><b>${esc(o)}</b><em>${Math.round(v / T * 100)}%</em><span class="barra"><i style="width:${max ? v / max * 100 : 0}%"></i></span><small>${fmtNum(v)} ${v === 1 ? 'voto' : 'votos'}</small></div>`).join('')
+}
+function cdFalta() {
+  const ms = new Date(cdm.datos?.cierra_at || 0).getTime() - (Date.now() + cdm.desf)
+  if (ms <= 0) return 'eligiendo…'
+  const h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4)
+  return h ? `${h} h ${m} min` : `${m} min`
+}
+async function cdAbrir(tab) {
+  cdm.tab = tab
+  let m = $('#cdm')
+  if (!m) {
+    m = document.createElement('div'); m.className = 'modal'; m.id = 'cdm'
+    m.innerHTML = '<div class="modal-box cdm" role="dialog" aria-modal="true" aria-labelledby="cdm-t"></div>'
+    document.body.appendChild(m)
+    m.addEventListener('click', cdClick); m.addEventListener('input', cdInput); m.addEventListener('submit', cdEnviar)
+  }
+  m.hidden = false; document.body.style.overflow = 'hidden'
+  cdPintar(!cdm.datos)
+  await cdCargar(); cdPintar(false)
+  clearInterval(cdm.reloj); cdm.reloj = setInterval(() => { const r = $('#cdm-falta'); if (!r || $('#cdm').hidden) return clearInterval(cdm.reloj); r.textContent = cdFalta() }, 30_000)
+}
+function cdCerrar() { const m = $('#cdm'); if (m) m.hidden = true; document.body.style.overflow = ''; clearInterval(cdm.reloj) }
+function cdPintar(cargando) {
+  const box = $('#cdm .cdm'); if (!box) return
+  const d = cdm.datos, meta = d?.meta || 150, props = d?.propuestas || []
+  const conButaca = !!(estado.user && estado.butaca)
+  const lista = cargando ? '<p class="muted">Cargando…</p>' : !props.length
+    ? `<div class="cdm-vacio"><p>Todavía no hay propuestas para mañana.</p><button class="btn btn-dark" type="button" data-cdm-tab="proponer">Proponer la primera</button></div>`
+    : `<div class="cdm-lista">${props.map((c, i) => `<div class="cdm-c${i === 0 && c.apoyos > 0 ? ' lider' : ''}">
+        <div class="cdm-c-cab"><span class="pos">#${i + 1}</span><span>Propuesta por ${c.mia ? '<b>vos</b>' : `la Butaca #${esc(String(c.seat))}`}</span>${i === 0 && c.apoyos > 0 ? '<span class="lid">Va primera</span>' : ''}</div>
+        <b class="q">${esc(c.pregunta)}</b><div class="cdm-chips">${(c.opciones || []).map((o, k) => `<span><i>${CD_LETRAS[k]}</i>${esc(o)}</span>`).join('')}</div>
+        <div class="cdm-meta"><span class="barra"><i style="width:${Math.min(100, c.apoyos / meta * 100)}%"></i></span>
+          ${c.mia ? `<button class="btn btn-ghost" type="button" data-cdm-retirar="${esc(c.id)}">Retirar</button>`
+            : `<button class="btn ${c.yo ? 'si' : 'btn-ghost'}" type="button" data-cdm-apoyar="${esc(c.id)}" aria-pressed="${!!c.yo}">${c.yo ? '✓ Apoyando' : 'Apoyar'}</button>`}
+          <small><b>${fmtNum(c.apoyos)}</b> de ${fmtNum(meta)} apoyos${c.apoyos >= meta ? ' · llegó a la meta' : ` · le faltan ${fmtNum(meta - c.apoyos)}`}</small></div></div>`).join('')}</div>`
+  const b = cdm.borrador
+  const form = !conButaca
+    ? `<div class="cdm-sin"><p>${estado.user ? 'Para proponer necesitás tu butaca verificada.' : 'Iniciá sesión con tu butaca para proponer.'}</p>${estado.user ? `<a class="btn btn-dark" href="${urlVerificar()}">Verificarme</a>` : `<a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a>`}</div>`
+    : d?.mia_hoy
+      ? `<div class="cdm-sin"><p>Ya propusiste una consulta hoy. Mañana podés proponer otra. Mientras tanto, conseguile apoyos compartiéndola.</p><button class="btn btn-ghost" type="button" data-cdm-tab="candidatas">Ver candidatas</button></div>`
+      : `<form class="cdm-form" id="cdm-form"><label for="cdm-q">Tu pregunta</label>
+          <textarea id="cdm-q" rows="2" maxlength="200" placeholder="Ej.: ¿Qué debería ocurrir primero…?">${esc(b.q)}</textarea>
+          <label>Respuestas <span class="muted">(de 2 a 6, se elige una sola)</span></label>
+          <div class="cdm-opc">${b.ops.map((o, i) => `<div><span class="l">${CD_LETRAS[i]}</span><input data-cdm-op="${i}" maxlength="80" value="${esc(o)}" placeholder="Respuesta ${CD_LETRAS[i]}" aria-label="Respuesta ${CD_LETRAS[i]}">
+            ${b.ops.length > 2 ? `<button class="x" type="button" data-cdm-quitar="${i}" aria-label="Quitar la respuesta ${CD_LETRAS[i]}">×</button>` : '<span></span>'}</div>`).join('')}</div>
+          ${b.ops.length < 6 ? '<button class="btn btn-ghost cdm-mas" type="button" data-cdm-agregar>+ Agregar respuesta</button>' : ''}
+          <p class="cdm-reglas">Una propuesta por día por butaca. Necesita <b>${fmtNum(meta)} apoyos</b> antes de las 20:00 (hora de Venezuela). La más apoyada que llegue a la meta pasa a revisión del equipo y, si se aprueba, es la Consulta del día siguiente. Las demás vencen. Sin links ni datos personales.</p>
+          <div class="cdm-pie"><button class="btn btn-ghost" type="button" data-cdm-tab="candidatas">Cancelar</button><button class="btn btn-dark" type="submit" ${cdm.enviando ? 'disabled' : ''}>${cdm.enviando ? 'Publicando…' : 'Publicar mi propuesta'}</button></div></form>`
+  box.innerHTML = `<button type="button" class="modal-x" data-cdm-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    <span class="cdm-kick">Consulta del día</span><h2 id="cdm-t">La consulta de mañana</h2>
+    <p class="cdm-intro">Las butacas proponen y apoyan. La más apoyada que llegue a ${fmtNum(meta)} apoyos es la candidata para mañana.</p>
+    <div class="cdm-reloj">⏳ Se elige hoy a las 20:00 (hora de Venezuela) · faltan <b id="cdm-falta">${d ? cdFalta() : '…'}</b></div>
+    <div class="seg cdm-tabs" role="tablist"><button type="button" class="seg-btn ${cdm.tab === 'candidatas' ? 'active' : ''}" data-cdm-tab="candidatas">Candidatas${props.length ? ` (${props.length})` : ''}</button><button type="button" class="seg-btn ${cdm.tab === 'proponer' ? 'active' : ''}" data-cdm-tab="proponer">Proponer la mía</button></div>
+    ${cdm.tab === 'candidatas' ? lista : form}`
+}
+function cdInput(e) {
+  if (e.target.id === 'cdm-q') cdm.borrador.q = e.target.value
+  const i = e.target.dataset?.cdmOp; if (i != null) cdm.borrador.ops[+i] = e.target.value
+}
+async function cdClick(e) {
+  if (e.target.id === 'cdm' || e.target.closest('[data-cdm-cerrar]')) return cdCerrar()
+  const t = e.target.closest('[data-cdm-tab]'); if (t) { cdm.tab = t.dataset.cdmTab; cdPintar(false); return }
+  if (e.target.closest('[data-cdm-agregar]')) { if (cdm.borrador.ops.length < 6) cdm.borrador.ops.push(''); cdPintar(false); setTimeout(() => $$('#cdm [data-cdm-op]').pop()?.focus(), 20); return }
+  const q = e.target.closest('[data-cdm-quitar]'); if (q) { cdm.borrador.ops.splice(+q.dataset.cdmQuitar, 1); cdPintar(false); return }
+  const ap = e.target.closest('[data-cdm-apoyar]')
+  if (ap) {
+    if (!(estado.user && estado.butaca)) return aviso(estado.user ? 'Para apoyar necesitás tu butaca verificada.' : 'Iniciá sesión con tu butaca para apoyar.')
+    const c = cdm.datos?.propuestas?.find(x => x.id === ap.dataset.cdmApoyar); if (!c || ap.disabled) return
+    ap.disabled = true
+    const { data, error } = await sb.rpc('cp_apoyar', { p_id: c.id }).then(r => r, e => ({ error: e }))
+    if (error) { aviso(String(error.message || 'No se pudo').replace(/^.*?: /, ''), 'error'); ap.disabled = false; return }
+    c.yo = !!data?.apoyando; c.apoyos = Number(data?.apoyos ?? c.apoyos); cdPintar(false)
+    return
+  }
+  const rt = e.target.closest('[data-cdm-retirar]')
+  if (rt) {
+    if (!await confirmar('¿Retirar tu propuesta?', 'Deja de competir hoy y pierde los apoyos que tenga. Después podés proponer otra.', 'Retirar', true)) return
+    const { error } = await sb.rpc('cp_retirar', { p_id: rt.dataset.cdmRetirar }).then(r => r, e => ({ error: e }))
+    if (error) aviso(String(error.message || 'No se pudo').replace(/^.*?: /, ''), 'error')
+    await cdCargar(); cdPintar(false); cdm.t = 0; cdContar()
+  }
+}
+async function cdEnviar(e) {
+  if (e.target.id !== 'cdm-form') return
+  e.preventDefault()
+  if (cdm.enviando) return
+  const b = cdm.borrador, preg = b.q.trim(), ops = b.ops.map(o => o.trim()).filter(Boolean)
+  if (preg.length < 10) return aviso('La pregunta tiene que tener al menos 10 caracteres.', 'error')
+  if (ops.length < 2) return aviso('Escribí al menos 2 respuestas.', 'error')
+  cdm.enviando = true; cdPintar(false)
+  const { error } = await sb.rpc('cp_proponer', { p_pregunta: preg, p_opciones: ops }).then(r => r, e => ({ error: e }))
+  cdm.enviando = false
+  if (error) { cdPintar(false); return aviso(String(error.message || 'No se pudo publicar').replace(/^.*?: /, ''), 'error') }
+  cdm.borrador = { q: '', ops: ['', ''] }; cdm.tab = 'candidatas'
+  aviso('Tu propuesta ya compite por la consulta de mañana')
+  await cdCargar(); cdPintar(false); cdm.t = 0; cdContar()
+}
+document.addEventListener('click', e => { const b = e.target.closest('#hero-vu [data-cd]'); if (b) cdAbrir(b.dataset.cd) })
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#cdm') && !$('#cdm').hidden) cdCerrar() })
+
+function vigilarPortada() {   // consulta-del-dia
   if (estado.user) sb.channel('portada-v2')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, ({ new: n }) => {
       if (n?.key === 'portada') pintarPortada(n.value)
@@ -6773,9 +6928,9 @@ async function abrirRevelacion(id) {
   $('#rv').hidden = false; document.body.style.overflow = 'hidden'
   $('#rv-preg').innerHTML = '<p class="rv-cargando">Abriendo la urna…</p>'; $('#rv-panel').innerHTML = ''; $('#rv-mi').hidden = true; $('#rv-fase').textContent = ''
   try {
-    let q = [...iqPreguntas, ...iqCerradas, ...vPreguntas].find(x => x.id === id)
+    let q = [...iqPreguntas, ...iqCerradas, ...vPreguntas, ...vc.items, ...(portada.urgente ? [portada.urgente] : [])].find(x => x.id === id && 'opciones' in x)   // consulta-del-dia
     const [qq, votos, part, cant, sillas] = await Promise.all([
-      q ? Promise.resolve({ data: q }) : sb.from('questions').select('id, text, category, ends_at, status').eq('id', id).maybeSingle(),
+      q ? Promise.resolve({ data: q }) : sb.from('questions').select('id, text, category, ends_at, status, opciones').eq('id', id).maybeSingle(),
       sb.rpc('get_question_votes', { p_question_id: id }),
       estado.butaca ? sb.rpc('v2_mis_participaciones') : Promise.resolve({ data: [] }),
       totalButacas ? Promise.resolve({ data: totalButacas }) : sb.rpc('get_butaca_count'),
@@ -6786,9 +6941,10 @@ async function abrirRevelacion(id) {
     if (!rv.abierto) return
     if (!q) { $('#rv-preg').innerHTML = '<p class="rv-cargando">No encontramos esa votación.</p>'; return }
     if (abierta(q)) { $('#rv-preg').innerHTML = `<p class="rv-cargando">Esta votación sigue abierta. La revelación llega cuando cierre.</p><a class="rv-cta" href="#votaciones" data-rv="cerrar">Ir a votar</a>`; return }
-    const r = { si: 0, no: 0, abs: 0 }; let soloTotal = false
+    rv.claves = opClaves(q)   // consulta-del-dia: una columna por respuesta
+    const r = Object.fromEntries(rv.claves.map(k => [k, 0])); let soloTotal = false
     ;(votos.data || []).forEach(x => { if (x.vote_plain in r) r[x.vote_plain] = Number(x.total) || 0; if (x.vote_plain === 'total') soloTotal = true })
-    r.total = r.si + r.no + r.abs
+    r.total = rv.claves.reduce((a, k) => a + r[k], 0)
     r.nula = soloTotal || r.total < 3
     rv.q = q; rv.r = r
     const reales = [...new Set((sillas?.data || []).map(x => Number(x.seat_number)).filter(n => n > 0))]
@@ -6879,17 +7035,25 @@ function rvCuadro(now) {
   const pc = $('#rv-pc'); if (pc) pc.textContent = `${Math.round(encendidas / rv.butacas * 100)}%`
   if (fase === 'conteo' || fase === 'fin') {
     const e = r.nula ? 0 : rvEase(pCont)
-    ;['si', 'no', 'abs'].forEach(k => {
+    ;rv.claves.forEach(k => {
       const v = Math.round(r[k] * e), pct = r.total ? v / r.total * 100 : 0
       const n = $(`#rv-n-${k}`), b = $(`#rv-b-${k}`), pp = $(`#rv-p-${k}`)
       if (n) n.textContent = fmtNum(v); if (b) b.style.width = pct + '%'; if (pp) pp.textContent = (r[k] / r.total * 100 * e).toFixed(1).replace('.', ',') + '%'
     })
-    const lider = r.si === r.no ? null : r.si > r.no ? 'si' : 'no'
+    const lider = esConsulta(rv.q) ? rvGanadora(r) : r.si === r.no ? null : r.si > r.no ? 'si' : 'no'
     $$('.rv-col').forEach(c => c.classList.toggle('lider', !!lider && c.dataset.k === lider && e > .35))
   }
   rv.raf = requestAnimationFrame(rvCuadro)
 }
 
+// consulta-del-dia: la respuesta con más votos (null si hay empate arriba)
+function rvGanadora(r) {
+  const ks = rv.claves || [], max = Math.max(...ks.map(k => r[k] || 0))
+  const top = ks.filter(k => (r[k] || 0) === max)
+  return max > 0 && top.length === 1 ? top[0] : null
+}
+const rvColor = k => RV_COL[k] || CD_COL[+String(k).slice(2) - 1] || RV_COL.luz
+const rvTitulo = k => esConsulta(rv.q) ? `<i class="rv-l">${opLetra(k)}</i>${esc(opNombre(rv.q, k))}` : OPC[k][0]
 function rvFase(f) {
   rv.fase = f
   const r = rv.r, panel = $('#rv-panel'), fase = $('#rv-fase')
@@ -6902,7 +7066,7 @@ function rvFase(f) {
   if (f === 'pausa') { fase.textContent = 'Contando…' }
   if (f === 'conteo') {
     fase.textContent = 'Contando los votos'
-    panel.innerHTML = `<div class="rv-cols">${[['si', 'Sí'], ['no', 'No'], ['abs', 'Abstención']].map(([k, t]) => `<div class="rv-col" data-k="${k}" style="--c:${RV_COL[k]}">
+    panel.innerHTML = `<div class="rv-cols${esConsulta(rv.q) ? ` cd n${rv.claves.length}` : ''}">${rv.claves.map(k => [k, rvTitulo(k)]).map(([k, t]) => `<div class="rv-col" data-k="${k}" style="--c:${rvColor(k)}">
         <div class="rv-col-cab"><span>${t}</span><b id="rv-p-${k}">0%</b></div>
         <div class="rv-col-barra"><i id="rv-b-${k}"></i></div><small><span id="rv-n-${k}">0</span> votos</small></div>`).join('')}</div>`
   }
@@ -6913,9 +7077,14 @@ function rvFase(f) {
     let titulo, clase = '', sub = ''
     if (r.total === 0 || (r.nula && !r.total)) { titulo = 'Votación sin resultado'; sub = 'Hubo menos de 3 votos: el resultado no se publica para proteger el secreto del voto.'; clase = 'nula' }
     else if (r.nula) { titulo = 'Votación sin resultado'; sub = 'Hubo menos de 3 votos: el resultado no se publica para proteger el secreto del voto.'; clase = 'nula' }
+    else if (esConsulta(rv.q)) {   // consulta-del-dia
+      const k = rvGanadora(r)
+      if (!k) { titulo = 'Empate'; sub = `Hubo empate entre las más votadas · ${fmtNum(r.total)} butacas votaron`; clase = 'empate' }
+      else { titulo = 'El Cabildo eligió'; sub = `<b class="rv-gana" style="--c:${rvColor(k)}">${opLetra(k)} · ${esc(opNombre(rv.q, k))}</b><br>con el ${(r[k] / r.total * 100).toFixed(1).replace('.', ',')}% de los votos · ${fmtNum(r.total)} butacas votaron`; clase = k }
+    }
     else if (r.si === r.no) { titulo = 'Empate'; sub = `${fmtNum(r.si)} a ${fmtNum(r.no)}`; clase = 'empate' }
     else { const k = r.si > r.no ? 'si' : 'no'; titulo = `El Cabildo dijo ${k === 'si' ? 'SÍ' : 'NO'}`; sub = `con el ${(r[k] / r.total * 100).toFixed(1).replace('.', ',')}% de los votos · ${fmtNum(r.total)} butacas votaron`; clase = k }
-    const cols = r.nula ? '' : `<div class="rv-cols chico">${[['si', 'Sí'], ['no', 'No'], ['abs', 'Abstención']].map(([k, t]) => `<div class="rv-col ${clase === k ? 'lider' : ''}" data-k="${k}" style="--c:${RV_COL[k]}">
+    const cols = r.nula ? '' : `<div class="rv-cols chico${esConsulta(rv.q) ? ` cd n${rv.claves.length}` : ''}">${rv.claves.map(k => [k, rvTitulo(k)]).map(([k, t]) => `<div class="rv-col ${clase === k ? 'lider' : ''}" data-k="${k}" style="--c:${rvColor(k)}">
         <div class="rv-col-cab"><span>${t}</span><b>${(r[k] / r.total * 100).toFixed(1).replace('.', ',')}%</b></div>
         <div class="rv-col-barra"><i style="width:${r[k] / r.total * 100}%"></i></div><small>${fmtNum(r[k])} votos</small></div>`).join('')}</div>`
     panel.innerHTML = `<div class="rv-fin ${clase}">
@@ -6925,7 +7094,7 @@ function rvFase(f) {
         <button class="rv-cta sec" data-rv="compartir">Compartir</button>
         ${otra ? `<a class="rv-cta" href="#revelacion/${otra.id}">Siguiente revelación →</a>` : `<button class="rv-cta" data-rv="cerrar">Listo</button>`}
       </div></div>`
-    if (clase === 'si' || clase === 'no') rvConfeti(RV_COL[clase])
+    if (clase === 'si' || clase === 'no' || /^op[1-6]$/.test(clase)) rvConfeti(rvColor(clase))
   }
 }
 
