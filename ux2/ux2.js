@@ -1302,7 +1302,7 @@ async function cargarMuro() {
 const portada = { anuncio: null, mostrandoAnuncio: false, visto: '', urgente: null, misCargadas: false, tFin: 0 }
 async function cargarPortada() {
   try {
-    const { data, error } = await sb.rpc('v2_portada')
+    const { data, error } = await sb.rpc('v2_portada', { p_v: 2 })   // version-nueva: esta app ya dibuja la Consulta del día
     if (error) throw error
     pintarPortada(data?.portada)
     if (!ponerUrgente(data?.urgente)) ponerAnuncio(data?.anuncio)   // votacion-urgente: tiene prioridad sobre el anuncio
@@ -1533,6 +1533,30 @@ async function cdEnviar(e) {
 }
 document.addEventListener('click', e => { const b = e.target.closest('#hero-vu [data-cd]'); if (b) cdAbrir(b.dataset.cd) })
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#cdm') && !$('#cdm').hidden) cdCerrar() })
+
+// ══ version-nueva: si se publicó una versión nueva mientras la pestaña estaba abierta, ofrece actualizar ══
+const vn = { firma: null, avisado: false }
+async function vnRevisar() {
+  if (vn.avisado || document.hidden) return
+  try {
+    const r = await fetch('/ux2/ux2.js', { method: 'HEAD', cache: 'no-store' })
+    if (!r.ok) return
+    const f = r.headers.get('etag') || r.headers.get('last-modified') || r.headers.get('content-length')
+    if (!f) return
+    if (!vn.firma) { vn.firma = f; return }
+    if (f !== vn.firma) { vn.avisado = true; vnAviso() }
+  } catch (e) {}
+}
+function vnAviso() {
+  if (document.getElementById('vn-aviso')) return
+  const d = document.createElement('div'); d.id = 'vn-aviso'; d.className = 'vn-aviso'; d.setAttribute('role', 'status')
+  d.innerHTML = '<span>Hay una versión nueva del Cabildo.</span><button type="button" class="btn btn-dark">Actualizar</button>'
+  d.querySelector('button').onclick = () => location.reload()
+  document.body.appendChild(d)
+}
+vnRevisar()
+setInterval(vnRevisar, 5 * 60_000)
+document.addEventListener('visibilitychange', () => { if (!document.hidden) vnRevisar() })
 
 function vigilarPortada() {   // consulta-del-dia
   if (estado.user) sb.channel('portada-v2')
