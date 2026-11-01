@@ -3835,3 +3835,9 @@ html.bd-peek-abierto { overflow: hidden; }
 .cdm-reglas { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
 .cdm-pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 @media (max-width: 560px) { .cdm-meta { grid-template-columns: 1fr; } .cdm-meta .btn { grid-row: auto; grid-column: auto; width: 100%; } }
+
+/* ══ version-nueva ══ */
+.vn-aviso { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 120; display: flex; align-items: center; gap: 12px; width: max-content;
+  max-width: calc(100vw - 32px); padding: 10px 10px 10px 16px; border-radius: 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(10,12,30,.18); font-size: 14px; font-weight: 600; animation: ap-sube .3s; }
+.vn-aviso .btn { height: 36px; font-size: 13.5px; flex: none; }
