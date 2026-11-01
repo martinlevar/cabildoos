@@ -3846,3 +3846,17 @@ html.bd-peek-abierto { overflow: hidden; }
 .cdm-gano { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: #fef3c7; color: #78350f; font-size: 13.5px; line-height: 1.45; margin-bottom: 12px; overflow-wrap: anywhere; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cdm-gano { background: #3a2a0a; color: #fde68a; } }
 :root[data-theme="dark"] .cdm-gano { background: #3a2a0a; color: #fde68a; }
+
+/* ══ debate-menciones ══ */
+.db-resp { margin-left: auto; background: none; border: 0; padding: 0 2px; font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; opacity: .75; }
+.db-resp:hover { color: var(--accent); opacity: 1; text-decoration: underline; }
+.db-men { display: inline; padding: 0 5px; margin: 0 1px; border: 0; border-radius: 6px; background: var(--accent-bg); color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; }
+.db-men:hover { text-decoration: underline; }
+.db-men.yo { background: var(--accent); color: #fff; }
+.db-msg.me-menciona .db-cuerpo { box-shadow: inset 3px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface-2)); }
+.db-msg.db-flash .db-cuerpo { animation: db-flash 1.6s ease; }
+@keyframes db-flash { 0%, 35% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.db-resp-chip { display: flex; align-items: center; gap: 8px; margin: 8px 22px 0; padding: 6px 8px 6px 12px; border-radius: 10px; background: var(--accent-bg); color: var(--ink); font-size: 13px; width: max-content; max-width: calc(100% - 44px); }
+.db-resp-chip[hidden] { display: none; }
+.db-resp-chip button { background: none; border: 0; color: var(--muted); font-size: 14px; cursor: pointer; padding: 0 4px; }
+@media (max-width: 640px) { .db-resp-chip { margin: 8px 14px 0; } }
