@@ -3952,3 +3952,12 @@ html.bd-peek-abierto { overflow: hidden; }
 @media (max-width: 560px) { .bzm-tipos { grid-template-columns: 1fr; } .bzm-tipo { grid-template-columns: 28px 1fr; align-items: center; } .bzm-tipo i { grid-row: span 2; } }
 .bzm-ok .bz-p { fill: #9aa3d6; } .bzm-ok .bz-p.o .cab, .bzm-ok .bz-p.o .cue { fill: #f5c518; }
 .bzm-ok .bz-g rect, .bzm-ok .bz-g path { fill: #eef0ff; } .bzm-ok .bz-b0 { fill: #dfe3f7; } .bzm-ok .bz-s rect { fill: #fff; stroke: #c9cff0; stroke-width: .6; }
+
+/* ══ buzon-ciclo: 3 s inicio → giro → 60 s buzón → giro (64,6 s: 3 s + giro 0,8 s + 60 s + giro 0,8 s) ══ */
+.hero-card.bz { perspective: 900px; }
+.bz-fase { backface-visibility: hidden; -webkit-backface-visibility: hidden; transform-origin: 50% 50%; }
+.bz-a { animation: bzA2 64.6s ease-in-out infinite; }
+.bz-b { animation: bzB2 64.6s ease-in-out infinite; }
+@keyframes bzA2 { 0%, 4.64% { transform: rotateX(0); opacity: 1; } 5.88%, 98.76% { transform: rotateX(180deg); opacity: 0; } 100% { transform: rotateX(360deg); opacity: 1; } }
+@keyframes bzB2 { 0%, 4.64% { transform: rotateX(-180deg); opacity: 0; } 5.88%, 98.76% { transform: rotateX(0); opacity: 1; } 100% { transform: rotateX(180deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bz-a { animation: none; opacity: 0; } .bz-b { animation: none; opacity: 1; transform: none; } }
