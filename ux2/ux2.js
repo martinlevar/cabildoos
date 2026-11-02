@@ -1692,6 +1692,16 @@ async function bzClick(e) {
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#bzm') && !$('#bzm').hidden) bzCerrar() })
 bzMontar()
+// buzon-ruta: #buzon (link del email) → Inicio con el buzón abierto (espera a saber si hay sesión y butaca)
+function bzRuta() {
+  if (location.hash !== '#buzon') return
+  history.replaceState(null, '', location.pathname + location.search + '#inicio')
+  const t0 = Date.now()
+  const abrir = () => (typeof estado !== 'undefined' && estado.cargado) || Date.now() - t0 > 6000 ? bzAbrir() : setTimeout(abrir, 200)
+  setTimeout(abrir, 300)
+}
+bzRuta()
+window.addEventListener('hashchange', () => { if (location.hash === '#buzon') { location.hash = '#inicio'; bzAbrir() } })
 
 function vigilarPortada() {   // consulta-del-dia
   if (estado.user) sb.channel('portada-v2')
