@@ -3860,3 +3860,13 @@ html.bd-peek-abierto { overflow: hidden; }
 .db-resp-chip[hidden] { display: none; }
 .db-resp-chip button { background: none; border: 0; color: var(--muted); font-size: 14px; cursor: pointer; padding: 0 4px; }
 @media (max-width: 640px) { .db-resp-chip { margin: 8px 14px 0; } }
+
+/* ══ consulta-ciclo ══ */
+.hero-ver-dorso { display: none; justify-self: start; margin-top: 4px; }
+.hero-flip.cd-ciclo .hero-ver-dorso { display: inline-block; }
+.hero-flip.cd-ciclo .hero-anuncio, .hero-flip.cd-ciclo .hero .hero-anuncio { font-size: clamp(20px, 2.1vw, 28px); line-height: 1.2; }
+.hero .hero-flip.cd-ciclo .hero-anuncio { font-size: clamp(20px, 2.1vw, 28px); }
+.hero-flip.cd-ciclo .hero-vu { gap: 10px; }
+.hero-flip.cd-ciclo .hv-fila { margin: 2px 0 0; }
+.hero-flip.cd-ciclo .cd-prop { margin-top: 0; }
+@media (max-width: 640px) { .hero .hero-flip.cd-ciclo .hero-anuncio { font-size: 21px; } }

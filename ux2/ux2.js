@@ -1366,7 +1366,7 @@ function ponerUrgente(u) {
     opciones: Array.isArray(u.opciones) && u.opciones.length >= 2 ? u.opciones.map(String) : null } : null   // votacion-urgente-por · consulta-del-dia
   clearTimeout(portada.tFin)
   if (!flip || !vu) return !!portada.urgente
-  if (!portada.urgente) { vu.hidden = true; vu.innerHTML = ''; return false }
+  if (!portada.urgente) { vu.hidden = true; vu.innerHTML = ''; cicloParar(); return false }
   const q = portada.urgente
   if (q.abierta && estado.butaca && !portada.misCargadas) {   // ¿ya votó esta butaca? (solo dice que participó, nunca qué)
     portada.misCargadas = true
@@ -1376,9 +1376,11 @@ function ponerUrgente(u) {
   const pie = `<span><b>${n}</b> ${q.votos === 1 ? 'butaca votó' : 'butacas ya votaron'}</span>`
   let cuerpo
   const cd = esConsulta(q)   // consulta-del-dia
+  const ciclo = cd && !q.abierta   // consulta-ciclo: cerrada → compacta y girando con la portada
   if (!q.abierta) {
-    cuerpo = (cd && rvVista(q.id) ? `<div class="cd-res" id="hv-cdres" aria-live="polite"></div>` : '')
-      + `<p class="hv-pie">${pie.replace('ya votaron', 'votaron')}<span>${HV_CANDADO}Cada voto fue secreto</span></p>
+    cuerpo = ciclo
+      ? `<div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>${rvVista(q.id) ? 'Ver la revelación otra vez' : 'Ver la revelación'}</a>${hvDebate(q)}</div>`
+      : `<p class="hv-pie">${pie.replace('ya votaron', 'votaron')}<span>${HV_CANDADO}Cada voto fue secreto</span></p>
       <div class="hv-fila"><a class="hv-rev" href="#revelacion/${esc(q.id)}"><span aria-hidden="true">✦</span>${cd && rvVista(q.id) ? 'Ver la revelación otra vez' : 'Ver la revelación'}</a>${hvDebate(q)}${hvCompartirX(q)}</div>`   // votacion-urgente-x
   } else {
     const reloj = q.ends_at ? `<span class="hv-reloj">Cierra en <b data-cuenta="${esc(q.ends_at)}">${cuentaRegresiva(q.ends_at)}</b></span>`
@@ -1395,18 +1397,20 @@ function ponerUrgente(u) {
     if (q.ends_at) portada.tFin = setTimeout(cargarPortada, Math.max(1500, new Date(q.ends_at) - Date.now() + 1500))   // al llegar a cero: revelación
   }
   const porHtml = q.por ? `<p class="hv-por">${q.por_tipo === 'patrocinada' ? '<span class="hv-pat">Patrocinada</span> por' : 'Propuesta por'} <b>${esc(q.por)}</b></p>` : ''   // votacion-urgente-por
-  vu.innerHTML = porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '') + cuerpo + (cd ? cdBarra() : '')
+  vu.innerHTML = (ciclo ? '' : porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '')) + cuerpo + (cd ? cdBarra() : '')
   $$('[data-hv]', vu).forEach(b => b.onclick = () => abrirVoto({ ...q }, b.dataset.hv))
   vu.hidden = false
   $('#hero-anuncio').textContent = q.text
   $('#hero-anuncio-tag').innerHTML = `<i></i>${cd ? (q.abierta ? 'Consulta del día' : 'Consulta del día · cerrada') : q.abierta ? 'Votación urgente' : 'Votación cerrada'}`
   flip.dataset.tipo = cd ? 'consulta' : q.abierta ? 'urgente' : 'cerrada'
-  if (cd) { cdContar(); if (!q.abierta && rvVista(q.id)) cdResultadoHero(q) }
+  if (cd) cdContar()
   flip.classList.add('tiene-anuncio')
   const clave = `vu:${q.id}:${q.abierta}`
+  flip.classList.toggle('cd-ciclo', ciclo)
   if (portada.visto !== clave) {
     portada.visto = clave; portada.mostrandoAnuncio = true
-    flip.classList.remove('girada'); requestAnimationFrame(() => setTimeout(() => flip.classList.add('girada'), 600))
+    if (ciclo) cicloIniciar()
+    else { cicloParar(); flip.classList.remove('girada'); requestAnimationFrame(() => setTimeout(() => flip.classList.add('girada'), 600)) }
   }
   return true
 }
@@ -1563,6 +1567,28 @@ vnRevisar()
 setInterval(vnRevisar, 5 * 60_000)
 document.addEventListener('visibilitychange', () => { if (!document.hidden) vnRevisar() })
 
+// ══ consulta-ciclo: la consulta cerrada gira con la portada cada 30 s hasta que la persona gire a mano ══
+function cicloIniciar() {
+  const flip = $('#hero-flip'); if (!flip) return
+  clearInterval(portada.tCiclo); portada.cicloParado = false
+  flip.classList.add('cd-ciclo'); flip.classList.remove('girada')   // arranca en la portada
+  if (!$('#hero-ver-dorso')) {
+    const b = document.createElement('button'); b.type = 'button'; b.id = 'hero-ver-dorso'; b.className = 'hero-girar hero-ver-dorso'
+    b.textContent = 'Ver la consulta ↻'
+    b.onclick = () => { portada.cicloParado = true; $('#hero-flip')?.classList.add('girada') }
+    $('#hero-frente')?.appendChild(b)
+  }
+  portada.tCiclo = setInterval(() => {
+    const f = $('#hero-flip')
+    if (!f || portada.cicloParado || document.hidden || !f.classList.contains('cd-ciclo')) return
+    f.classList.toggle('girada')
+  }, 30_000)
+}
+function cicloParar() {
+  clearInterval(portada.tCiclo); portada.tCiclo = 0; portada.cicloParado = false
+  $('#hero-flip')?.classList.remove('cd-ciclo')
+}
+
 function vigilarPortada() {   // consulta-del-dia
   if (estado.user) sb.channel('portada-v2')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, ({ new: n }) => {
@@ -1574,6 +1600,7 @@ function vigilarPortada() {   // consulta-del-dia
   setInterval(() => { if (!document.hidden && portada.urgente?.abierta) cargarPortada() }, 30_000)   // votacion-urgente: contador de butacas que votaron
   $('#hero-girar')?.addEventListener('click', () => {
     const f = $('#hero-flip'); f.classList.remove('girada'); portada.mostrandoAnuncio = false
+    if (f.classList.contains('cd-ciclo')) { portada.cicloParado = true; return }   // consulta-ciclo: giró a mano → se queda en la portada
     setTimeout(() => { if (portada.anuncio || portada.urgente) { portada.mostrandoAnuncio = true; f.classList.add('girada') } }, 8000)
   })
 }
