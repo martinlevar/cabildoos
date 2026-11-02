@@ -1570,7 +1570,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) vnRe
 // ══ consulta-ciclo: la consulta cerrada gira con la portada cada 30 s hasta que la persona gire a mano ══
 function cicloIniciar() {
   const flip = $('#hero-flip'); if (!flip) return
-  clearInterval(portada.tCiclo); portada.cicloParado = false
+  clearTimeout(portada.tCiclo); portada.cicloParado = false
   flip.classList.add('cd-ciclo'); flip.classList.remove('girada')   // arranca en la portada
   if (!$('#hero-ver-dorso')) {
     const b = document.createElement('button'); b.type = 'button'; b.id = 'hero-ver-dorso'; b.className = 'hero-girar hero-ver-dorso'
@@ -1578,14 +1578,17 @@ function cicloIniciar() {
     b.onclick = () => { portada.cicloParado = true; $('#hero-flip')?.classList.add('girada') }
     $('#hero-frente')?.appendChild(b)
   }
-  portada.tCiclo = setInterval(() => {
+  // consulta-ciclo-2: portada 5 s → consulta 60 s → portada 5 s → …
+  const paso = () => {
     const f = $('#hero-flip')
-    if (!f || portada.cicloParado || document.hidden || !f.classList.contains('cd-ciclo')) return
-    f.classList.toggle('girada')
-  }, 30_000)
+    if (!f || !f.classList.contains('cd-ciclo') || portada.cicloParado) return
+    if (!document.hidden) f.classList.toggle('girada')
+    portada.tCiclo = setTimeout(paso, f.classList.contains('girada') ? 60_000 : 5_000)
+  }
+  portada.tCiclo = setTimeout(paso, 5_000)
 }
 function cicloParar() {
-  clearInterval(portada.tCiclo); portada.tCiclo = 0; portada.cicloParado = false
+  clearTimeout(portada.tCiclo); portada.tCiclo = 0; portada.cicloParado = false
   $('#hero-flip')?.classList.remove('cd-ciclo')
 }
 
