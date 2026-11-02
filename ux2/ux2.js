@@ -359,6 +359,7 @@ const NOTIF = {
   consulta_elegida:  ['🏆', () => '#inicio'],
   consulta_ganadora: ['🏆', () => '#inicio'],
   consulta_publicada: ['🗳️', () => '#inicio'],
+  buzon_respuesta:   ['✉️', () => null],   // buzon
 }
 // Si llega un aviso de que me aceptaron o me quitaron de un bloque, se actualiza el estado sin recargar
 const notifBloqueVistas = new Set()
@@ -1591,6 +1592,106 @@ function cicloParar() {
   clearTimeout(portada.tCiclo); portada.tCiclo = 0; portada.cicloParado = false
   $('#hero-flip')?.classList.remove('cd-ciclo')
 }
+
+// ══ buzon: «El buzón del Cabildo» — ideas y mejoras PRIVADAS (las lee solo el equipo de soporte) ══
+const bz = { tab: 'dejar', tipo: 'idea', tema: null, texto: '', enviando: false, ok: false, hechos: null }
+const BZ_TEMAS = { idea: ['Votaciones', 'Debates', 'Propuestas', 'Bloques', 'Comunidad', 'Otra'], mejora: ['Inicio', 'Votaciones', 'Debates', 'Propuestas', 'Bloques', 'Verificación', 'Mi butaca', 'Otra'] }
+function bzEscena() {
+  const P = [10, 30, 50]
+  const persona = (x, o) => `<g class="bz-p${o ? ' o' : ''}"><circle class="cab" cx="${x}" cy="63" r="4.2"/><path class="cue" d="M${x - 6} 82 v-6 a6 6 0 0 1 12 0 v6 z"/></g>`
+  const globo = (x, i, ico) => `<g class="bz-g g${i}"><rect x="${x - 3}" y="40" width="15" height="12" rx="3.5"/><path d="M${x} 51.5 l-1.5 4 l4.5 -4 z"/><text x="${x + 4.5}" y="49.2" text-anchor="middle">${ico}</text></g>`
+  const sobre = (x, i) => `<g class="bz-s s${i}" style="--dx:${89.5 - (x - 4.5)}px;--dy:-14px"><rect x="${x - 4.5}" y="49" width="9" height="6.4" rx="1"/><path d="M${x - 4.5} 49.4 l4.5 3.4 l4.5 -3.4"/></g>`
+  return `<svg viewBox="2 31 118 53" aria-hidden="true">
+    <rect class="bz-poste" x="92" y="56" width="4" height="27" rx="1.5"/>
+    <path class="bz-b0" d="M78 58 V40 a16 12 0 0 1 32 0 V58 z"/>
+    <rect class="bz-band" x="78" y="52" width="32" height="2"/><rect class="bz-band2" x="78" y="54" width="32" height="2"/><rect class="bz-band3" x="78" y="56" width="32" height="2"/>
+    <rect class="bz-ranura" x="86" y="37.2" width="16" height="2.8" rx="1.4"/>
+    <circle class="bz-luz" cx="94" cy="38.6" r="2"/>
+    <g class="bz-bandera"><rect x="110" y="35" width="1.6" height="13" fill="#c9cff0"/><rect x="111.4" y="35" width="7" height="4.6" rx="1" fill="#ef4444"/></g>
+    ${P.map((x, i) => persona(x, i === 1)).join('')}
+    ${['💡', '🔧', '💡'].map((ico, i) => globo(P[i], i + 1, ico)).join('')}
+    ${P.map((x, i) => sobre(x, i + 1)).join('')}</svg>`
+}
+function bzMontar() {
+  const card = document.querySelector('.hero .hero-card'); if (!card || card.classList.contains('bz')) return
+  const tarjeta = card.querySelector('#hero-tarjeta'), hemi = card.querySelector('[data-hero-ciclo]')
+  const a = document.createElement('div'); a.className = 'bz-fase bz-a'
+  if (tarjeta) a.appendChild(tarjeta); if (hemi) a.appendChild(hemi)   // se mueven (no se copian): lo demás que los usa sigue andando
+  const b = document.createElement('div'); b.className = 'bz-fase bz-b'
+  b.innerHTML = `<div class="bz-txt"><div><span class="bz-kick">✉ Buzón del Cabildo</span><b>Tus ideas<br>y mejoras<br>para el Cabildo</b></div><span class="bz-cta">Dejá la tuya →</span></div><div class="bz-escena">${bzEscena()}</div>`
+  card.innerHTML = ''; card.append(a, b)
+  card.classList.add('bz'); card.setAttribute('role', 'button'); card.setAttribute('tabindex', '0'); card.setAttribute('aria-label', 'Abrir el Buzón del Cabildo: dejá una idea o una mejora')
+  card.addEventListener('click', () => bzAbrir())
+  card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bzAbrir() } })
+}
+function bzAbrir(tab = 'dejar') {
+  bz.tab = tab; bz.ok = false
+  let m = $('#bzm')
+  if (!m) {
+    m = document.createElement('div'); m.className = 'modal'; m.id = 'bzm'
+    m.innerHTML = '<div class="modal-box bzm" role="dialog" aria-modal="true" aria-labelledby="bzm-t"></div>'
+    document.body.appendChild(m)
+    m.addEventListener('click', bzClick)
+    m.addEventListener('input', e => { if (e.target.id === 'bzm-txt') { bz.texto = e.target.value; const n = $('#bzm-n'); if (n) n.textContent = e.target.value.length } })
+  }
+  m.hidden = false; document.body.style.overflow = 'hidden'
+  bzPintar()
+  if (tab === 'hecho' && !bz.hechos) bzCargarHechos()
+}
+function bzCerrar() { const m = $('#bzm'); if (m) m.hidden = true; document.body.style.overflow = '' }
+async function bzCargarHechos() {
+  const { data } = await sb.rpc('buzon_hechos_listar').then(r => r, () => ({ data: null }))
+  bz.hechos = Array.isArray(data) ? data : []
+  bzPintar()
+}
+function bzPintar() {
+  const box = $('#bzm .bzm'); if (!box) return
+  const x = '<button type="button" class="modal-x" data-bz-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>'
+  if (bz.ok) {
+    box.innerHTML = `${x}<div class="bzm-ok"><svg viewBox="2 31 118 53" aria-hidden="true">${bzEscena().replace(/^<svg[^>]*>|<\/svg>$/g, '')}</svg>
+      <h3 id="bzm-t">¡Llegó al buzón!</h3><p>Gracias. Tu ${bz.tipo === 'idea' ? 'idea' : 'mejora'} es privada: la lee solo el equipo de soporte del Cabildo. Si te respondemos, te llega a la campana de tu butaca.</p>
+      <button class="btn btn-dark" type="button" data-bz-cerrar>Listo</button></div>`
+    return
+  }
+  const conButaca = !!(estado.user && estado.butaca)
+  const tipos = [['idea', '💡', 'Una idea', 'Algo nuevo que el Cabildo podría tener'], ['mejora', '🔧', 'Una mejora', 'Algo que no anda o se puede hacer mejor']]
+  const temas = `<div class="bzm-chips">${BZ_TEMAS[bz.tipo].map(t => `<button type="button" class="${bz.tema === t ? 'sel' : ''}" data-bz-tema="${esc(t)}" aria-pressed="${bz.tema === t}">${esc(t)}</button>`).join('')}</div>`
+  const area = `<textarea id="bzm-txt" rows="4" maxlength="800" placeholder="${bz.tipo === 'idea' ? 'Ej.: que los bloques puedan tener su propia votación interna…' : 'Ej.: en el celular no me doy cuenta cuando me toca hablar en un debate…'}">${esc(bz.texto)}</textarea>`
+  const nota = `<p class="bzm-nota">🔒 <span><b>Es privado.</b> Lo lee solo el equipo de soporte del Cabildo: no se publica y no lo ve ninguna otra butaca. Va con tu número de butaca, sin tu nombre ni tu email. Si te respondemos, te llega a la campana.</span></p>`
+  const form = !conButaca
+    ? `<div class="cdm-sin"><p>${estado.user ? 'Para dejar algo en el buzón necesitás tu butaca verificada.' : 'Iniciá sesión con tu butaca para dejar algo en el buzón.'}</p>${estado.user ? `<a class="btn btn-dark" href="${urlVerificar()}">Verificarme</a>` : `<a class="btn btn-dark" href="${APP_ACTUAL}">Iniciar sesión</a>`}</div>`
+    : `<div class="bzm-tipos">${tipos.map(([k, i, t, s]) => `<button type="button" class="bzm-tipo${k === bz.tipo ? ' sel' : ''}" data-bz-tipo="${k}" aria-pressed="${k === bz.tipo}"><i>${i}</i><b>${t}</b><span>${s}</span></button>`).join('')}</div>
+      ${bz.tipo === 'idea'
+        ? `<label for="bzm-txt">Contanos tu idea</label>${area}<span class="lbl">¿De qué se trata? <span class="muted" style="font-weight:500">(opcional)</span></span>${temas}`
+        : `<span class="lbl">¿Dónde? <span class="muted" style="font-weight:500">(opcional)</span></span>${temas}<label for="bzm-txt">¿Qué mejorarías?</label>${area}`}
+      ${nota}<div class="bzm-pie"><small><span id="bzm-n">${bz.texto.length}</span>/800 · sin links · hasta 3 por día</small><div style="display:flex;gap:8px"><button class="btn btn-ghost" type="button" data-bz-cerrar>Cancelar</button><button class="btn btn-dark" type="button" data-bz-enviar ${bz.enviando ? 'disabled' : ''}>${bz.enviando ? 'Enviando…' : '✉️ Echar al buzón'}</button></div></div>`
+  const hechos = bz.hechos === null ? '<p class="muted">Cargando…</p>' : !bz.hechos.length
+    ? '<div class="cdm-sin"><p>Todavía no hay novedades. Cuando una idea o una mejora del buzón avance, la vas a ver acá.</p></div>'
+    : `<p class="bzm-ej">Lo que el equipo decidió hacer con ideas y mejoras que llegaron al buzón (sin decir de quién eran).</p><div class="bzm-hecho">${bz.hechos.map(h => `<div class="bzm-h"><i>${h.tipo === 'mejora' ? '🔧' : '💡'}</i><div><b>${esc(h.titulo)}</b>${h.detalle ? `<small>${esc(h.detalle)}</small>` : ''}</div>
+        <em class="${h.estado === 'hecho' ? 'hecho' : h.estado === 'camino' ? 'curso' : 'estudio'}">${h.estado === 'hecho' ? 'Hecho ✓' : h.estado === 'camino' ? 'En camino' : 'En estudio'}</em></div>`).join('')}</div>`
+  box.innerHTML = `${x}<span class="bzm-kick">✉ El buzón del Cabildo</span><h2 id="bzm-t">¿Qué querés dejar en el buzón?</h2>
+    <p class="bzm-intro">El Cabildo lo construimos entre todos. Dejá una idea nueva o avisanos qué podemos mejorar. <b>Tus ideas y mejoras son privadas:</b> las ve solamente el equipo de soporte.</p>
+    <div class="seg bzm-tabs" role="tablist"><button type="button" class="seg-btn ${bz.tab === 'dejar' ? 'active' : ''}" data-bz-tab="dejar">Dejar en el buzón</button><button type="button" class="seg-btn ${bz.tab === 'hecho' ? 'active' : ''}" data-bz-tab="hecho">Lo que salió del buzón</button></div>
+    ${bz.tab === 'hecho' ? hechos : form}`
+}
+async function bzClick(e) {
+  if (e.target.id === 'bzm' || e.target.closest('[data-bz-cerrar]')) return bzCerrar()
+  const t = e.target.closest('[data-bz-tab]'); if (t) { bz.tab = t.dataset.bzTab; bzPintar(); if (bz.tab === 'hecho' && !bz.hechos) bzCargarHechos(); return }
+  const ti = e.target.closest('[data-bz-tipo]'); if (ti) { if (bz.tipo !== ti.dataset.bzTipo) { bz.tipo = ti.dataset.bzTipo; bz.tema = null } bzPintar(); return }
+  const te = e.target.closest('[data-bz-tema]'); if (te) { bz.tema = bz.tema === te.dataset.bzTema ? null : te.dataset.bzTema; bzPintar(); return }
+  if (e.target.closest('[data-bz-enviar]')) {
+    const txt = bz.texto.trim()
+    if (txt.length < 10) return aviso('Contanos un poco más (al menos 10 caracteres).', 'error')
+    if (bz.enviando) return
+    bz.enviando = true; bzPintar()
+    const { error } = await sb.rpc('buzon_enviar', { p_tipo: bz.tipo, p_tema: bz.tema, p_texto: txt }).then(r => r, e => ({ error: e }))
+    bz.enviando = false
+    if (error) { bzPintar(); return aviso(String(error.message || 'No se pudo enviar').replace(/^.*?: /, ''), 'error') }
+    bz.ok = true; bz.texto = ''; bz.tema = null; bzPintar()
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#bzm') && !$('#bzm').hidden) bzCerrar() })
+bzMontar()
 
 function vigilarPortada() {   // consulta-del-dia
   if (estado.user) sb.channel('portada-v2')
