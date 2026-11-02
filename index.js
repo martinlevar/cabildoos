@@ -11,6 +11,20 @@ const sb = createClient(
   window.__ENV.SUPABASE_KEY
 )
 
+// email-visitas: cuenta (anónimo) cuántos entran desde cada versión del email «Buzón · 3.000»
+;(function () {
+  try {
+    const de = new URLSearchParams(location.search).get('de') || ''
+    if (!/^email-3000-(con|sin)$/.test(de)) return
+    if (sessionStorage.getItem('ev_' + de)) return
+    sessionStorage.setItem('ev_' + de, '1')
+    let sid = null
+    try { sid = localStorage.getItem('ux2_cx') } catch (e) {}
+    if (!/^[0-9a-f-]{36}$/.test(sid || '')) { sid = crypto.randomUUID ? crypto.randomUUID() : null; try { if (sid) localStorage.setItem('ux2_cx', sid) } catch (e) {} }
+    if (sid) sb.rpc('email_visita', { p_de: de, p_sid: sid }).then(() => {}, () => {})
+  } catch (e) {}
+})()
+
 // ══════════════════════════════════════════════════════════════
 //  IDLE DETECTION — libera WebSocket tras inactividad
 //  8 min → aviso con cuenta regresiva

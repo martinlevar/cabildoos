@@ -6,6 +6,20 @@
 
 const sb = window.supabase.createClient(window.__ENV.SUPABASE_URL, window.__ENV.SUPABASE_KEY)
 try { if (new URLSearchParams(location.search).get('de') === 'email') sessionStorage.setItem('bl_de_email', '1') } catch (e) {}   // blog-vistas
+
+// email-visitas: cuenta (anónimo) cuántos entran desde cada versión del email «Buzón · 3.000»
+;(function () {
+  try {
+    const de = new URLSearchParams(location.search).get('de') || ''
+    if (!/^email-3000-(con|sin)$/.test(de)) return
+    if (sessionStorage.getItem('ev_' + de)) return
+    sessionStorage.setItem('ev_' + de, '1')
+    let sid = null
+    try { sid = localStorage.getItem('ux2_cx') } catch (e) {}
+    if (!/^[0-9a-f-]{36}$/.test(sid || '')) { sid = crypto.randomUUID ? crypto.randomUUID() : null; try { if (sid) localStorage.setItem('ux2_cx', sid) } catch (e) {} }
+    if (sid) sb.rpc('email_visita', { p_de: de, p_sid: sid }).then(() => {}, () => {})
+  } catch (e) {}
+})()
 // verificar-v2: con sesión iniciada, la verificación es la página nueva /verificar
 const urlVerificar = () => (typeof estado !== 'undefined' && estado.user) ? '/verificar' : APP_ACTUAL
 const APP_ACTUAL = '/cuenta'    // login, registro y verificación siguen en la v1, que vive en /cuenta
