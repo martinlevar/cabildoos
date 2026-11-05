@@ -1381,7 +1381,8 @@ function ponerUrgente(u) {
     opciones: Array.isArray(u.opciones) && u.opciones.length >= 2 ? u.opciones.map(String) : null } : null   // votacion-urgente-por · consulta-del-dia
   clearTimeout(portada.tFin)
   if (!flip || !vu) return !!portada.urgente
-  if (!portada.urgente) { vu.hidden = true; vu.innerHTML = ''; cicloParar(); return false }
+  if (!portada.urgente) { vu.hidden = true; vu.innerHTML = ''; cicloParar(); cdFrente(true); return false }
+  cdFrente(false)   // cd-siempre
   const q = portada.urgente
   if (q.abierta && estado.butaca && !portada.misCargadas) {   // ¿ya votó esta butaca? (solo dice que participó, nunca qué)
     portada.misCargadas = true
@@ -1412,13 +1413,13 @@ function ponerUrgente(u) {
     if (q.ends_at) portada.tFin = setTimeout(cargarPortada, Math.max(1500, new Date(q.ends_at) - Date.now() + 1500))   // al llegar a cero: revelación
   }
   const porHtml = q.por ? `<p class="hv-por">${q.por_tipo === 'patrocinada' ? '<span class="hv-pat">Patrocinada</span> por' : 'Propuesta por'} <b>${esc(q.por)}</b></p>` : ''   // votacion-urgente-por
-  vu.innerHTML = (ciclo ? '' : porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '')) + cuerpo + (cd ? cdBarra() : '')
+  vu.innerHTML = (ciclo ? '' : porHtml + (q.description ? `<p class="hv-ctx">${esc(q.description)}</p>` : '')) + cuerpo + cdBarra()   // cd-siempre: también con votación urgente
   $$('[data-hv]', vu).forEach(b => b.onclick = () => abrirVoto({ ...q }, b.dataset.hv))
   vu.hidden = false
   $('#hero-anuncio').textContent = q.text
   $('#hero-anuncio-tag').innerHTML = `<i></i>${cd ? (q.abierta ? 'Consulta del día' : 'Consulta del día · cerrada') : q.abierta ? 'Votación urgente' : 'Votación cerrada'}`
   flip.dataset.tipo = cd ? 'consulta' : q.abierta ? 'urgente' : 'cerrada'
-  if (cd) cdContar()
+  cdContar()   // cd-siempre
   flip.classList.add('tiene-anuncio')
   const clave = `vu:${q.id}:${q.abierta}`
   flip.classList.toggle('cd-ciclo', ciclo)
@@ -1445,8 +1446,17 @@ async function cdCargar() {
 }
 async function cdContar() {   // número de candidatas en el botón (sin volver a pintar la portada)
   if (cdm.t && Date.now() - cdm.t < 60_000) return; cdm.t = Date.now()
-  const d = await cdCargar(); const b = $('#hero-vu [data-cd="candidatas"]')
-  if (d && b) b.textContent = `Ver candidatas${d.propuestas.length ? ` (${d.propuestas.length})` : ''}`
+  const d = await cdCargar(); if (!d) return
+  $$('#hero-vu [data-cd="candidatas"], #hero-cd [data-cd="candidatas"]').forEach(b => b.textContent = `Ver candidatas${d.propuestas.length ? ` (${d.propuestas.length})` : ''}`)
+}
+// cd-siempre: en la portada (cuando no hay votación urgente ni consulta) también se puede proponer y apoyar
+function cdFrente(mostrar) {
+  const fr = $('#hero-frente'); if (!fr) return
+  let box = $('#hero-cd')
+  if (!mostrar) { if (box) box.hidden = true; return }
+  if (!box) { box = document.createElement('div'); box.id = 'hero-cd'; box.className = 'hero-cd'; fr.appendChild(box) }
+  box.innerHTML = cdBarra(); box.hidden = false
+  cdm.t = 0; cdContar()
 }
 async function cdResultadoHero(q) {
   const { data } = await sb.rpc('get_question_votes', { p_question_id: q.id }).then(r => r, () => ({ data: null }))
@@ -1555,7 +1565,7 @@ async function cdEnviar(e) {
   aviso('Tu propuesta ya compite por la consulta de mañana')
   await cdCargar(); cdPintar(false); cdm.t = 0; cdContar()
 }
-document.addEventListener('click', e => { const b = e.target.closest('#hero-vu [data-cd]'); if (b) cdAbrir(b.dataset.cd) })
+document.addEventListener('click', e => { const b = e.target.closest('#hero-vu [data-cd], #hero-cd [data-cd]'); if (b) cdAbrir(b.dataset.cd) })   // cd-siempre
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#cdm') && !$('#cdm').hidden) cdCerrar() })
 
 // ══ version-nueva: si se publicó una versión nueva mientras la pestaña estaba abierta, ofrece actualizar ══
