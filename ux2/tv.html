@@ -25,6 +25,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; background: #000; color: var(--tinta); overflow: hidden; }
 body { font-family: var(--f-texto); cursor: none; }
 body.cursor { cursor: auto; }
@@ -130,7 +131,7 @@ body.cursor { cursor: auto; }
 @keyframes cortina { 0% { clip-path: inset(0 100% 0 0); } 35%, 65% { clip-path: inset(0 0 0 0); } 100% { clip-path: inset(0 0 0 100%); } }
 .cortina b { font-family: var(--f-tv); font-weight: 900; font-size: 180px; letter-spacing: .04em; text-transform: uppercase; }
 
-.zocalo { position: absolute; left: 64px; right: 64px; bottom: 112px; height: 110px; z-index: 20; display: grid; grid-template-columns: 300px 1fr 330px; filter: drop-shadow(0 10px 30px rgba(0,0,0,.45)); }
+.zocalo { position: absolute; left: 64px; right: 64px; bottom: 112px; height: 110px; z-index: 45; display: grid; grid-template-columns: 300px 1fr 330px; filter: drop-shadow(0 10px 30px rgba(0,0,0,.45)); }
 .zocalo .sec { background: var(--oro); color: var(--navy); display: grid; align-content: center; padding: 0 26px; clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%); }
 .zocalo .sec small { font-family: var(--f-tv); font-weight: 700; font-size: 18px; letter-spacing: .18em; text-transform: uppercase; opacity: .7; }
 .zocalo .sec b { font-family: var(--f-tv); font-weight: 900; font-size: 38px; line-height: 1; text-transform: uppercase; white-space: nowrap; }
@@ -142,7 +143,7 @@ body.cursor { cursor: auto; }
 .zocalo .qr span { font-family: var(--f-tv); font-weight: 700; font-size: 22px; line-height: 1.1; text-transform: uppercase; letter-spacing: .04em; }
 .zocalo .qr span em { font-style: normal; color: var(--oro); display: block; font-size: 18px; text-transform: none; margin-top: 4px; }
 
-.cinta { position: absolute; left: 0; right: 0; bottom: 40px; height: 56px; z-index: 20; display: flex; background: var(--navy); border-top: 3px solid var(--oro); }
+.cinta { position: absolute; left: 0; right: 0; bottom: 40px; height: 56px; z-index: 45; display: flex; background: var(--navy); border-top: 3px solid var(--oro); }
 .cinta .et { flex: none; display: flex; align-items: center; padding: 0 26px 0 64px; background: var(--oro); color: var(--navy); font-family: var(--f-tv); font-weight: 900; font-size: 26px; letter-spacing: .12em; }
 .cinta .pista { flex: 1; overflow: hidden; position: relative; }
 .cinta .mov { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; white-space: nowrap; animation: correr 70s linear infinite; }
@@ -188,6 +189,53 @@ body.cursor { cursor: auto; }
 .escena.activa .cita:nth-child(2) { transition-delay: .5s; } .escena.activa .cita:nth-child(3) { transition-delay: 1s; }
 .cita q { font-size: 27px; line-height: 1.32; font-weight: 600; quotes: "«" "»"; display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
 .cita .quien { font-family: var(--f-tv); font-weight: 700; font-size: 21px; letter-spacing: .1em; text-transform: uppercase; color: #4a5390; }
+
+/* ══ cabildo-tv-4: revelación con butacas, debate completo, muro, breaking ══ */
+.e-rev { display: grid; grid-template-columns: 780px 1fr; gap: 50px; align-items: stretch; top: 140px; bottom: 240px; }
+.rev-izq { display: grid; grid-template-rows: 1fr auto; gap: 8px; min-height: 0; }
+.rev-cont { text-align: center; font-family: var(--f-mon); }
+.rev-cont b { font-family: var(--f-mon); font-weight: 800; font-size: 64px; color: #f5b942; line-height: 1; }
+.rev-cont span { display: block; font-size: 20px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--tinta-2); margin-top: 4px; }
+.rev-cont em { font-style: normal; color: var(--tinta); }
+.rev-der { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.e-rev .res { grid-template-columns: minmax(0, 1fr) 260px 110px; gap: 18px; }
+.e-rev .res .op { white-space: normal; font-size: 30px; line-height: 1.1; display: flex; align-items: center; }
+.e-rev .res .op small { flex: none; }
+.e-rev .res .pct { font-size: 38px; }
+.e-rev .resultados { opacity: 0; transition: opacity .8s ease; }
+.e-rev .resultados.ver { opacity: 1; }
+.e-rev .pie { opacity: 0; transition: opacity .8s ease .4s; }
+.e-rev .resultados.ver + .pie { opacity: 1; }
+.e-dtodo { display: grid; grid-template-columns: 620px 1fr; gap: 50px; top: 140px; bottom: 240px; }
+.dt-cab { align-self: center; }
+.dt-vent { position: relative; overflow: hidden; -webkit-mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(transparent, #000 8%, #000 92%, transparent); }
+.dt-lista { display: grid; gap: 16px; padding: 30px 0; will-change: transform; }
+.dt-msj { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); border-radius: 18px; padding: 18px 22px; }
+.dt-msj p { margin: 0; font-size: 26px; line-height: 1.38; font-weight: 500; }
+.dt-msj small { display: block; margin-top: 8px; font-family: var(--f-tv); font-weight: 700; font-size: 19px; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-3); }
+.muro-grid { margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.muro-card { background: var(--tinta); color: var(--navy); border-radius: 20px; padding: 22px 24px; display: grid; gap: 12px; align-content: space-between; min-height: 170px; transform: rotate(var(--rot, 0deg)); }
+.muro-card p { margin: 0; font-size: 24px; line-height: 1.35; font-weight: 600; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.muro-card small { font-family: var(--f-tv); font-weight: 700; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; color: #4a5390; display: flex; justify-content: space-between; }
+.breaking { position: absolute; inset: 0; z-index: 40; background: radial-gradient(1200px 700px at 50% 40%, #3a0a12, #12030a 70%); display: grid; grid-template-rows: auto 1fr; padding: 70px 80px 150px; }
+.bk-marco { position: absolute; inset: 0; border: 18px solid var(--rojo); pointer-events: none; animation: bkflash 1s steps(2, jump-none) infinite; }
+@keyframes bkflash { 50% { border-color: #ffffff; } }
+.bk-cab { display: flex; gap: 20px; align-items: center; }
+.bk-tag { font-family: var(--f-tv); font-weight: 900; font-size: 64px; letter-spacing: .06em; background: var(--rojo); color: #fff; padding: 6px 28px; border-radius: 10px; animation: bktag 1s steps(2, jump-none) infinite; }
+@keyframes bktag { 50% { background: #fff; color: var(--rojo); } }
+.bk-tag2 { font-family: var(--f-tv); font-weight: 800; font-size: 40px; letter-spacing: .2em; color: #ffd1d6; }
+.bk-cuerpo { display: grid; grid-template-columns: 1fr; gap: 50px; align-items: center; min-height: 0; margin-top: 30px; }
+.bk-cuerpo.con-media { grid-template-columns: 1fr 820px; }
+.bk-cuerpo h2 { margin: 0; font-family: var(--f-tv); font-weight: 900; font-size: 104px; line-height: 1; text-wrap: balance; }
+.bk-cuerpo p { margin: 24px 0 0; font-size: 36px; line-height: 1.35; color: #ffe4e7; max-width: 1200px; }
+.bk-media { min-width: 0; max-height: 640px; display: grid; place-items: center; }
+.bk-media img, .bk-media video { max-width: 100%; max-height: 640px; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.bk-media iframe { width: 820px; height: 461px; border: 0; border-radius: 18px; }
+.bk-tweet { background: #fff; color: #0f1419; border-radius: 22px; padding: 30px 34px; width: 100%; font-family: var(--f-mon); }
+.bk-tweet .au { display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 800; }
+.bk-tweet .au span { font-weight: 500; color: #536471; font-size: 22px; }
+.bk-tweet .au i { margin-left: auto; font-style: normal; font-size: 34px; font-weight: 900; }
+.bk-tweet p { color: #0f1419; font-size: 30px; line-height: 1.4; margin: 18px 0 0; white-space: pre-line; }
 </style>
 </head>
 <body>
@@ -238,10 +286,25 @@ body.cursor { cursor: auto; }
   </section>
 
   <section class="escena e-rev" data-escena="revelacion">
-    <span class="kicker">Revelación</span>
-    <h2 class="titular chico" id="r-texto"></h2>
-    <div class="resultados" id="r-res"></div>
-    <p class="pie" id="r-pie"></p>
+    <div class="rev-izq"><div class="hemi-cv"><canvas id="rev-cv"></canvas></div>
+      <div class="rev-cont"><b class="num" id="r-cont">0</b><span>butacas votaron · <em id="r-part"></em></span></div></div>
+    <div class="rev-der">
+      <span class="kicker">Revelación</span>
+      <h2 class="titular chico" id="r-texto"></h2>
+      <div class="resultados" id="r-res"></div>
+      <p class="pie" id="r-pie"></p>
+    </div>
+  </section>
+
+  <section class="escena e-dtodo" data-escena="debate_todo">
+    <div class="dt-cab"><span class="kicker">Todo el debate</span><h2 class="titular chico" id="dt-texto"></h2><p class="sub" id="dt-pie"></p></div>
+    <div class="dt-vent"><div class="dt-lista" id="dt-lista"></div></div>
+  </section>
+
+  <section class="escena e-muro" data-escena="muro">
+    <span class="kicker">El Muro del día</span>
+    <h2 class="titular" id="m-tit">Lo que más se dijo en el Muro</h2>
+    <div class="muro-grid" id="m-grid"></div>
   </section>
 
   <section class="escena" data-escena="propuestas">
@@ -280,6 +343,12 @@ body.cursor { cursor: auto; }
   </section>
 
   <div class="cortina" id="cortina"><b>Última hora</b></div>
+
+  <div class="breaking" id="breaking" hidden>
+    <div class="bk-marco"></div>
+    <div class="bk-cab"><span class="bk-tag">ÚLTIMA HORA</span><span class="bk-tag2">BREAKING NEWS</span></div>
+    <div class="bk-cuerpo" id="bk-cuerpo"></div>
+  </div>
 
   <div class="zocalo">
     <div class="sec"><small id="z-eti">Ahora</small><b id="z-sec">Hemiciclo</b></div>
@@ -387,6 +456,8 @@ body.cursor { cursor: auto; }
     if (n === 'propuestas') return (E.propuestas || []).length > 0
     if (n === 'ranking') return (E.ranking || []).length > 0
     if (n === 'auditorio') return !!E.auditorio
+    if (n === 'debate_todo') return !!(E.debate && (E.debate.ultimos || []).length > 3)
+    if (n === 'muro') return !!(E.muro && (E.muro.posts || []).length)
     return true
   }
   const consulta = p => Array.isArray(p?.opciones) && p.opciones.length >= 2
@@ -405,6 +476,8 @@ body.cursor { cursor: auto; }
     ranking: () => ['Semana', 'Ranking', 'Puntos por votar, debatir, proponer y apoyar'],
     auditorio: () => ['En vivo', 'Auditorio', `La Butaca #${E.auditorio.butaca} tiene la palabra`],
     hito: () => ['Hito', 'Cabildo', hitoTxt],
+    debate_todo: () => ['En el recinto', 'Debate', `${fmt(E.debate.mensajes)} mensajes · sumá tu voz en cabildodevenezuela.com`],
+    muro: () => ['Ayer', 'Muro', 'Las frases más apoyadas del Muro del Cabildo'],
   }
   function resumenRev() {
     const r = E?.revelacion; if (!r) return null
@@ -437,9 +510,11 @@ body.cursor { cursor: auto; }
     } else if (n === 'revelacion') {
       const r = E.revelacion, s = resumenRev()
       $('#r-texto').textContent = r.texto
+      revIniciar(r)
       $('#r-res').innerHTML = s.ops.map((o, i) => `<div class="res${i === s.k ? ' gana' : ''}"><span class="op"><small>${r.opciones ? 'ABCDEF'[i] : ['✓', '✕', '·'][i]}</small>${esc(o)}</span><div class="barra"><i data-w="${(s.c[i] || 0) / s.tot * 100}"></i></div><span class="pct num">${Math.round((s.c[i] || 0) / s.tot * 100)}%</span></div>`).join('')
       $('#r-pie').textContent = `${fmt(s.tot)} butacas votaron · cerró el ${new Date(r.cerro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: 'numeric', month: 'long' })}`
-      setTimeout(() => $$('#r-res i').forEach(i => i.style.width = i.dataset.w + '%'), 150)
+      $('#r-res').classList.remove('ver')
+      clearTimeout(pintar.tRev); pintar.tRev = setTimeout(() => { $('#r-res').classList.add('ver'); setTimeout(() => $$('#r-res i').forEach(i => i.style.width = i.dataset.w + '%'), 200) }, 6500)
     } else if (n === 'propuestas') {
       $('#p-tit').textContent = `La primera en llegar a ${E.meta_propuestas} apoyos es la próxima Consulta del día`
       $('#p-lista').innerHTML = E.propuestas.slice(0, 4).map(p => `<div class="carril${p.apoyos >= E.meta_propuestas * .85 ? ' cerca' : ''}"><p>${esc(p.pregunta)}</p><div class="barra"><i style="width:${Math.min(100, p.apoyos / E.meta_propuestas * 100)}%"></i></div><div class="ap num">${fmt(p.apoyos)}<small> /${E.meta_propuestas}</small></div></div>`).join('')
@@ -448,6 +523,17 @@ body.cursor { cursor: auto; }
       $('#db-texto').textContent = d.texto
       $('#db-citas').innerHTML = (d.ultimos || []).slice(0, 3).map(m => `<div class="cita"><q>${esc(m.texto)}${m.texto.length >= 280 ? '…' : ''}</q><span class="quien">Butaca #${m.butaca} · ${hace(m.at)}</span></div>`).join('')
       $('#db-pie').innerHTML = `<b>${fmt(d.mensajes)}</b> mensajes de <b>${fmt(d.butacas)}</b> butacas · Sumá tu voz en <b>cabildodevenezuela.com</b>`
+    } else if (n === 'debate_todo') {
+      const d = E.debate
+      $('#dt-texto').textContent = d.texto
+      $('#dt-pie').innerHTML = `${fmt(d.mensajes)} mensajes de ${fmt(d.butacas)} butacas`
+      const l = $('#dt-lista')
+      l.innerHTML = (d.ultimos || []).map(m => `<div class="dt-msj"><p>${esc(m.texto)}${m.texto.length >= 400 ? '…' : ''}</p><small>Butaca #${m.butaca} · ${hace(m.at)}</small></div>`).join('')
+      dtScroll()
+    } else if (n === 'muro') {
+      const m = E.muro
+      $('#m-tit').textContent = `Lo más apoyado del Muro del ${new Date(m.dia + 'T12:00:00Z').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}`
+      $('#m-grid').innerHTML = m.posts.map((p, i) => `<div class="muro-card" style="--rot:${[-1.2, .8, -.5, 1, -.8, .6][i % 6]}deg"><p>${esc(p.texto)}</p><small><span>Butaca #${p.butaca}</span><span>❤ ${fmt(p.likes)}${p.respuestas ? ` · 💬 ${fmt(p.respuestas)}` : ''}</span></small></div>`).join('')
     } else if (n === 'votacion') {
       const v = vigActual()
       $('#v-cat').textContent = v.categoria || ''; $('#v-texto').textContent = v.texto; $('#v-votos').textContent = fmt(v.votos)
@@ -460,8 +546,10 @@ body.cursor { cursor: auto; }
       const a = E.auditorio
       $('#a-silla').textContent = '#' + a.butaca; $('#a-tit').textContent = `La Butaca #${a.butaca} tiene la palabra`; $('#a-tema').textContent = `«${a.tema}»`; $('#a-max').textContent = a.max_min; tictac()
     } else if (n === 'hito') {
+      if (!hitoTxt && E) { const hb = Math.floor(E.butacas / 50) * 50; hitoNum = fmt(hb); hitoTxt = 'ciudadanos verificados con butaca'; hitoSub = E.butacas < E.meta ? `Faltan ${fmt(E.meta - E.butacas)} para llegar a ${fmt(E.meta)}. Sumate con el código de abajo.` : '¡Llegamos a la meta!' }
       $('#h-num').textContent = hitoNum; $('#h-tit').textContent = hitoTxt; $('#h-sub').textContent = hitoSub
     }
+    if (E?.control?.breaking?.activo) return
     const [eti, sec, txt] = ZOC[n](); $('#z-eti').textContent = eti; $('#z-sec').textContent = sec; $('#z-txt').textContent = txt
   }
   function mostrar(n) {
@@ -485,12 +573,62 @@ body.cursor { cursor: auto; }
   setInterval(tictac, 1000)
 
   const manual = () => E?.control?.modo === 'manual'
+  // Revelación: se encienden en dorado las butacas reales que votaron (quién votó, nunca qué), como en la app
+  const rcv = $('#rev-cv'), rg = rcv.getContext('2d'), RV = { lit: [], t0: 0, cam: null }
+  function revIniciar(r) {
+    const orden = [...(r.butacas || [])]; for (let i = orden.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [orden[i], orden[j]] = [orden[j], orden[i]] }
+    RV.lit = orden; RV.t0 = performance.now(); RV.cam = null
+    $('#r-part').textContent = `${Math.round(orden.length / Math.max(1, E.butacas) * 100)} % de participación`
+  }
+  function dibujarRev(now) {
+    requestAnimationFrame(dibujarRev)
+    if (!SEATS.length || !$('.e-rev').classList.contains('activa')) return
+    const W = rcv.clientWidth, Hh = rcv.clientHeight; if (!W || !Hh) return
+    if (!RV.cam || RV.cam.W !== W) { rcv.width = W; rcv.height = Hh; const pad = 10, sc = Math.min((W - pad * 2) / (LIM.x1 - LIM.x0 + HG.DOT * 2), (Hh - pad * 2) / (LIM.y1 - LIM.y0 + HG.DOT * 2)); RV.cam = { W, Hh, s: sc, cx: W / 2 - (LIM.x0 + LIM.x1) / 2 * sc, cy: (Hh - (LIM.y1 - LIM.y0) * sc) / 2 - LIM.y0 * sc } }
+    const { s: sc, cx, cy } = RV.cam, rad = Math.max(1.4, Math.min(9, HG.DOT * sc * .75))
+    rg.clearRect(0, 0, W, Hh)
+    rg.fillStyle = 'rgba(255,255,255,.16)'
+    for (const a of SEATS) { rg.beginPath(); rg.arc(cx + a.x * sc, cy + a.y * sc, rad, 0, 6.283); rg.fill() }
+    const k = Math.min(1, (now - RV.t0) / 6000), n = Math.floor(RV.lit.length * (1 - Math.pow(1 - k, 2)))
+    $('#r-cont').textContent = fmt(n)
+    rg.save(); rg.shadowColor = 'rgba(245,185,66,.9)'; rg.shadowBlur = rad * 2.5; rg.fillStyle = '#f5b942'
+    for (let i = 0; i < n; i++) { const a = SEATS[RV.lit[i] - 1]; if (a) { rg.beginPath(); rg.arc(cx + a.x * sc, cy + a.y * sc, rad * 1.15, 0, 6.283); rg.fill() } }
+    rg.restore()
+  }
+  requestAnimationFrame(dibujarRev)
+  // Todo el debate: la lista baja sola, despacio, y vuelve a empezar
+  function dtScroll() {
+    const l = $('#dt-lista'), v = $('.dt-vent'); l.style.transition = 'none'; l.style.transform = 'translateY(0)'
+    clearTimeout(dtScroll.t)
+    dtScroll.t = setTimeout(() => { const d = Math.max(0, l.scrollHeight - v.clientHeight); if (!d) return
+      const seg = Math.max(10, d / 40); l.style.transition = `transform ${seg}s linear`; l.style.transform = `translateY(-${d}px)`
+      dtScroll.t = setTimeout(dtScroll, seg * 1000 + 3000) }, 2500)
+  }
+  // Breaking News: tapa todo (también en manual) hasta que el admin lo quita
+  const ytId = u => { const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?v=|live\/|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/); return m && m[1] }
+  let bkClave = ''
+  function breaking() {
+    const b = E?.control?.breaking, box = $('#breaking')
+    if (!b || !b.activo) { box.hidden = true; bkClave = ''; return }
+    const clave = JSON.stringify(b); if (clave === bkClave) return; bkClave = clave
+    let media = ''
+    if (b.tipo === 'imagen' && /^https:\/\//.test(b.url || '')) media = `<img src="${esc(b.url)}" alt="">`
+    else if (b.tipo === 'video' && b.url) { const y = ytId(b.url); media = y ? `<iframe src="https://www.youtube-nocookie.com/embed/${y}?autoplay=1&mute=1&controls=0&loop=1&playlist=${y}&modestbranding=1&rel=0" allow="autoplay; encrypted-media" title="Video"></iframe>` : /^https:\/\//.test(b.url) ? `<video src="${esc(b.url)}" autoplay muted loop playsinline></video>` : '' }
+    else if (b.tipo === 'tweet') media = `<div class="bk-tweet"><div class="au">${esc(b.tweet_autor || '')}<span>${b.url ? esc(String(b.url).replace(/^https:\/\/(www\.)?/, '').split('/status')[0]) : ''}</span><i>𝕏</i></div><p>${esc(b.tweet_texto || '')}</p></div>`
+    $('#bk-cuerpo').className = 'bk-cuerpo' + (media ? ' con-media' : '')
+    $('#bk-cuerpo').innerHTML = `<div><h2>${esc(b.titulo)}</h2>${b.texto ? `<p>${esc(b.texto)}</p>` : ''}</div>${media ? `<div class="bk-media">${media}</div>` : ''}`
+    box.hidden = false
+    const [eti, sec] = ['Última hora', 'Breaking']; $('#z-eti').textContent = eti; $('#z-sec').textContent = sec; $('#z-txt').textContent = b.titulo
+  }
+  const programa = () => { const pl = (E?.control?.playlist || []).filter(x => x.on); return pl.length ? pl : ROT.map(e => ({ e, s: 12 })) }
+  let durActual = 12
   function rotar() {
     clearTimeout(timerRot)
     if (!interrup && !forzada && !manual()) {
-      for (let k = 0; k < ROT.length; k++) { const n = ROT[idx++ % ROT.length]; if (disponible(n)) { mostrar(n); break } }
+      const pl = programa()
+      for (let k = 0; k < pl.length; k++) { const it = pl[idx++ % pl.length]; if (disponible(it.e)) { durActual = it.s; mostrar(it.e); break } }
     }
-    timerRot = setTimeout(rotar, actual === 'revelacion' ? 16000 : 12000)
+    timerRot = setTimeout(rotar, Math.max(5, durActual) * 1000)
   }
   function cortina(fn) { const c = $('#cortina'); c.classList.remove('va'); void c.offsetWidth; c.classList.add('va'); setTimeout(fn, 560) }
   const PRIO = { auditorio: 4, urgente: 3, revelacion: 2, hito: 1 }
@@ -550,10 +688,11 @@ body.cursor { cursor: auto; }
     if (prev && E.revelacion && E.revelacion.id !== prev.revelacion?.id) interrumpir('revelacion', 18000, false)
     hitos(prev, E)
 
-    if (forzada) mostrar(forzada)
-    else if (manual()) { interrup = null; clearTimeout(timerInt); mostrar(E.control.escena || 'hemiciclo') }
+    breaking()
+    if (forzada) { if (forzada !== actual) mostrar(forzada); else if (!['revelacion', 'debate_todo', 'muro', 'hito'].includes(forzada)) pintar(forzada) }
+    else if (manual()) { interrup = null; clearTimeout(timerInt); const es = E.control.escena || 'hemiciclo'; if (es !== actual) mostrar(es); else if (!['revelacion', 'debate_todo', 'muro', 'hito'].includes(es)) pintar(es) }
     else if (prev?.control?.modo === 'manual') { actual = null; E.auditorio ? interrumpir('auditorio', 0, false) : rotar() }
-    else if (actual) pintar(actual)
+    else if (actual && !['revelacion', 'debate_todo', 'muro', 'hito'].includes(actual)) pintar(actual)
   }
   setInterval(cinta, 30000)
   leer().then(() => { if (forzada) mostrar(forzada); else if (manual()) mostrar(E.control.escena || 'hemiciclo'); else { mostrar('hemiciclo'); idx = 1; timerRot = setTimeout(rotar, 12000) } })
