@@ -382,6 +382,7 @@ body.cursor { cursor: auto; }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
   const qs = new URLSearchParams(location.search)
   if (qs.get('cursor') === '1') document.body.classList.add('cursor')
+  const conSonido = qs.get('sonido') === '1'   // ?sonido=1: videos del Breaking con audio (en OBS se reproduce sin tocar nada)
 
   // ── escala 1920×1080 a la ventana (en OBS a 1920×1080 queda 1:1) ──
   const tv = $('#tv')
@@ -637,8 +638,8 @@ body.cursor { cursor: auto; }
     if (b.tipo === 'imagen' && /^https:\/\//.test(b.url || '')) media = `<img src="${esc(b.url)}" alt="">`
     else if (b.tipo === 'video' && b.url) {
       const y = ytId(b.url)
-      media = y ? `<iframe src="https://www.youtube.com/embed/${y}?autoplay=1&mute=1&controls=0&loop=1&playlist=${y}&modestbranding=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" title="Video"></iframe>`
-        : /^https:\/\//.test(b.url) ? `<video src="${esc(b.url)}" autoplay muted loop playsinline></video>` : ''
+      media = y ? `<iframe src="https://www.youtube.com/embed/${y}?autoplay=1&mute=${conSonido ? 0 : 1}&controls=0&loop=1&playlist=${y}&modestbranding=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" title="Video"></iframe>`
+        : /^https:\/\//.test(b.url) ? `<video src="${esc(b.url)}" autoplay${conSonido ? '' : ' muted'} loop playsinline></video>` : ''
     } else if (b.tipo === 'tweet') media = `<div class="bk-tweet"><div class="au"><span class="x">𝕏</span><div>${esc(b.tweet_autor || '')}<br><span>${(String(b.url || '').match(/(?:x|twitter)\.com\/([^/?#]+)/) || [])[1] ? '@' + esc(String(b.url).match(/(?:x|twitter)\.com\/([^/?#]+)/)[1]) : ''}</span></div></div><p>${esc(b.tweet_texto || '')}</p></div>`
     $('#bk-t1').textContent = b.titulo
     const p = $('#bk-panel'); p.className = 'bk-panel' + (media ? '' : ' solo')
