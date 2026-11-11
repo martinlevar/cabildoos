@@ -217,25 +217,40 @@ body.cursor { cursor: auto; }
 .muro-card { background: var(--tinta); color: var(--navy); border-radius: 20px; padding: 22px 24px; display: grid; gap: 12px; align-content: space-between; min-height: 170px; transform: rotate(var(--rot, 0deg)); }
 .muro-card p { margin: 0; font-size: 24px; line-height: 1.35; font-weight: 600; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .muro-card small { font-family: var(--f-tv); font-weight: 700; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; color: #4a5390; display: flex; justify-content: space-between; }
-.breaking { position: absolute; inset: 0; z-index: 40; background: radial-gradient(1200px 700px at 50% 40%, #3a0a12, #12030a 70%); display: grid; grid-template-rows: auto 1fr; padding: 70px 80px 150px; }
-.bk-marco { position: absolute; inset: 0; border: 18px solid var(--rojo); pointer-events: none; animation: bkflash 1s steps(2, jump-none) infinite; }
-@keyframes bkflash { 50% { border-color: #ffffff; } }
-.bk-cab { display: flex; gap: 20px; align-items: center; }
-.bk-tag { font-family: var(--f-tv); font-weight: 900; font-size: 64px; letter-spacing: .06em; background: var(--rojo); color: #fff; padding: 6px 28px; border-radius: 10px; animation: bktag 1s steps(2, jump-none) infinite; }
-@keyframes bktag { 50% { background: #fff; color: var(--rojo); } }
-.bk-tag2 { font-family: var(--f-tv); font-weight: 800; font-size: 40px; letter-spacing: .2em; color: #ffd1d6; }
-.bk-cuerpo { display: grid; grid-template-columns: 1fr; gap: 50px; align-items: center; min-height: 0; margin-top: 30px; }
-.bk-cuerpo.con-media { grid-template-columns: 1fr 820px; }
-.bk-cuerpo h2 { margin: 0; font-family: var(--f-tv); font-weight: 900; font-size: 104px; line-height: 1; text-wrap: balance; }
-.bk-cuerpo p { margin: 24px 0 0; font-size: 36px; line-height: 1.35; color: #ffe4e7; max-width: 1200px; }
-.bk-media { min-width: 0; max-height: 640px; display: grid; place-items: center; }
-.bk-media img, .bk-media video { max-width: 100%; max-height: 640px; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
-.bk-media iframe { width: 820px; height: 461px; border: 0; border-radius: 18px; }
-.bk-tweet { background: #fff; color: #0f1419; border-radius: 22px; padding: 30px 34px; width: 100%; font-family: var(--f-mon); }
-.bk-tweet .au { display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 800; }
-.bk-tweet .au span { font-weight: 500; color: #536471; font-size: 22px; }
-.bk-tweet .au i { margin-left: auto; font-style: normal; font-size: 34px; font-weight: 900; }
-.bk-tweet p { color: #0f1419; font-size: 30px; line-height: 1.4; margin: 18px 0 0; white-space: pre-line; }
+
+/* ══ cabildo-tv-5: Breaking News como en la referencia: primero el cartel titila, después la noticia al centro ══ */
+.breaking { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; overflow: hidden; padding: 40px 0 250px; }
+.bk-velo { position: absolute; inset: 0; background: rgba(8,4,10,.72); transition: background .8s ease; }
+.breaking.f1 .bk-velo { background: radial-gradient(1100px 700px at 50% 45%, #ff2a2a 0%, #d90f12 45%, #7a0306 100%); animation: bkpulso .55s ease-in-out infinite alternate; }
+@keyframes bkpulso { from { filter: brightness(1.15); } to { filter: brightness(.55); } }
+.bk-cartel { position: absolute; left: 50%; top: 46%; width: 1180px; padding: 70px 60px 56px; transform: translate(-50%, -50%) perspective(1600px) rotateX(4deg); background: linear-gradient(180deg, #ef1d1d, #c20a0d); border-radius: 10px; text-align: center;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.12), 0 0 120px 30px rgba(255,30,30,.55); transition: opacity .6s ease, transform .8s cubic-bezier(.7,0,.2,1); }
+.breaking.f1 .bk-cartel { animation: bkcartel .55s ease-in-out infinite alternate; }
+@keyframes bkcartel { from { opacity: 1; } to { opacity: .55; } }
+.breaking.f2 .bk-cartel { opacity: 0; transform: translate(-50%, -50%) scale(.6); pointer-events: none; }
+.bk-b { display: block; font-family: var(--f-tv); font-style: italic; font-weight: 900; font-size: 200px; line-height: .86; letter-spacing: -.01em; color: #fff; text-shadow: 0 0 40px rgba(255,255,255,.55), 0 6px 0 rgba(0,0,0,.25); }
+.bk-n { display: inline-block; margin-top: 10px; padding: 0 34px 8px; background: #1a1a22; font-family: var(--f-tv); font-style: italic; font-weight: 900; font-size: 170px; line-height: .95; color: #fff; text-shadow: 0 0 30px rgba(255,255,255,.4); }
+.bk-donde { margin-top: 34px; font-family: var(--f-tv); font-weight: 800; font-size: 34px; letter-spacing: .2em; color: #fff; }
+.bk-donde::before { content: ""; display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: #fff; margin-right: 14px; vertical-align: middle; animation: latido 1s infinite; }
+.bk-cartel .bk-t1 { margin-top: 14px; font-family: var(--f-texto); font-weight: 700; font-size: 40px; color: #fff; }
+.bk-panel { position: relative; width: 1500px; max-height: 780px; padding: 28px 44px 34px; border-radius: 28px; background: linear-gradient(180deg, #e41616, #b5080b); box-shadow: 0 0 0 2px rgba(255,255,255,.14), 0 0 140px 30px rgba(255,20,20,.45); display: grid; justify-items: center; gap: 22px; text-align: center;
+  opacity: 0; transform: scale(.85); transition: opacity .7s ease .15s, transform .8s cubic-bezier(.2,.8,.2,1) .15s; }
+.breaking.f2 .bk-panel { opacity: 1; transform: none; }
+.bk-kick { font-family: var(--f-tv); font-weight: 800; font-size: 24px; letter-spacing: .2em; color: #ffd9d9; text-transform: uppercase; }
+.bk-kick b { color: #fff; }
+.bk-kick b::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #fff; margin-right: 10px; vertical-align: middle; animation: latido 1s infinite; }
+.bk-panel h2 { margin: 0; font-family: var(--f-tv); font-weight: 900; font-size: 64px; line-height: 1.02; color: #fff; text-wrap: balance; max-width: 1380px; }
+.bk-panel.solo h2 { font-size: 104px; }
+.bk-panel p.bk-txt { margin: 0; font-size: 30px; line-height: 1.38; color: #ffe8e8; max-width: 1300px; }
+.bk-panel.solo p.bk-txt { font-size: 38px; }
+.bk-media { display: grid; place-items: center; min-height: 0; }
+.bk-media img, .bk-media video { max-width: 1240px; max-height: 495px; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+.bk-media iframe { width: 880px; height: 495px; border: 0; border-radius: 18px; background: #000; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+.bk-tweet { width: 1100px; text-align: left; background: #15181c; border: 1px solid rgba(255,255,255,.1); border-radius: 22px; padding: 26px 30px; box-shadow: 0 20px 60px rgba(0,0,0,.45); font-family: var(--f-mon); }
+.bk-tweet .au { display: flex; align-items: center; gap: 14px; font-size: 26px; font-weight: 800; color: #e7e9ea; }
+.bk-tweet .au .x { width: 54px; height: 54px; border-radius: 50%; background: #000; display: grid; place-items: center; font-size: 26px; font-weight: 900; color: #fff; border: 1px solid #333; }
+.bk-tweet .au span { font-weight: 500; color: #71767b; font-size: 22px; }
+.bk-tweet p { margin: 18px 0 0; color: #e7e9ea; font-size: 32px; line-height: 1.4; white-space: pre-line; }
 </style>
 </head>
 <body>
@@ -345,9 +360,9 @@ body.cursor { cursor: auto; }
   <div class="cortina" id="cortina"><b>Última hora</b></div>
 
   <div class="breaking" id="breaking" hidden>
-    <div class="bk-marco"></div>
-    <div class="bk-cab"><span class="bk-tag">ÚLTIMA HORA</span><span class="bk-tag2">BREAKING NEWS</span></div>
-    <div class="bk-cuerpo" id="bk-cuerpo"></div>
+    <div class="bk-velo"></div>
+    <div class="bk-cartel"><span class="bk-b">BREAKING</span><span class="bk-n">NEWS</span><div class="bk-donde">VENEZUELA</div><div class="bk-t1" id="bk-t1"></div></div>
+    <div class="bk-panel" id="bk-panel"></div>
   </div>
 
   <div class="zocalo">
@@ -605,20 +620,33 @@ body.cursor { cursor: auto; }
       dtScroll.t = setTimeout(dtScroll, seg * 1000 + 3000) }, 2500)
   }
   // Breaking News: tapa todo (también en manual) hasta que el admin lo quita
-  const ytId = u => { const m = String(u || '').match(/(?:youtube\.com\/(?:watch\?v=|live\/|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/); return m && m[1] }
-  let bkClave = ''
+  // YouTube: watch, youtu.be, live, shorts, embed y m.youtube; se embebe con referrer (el sitio manda no-referrer y YouTube lo exige)
+  function ytId(u) {
+    try { const x = new URL(u); const h = x.hostname.replace(/^(www|m)\./, '')
+      if (h === 'youtu.be') return (x.pathname.slice(1).match(/^[\w-]{11}/) || [])[0]
+      if (h === 'youtube.com' || h === 'youtube-nocookie.com') { if (x.searchParams.get('v')) return (x.searchParams.get('v').match(/^[\w-]{11}/) || [])[0]; return (x.pathname.match(/\/(?:live|shorts|embed)\/([\w-]{11})/) || [])[1] }
+    } catch (e) {} return null
+  }
+  let bkClave = '', bkT = null
   function breaking() {
     const b = E?.control?.breaking, box = $('#breaking')
-    if (!b || !b.activo) { box.hidden = true; bkClave = ''; return }
-    const clave = JSON.stringify(b); if (clave === bkClave) return; bkClave = clave
+    if (!b || !b.activo) { box.hidden = true; box.className = 'breaking'; bkClave = ''; clearTimeout(bkT); $('#bk-panel').innerHTML = ''; return }
+    const clave = JSON.stringify(b); if (clave === bkClave) return
+    const nueva = !bkClave || JSON.parse(bkClave).desde !== b.desde; bkClave = clave
     let media = ''
     if (b.tipo === 'imagen' && /^https:\/\//.test(b.url || '')) media = `<img src="${esc(b.url)}" alt="">`
-    else if (b.tipo === 'video' && b.url) { const y = ytId(b.url); media = y ? `<iframe src="https://www.youtube-nocookie.com/embed/${y}?autoplay=1&mute=1&controls=0&loop=1&playlist=${y}&modestbranding=1&rel=0" allow="autoplay; encrypted-media" title="Video"></iframe>` : /^https:\/\//.test(b.url) ? `<video src="${esc(b.url)}" autoplay muted loop playsinline></video>` : '' }
-    else if (b.tipo === 'tweet') media = `<div class="bk-tweet"><div class="au">${esc(b.tweet_autor || '')}<span>${b.url ? esc(String(b.url).replace(/^https:\/\/(www\.)?/, '').split('/status')[0]) : ''}</span><i>𝕏</i></div><p>${esc(b.tweet_texto || '')}</p></div>`
-    $('#bk-cuerpo').className = 'bk-cuerpo' + (media ? ' con-media' : '')
-    $('#bk-cuerpo').innerHTML = `<div><h2>${esc(b.titulo)}</h2>${b.texto ? `<p>${esc(b.texto)}</p>` : ''}</div>${media ? `<div class="bk-media">${media}</div>` : ''}`
+    else if (b.tipo === 'video' && b.url) {
+      const y = ytId(b.url)
+      media = y ? `<iframe src="https://www.youtube.com/embed/${y}?autoplay=1&mute=1&controls=0&loop=1&playlist=${y}&modestbranding=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" title="Video"></iframe>`
+        : /^https:\/\//.test(b.url) ? `<video src="${esc(b.url)}" autoplay muted loop playsinline></video>` : ''
+    } else if (b.tipo === 'tweet') media = `<div class="bk-tweet"><div class="au"><span class="x">𝕏</span><div>${esc(b.tweet_autor || '')}<br><span>${(String(b.url || '').match(/(?:x|twitter)\.com\/([^/?#]+)/) || [])[1] ? '@' + esc(String(b.url).match(/(?:x|twitter)\.com\/([^/?#]+)/)[1]) : ''}</span></div></div><p>${esc(b.tweet_texto || '')}</p></div>`
+    $('#bk-t1').textContent = b.titulo
+    const p = $('#bk-panel'); p.className = 'bk-panel' + (media ? '' : ' solo')
+    p.innerHTML = `<div class="bk-kick"><b>VENEZUELA</b> · AHORA</div><h2>${esc(b.titulo)}</h2>${b.texto ? `<p class="bk-txt">${esc(b.texto)}</p>` : ''}${media ? `<div class="bk-media">${media}</div>` : ''}`
     box.hidden = false
-    const [eti, sec] = ['Última hora', 'Breaking']; $('#z-eti').textContent = eti; $('#z-sec').textContent = sec; $('#z-txt').textContent = b.titulo
+    if (nueva) { clearTimeout(bkT); box.className = 'breaking f1'; bkT = setTimeout(() => { box.className = 'breaking f2' }, 3600) }
+    else box.className = 'breaking f2'
+    $('#z-eti').textContent = 'Última hora'; $('#z-sec').textContent = 'Breaking'; $('#z-txt').textContent = b.titulo
   }
   const programa = () => { const pl = (E?.control?.playlist || []).filter(x => x.on); return pl.length ? pl : ROT.map(e => ({ e, s: 12 })) }
   let durActual = 12
