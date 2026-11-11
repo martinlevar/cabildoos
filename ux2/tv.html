@@ -213,9 +213,9 @@ body.cursor { cursor: auto; }
 .dt-msj { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); border-radius: 18px; padding: 18px 22px; }
 .dt-msj p { margin: 0; font-size: 26px; line-height: 1.38; font-weight: 500; }
 .dt-msj small { display: block; margin-top: 8px; font-family: var(--f-tv); font-weight: 700; font-size: 19px; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-3); }
-.muro-grid { margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-.muro-card { background: var(--tinta); color: var(--navy); border-radius: 20px; padding: 22px 24px; display: grid; gap: 12px; align-content: space-between; min-height: 170px; transform: rotate(var(--rot, 0deg)); }
-.muro-card p { margin: 0; font-size: 24px; line-height: 1.35; font-weight: 600; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.muro-grid { margin-top: 30px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 196px; gap: 20px; align-items: stretch; }
+.muro-card { background: var(--tinta); color: var(--navy); border-radius: 20px; padding: 24px 26px; display: grid; grid-template-rows: 1fr auto; gap: 12px; height: 196px; }
+.muro-card p { margin: 0; font-size: 24px; line-height: 1.35; font-weight: 600; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .muro-card small { font-family: var(--f-tv); font-weight: 700; font-size: 19px; letter-spacing: .08em; text-transform: uppercase; color: #4a5390; display: flex; justify-content: space-between; }
 
 /* ══ cabildo-tv-5: Breaking News como en la referencia: primero el cartel titila, después la noticia al centro ══ */
@@ -251,6 +251,10 @@ body.cursor { cursor: auto; }
 .bk-tweet .au .x { width: 54px; height: 54px; border-radius: 50%; background: #000; display: grid; place-items: center; font-size: 26px; font-weight: 900; color: #fff; border: 1px solid #333; }
 .bk-tweet .au span { font-weight: 500; color: #71767b; font-size: 22px; }
 .bk-tweet p { margin: 18px 0 0; color: #e7e9ea; font-size: 32px; line-height: 1.4; white-space: pre-line; }
+.e-aud.libre .ondas, .e-aud.libre .silla small { display: none; }
+.e-aud.libre .silla b { font-size: 160px; }
+.e-aud.libre .estado { background: rgba(245,197,24,.14); color: #ffe8a3; }
+.e-aud.libre .estado::before { background: var(--oro); }
 </style>
 </head>
 <body>
@@ -318,7 +322,7 @@ body.cursor { cursor: auto; }
 
   <section class="escena e-muro" data-escena="muro">
     <span class="kicker">El Muro del día</span>
-    <h2 class="titular" id="m-tit">Lo que más se dijo en el Muro</h2>
+    <h2 class="titular chico" id="m-tit">Lo que más se dijo en el Muro</h2>
     <div class="muro-grid" id="m-grid"></div>
   </section>
 
@@ -345,7 +349,7 @@ body.cursor { cursor: auto; }
     <div class="orador"><div class="silla"><small>Butaca</small><b class="num" id="a-silla">#0</b></div>
       <div class="ondas"><i></i><i style="animation-delay:.15s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.45s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:.05s"></i><i style="animation-delay:.35s"></i></div></div>
     <div>
-      <span class="kicker">Auditorio · en vivo</span>
+      <span class="kicker" id="a-kick">Auditorio · en vivo</span>
       <h2 class="titular" id="a-tit"></h2>
       <p class="sub" id="a-tema"></p>
       <div class="estado" id="a-tiempo">Al aire</div>
@@ -471,7 +475,6 @@ body.cursor { cursor: auto; }
     if (n === 'revelacion') return !!E.revelacion
     if (n === 'propuestas') return (E.propuestas || []).length > 0
     if (n === 'ranking') return (E.ranking || []).length > 0
-    if (n === 'auditorio') return !!E.auditorio
     if (n === 'debate_todo') return !!(E.debate && (E.debate.ultimos || []).length > 3)
     if (n === 'muro') return !!(E.muro && (E.muro.posts || []).length)
     return true
@@ -490,7 +493,7 @@ body.cursor { cursor: auto; }
     votacion: () => { const v = vigActual(); return ['En curso', 'Votación', `${fmt(v.votos)} butacas ya votaron · votá en cabildodevenezuela.com`] },
     revelacion: () => { const r = resumenRev(); return ['Resultado', 'Revelación', r ? `Ganó «${r.gana}» con el ${r.pct} %` : 'Resultado de la última votación'] },
     ranking: () => ['Semana', 'Ranking', 'Puntos por votar, debatir, proponer y apoyar'],
-    auditorio: () => ['En vivo', 'Auditorio', `La Butaca #${E.auditorio.butaca} tiene la palabra`],
+    auditorio: () => E.auditorio ? ['En vivo', 'Auditorio', `La Butaca #${E.auditorio.butaca} tiene la palabra`] : ['Abierto', 'Auditorio', 'Pedí la palabra desde el Auditorio en cabildodevenezuela.com'],
     hito: () => ['Hito', 'Cabildo', hitoTxt],
     debate_todo: () => ['En el recinto', 'Debate', `${fmt(E.debate.mensajes)} mensajes · sumá tu voz en cabildodevenezuela.com`],
     muro: () => ['Ayer', 'Muro', 'Las frases más apoyadas del Muro del Cabildo'],
@@ -549,7 +552,7 @@ body.cursor { cursor: auto; }
     } else if (n === 'muro') {
       const m = E.muro
       $('#m-tit').textContent = `Lo más apoyado del Muro del ${new Date(m.dia + 'T12:00:00Z').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}`
-      $('#m-grid').innerHTML = m.posts.map((p, i) => `<div class="muro-card" style="--rot:${[-1.2, .8, -.5, 1, -.8, .6][i % 6]}deg"><p>${esc(p.texto)}</p><small><span>Butaca #${p.butaca}</span><span>❤ ${fmt(p.likes)}${p.respuestas ? ` · 💬 ${fmt(p.respuestas)}` : ''}</span></small></div>`).join('')
+      $('#m-grid').innerHTML = m.posts.map((p, i) => `<div class="muro-card"><p>${esc(p.texto)}</p><small><span>Butaca #${p.butaca}</span><span>❤ ${fmt(p.likes)}${p.respuestas ? ` · 💬 ${fmt(p.respuestas)}` : ''}</span></small></div>`).join('')
     } else if (n === 'votacion') {
       const v = vigActual()
       $('#v-cat').textContent = v.categoria || ''; $('#v-texto').textContent = v.texto; $('#v-votos').textContent = fmt(v.votos)
@@ -559,10 +562,12 @@ body.cursor { cursor: auto; }
     } else if (n === 'ranking') {
       $('#rank').innerHTML = E.ranking.map(r => `<li><span class="pos">${r.pos}</span><span class="nom">Butaca #${r.butaca}</span><span class="pts num">${fmt(r.pts)} pts</span></li>`).join('')
     } else if (n === 'auditorio') {
-      const a = E.auditorio
-      $('#a-silla').textContent = '#' + a.butaca; $('#a-tit').textContent = `La Butaca #${a.butaca} tiene la palabra`; $('#a-tema').textContent = `«${a.tema}»`; $('#a-max').textContent = a.max_min; tictac()
+      const a = E.auditorio, sc = $('.e-aud')
+      sc.classList.toggle('libre', !a); $('#a-kick').textContent = a ? 'Auditorio · en vivo' : 'Auditorio'
+      if (a) { $('#a-silla').textContent = '#' + a.butaca; $('#a-tit').textContent = `La Butaca #${a.butaca} tiene la palabra`; $('#a-tema').textContent = `«${a.tema}»`; $('#a-max').textContent = a.max_min; tictac() }
+      else { $('#a-silla').textContent = '🎙️'; $('#a-tit').textContent = 'El Auditorio está abierto'; $('#a-tema').textContent = E.fila ? `${fmt(E.fila)} ${E.fila === 1 ? 'butaca espera' : 'butacas esperan'} su turno para hablar` : 'Pedí la palabra y hablá en CabildoTV'; $('#a-tiempo').textContent = 'Entrá a cabildodevenezuela.com → Auditorio' }
     } else if (n === 'hito') {
-      if (!hitoTxt && E) { const hb = Math.floor(E.butacas / 50) * 50; hitoNum = fmt(hb); hitoTxt = 'ciudadanos verificados con butaca'; hitoSub = E.butacas < E.meta ? `Faltan ${fmt(E.meta - E.butacas)} para llegar a ${fmt(E.meta)}. Sumate con el código de abajo.` : '¡Llegamos a la meta!' }
+      if (!interrup && E) { hitoNum = fmt(E.butacas); hitoTxt = 'ciudadanos verificados con butaca'; hitoSub = E.butacas < E.meta ? `Faltan ${fmt(E.meta - E.butacas)} para llegar a ${fmt(E.meta)}. Sumate con el código de abajo.` : '¡Llegamos a la meta!' }
       $('#h-num').textContent = hitoNum; $('#h-tit').textContent = hitoTxt; $('#h-sub').textContent = hitoSub
     }
     if (E?.control?.breaking?.activo) return
@@ -584,7 +589,7 @@ body.cursor { cursor: auto; }
     const v = $('.e-vot.activa') && vigActual()
     if (v) { const box = $('#v-cuenta-box'); if (v.ends_at) { box.classList.remove('sin'); $('#v-cuenta').textContent = hms(new Date(v.ends_at) - Date.now()); $('#v-cuenta-et').textContent = 'para el cierre' } else { box.classList.add('sin'); $('#v-cuenta').textContent = 'ABIERTA'; $('#v-cuenta-et').textContent = 'sin hora de cierre' } }
     $$('[data-fin]').forEach(el => { if (el.dataset.fin) el.textContent = hms(new Date(el.dataset.fin) - Date.now()) })
-    if (E?.auditorio) $('#a-tiempo').textContent = 'Al aire · ' + hms(Date.now() - new Date(E.auditorio.desde)).slice(3)
+    if (E?.auditorio && $('.e-aud')) $('#a-tiempo').textContent = 'Al aire · ' + hms(Date.now() - new Date(E.auditorio.desde)).slice(3)
   }
   setInterval(tictac, 1000)
 
@@ -675,12 +680,12 @@ body.cursor { cursor: auto; }
     if (!a) return
     const hb = Math.floor(b.butacas / 50) * 50
     if (hb > a.butacas && hb >= 50) {
-      hitoNum = fmt(hb); hitoTxt = 'ciudadanos verificados con butaca'
+      hitoNum = fmt(b.butacas); hitoTxt = 'ciudadanos verificados con butaca'
       hitoSub = b.butacas < b.meta ? `Faltan ${fmt(b.meta - b.butacas)} para llegar a ${fmt(b.meta)}. Sumate con el código de abajo.` : '¡Llegamos a la meta!'
       return interrumpir('hito', 10000)
     }
     const hv = Math.floor(b.votos / 5000) * 5000
-    if (hv > a.votos && hv >= 5000) { hitoNum = fmt(hv); hitoTxt = 'votos secretos en el Cabildo'; hitoSub = 'Cada uno, de un ciudadano verificado.'; interrumpir('hito', 10000) }
+    if (hv > a.votos && hv >= 5000) { hitoNum = fmt(b.votos); hitoTxt = 'votos secretos en el Cabildo'; hitoSub = 'Cada uno, de un ciudadano verificado.'; interrumpir('hito', 10000) }
   }
 
   function cinta() {
