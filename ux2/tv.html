@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>CabildoTV · Cabildo de Venezuela</title>
+<link rel="icon" href="/ux2/iconos/icono.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<!--
+  CabildoTV (cabildo-tv, 11/11/2026): pantalla 1920×1080 para capturar en OBS y retransmitir.
+  · Lee public.tv_estado() cada 8 s: solo totales y datos ya públicos. Nunca qué votó cada butaca;
+    resultados solo de votaciones cerradas con 3 votos o más; sin alias ni nombres (solo «Butaca #N»).
+  · Director automático: rotación de escenas + interrupciones con prioridad
+    (Auditorio > votación urgente nueva > revelación nueva > hito).
+  · ?escena=<nombre> fija una escena (para probar en OBS). ?cursor=1 muestra el cursor.
+-->
+<style>
+:root {
+  --noche: #0b1030; --navy: #141a3c; --navy-2: #1d2552; --oro: #f5c518; --rojo: #e03131; --azul: #2f5fd0;
+  --tinta: #f4f6ff; --tinta-2: #b9c0e6; --tinta-3: #7d86b8;
+  --f-tv: "Barlow Condensed", "Arial Narrow", Arial, sans-serif; --f-texto: "Barlow", "Segoe UI", Arial, sans-serif; --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; color: var(--tinta); overflow: hidden; }
+body { font-family: var(--f-texto); cursor: none; }
+body.cursor { cursor: auto; }
+.tv { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden;
+  background: radial-gradient(1200px 700px at 70% 30%, #1f2a6b 0%, transparent 60%), radial-gradient(900px 600px at 10% 90%, #2a1a4a 0%, transparent 60%), var(--noche); }
+.tv::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 80px 80px; -webkit-mask-image: radial-gradient(ellipse at 60% 40%, #000 30%, transparent 75%); mask-image: radial-gradient(ellipse at 60% 40%, #000 30%, transparent 75%); }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+
+.bug { position: absolute; left: 64px; top: 48px; display: flex; height: 64px; z-index: 20; filter: drop-shadow(0 8px 24px rgba(0,0,0,.4)); }
+.bug .marca { display: flex; align-items: center; gap: 14px; background: var(--tinta); color: var(--navy); padding: 0 22px 0 18px; clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%); }
+.bug .marca b { font-family: var(--f-tv); font-weight: 900; font-size: 38px; line-height: 1; }
+.bug .marca b i { font-style: normal; color: var(--rojo); }
+.franja3 { display: grid; grid-template-rows: repeat(3, 1fr); width: 10px; height: 40px; border-radius: 2px; overflow: hidden; }
+.franja3 span:nth-child(1) { background: var(--oro); } .franja3 span:nth-child(2) { background: var(--azul); } .franja3 span:nth-child(3) { background: var(--rojo); }
+.bug .vivo { display: flex; align-items: center; gap: 10px; background: var(--rojo); padding: 0 22px 0 26px; margin-left: -10px; clip-path: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%); font-family: var(--f-tv); font-weight: 800; font-size: 26px; letter-spacing: .12em; }
+.bug .vivo::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: #fff; animation: latido 1.2s ease-in-out infinite; }
+@keyframes latido { 50% { opacity: .25; } }
+.reloj { position: absolute; right: 64px; top: 48px; z-index: 20; text-align: right; }
+.reloj .hora { font-family: var(--f-num); font-weight: 700; font-size: 44px; line-height: 1; }
+.reloj .lugar { margin-top: 6px; font-family: var(--f-tv); font-weight: 600; font-size: 20px; letter-spacing: .16em; color: var(--tinta-2); text-transform: uppercase; }
+
+.escena { position: absolute; left: 64px; right: 64px; top: 150px; bottom: 250px; opacity: 0; transform: translateY(24px); transition: opacity .6s ease, transform .6s ease; }
+.escena.activa { opacity: 1; transform: none; }
+.kicker { display: inline-flex; align-items: center; gap: 12px; font-family: var(--f-tv); font-weight: 800; font-size: 26px; letter-spacing: .18em; text-transform: uppercase; color: var(--oro); }
+.kicker::before { content: ""; width: 34px; height: 4px; background: currentColor; }
+.kicker.rojo { color: #ff8a8a; }
+.titular { margin: 14px 0 0; font-family: var(--f-tv); font-weight: 800; font-size: 76px; line-height: 1.02; max-width: 1500px; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.titular.chico { font-size: 62px; }
+.sub { margin: 16px 0 0; font-size: 28px; color: var(--tinta-2); max-width: 1300px; }
+
+.e-hemi { display: grid; grid-template-columns: 1fr 520px; gap: 48px; align-items: center; }
+.e-hemi canvas { width: 100%; height: 640px; }
+.hemi-datos { display: grid; gap: 22px; }
+.dato { background: linear-gradient(180deg, rgba(29,37,82,.9), rgba(20,26,60,.9)); border: 1px solid rgba(255,255,255,.08); border-radius: 18px; padding: 24px 28px; }
+.dato b { display: block; font-family: var(--f-num); font-weight: 700; font-size: 64px; line-height: 1; }
+.dato span { display: block; margin-top: 8px; font-size: 22px; color: var(--tinta-2); }
+.dato.oro b { color: var(--oro); }
+.dato.pulso { animation: pulso .8s ease; }
+@keyframes pulso { 30% { box-shadow: 0 0 0 3px rgba(245,197,24,.6), 0 0 40px rgba(245,197,24,.3); } }
+
+.participa { margin-top: 44px; display: grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items: center; max-width: 1600px; }
+.cont b { font-family: var(--f-num); font-weight: 700; font-size: 120px; line-height: .9; }
+.cont span { display: block; font-family: var(--f-tv); font-weight: 600; font-size: 26px; letter-spacing: .14em; color: var(--tinta-2); text-transform: uppercase; }
+.barra { height: 22px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+.barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--oro), #ffdf5e); border-radius: 99px; transition: width 1s ease; }
+.cuenta { text-align: center; background: var(--rojo); border-radius: 16px; padding: 14px 26px; }
+.cuenta b { display: block; font-family: var(--f-num); font-weight: 700; font-size: 54px; line-height: 1; }
+.cuenta span { font-family: var(--f-tv); font-weight: 700; font-size: 20px; letter-spacing: .16em; text-transform: uppercase; }
+.cuenta.sin { background: var(--navy-2); }
+.ops { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 12px; max-width: 1600px; }
+.ops span { font-size: 26px; font-weight: 600; padding: 10px 18px; border-radius: 12px; background: rgba(255,255,255,.08); }
+.ops span b { color: var(--oro); margin-right: 10px; font-family: var(--f-tv); }
+.secreto { margin-top: 24px; font-size: 24px; color: var(--tinta-2); }
+.secreto b { color: var(--tinta); }
+
+.resultados { margin-top: 36px; display: grid; gap: 20px; max-width: 1600px; }
+.res { display: grid; grid-template-columns: 640px 1fr 150px; gap: 24px; align-items: center; }
+.res .op { font-family: var(--f-tv); font-weight: 700; font-size: 36px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res .op small { display: inline-block; min-width: 46px; height: 46px; line-height: 46px; text-align: center; margin-right: 14px; border-radius: 10px; background: var(--navy-2); color: var(--oro); font-size: 28px; }
+.res .barra { height: 44px; border-radius: 10px; }
+.res .barra i { border-radius: 10px; transition: width 1.6s cubic-bezier(.2,.8,.2,1); }
+.res .pct { font-family: var(--f-num); font-weight: 700; font-size: 44px; text-align: right; }
+.res.gana .op, .res.gana .pct { color: var(--oro); }
+.res:not(.gana) .barra i { background: linear-gradient(90deg, #5b6bc4, #8b97e0); }
+.pie { margin-top: 24px; font-size: 24px; color: var(--tinta-2); }
+
+.carrera { margin-top: 30px; display: grid; gap: 14px; max-width: 1700px; }
+.carril { display: grid; grid-template-columns: 1fr 480px 170px; gap: 26px; align-items: center; background: rgba(20,26,60,.75); border: 1px solid rgba(255,255,255,.07); border-radius: 16px; padding: 14px 24px; }
+.carril p { margin: 0; font-size: 30px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.carril .barra { height: 18px; }
+.carril .ap { font-family: var(--f-num); font-weight: 700; font-size: 40px; text-align: right; }
+.carril .ap small { font-size: 20px; color: var(--tinta-3); }
+.carril.cerca { border-color: rgba(245,197,24,.55); box-shadow: 0 0 40px rgba(245,197,24,.12); }
+
+.cifras { margin-top: 40px; display: flex; gap: 26px; }
+.cifras .dato { min-width: 360px; }
+
+.rank { margin: 34px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px 40px; max-width: 1700px; list-style: none; }
+.rank li { display: grid; grid-template-columns: 70px 1fr auto; gap: 18px; align-items: center; padding: 14px 22px; border-radius: 14px; background: rgba(20,26,60,.75); }
+.rank .pos { font-family: var(--f-tv); font-weight: 900; font-size: 46px; color: var(--tinta-3); }
+.rank li:first-child .pos { color: var(--oro); }
+.rank .nom { font-size: 32px; font-weight: 700; }
+.rank .pts { font-family: var(--f-num); font-weight: 700; font-size: 30px; color: var(--tinta-2); }
+
+.e-aud { display: grid; grid-template-columns: 520px 1fr; gap: 64px; align-items: center; }
+.orador { aspect-ratio: 1; border-radius: 28px; background: radial-gradient(circle at 50% 40%, #2c3a8a, #141a3c 70%); display: grid; place-items: center; position: relative; overflow: hidden; border: 2px solid rgba(255,255,255,.1); }
+.orador .silla { font-family: var(--f-tv); font-weight: 900; text-align: center; line-height: 1; }
+.orador .silla small { display: block; font-size: 30px; letter-spacing: .2em; color: var(--tinta-2); text-transform: uppercase; }
+.orador .silla b { display: block; font-size: 120px; color: var(--oro); }
+.ondas { position: absolute; left: 0; right: 0; bottom: 40px; display: flex; justify-content: center; gap: 8px; height: 70px; align-items: center; }
+.ondas i { width: 10px; border-radius: 6px; background: var(--oro); height: 20%; animation: onda 1s ease-in-out infinite; }
+@keyframes onda { 50% { height: 100%; } }
+.estado { display: inline-flex; gap: 12px; align-items: center; margin-top: 24px; padding: 12px 20px; border-radius: 99px; background: rgba(224,49,49,.16); color: #ffb3b3; font-size: 26px; font-weight: 600; }
+.estado::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--rojo); animation: latido 1.2s infinite; }
+.reglas { margin-top: 22px; font-size: 22px; color: var(--tinta-3); }
+
+.e-hito { display: grid; place-items: center; text-align: center; }
+.e-hito .grande { font-family: var(--f-num); font-weight: 700; font-size: 240px; line-height: .9; color: var(--oro); text-shadow: 0 0 80px rgba(245,197,24,.35); }
+.e-hito .titular, .e-hito .sub { margin-left: auto; margin-right: auto; }
+
+.cortina { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: var(--rojo); clip-path: inset(0 100% 0 0); }
+.cortina.va { animation: cortina 1.6s cubic-bezier(.7,0,.2,1) forwards; }
+@keyframes cortina { 0% { clip-path: inset(0 100% 0 0); } 35%, 65% { clip-path: inset(0 0 0 0); } 100% { clip-path: inset(0 0 0 100%); } }
+.cortina b { font-family: var(--f-tv); font-weight: 900; font-size: 180px; letter-spacing: .04em; text-transform: uppercase; }
+
+.zocalo { position: absolute; left: 64px; right: 64px; bottom: 112px; height: 110px; z-index: 20; display: grid; grid-template-columns: 300px 1fr 330px; filter: drop-shadow(0 10px 30px rgba(0,0,0,.45)); }
+.zocalo .sec { background: var(--oro); color: var(--navy); display: grid; align-content: center; padding: 0 26px; clip-path: polygon(0 0, 100% 0, calc(100% - 22px) 100%, 0 100%); }
+.zocalo .sec small { font-family: var(--f-tv); font-weight: 700; font-size: 18px; letter-spacing: .18em; text-transform: uppercase; opacity: .7; }
+.zocalo .sec b { font-family: var(--f-tv); font-weight: 900; font-size: 38px; line-height: 1; text-transform: uppercase; white-space: nowrap; }
+.zocalo .txt { background: rgba(244,246,255,.97); color: var(--navy); display: flex; align-items: center; padding: 0 30px 0 40px; margin-left: -22px; clip-path: polygon(22px 0, 100% 0, 100% 100%, 0 100%); overflow: hidden; }
+.zocalo .txt p { margin: 0; font-family: var(--f-tv); font-weight: 700; font-size: 42px; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zocalo .qr { background: var(--navy); display: grid; grid-template-columns: 86px 1fr; gap: 14px; align-items: center; padding: 0 16px; }
+.zocalo .qr .cod { width: 86px; height: 86px; background: #fff; border-radius: 8px; padding: 6px; }
+.zocalo .qr .cod svg { width: 100%; height: 100%; display: block; }
+.zocalo .qr span { font-family: var(--f-tv); font-weight: 700; font-size: 22px; line-height: 1.1; text-transform: uppercase; letter-spacing: .04em; }
+.zocalo .qr span em { font-style: normal; color: var(--oro); display: block; font-size: 18px; text-transform: none; margin-top: 4px; }
+
+.cinta { position: absolute; left: 0; right: 0; bottom: 40px; height: 56px; z-index: 20; display: flex; background: var(--navy); border-top: 3px solid var(--oro); }
+.cinta .et { flex: none; display: flex; align-items: center; padding: 0 26px 0 64px; background: var(--oro); color: var(--navy); font-family: var(--f-tv); font-weight: 900; font-size: 26px; letter-spacing: .12em; }
+.cinta .pista { flex: 1; overflow: hidden; position: relative; }
+.cinta .mov { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; white-space: nowrap; animation: correr 70s linear infinite; }
+.cinta .mov span { font-family: var(--f-tv); font-weight: 600; font-size: 28px; padding: 0 30px; }
+.cinta .mov span b { color: var(--oro); font-family: var(--f-num); font-weight: 700; font-size: 26px; }
+.cinta .mov span::after { content: "◆"; margin-left: 60px; color: var(--tinta-3); font-size: 16px; vertical-align: middle; }
+@keyframes correr { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.sinsenal { position: absolute; right: 64px; top: 124px; z-index: 21; font-family: var(--f-tv); font-weight: 700; font-size: 20px; letter-spacing: .12em; color: #ffb3b3; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="tv" id="tv">
+  <div class="bug"><div class="marca"><span class="franja3"><span></span><span></span><span></span></span><b>CABILDO<i>TV</i></b></div><div class="vivo">EN VIVO</div></div>
+  <div class="reloj"><div class="hora num" id="hora">--:--:--</div><div class="lugar">Caracas · Venezuela</div></div>
+  <div class="sinsenal" id="sinsenal" hidden>Reconectando…</div>
+
+  <section class="escena e-hemi" data-escena="hemiciclo">
+    <canvas id="hemi" width="1200" height="640"></canvas>
+    <div class="hemi-datos">
+      <div><span class="kicker">El Hemiciclo ahora</span></div>
+      <div class="dato oro"><b class="num" id="d-butacas">–</b><span>ciudadanos verificados con butaca</span></div>
+      <div class="dato" id="dato-votos"><b class="num" id="d-votos">–</b><span>votos secretos emitidos</span></div>
+      <div class="dato"><b class="num" id="d-pres">–</b><span>butacas presentes en el Hemiciclo</span></div>
+    </div>
+  </section>
+
+  <section class="escena e-urg" data-escena="urgente">
+    <span class="kicker rojo" id="u-kicker">Votación urgente · abierta</span>
+    <h2 class="titular" id="u-texto"></h2>
+    <p class="sub" id="u-por"></p>
+    <div class="ops" id="u-ops"></div>
+    <div class="participa">
+      <div class="cont"><b class="num" id="u-votos">0</b><span>butacas ya votaron</span></div>
+      <div class="barra"><i id="u-barra"></i></div>
+      <div class="cuenta" id="u-cuenta-box"><b class="num" id="u-cuenta">--:--:--</b><span id="u-cuenta-et">para el cierre</span></div>
+    </div>
+    <p class="secreto">El resultado se revela al cierre. <b>Nadie, ni siquiera el Cabildo, sabe qué votó cada butaca.</b></p>
+  </section>
+
+  <section class="escena e-rev" data-escena="revelacion">
+    <span class="kicker">Revelación</span>
+    <h2 class="titular chico" id="r-texto"></h2>
+    <div class="resultados" id="r-res"></div>
+    <p class="pie" id="r-pie"></p>
+  </section>
+
+  <section class="escena" data-escena="propuestas">
+    <span class="kicker">La carrera de las propuestas</span>
+    <h2 class="titular" id="p-tit">La primera en llegar a 150 apoyos es la próxima Consulta del día</h2>
+    <div class="carrera" id="p-lista"></div>
+  </section>
+
+  <section class="escena" data-escena="debate">
+    <span class="kicker">El debate en el recinto</span>
+    <h2 class="titular" id="db-texto"></h2>
+    <div class="cifras">
+      <div class="dato oro"><b class="num" id="db-msj">0</b><span>mensajes en el debate</span></div>
+      <div class="dato"><b class="num" id="db-but">0</b><span>butacas opinando</span></div>
+      <div class="dato"><b class="num" id="db-hora">0</b><span>mensajes en la última hora</span></div>
+    </div>
+    <p class="secreto">Sumá tu voz: el debate está abierto en <b>cabildodevenezuela.com</b></p>
+  </section>
+
+  <section class="escena" data-escena="ranking">
+    <span class="kicker">Ranking semanal</span>
+    <h2 class="titular">Las butacas que más movieron el Cabildo esta semana</h2>
+    <ol class="rank" id="rank"></ol>
+  </section>
+
+  <section class="escena e-aud" data-escena="auditorio">
+    <div class="orador"><div class="silla"><small>Butaca</small><b class="num" id="a-silla">#0</b></div>
+      <div class="ondas"><i></i><i style="animation-delay:.15s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.45s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:.05s"></i><i style="animation-delay:.35s"></i></div></div>
+    <div>
+      <span class="kicker">Auditorio · en vivo</span>
+      <h2 class="titular" id="a-tit"></h2>
+      <p class="sub" id="a-tema"></p>
+      <div class="estado" id="a-tiempo">Al aire</div>
+      <p class="reglas">Autorizado por la moderación del Cabildo. Cada intervención dura hasta <span id="a-max">5</span> minutos.</p>
+    </div>
+  </section>
+
+  <section class="escena e-hito" data-escena="hito">
+    <div><span class="kicker">Hito del Cabildo</span><div class="grande num" id="h-num"></div><h2 class="titular" id="h-tit"></h2><p class="sub" id="h-sub"></p></div>
+  </section>
+
+  <div class="cortina" id="cortina"><b>Última hora</b></div>
+
+  <div class="zocalo">
+    <div class="sec"><small id="z-eti">Ahora</small><b id="z-sec">Hemiciclo</b></div>
+    <div class="txt"><p id="z-txt">Cabildo de Venezuela</p></div>
+    <div class="qr"><div class="cod"><svg viewBox="0 0 29 29" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-label="Código QR a cabildodevenezuela.com"><path fill="#141a3c" d="M0,0h1v1h-1zM1,0h1v1h-1zM2,0h1v1h-1zM3,0h1v1h-1zM4,0h1v1h-1zM5,0h1v1h-1zM6,0h1v1h-1zM8,0h1v1h-1zM9,0h1v1h-1zM11,0h1v1h-1zM16,0h1v1h-1zM19,0h1v1h-1zM20,0h1v1h-1zM22,0h1v1h-1zM23,0h1v1h-1zM24,0h1v1h-1zM25,0h1v1h-1zM26,0h1v1h-1zM27,0h1v1h-1zM28,0h1v1h-1zM0,1h1v1h-1zM6,1h1v1h-1zM8,1h1v1h-1zM9,1h1v1h-1zM11,1h1v1h-1zM16,1h1v1h-1zM17,1h1v1h-1zM18,1h1v1h-1zM20,1h1v1h-1zM22,1h1v1h-1zM28,1h1v1h-1zM0,2h1v1h-1zM2,2h1v1h-1zM3,2h1v1h-1zM4,2h1v1h-1zM6,2h1v1h-1zM10,2h1v1h-1zM11,2h1v1h-1zM13,2h1v1h-1zM15,2h1v1h-1zM18,2h1v1h-1zM22,2h1v1h-1zM24,2h1v1h-1zM25,2h1v1h-1zM26,2h1v1h-1zM28,2h1v1h-1zM0,3h1v1h-1zM2,3h1v1h-1zM3,3h1v1h-1zM4,3h1v1h-1zM6,3h1v1h-1zM8,3h1v1h-1zM9,3h1v1h-1zM10,3h1v1h-1zM11,3h1v1h-1zM12,3h1v1h-1zM13,3h1v1h-1zM14,3h1v1h-1zM16,3h1v1h-1zM17,3h1v1h-1zM19,3h1v1h-1zM20,3h1v1h-1zM22,3h1v1h-1zM24,3h1v1h-1zM25,3h1v1h-1zM26,3h1v1h-1zM28,3h1v1h-1zM0,4h1v1h-1zM2,4h1v1h-1zM3,4h1v1h-1zM4,4h1v1h-1zM6,4h1v1h-1zM9,4h1v1h-1zM14,4h1v1h-1zM15,4h1v1h-1zM17,4h1v1h-1zM19,4h1v1h-1zM22,4h1v1h-1zM24,4h1v1h-1zM25,4h1v1h-1zM26,4h1v1h-1zM28,4h1v1h-1zM0,5h1v1h-1zM6,5h1v1h-1zM9,5h1v1h-1zM10,5h1v1h-1zM11,5h1v1h-1zM12,5h1v1h-1zM13,5h1v1h-1zM14,5h1v1h-1zM18,5h1v1h-1zM19,5h1v1h-1zM20,5h1v1h-1zM22,5h1v1h-1zM28,5h1v1h-1zM0,6h1v1h-1zM1,6h1v1h-1zM2,6h1v1h-1zM3,6h1v1h-1zM4,6h1v1h-1zM5,6h1v1h-1zM6,6h1v1h-1zM8,6h1v1h-1zM10,6h1v1h-1zM12,6h1v1h-1zM14,6h1v1h-1zM16,6h1v1h-1zM18,6h1v1h-1zM20,6h1v1h-1zM22,6h1v1h-1zM23,6h1v1h-1zM24,6h1v1h-1zM25,6h1v1h-1zM26,6h1v1h-1zM27,6h1v1h-1zM28,6h1v1h-1zM8,7h1v1h-1zM9,7h1v1h-1zM10,7h1v1h-1zM12,7h1v1h-1zM15,7h1v1h-1zM16,7h1v1h-1zM17,7h1v1h-1zM18,7h1v1h-1zM0,8h1v1h-1zM2,8h1v1h-1zM3,8h1v1h-1zM5,8h1v1h-1zM6,8h1v1h-1zM7,8h1v1h-1zM9,8h1v1h-1zM10,8h1v1h-1zM11,8h1v1h-1zM12,8h1v1h-1zM15,8h1v1h-1zM16,8h1v1h-1zM17,8h1v1h-1zM18,8h1v1h-1zM19,8h1v1h-1zM22,8h1v1h-1zM25,8h1v1h-1zM27,8h1v1h-1zM28,8h1v1h-1zM2,9h1v1h-1zM3,9h1v1h-1zM4,9h1v1h-1zM5,9h1v1h-1zM7,9h1v1h-1zM8,9h1v1h-1zM13,9h1v1h-1zM14,9h1v1h-1zM17,9h1v1h-1zM18,9h1v1h-1zM19,9h1v1h-1zM20,9h1v1h-1zM21,9h1v1h-1zM22,9h1v1h-1zM23,9h1v1h-1zM24,9h1v1h-1zM28,9h1v1h-1zM0,10h1v1h-1zM2,10h1v1h-1zM3,10h1v1h-1zM6,10h1v1h-1zM8,10h1v1h-1zM10,10h1v1h-1zM11,10h1v1h-1zM17,10h1v1h-1zM18,10h1v1h-1zM20,10h1v1h-1zM21,10h1v1h-1zM22,10h1v1h-1zM26,10h1v1h-1zM27,10h1v1h-1zM0,11h1v1h-1zM2,11h1v1h-1zM8,11h1v1h-1zM9,11h1v1h-1zM11,11h1v1h-1zM13,11h1v1h-1zM14,11h1v1h-1zM15,11h1v1h-1zM16,11h1v1h-1zM20,11h1v1h-1zM22,11h1v1h-1zM24,11h1v1h-1zM28,11h1v1h-1zM1,12h1v1h-1zM4,12h1v1h-1zM5,12h1v1h-1zM6,12h1v1h-1zM7,12h1v1h-1zM9,12h1v1h-1zM10,12h1v1h-1zM13,12h1v1h-1zM14,12h1v1h-1zM15,12h1v1h-1zM16,12h1v1h-1zM17,12h1v1h-1zM19,12h1v1h-1zM25,12h1v1h-1zM26,12h1v1h-1zM1,13h1v1h-1zM3,13h1v1h-1zM9,13h1v1h-1zM10,13h1v1h-1zM11,13h1v1h-1zM12,13h1v1h-1zM15,13h1v1h-1zM17,13h1v1h-1zM19,13h1v1h-1zM22,13h1v1h-1zM26,13h1v1h-1zM27,13h1v1h-1zM28,13h1v1h-1zM0,14h1v1h-1zM2,14h1v1h-1zM3,14h1v1h-1zM6,14h1v1h-1zM7,14h1v1h-1zM8,14h1v1h-1zM9,14h1v1h-1zM13,14h1v1h-1zM14,14h1v1h-1zM16,14h1v1h-1zM19,14h1v1h-1zM20,14h1v1h-1zM21,14h1v1h-1zM22,14h1v1h-1zM24,14h1v1h-1zM26,14h1v1h-1zM27,14h1v1h-1zM28,14h1v1h-1zM0,15h1v1h-1zM4,15h1v1h-1zM10,15h1v1h-1zM15,15h1v1h-1zM20,15h1v1h-1zM21,15h1v1h-1zM24,15h1v1h-1zM27,15h1v1h-1zM0,16h1v1h-1zM1,16h1v1h-1zM3,16h1v1h-1zM6,16h1v1h-1zM7,16h1v1h-1zM8,16h1v1h-1zM9,16h1v1h-1zM11,16h1v1h-1zM13,16h1v1h-1zM15,16h1v1h-1zM16,16h1v1h-1zM20,16h1v1h-1zM21,16h1v1h-1zM23,16h1v1h-1zM24,16h1v1h-1zM25,16h1v1h-1zM27,16h1v1h-1zM1,17h1v1h-1zM4,17h1v1h-1zM5,17h1v1h-1zM9,17h1v1h-1zM12,17h1v1h-1zM13,17h1v1h-1zM14,17h1v1h-1zM15,17h1v1h-1zM17,17h1v1h-1zM20,17h1v1h-1zM23,17h1v1h-1zM25,17h1v1h-1zM26,17h1v1h-1zM27,17h1v1h-1zM0,18h1v1h-1zM3,18h1v1h-1zM5,18h1v1h-1zM6,18h1v1h-1zM7,18h1v1h-1zM10,18h1v1h-1zM11,18h1v1h-1zM12,18h1v1h-1zM13,18h1v1h-1zM14,18h1v1h-1zM15,18h1v1h-1zM16,18h1v1h-1zM17,18h1v1h-1zM22,18h1v1h-1zM23,18h1v1h-1zM24,18h1v1h-1zM26,18h1v1h-1zM5,19h1v1h-1zM7,19h1v1h-1zM12,19h1v1h-1zM14,19h1v1h-1zM16,19h1v1h-1zM17,19h1v1h-1zM19,19h1v1h-1zM21,19h1v1h-1zM22,19h1v1h-1zM23,19h1v1h-1zM26,19h1v1h-1zM1,20h1v1h-1zM3,20h1v1h-1zM4,20h1v1h-1zM5,20h1v1h-1zM6,20h1v1h-1zM8,20h1v1h-1zM9,20h1v1h-1zM10,20h1v1h-1zM11,20h1v1h-1zM12,20h1v1h-1zM13,20h1v1h-1zM17,20h1v1h-1zM18,20h1v1h-1zM19,20h1v1h-1zM20,20h1v1h-1zM21,20h1v1h-1zM22,20h1v1h-1zM23,20h1v1h-1zM24,20h1v1h-1zM25,20h1v1h-1zM26,20h1v1h-1zM8,21h1v1h-1zM11,21h1v1h-1zM12,21h1v1h-1zM13,21h1v1h-1zM16,21h1v1h-1zM18,21h1v1h-1zM19,21h1v1h-1zM20,21h1v1h-1zM24,21h1v1h-1zM25,21h1v1h-1zM26,21h1v1h-1zM27,21h1v1h-1zM28,21h1v1h-1zM0,22h1v1h-1zM1,22h1v1h-1zM2,22h1v1h-1zM3,22h1v1h-1zM4,22h1v1h-1zM5,22h1v1h-1zM6,22h1v1h-1zM8,22h1v1h-1zM9,22h1v1h-1zM10,22h1v1h-1zM12,22h1v1h-1zM13,22h1v1h-1zM16,22h1v1h-1zM19,22h1v1h-1zM20,22h1v1h-1zM22,22h1v1h-1zM24,22h1v1h-1zM25,22h1v1h-1zM27,22h1v1h-1zM0,23h1v1h-1zM6,23h1v1h-1zM8,23h1v1h-1zM15,23h1v1h-1zM18,23h1v1h-1zM20,23h1v1h-1zM24,23h1v1h-1zM25,23h1v1h-1zM27,23h1v1h-1zM28,23h1v1h-1zM0,24h1v1h-1zM2,24h1v1h-1zM3,24h1v1h-1zM4,24h1v1h-1zM6,24h1v1h-1zM9,24h1v1h-1zM10,24h1v1h-1zM14,24h1v1h-1zM17,24h1v1h-1zM20,24h1v1h-1zM21,24h1v1h-1zM22,24h1v1h-1zM23,24h1v1h-1zM24,24h1v1h-1zM26,24h1v1h-1zM27,24h1v1h-1zM28,24h1v1h-1zM0,25h1v1h-1zM2,25h1v1h-1zM3,25h1v1h-1zM4,25h1v1h-1zM6,25h1v1h-1zM8,25h1v1h-1zM9,25h1v1h-1zM10,25h1v1h-1zM14,25h1v1h-1zM15,25h1v1h-1zM19,25h1v1h-1zM20,25h1v1h-1zM21,25h1v1h-1zM23,25h1v1h-1zM24,25h1v1h-1zM25,25h1v1h-1zM28,25h1v1h-1zM0,26h1v1h-1zM2,26h1v1h-1zM3,26h1v1h-1zM4,26h1v1h-1zM6,26h1v1h-1zM8,26h1v1h-1zM9,26h1v1h-1zM13,26h1v1h-1zM14,26h1v1h-1zM17,26h1v1h-1zM18,26h1v1h-1zM23,26h1v1h-1zM26,26h1v1h-1zM28,26h1v1h-1zM0,27h1v1h-1zM6,27h1v1h-1zM9,27h1v1h-1zM10,27h1v1h-1zM15,27h1v1h-1zM16,27h1v1h-1zM20,27h1v1h-1zM23,27h1v1h-1zM25,27h1v1h-1zM27,27h1v1h-1zM0,28h1v1h-1zM1,28h1v1h-1zM2,28h1v1h-1zM3,28h1v1h-1zM4,28h1v1h-1zM5,28h1v1h-1zM6,28h1v1h-1zM8,28h1v1h-1zM9,28h1v1h-1zM13,28h1v1h-1zM14,28h1v1h-1zM15,28h1v1h-1zM18,28h1v1h-1zM19,28h1v1h-1zM20,28h1v1h-1zM23,28h1v1h-1zM27,28h1v1h-1z"/></svg></div><span>Votá desde tu celular<em>cabildodevenezuela.com</em></span></div>
+  </div>
+  <div class="cinta"><div class="et">CABILDO</div><div class="pista"><div class="mov" id="cinta"></div></div></div>
+</div>
+
+<script src="/ux2/vendor/supabase-2.117.2.js"></script>
+<script>
+;(() => {
+  const sb = window.supabase.createClient(window.__ENV.SUPABASE_URL, window.__ENV.SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)]
+  const fmt = n => Math.round(Number(n) || 0).toLocaleString('es-VE')
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  const qs = new URLSearchParams(location.search)
+  if (qs.get('cursor') === '1') document.body.classList.add('cursor')
+
+  // ── escala 1920×1080 a la ventana (en OBS a 1920×1080 queda 1:1) ──
+  const tv = $('#tv')
+  const escalar = () => { const s = Math.min(innerWidth / 1920, innerHeight / 1080); tv.style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})` }
+  addEventListener('resize', escalar); escalar()
+
+  const reloj = () => { $('#hora').textContent = new Date().toLocaleTimeString('es-VE', { timeZone: 'America/Caracas', hour12: false }) }
+  reloj(); setInterval(reloj, 1000)
+
+  // ── estado ──
+  let E = null, prev = null, actual = null, idx = 0, interrup = null, timerRot = null, timerInt = null
+  const forzada = qs.get('escena')
+
+  // ── hemiciclo ──
+  const cv = $('#hemi'), g = cv.getContext('2d')
+  let SEATS = [], presentes = new Set(), flash = 0
+  function armarHemi(n) {
+    SEATS = []; const cx = 600, cy = 610, filas = Math.max(8, Math.min(32, Math.round(Math.sqrt(n / 2.6)))), r0 = 130, paso = (590 - r0) / (filas - 1)
+    const radios = Array.from({ length: filas }, (_, f) => r0 + f * paso), largo = radios.reduce((a, r) => a + Math.PI * r, 0)
+    let resto = n
+    radios.forEach((r, f) => {
+      const k = f === filas - 1 ? resto : Math.round(n * Math.PI * r / largo); resto -= k
+      for (let j = 0; j < k; j++) { const a = Math.PI - (j + .5) / k * Math.PI; SEATS.push({ x: cx + r * Math.cos(a), y: cy - r * Math.sin(a), f }) }
+    })
+    // butaca #1 al centro de las primeras filas: se numera por cercanía al estrado
+    SEATS.sort((a, b) => a.f - b.f || a.x - b.x)
+  }
+  function dibujarHemi() {
+    g.clearRect(0, 0, cv.width, cv.height)
+    const t = performance.now(), r = Math.max(2.5, Math.min(7, 5.2 * Math.sqrt(2600 / Math.max(1, SEATS.length))))
+    const brillo = Math.max(0, 1 - (t - flash) / 1400)
+    SEATS.forEach((s, i) => {
+      const on = presentes.has(i + 1)
+      if (on) { g.beginPath(); g.arc(s.x, s.y, r * 2.6, 0, 7); g.fillStyle = 'rgba(245,197,24,.18)'; g.fill() }
+      g.beginPath(); g.arc(s.x, s.y, on ? r * 1.6 : r, 0, 7)
+      g.fillStyle = on ? '#f5c518' : brillo > 0 ? `rgba(139,151,224,${.35 + brillo * .5})` : 'rgba(139,151,224,.35)'
+      g.fill()
+    })
+    if (brillo > 0) { g.beginPath(); g.arc(600, 610, 60 + (1 - brillo) * 520, Math.PI, 0); g.strokeStyle = `rgba(245,197,24,${brillo * .55})`; g.lineWidth = 6; g.stroke() }
+    requestAnimationFrame(dibujarHemi)
+  }
+  dibujarHemi()
+
+  // ── escenas ──
+  const ROT = ['hemiciclo', 'urgente', 'propuestas', 'debate', 'revelacion', 'ranking']
+  const disponible = n => {
+    if (!E) return n === 'hemiciclo'
+    if (n === 'urgente') return !!(E.portada && E.portada.abierta)
+    if (n === 'debate') return !!(E.portada && E.debate && E.debate.mensajes > 0)
+    if (n === 'revelacion') return !!E.revelacion
+    if (n === 'propuestas') return (E.propuestas || []).length > 0
+    if (n === 'ranking') return (E.ranking || []).length > 0
+    if (n === 'auditorio') return !!E.auditorio
+    return true
+  }
+  const consulta = p => Array.isArray(p?.opciones) && p.opciones.length >= 2
+  function hms(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return [s / 3600, s % 3600 / 60, s % 60].map(x => String(Math.floor(x)).padStart(2, '0')).join(':') }
+
+  const ZOC = {
+    hemiciclo: () => ['Ahora', 'Hemiciclo', `${fmt(E?.butacas)} ciudadanos verificados · ${fmt(E?.votos)} votos secretos`],
+    urgente: () => [consulta(E.portada) ? 'Consulta del día' : 'Última hora', consulta(E.portada) ? 'Consulta' : 'Urgente', `Votá ahora en cabildodevenezuela.com · ${fmt(E.portada.votos)} butacas ya votaron`],
+    propuestas: () => { const p = E.propuestas[0]; return ['Concurso', 'Propuestas', `La que va primera está a ${fmt(Math.max(0, E.meta_propuestas - p.apoyos))} apoyos de la meta`] },
+    debate: () => ['Debate', 'En el recinto', `${fmt(E.debate.butacas)} butacas opinando sobre la votación en portada`],
+    revelacion: () => { const r = resumenRev(); return ['Resultado', 'Revelación', r ? `Ganó «${r.gana}» con el ${r.pct} %` : 'Resultado de la última votación'] },
+    ranking: () => ['Semana', 'Ranking', 'Puntos por votar, debatir, proponer y apoyar'],
+    auditorio: () => ['En vivo', 'Auditorio', `La Butaca #${E.auditorio.butaca} tiene la palabra`],
+    hito: () => ['Hito', 'Cabildo', hitoTxt],
+  }
+  function resumenRev() {
+    const r = E?.revelacion; if (!r) return null
+    const ops = r.opciones || ['Sí', 'No', 'Abstención'], c = r.conteos || [], tot = c.reduce((a, b) => a + (+b || 0), 0) || 1
+    let k = 0; c.forEach((v, i) => { if (+v > +c[k]) k = i })
+    return { ops, c, tot, k, gana: ops[k], pct: Math.round(c[k] / tot * 100) }
+  }
+
+  function pintar(n) {
+    if (n === 'hemiciclo') {
+      $('#d-butacas').textContent = fmt(E?.butacas); $('#d-votos').textContent = fmt(E?.votos); $('#d-pres').textContent = fmt((E?.presentes || []).length)
+    } else if (n === 'urgente') {
+      const p = E.portada, cd = consulta(p)
+      $('#u-kicker').textContent = cd ? 'Consulta del día · abierta' : 'Votación urgente · abierta'
+      $('#u-texto').textContent = p.text
+      $('#u-por').textContent = p.por ? `${p.por_tipo === 'patrocinada' ? 'Patrocinada' : 'Propuesta'} por ${p.por}` : ''
+      $('#u-ops').innerHTML = cd ? p.opciones.map((o, i) => `<span><b>${'ABCDEF'[i]}</b>${esc(o)}</span>`).join('') : '<span><b>·</b>Sí</span><span><b>·</b>No</span><span><b>·</b>Abstención</span>'
+      $('#u-votos').textContent = fmt(p.votos)
+      $('#u-barra').style.width = Math.min(100, (+p.votos || 0) / Math.max(1, E.butacas) * 100) + '%'
+      tictac()
+    } else if (n === 'revelacion') {
+      const r = E.revelacion, s = resumenRev()
+      $('#r-texto').textContent = r.texto
+      $('#r-res').innerHTML = s.ops.map((o, i) => `<div class="res${i === s.k ? ' gana' : ''}"><span class="op"><small>${r.opciones ? 'ABCDEF'[i] : ['✓', '✕', '·'][i]}</small>${esc(o)}</span><div class="barra"><i data-w="${(s.c[i] || 0) / s.tot * 100}"></i></div><span class="pct num">${Math.round((s.c[i] || 0) / s.tot * 100)}%</span></div>`).join('')
+      $('#r-pie').textContent = `${fmt(s.tot)} butacas votaron · cerró el ${new Date(r.cerro).toLocaleDateString('es-VE', { timeZone: 'America/Caracas', day: 'numeric', month: 'long' })}`
+      setTimeout(() => $$('#r-res i').forEach(i => i.style.width = i.dataset.w + '%'), 150)
+    } else if (n === 'propuestas') {
+      $('#p-tit').textContent = `La primera en llegar a ${E.meta_propuestas} apoyos es la próxima Consulta del día`
+      $('#p-lista').innerHTML = E.propuestas.slice(0, 4).map(p => `<div class="carril${p.apoyos >= E.meta_propuestas * .85 ? ' cerca' : ''}"><p>${esc(p.pregunta)}</p><div class="barra"><i style="width:${Math.min(100, p.apoyos / E.meta_propuestas * 100)}%"></i></div><div class="ap num">${fmt(p.apoyos)}<small> /${E.meta_propuestas}</small></div></div>`).join('')
+    } else if (n === 'debate') {
+      $('#db-texto').textContent = E.portada.text; $('#db-msj').textContent = fmt(E.debate.mensajes); $('#db-but').textContent = fmt(E.debate.butacas); $('#db-hora').textContent = fmt(E.debate.ultima_hora)
+    } else if (n === 'ranking') {
+      $('#rank').innerHTML = E.ranking.map(r => `<li><span class="pos">${r.pos}</span><span class="nom">Butaca #${r.butaca}</span><span class="pts num">${fmt(r.pts)} pts</span></li>`).join('')
+    } else if (n === 'auditorio') {
+      const a = E.auditorio
+      $('#a-silla').textContent = '#' + a.butaca; $('#a-tit').textContent = `La Butaca #${a.butaca} tiene la palabra`; $('#a-tema').textContent = `«${a.tema}»`; $('#a-max').textContent = a.max_min; tictac()
+    } else if (n === 'hito') {
+      $('#h-num').textContent = hitoNum; $('#h-tit').textContent = hitoTxt; $('#h-sub').textContent = hitoSub
+    }
+    const [eti, sec, txt] = ZOC[n](); $('#z-eti').textContent = eti; $('#z-sec').textContent = sec; $('#z-txt').textContent = txt
+  }
+  function mostrar(n) {
+    if (!disponible(n) && n !== 'hito') n = 'hemiciclo'
+    pintar(n)
+    if (n !== actual) $$('.escena').forEach(e => e.classList.toggle('activa', e.dataset.escena === n))
+    actual = n
+  }
+  function tictac() {
+    if (actual === 'urgente' || $('.escena.activa')?.dataset.escena === 'urgente') {
+      const p = E?.portada; if (!p) return
+      const box = $('#u-cuenta-box')
+      if (p.ends_at) { box.classList.remove('sin'); $('#u-cuenta').textContent = hms(new Date(p.ends_at) - Date.now()); $('#u-cuenta-et').textContent = 'para el cierre' }
+      else { box.classList.add('sin'); $('#u-cuenta').textContent = 'ABIERTA'; $('#u-cuenta-et').textContent = 'sin hora de cierre' }
+    }
+    if (E?.auditorio) $('#a-tiempo').textContent = 'Al aire · ' + hms(Date.now() - new Date(E.auditorio.desde)).slice(3)
+  }
+  setInterval(tictac, 1000)
+
+  function rotar() {
+    clearTimeout(timerRot)
+    if (!interrup && !forzada) {
+      for (let k = 0; k < ROT.length; k++) { const n = ROT[idx++ % ROT.length]; if (disponible(n)) { mostrar(n); break } }
+    }
+    timerRot = setTimeout(rotar, actual === 'revelacion' ? 16000 : 12000)
+  }
+  function cortina(fn) { const c = $('#cortina'); c.classList.remove('va'); void c.offsetWidth; c.classList.add('va'); setTimeout(fn, 560) }
+  const PRIO = { auditorio: 4, urgente: 3, revelacion: 2, hito: 1 }
+  function interrumpir(tipo, ms, conCortina) {
+    if (forzada) return
+    if (interrup && PRIO[interrup] > PRIO[tipo]) return
+    interrup = tipo; clearTimeout(timerInt)
+    conCortina ? cortina(() => mostrar(tipo)) : mostrar(tipo)
+    if (ms) timerInt = setTimeout(() => { interrup = null; rotar() }, ms)
+  }
+
+  // ── hitos: cada 50 butacas y cada 5.000 votos ──
+  let hitoNum = '', hitoTxt = '', hitoSub = ''
+  function hitos(a, b) {
+    if (!a) return
+    const hb = Math.floor(b.butacas / 50) * 50
+    if (hb > a.butacas && hb >= 50) {
+      hitoNum = fmt(hb); hitoTxt = 'ciudadanos verificados con butaca'
+      hitoSub = b.butacas < b.meta ? `Faltan ${fmt(b.meta - b.butacas)} para llegar a ${fmt(b.meta)}. Sumate con el código de abajo.` : '¡Llegamos a la meta!'
+      return interrumpir('hito', 10000)
+    }
+    const hv = Math.floor(b.votos / 5000) * 5000
+    if (hv > a.votos && hv >= 5000) { hitoNum = fmt(hv); hitoTxt = 'votos secretos en el Cabildo'; hitoSub = 'Cada uno, de un ciudadano verificado.'; interrumpir('hito', 10000) }
+  }
+
+  function cinta() {
+    if (!E) return
+    const p = E.propuestas?.[0]
+    const items = [
+      `<b>${fmt(E.butacas)}</b> ciudadanos verificados`, `<b>${fmt(E.votos)}</b> votos secretos`,
+      E.portada?.abierta ? `${consulta(E.portada) ? 'Consulta del día' : 'Votación urgente'} abierta: <b>${fmt(E.portada.votos)}</b> votos` : null,
+      p ? `La propuesta que va primera tiene <b>${fmt(p.apoyos)}</b> de ${E.meta_propuestas} apoyos` : null,
+      E.butacas < E.meta ? `Meta: <b>${fmt(E.meta)}</b> butacas · faltan <b>${fmt(E.meta - E.butacas)}</b>` : null,
+      E.fila ? `<b>${fmt(E.fila)}</b> ${E.fila === 1 ? 'butaca pidió' : 'butacas pidieron'} la palabra en el Auditorio` : null,
+      'Sumate en <b>cabildodevenezuela.com</b>',
+    ].filter(Boolean).map(t => `<span>${t}</span>`).join('')
+    $('#cinta').innerHTML = items + items
+  }
+
+  // ── lectura del estado ──
+  let fallas = 0
+  async function leer() {
+    const { data, error } = await sb.rpc('tv_estado')
+    if (error || !data) { fallas++; $('#sinsenal').hidden = fallas < 3; return }
+    fallas = 0; $('#sinsenal').hidden = true
+    prev = E; E = data
+    if (!SEATS.length || Math.abs(SEATS.length - E.butacas) >= 1) armarHemi(Math.min(E.butacas, 3600))
+    presentes = new Set(E.presentes || [])
+    if (prev && E.votos > prev.votos) { flash = performance.now(); const d = $('#dato-votos'); d.classList.remove('pulso'); void d.offsetWidth; d.classList.add('pulso') }
+    if (!prev) cinta()
+
+    // interrupciones
+    if (E.auditorio && !(prev && prev.auditorio && prev.auditorio.desde === E.auditorio.desde)) interrumpir('auditorio', 0, true)
+    if (!E.auditorio && interrup === 'auditorio') { interrup = null; rotar() }
+    if (prev && E.portada?.abierta && E.portada.id !== prev.portada?.id) interrumpir('urgente', 20000, true)
+    if (prev && E.revelacion && E.revelacion.id !== prev.revelacion?.id) interrumpir('revelacion', 18000, false)
+    hitos(prev, E)
+
+    if (forzada) mostrar(forzada)
+    else if (actual) pintar(actual)
+  }
+  setInterval(cinta, 30000)
+  leer().then(() => { if (forzada) mostrar(forzada); else { mostrar('hemiciclo'); idx = 1; timerRot = setTimeout(rotar, 12000) } })
+  setInterval(leer, 8000)
+})()
+</script>
+</body>
+</html>

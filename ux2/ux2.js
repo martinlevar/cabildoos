@@ -374,6 +374,7 @@ const NOTIF = {
   consulta_ganadora: ['🏆', () => '#inicio'],
   consulta_publicada: ['🗳️', () => '#inicio'],
   buzon_respuesta:   ['✉️', () => null],   // buzon
+  tv_palabra:        ['🎙️', () => '#auditorio'],   // tv-palabra
 }
 // Si llega un aviso de que me aceptaron o me quitaron de un bloque, se actualiza el estado sin recargar
 const notifBloqueVistas = new Set()
@@ -5391,7 +5392,55 @@ function auYoutube(url) {
 }
 const auLinkSeguro = url => { try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? u.href : null } catch (e) { return null } }
 
+// ══ tv-palabra: pedir la palabra para hablar en CabildoTV (lo autoriza el equipo desde el admin) ══
+const tvp = { d: null, t: null, cargando: false }
+async function tvpCargar() {
+  if (!estado.butaca) { tvp.d = null; return tvpPintar() }
+  try { const { data } = await sb.rpc('tv_palabra_mia'); tvp.d = data || null } catch (e) {}
+  tvpPintar()
+  clearTimeout(tvp.t); if (vistaActual() === 'auditorio') tvp.t = setTimeout(tvpCargar, 20000)
+}
+function tvpPintar() {
+  const cuerpo = $('#au-cuerpo'); if (!cuerpo) return
+  let box = $('#au-tv')
+  if (!estado.butaca) { if (box) box.hidden = true; return }
+  if (!box) { box = document.createElement('section'); box.id = 'au-tv'; box.className = 'card au-tv'; cuerpo.before(box) }
+  box.hidden = false
+  const d = tvp.d, activo = d && ['espera', 'aprobada', 'al_aire'].includes(d.estado)
+  const cab = `<div class="au-tv-cab"><span class="au-tv-ico" aria-hidden="true">🎙️</span><div><h3>Hablá en CabildoTV</h3>
+    <p class="muted">El canal 24 horas del Cabildo. Pedí la palabra, el equipo te autoriza y salís al aire. Se muestra tu número de butaca, nunca tu nombre.</p></div></div>`
+  if (activo) {
+    const est = d.estado === 'al_aire' ? '<b class="au-tv-est vivo">🔴 Estás al aire</b>'
+      : d.estado === 'aprobada' ? '<b class="au-tv-est ok">✓ Aprobado: esperá tu turno</b>'
+      : `<b class="au-tv-est">En la fila${d.fila ? ` · ${d.fila} ${d.fila === 1 ? 'butaca antes' : 'butacas antes'}` : ' · sos el próximo'}</b>`
+    box.innerHTML = `${cab}<div class="au-tv-pedido"><p>«${esc(d.tema)}»</p>${est}
+      <p class="muted">Te avisamos por la campana de tu butaca en cada paso.</p>
+      ${d.estado !== 'al_aire' ? '<button type="button" class="btn btn-ghost" data-tvp="retirar">Retirar mi pedido</button>' : ''}</div>`
+    return
+  }
+  const nota = d?.estado === 'rechazada' ? `<p class="au-tv-nota">Esta vez no pudimos darte la palabra${d.motivo ? `: ${esc(d.motivo)}` : '.'} Podés volver a pedirla.</p>`
+    : d?.estado === 'terminada' ? '<p class="au-tv-nota">¡Gracias por tu intervención! Podés volver a pedir la palabra.</p>' : ''
+  box.innerHTML = `${cab}${nota}<form class="au-tv-form" data-tvp-form>
+    <label for="tvp-tema">¿De qué querés hablar? <span class="muted">(una frase)</span></label>
+    <div class="au-tv-fila"><input id="tvp-tema" maxlength="120" minlength="10" required placeholder="Ej: Por qué las actas mesa por mesa son la única garantía" autocomplete="off">
+    <button class="btn btn-dark" type="submit">Pedir la palabra</button></div>
+    <p class="muted au-tv-reglas">Hasta 5 minutos al aire. Respeto, sin insultos ni datos personales de nadie. El equipo puede cortar la intervención.</p></form>`
+}
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('[data-tvp-form]'); if (!f) return
+  e.preventDefault(); if (tvp.cargando) return
+  const tema = $('#tvp-tema').value.trim(), b = f.querySelector('button'); tvp.cargando = true; b.disabled = true
+  const { error } = await sb.rpc('tv_palabra_pedir', { p_tema: tema })
+  tvp.cargando = false; b.disabled = false
+  if (error) return aviso(error.message, 'error')
+  aviso('Listo: pediste la palabra. Te avisamos por la campana.'); tvpCargar()
+})
+document.addEventListener('click', async e => {
+  if (!e.target.closest('[data-tvp="retirar"]')) return
+  await sb.rpc('tv_palabra_retirar'); aviso('Retiraste tu pedido'); tvpCargar()
+})
 async function entrarAuditorio() {
+  tvpCargar()   // tv-palabra
   if (!estado.user) { au.cargado = au.usuarioListo; return pintarAuditorio() }
   await cargarSesionAuditorio()
   if (!au.vigia) au.vigia = sb.channel('auditorio-session-watch-v2')
