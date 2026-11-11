@@ -8,7 +8,7 @@
 <link rel="icon" href="/ux2/iconos/icono.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <!--
   CabildoTV (cabildo-tv, 11/11/2026): pantalla 1920×1080 para capturar en OBS y retransmitir.
   · Lee public.tv_estado() cada 8 s: solo totales y datos ya públicos. Nunca qué votó cada butaca;
@@ -21,7 +21,7 @@
 :root {
   --noche: #0b1030; --navy: #141a3c; --navy-2: #1d2552; --oro: #f5c518; --rojo: #e03131; --azul: #2f5fd0;
   --tinta: #f4f6ff; --tinta-2: #b9c0e6; --tinta-3: #7d86b8;
-  --f-tv: "Barlow Condensed", "Arial Narrow", Arial, sans-serif; --f-texto: "Barlow", "Segoe UI", Arial, sans-serif; --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --f-tv: "Barlow Condensed", "Arial Narrow", Arial, sans-serif; --f-texto: "Barlow", "Segoe UI", Arial, sans-serif; --f-num: "JetBrains Mono", ui-monospace, Menlo, monospace; --f-mon: Inter, system-ui, sans-serif;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -39,7 +39,7 @@ body.cursor { cursor: auto; }
 .bug .marca b i { font-style: normal; color: var(--rojo); }
 .franja3 { display: grid; grid-template-rows: repeat(3, 1fr); width: 10px; height: 40px; border-radius: 2px; overflow: hidden; }
 .franja3 span:nth-child(1) { background: var(--oro); } .franja3 span:nth-child(2) { background: var(--azul); } .franja3 span:nth-child(3) { background: var(--rojo); }
-.bug .vivo { display: flex; align-items: center; gap: 10px; background: var(--rojo); padding: 0 22px 0 26px; margin-left: -10px; clip-path: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%); font-family: var(--f-tv); font-weight: 800; font-size: 26px; letter-spacing: .12em; }
+.bug .vivo { display: flex; align-items: center; gap: 10px; background: var(--rojo); padding: 0 26px 0 22px; border-radius: 8px; font-family: var(--f-tv); font-weight: 800; font-size: 26px; letter-spacing: .12em; }
 .bug .vivo::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: #fff; animation: latido 1.2s ease-in-out infinite; }
 @keyframes latido { 50% { opacity: .25; } }
 .reloj { position: absolute; right: 64px; top: 48px; z-index: 20; text-align: right; }
@@ -151,22 +151,77 @@ body.cursor { cursor: auto; }
 .cinta .mov span::after { content: "◆"; margin-left: 60px; color: var(--tinta-3); font-size: 16px; vertical-align: middle; }
 @keyframes correr { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .sinsenal { position: absolute; right: 64px; top: 124px; z-index: 21; font-family: var(--f-tv); font-weight: 700; font-size: 20px; letter-spacing: .12em; color: #ffb3b3; text-transform: uppercase; }
+
+/* ══ cabildo-tv-2: hemiciclo como el monitor, votación en curso y debate con mensajes ══ */
+.e-hemi { display: grid; grid-template-columns: 1fr 660px; gap: 44px; top: 140px; bottom: 240px; font-family: var(--f-mon); align-items: stretch; }
+.hemi-izq { display: grid; grid-template-rows: 1fr auto; gap: 18px; min-height: 0; }
+.hemi-cv { position: relative; min-height: 0; }
+.hemi-cv canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mon-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.mon-st { background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.09); border-radius: 18px; padding: 16px 22px; }
+.mon-st b { display: block; font-family: var(--f-mon); font-weight: 800; font-size: 56px; line-height: 1.05; letter-spacing: -.02em; }
+.mon-st span { display: block; margin-top: 4px; font-size: 16px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--tinta-2); }
+.mon-st.oro b { color: #f5b942; }
+.mon-st.pulso { animation: pulso .8s ease; }
+.hemi-der { display: grid; align-content: start; gap: 14px; min-width: 0; }
+.mon-h { margin: 6px 0 0; font-size: 18px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--tinta-2); }
+.mon-vig { display: grid; gap: 14px; }
+.mon-q { background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.09); border-radius: 20px; padding: 20px 22px; display: grid; gap: 12px; }
+.mon-q-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mon-cat { font-size: 15px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 5px 12px; border-radius: 99px; background: rgba(99,102,241,.22); color: #c7c9ff; }
+.mon-cd { font-family: var(--f-mon); font-weight: 800; font-size: 40px; letter-spacing: -.01em; }
+.mon-q p { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.32; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.mon-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+.mon-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f59e0b, #fb923c); border-radius: 99px; }
+.mon-pie { display: flex; justify-content: space-between; font-size: 18px; color: var(--tinta-2); }
+.mon-pie b { color: var(--tinta); }
+.mon-vacio { font-size: 20px; color: var(--tinta-3); margin: 0; }
+.mon-rev { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 14px 18px; }
+.mon-rev p { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mon-rev b { font-size: 19px; color: #f5b942; white-space: nowrap; }
+.e-vot .titular { font-size: 64px; -webkit-line-clamp: 4; }
+.vot-chip { display: inline-block; margin: 14px 0 0 16px; vertical-align: middle; font-family: var(--f-mon); font-size: 20px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 6px 14px; border-radius: 99px; background: rgba(99,102,241,.22); color: #c7c9ff; }
+.vot-chip:empty { display: none; }
+.e-deb .citas { margin-top: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }
+.cita { background: var(--tinta); color: var(--navy); border-radius: 22px; padding: 26px 28px 22px; display: grid; gap: 16px; opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+.escena.activa .cita { opacity: 1; transform: none; }
+.escena.activa .cita:nth-child(2) { transition-delay: .5s; } .escena.activa .cita:nth-child(3) { transition-delay: 1s; }
+.cita q { font-size: 27px; line-height: 1.32; font-weight: 600; quotes: "«" "»"; display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden; }
+.cita .quien { font-family: var(--f-tv); font-weight: 700; font-size: 21px; letter-spacing: .1em; text-transform: uppercase; color: #4a5390; }
 </style>
 </head>
 <body>
 <div class="tv" id="tv">
-  <div class="bug"><div class="marca"><span class="franja3"><span></span><span></span><span></span></span><b>CABILDO<i>TV</i></b></div><div class="vivo">EN VIVO</div></div>
+  <div class="bug"><div class="vivo">EN VIVO</div></div><!-- cabildo-tv-2: sin logo -->
   <div class="reloj"><div class="hora num" id="hora">--:--:--</div><div class="lugar">Caracas · Venezuela</div></div>
   <div class="sinsenal" id="sinsenal" hidden>Reconectando…</div>
 
   <section class="escena e-hemi" data-escena="hemiciclo">
-    <canvas id="hemi" width="1200" height="640"></canvas>
-    <div class="hemi-datos">
-      <div><span class="kicker">El Hemiciclo ahora</span></div>
-      <div class="dato oro"><b class="num" id="d-butacas">–</b><span>ciudadanos verificados con butaca</span></div>
-      <div class="dato" id="dato-votos"><b class="num" id="d-votos">–</b><span>votos secretos emitidos</span></div>
-      <div class="dato"><b class="num" id="d-pres">–</b><span>butacas presentes en el Hemiciclo</span></div>
+    <div class="hemi-izq">
+      <div class="hemi-cv"><canvas id="hemi"></canvas></div>
+      <div class="mon-stats">
+        <div class="mon-st"><b class="num" id="d-butacas">–</b><span>Ciudadanos con butaca</span></div>
+        <div class="mon-st oro" id="dato-votos"><b class="num" id="d-votos">–</b><span>Votos secretos</span></div>
+        <div class="mon-st"><b class="num" id="d-abiertas">–</b><span>Votaciones abiertas</span></div>
+      </div>
     </div>
+    <div class="hemi-der">
+      <h3 class="mon-h">Votaciones vigentes</h3>
+      <div id="hemi-vig" class="mon-vig"></div>
+      <h3 class="mon-h" id="hemi-rev-h">Última revelación</h3>
+      <div id="hemi-rev"></div>
+    </div>
+  </section>
+
+  <section class="escena e-vot" data-escena="votacion">
+    <span class="kicker">Votación en curso</span><span class="vot-chip" id="v-cat"></span>
+    <h2 class="titular" id="v-texto"></h2>
+    <div class="participa">
+      <div class="cont"><b class="num" id="v-votos">0</b><span>butacas ya votaron</span></div>
+      <div class="barra"><i id="v-barra"></i></div>
+      <div class="cuenta" id="v-cuenta-box"><b class="num" id="v-cuenta">--:--:--</b><span id="v-cuenta-et">para el cierre</span></div>
+    </div>
+    <p class="secreto"><span id="v-part"></span> · El resultado se revela al cierre. <b>Nadie sabe qué votó cada butaca.</b></p>
   </section>
 
   <section class="escena e-urg" data-escena="urgente">
@@ -195,15 +250,11 @@ body.cursor { cursor: auto; }
     <div class="carrera" id="p-lista"></div>
   </section>
 
-  <section class="escena" data-escena="debate">
+  <section class="escena e-deb" data-escena="debate">
     <span class="kicker">El debate en el recinto</span>
-    <h2 class="titular" id="db-texto"></h2>
-    <div class="cifras">
-      <div class="dato oro"><b class="num" id="db-msj">0</b><span>mensajes en el debate</span></div>
-      <div class="dato"><b class="num" id="db-but">0</b><span>butacas opinando</span></div>
-      <div class="dato"><b class="num" id="db-hora">0</b><span>mensajes en la última hora</span></div>
-    </div>
-    <p class="secreto">Sumá tu voz: el debate está abierto en <b>cabildodevenezuela.com</b></p>
+    <h2 class="titular chico" id="db-texto"></h2>
+    <div class="citas" id="db-citas"></div>
+    <p class="secreto" id="db-pie"></p>
   </section>
 
   <section class="escena" data-escena="ranking">
@@ -261,41 +312,77 @@ body.cursor { cursor: auto; }
   const forzada = qs.get('escena')
 
   // ── hemiciclo ──
+  // Hemiciclo con la misma geometría, orientación, puntos y rótulo que el monitor del Cabildo
+  const HG = { DOT: 14, GAP: 14 * 3.1, A0: 24 * Math.PI / 180, A1: 156 * Math.PI / 180, R_IN: 320, R_STEP: 50 }
   const cv = $('#hemi'), g = cv.getContext('2d')
-  let SEATS = [], presentes = new Set(), flash = 0
+  let SEATS = [], LIM = null, presentes = new Set(), ondas = [], camara = null
+  function ordenCentro(n) {
+    if (n <= 1) return [0]
+    const o = []
+    if (n % 2) { const c = Math.floor(n / 2); o.push(c); for (let d = 1; d <= c; d++) o.push(c - d, c + d) }
+    else { const c = n / 2; for (let d = 0; d < c; d++) o.push(c - 1 - d, c + d) }
+    return o
+  }
   function armarHemi(n) {
-    SEATS = []; const cx = 600, cy = 610, filas = Math.max(8, Math.min(32, Math.round(Math.sqrt(n / 2.6)))), r0 = 130, paso = (590 - r0) / (filas - 1)
-    const radios = Array.from({ length: filas }, (_, f) => r0 + f * paso), largo = radios.reduce((a, r) => a + Math.PI * r, 0)
-    let resto = n
-    radios.forEach((r, f) => {
-      const k = f === filas - 1 ? resto : Math.round(n * Math.PI * r / largo); resto -= k
-      for (let j = 0; j < k; j++) { const a = Math.PI - (j + .5) / k * Math.PI; SEATS.push({ x: cx + r * Math.cos(a), y: cy - r * Math.sin(a), f }) }
-    })
-    // butaca #1 al centro de las primeras filas: se numera por cercanía al estrado
-    SEATS.sort((a, b) => a.f - b.f || a.x - b.x)
+    const span = HG.A1 - HG.A0, res = []; let row = 0
+    while (res.length < n) {
+      const rr = HG.R_IN + row * HG.R_STEP, cap = Math.floor(rr * span / HG.GAP), cant = Math.min(cap, n - res.length), orden = ordenCentro(cap)
+      for (let i = 0; i < cant; i++) { const t = cap > 1 ? orden[i] / (cap - 1) : .5, an = HG.A0 + t * span; res.push({ x: rr * Math.cos(an), y: rr * Math.sin(an) }) }
+      row++
+    }
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+    for (const q of res) { x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y) }
+    SEATS = res; LIM = { x0, x1, y0, y1 }; camara = null
   }
-  function dibujarHemi() {
-    g.clearRect(0, 0, cv.width, cv.height)
-    const t = performance.now(), r = Math.max(2.5, Math.min(7, 5.2 * Math.sqrt(2600 / Math.max(1, SEATS.length))))
-    const brillo = Math.max(0, 1 - (t - flash) / 1400)
-    SEATS.forEach((s, i) => {
-      const on = presentes.has(i + 1)
-      if (on) { g.beginPath(); g.arc(s.x, s.y, r * 2.6, 0, 7); g.fillStyle = 'rgba(245,197,24,.18)'; g.fill() }
-      g.beginPath(); g.arc(s.x, s.y, on ? r * 1.6 : r, 0, 7)
-      g.fillStyle = on ? '#f5c518' : brillo > 0 ? `rgba(139,151,224,${.35 + brillo * .5})` : 'rgba(139,151,224,.35)'
-      g.fill()
-    })
-    if (brillo > 0) { g.beginPath(); g.arc(600, 610, 60 + (1 - brillo) * 520, Math.PI, 0); g.strokeStyle = `rgba(245,197,24,${brillo * .55})`; g.lineWidth = 6; g.stroke() }
+  function encuadrar() {
+    const W = cv.clientWidth, Hh = cv.clientHeight; if (!W || !Hh || !LIM) return null
+    cv.width = W; cv.height = Hh
+    const pad = Math.min(W, Hh) * .03, t1 = Math.max(13, Math.min(W * .03, 34)), abajo = t1 * 2.6
+    const sc = Math.max(.05, Math.min((W - pad * 2) / (LIM.x1 - LIM.x0 + HG.DOT * 2), (Hh - pad * 2 - abajo) / (LIM.y1 - LIM.y0 + HG.DOT * 2)))
+    const alto = (LIM.y1 - LIM.y0) * sc + abajo
+    return { s: sc, t1, cx: W / 2 - (LIM.x0 + LIM.x1) / 2 * sc, cy: (Hh - alto) / 2 - LIM.y0 * sc, W, Hh }
+  }
+  function encendida(x, y, rad) {
+    g.save()
+    const R = Math.max(7, rad * 4.2), gr = g.createRadialGradient(x, y, rad * .6, x, y, R)
+    gr.addColorStop(0, 'rgba(255,255,255,.75)'); gr.addColorStop(.45, 'rgba(255,255,255,.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)')
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, R, 0, 6.283); g.fill()
+    g.shadowColor = '#ffffff'; g.shadowBlur = Math.max(6, rad * 2.2); g.fillStyle = '#ffffff'
+    g.beginPath(); g.arc(x, y, rad * 1.18, 0, 6.283); g.fill(); g.restore()
+  }
+  function dibujarHemi(now) {
     requestAnimationFrame(dibujarHemi)
+    if (!SEATS.length || !$('.e-hemi').classList.contains('activa')) return
+    if (!camara || camara.W !== cv.clientWidth || camara.Hh !== cv.clientHeight) camara = encuadrar()
+    if (!camara) return
+    const { s: sc, cx, cy, W, Hh, t1 } = camara
+    g.clearRect(0, 0, W, Hh)
+    const rad = Math.max(1.6, Math.min(10, HG.DOT * sc * .75)), vivo = (E?.vigentes || []).length > 0 || !!E?.portada?.abierta
+    ondas = ondas.filter(t0 => now - t0 < 2200)
+    const rMax = HG.R_IN + 40 * HG.R_STEP, frentes = ondas.map(t0 => (now - t0) / 2200 * (rMax + 200))
+    for (let i = 0; i < SEATS.length; i++) {
+      const a = SEATS[i], rr = Math.hypot(a.x, a.y)
+      const alfa = vivo ? .24 + .08 * Math.sin(Math.atan2(a.y, a.x) * 4 - now / 900) : .22
+      let oro = 0; for (const f of frentes) oro = Math.max(oro, Math.exp(-(((rr - f) / 55) ** 2)))
+      g.fillStyle = oro > .02 ? `rgba(245,185,66,${(.25 + .75 * oro).toFixed(3)})` : `rgba(255,255,255,${alfa.toFixed(3)})`
+      g.beginPath(); g.arc(cx + a.x * sc, cy + a.y * sc, rad, 0, 6.283); g.fill()
+    }
+    for (const n of presentes) { const a = SEATS[n - 1]; if (a) encendida(cx + a.x * sc, cy + a.y * sc, rad) }
+    const fy = cy + LIM.y1 * sc + rad + t1 * 1.2
+    g.textAlign = 'center'; g.textBaseline = 'middle'
+    g.fillStyle = 'rgba(255,255,255,.92)'; g.font = `800 ${t1}px Inter, system-ui, sans-serif`; g.fillText('C A B I L D O', cx, fy)
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.font = `600 ${t1 * .48}px Inter, system-ui, sans-serif`; g.fillText('D E   V E N E Z U E L A', cx, fy + t1 * .95)
+    if (presentes.size) { g.fillStyle = 'rgba(255,255,255,.75)'; g.font = `700 ${t1 * .42}px Inter, system-ui, sans-serif`; g.fillText(`💡 ${fmt(presentes.size)} ${presentes.size === 1 ? 'butaca presente' : 'butacas presentes'}`, cx, fy + t1 * 1.75) }
   }
-  dibujarHemi()
+  requestAnimationFrame(dibujarHemi)
 
   // ── escenas ──
-  const ROT = ['hemiciclo', 'urgente', 'propuestas', 'debate', 'revelacion', 'ranking']
+  const ROT = ['hemiciclo', 'urgente', 'votacion', 'debate', 'propuestas', 'revelacion', 'ranking']
   const disponible = n => {
     if (!E) return n === 'hemiciclo'
     if (n === 'urgente') return !!(E.portada && E.portada.abierta)
-    if (n === 'debate') return !!(E.portada && E.debate && E.debate.mensajes > 0)
+    if (n === 'debate') return !!(E.debate && (E.debate.ultimos || []).length)
+    if (n === 'votacion') return (E.vigentes || []).length > 0
     if (n === 'revelacion') return !!E.revelacion
     if (n === 'propuestas') return (E.propuestas || []).length > 0
     if (n === 'ranking') return (E.ranking || []).length > 0
@@ -303,13 +390,17 @@ body.cursor { cursor: auto; }
     return true
   }
   const consulta = p => Array.isArray(p?.opciones) && p.opciones.length >= 2
+  let vigIdx = 0
+  const vigActual = () => { const l = E?.vigentes || []; return l[vigIdx % Math.max(1, l.length)] }
+  function hace(f) { const m = Math.max(0, Math.round((Date.now() - new Date(f)) / 60000)); return m < 1 ? 'recién' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d` }
   function hms(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return [s / 3600, s % 3600 / 60, s % 60].map(x => String(Math.floor(x)).padStart(2, '0')).join(':') }
 
   const ZOC = {
     hemiciclo: () => ['Ahora', 'Hemiciclo', `${fmt(E?.butacas)} ciudadanos verificados · ${fmt(E?.votos)} votos secretos`],
     urgente: () => [consulta(E.portada) ? 'Consulta del día' : 'Última hora', consulta(E.portada) ? 'Consulta' : 'Urgente', `Votá ahora en cabildodevenezuela.com · ${fmt(E.portada.votos)} butacas ya votaron`],
     propuestas: () => { const p = E.propuestas[0]; return ['Concurso', 'Propuestas', `La que va primera está a ${fmt(Math.max(0, E.meta_propuestas - p.apoyos))} apoyos de la meta`] },
-    debate: () => ['Debate', 'En el recinto', `${fmt(E.debate.butacas)} butacas opinando sobre la votación en portada`],
+    debate: () => ['En el recinto', 'Debate', `${fmt(E.debate.mensajes)} mensajes de ${fmt(E.debate.butacas)} butacas · sumá tu voz en cabildodevenezuela.com`],
+    votacion: () => { const v = vigActual(); return ['En curso', 'Votación', `${fmt(v.votos)} butacas ya votaron · votá en cabildodevenezuela.com`] },
     revelacion: () => { const r = resumenRev(); return ['Resultado', 'Revelación', r ? `Ganó «${r.gana}» con el ${r.pct} %` : 'Resultado de la última votación'] },
     ranking: () => ['Semana', 'Ranking', 'Puntos por votar, debatir, proponer y apoyar'],
     auditorio: () => ['En vivo', 'Auditorio', `La Butaca #${E.auditorio.butaca} tiene la palabra`],
@@ -324,7 +415,16 @@ body.cursor { cursor: auto; }
 
   function pintar(n) {
     if (n === 'hemiciclo') {
-      $('#d-butacas').textContent = fmt(E?.butacas); $('#d-votos').textContent = fmt(E?.votos); $('#d-pres').textContent = fmt((E?.presentes || []).length)
+      $('#d-butacas').textContent = fmt(E?.butacas); $('#d-votos').textContent = fmt(E?.votos)
+      const vig = E?.vigentes || []; $('#d-abiertas').textContent = fmt(vig.length + (E?.portada?.abierta ? 1 : 0))
+      const tarj = [...(E?.portada?.abierta ? [{ id: E.portada.id, texto: E.portada.text, categoria: consulta(E.portada) ? 'Consulta del día' : 'Urgente', ends_at: E.portada.ends_at, votos: E.portada.votos }] : []), ...vig].slice(0, 2)
+      $('#hemi-vig').innerHTML = tarj.length ? tarj.map(v => `<div class="mon-q"><div class="mon-q-top"><span class="mon-cat">${esc(v.categoria || 'Votación')}</span><span class="mon-cd num" data-fin="${esc(v.ends_at || '')}">${v.ends_at ? hms(new Date(v.ends_at) - Date.now()) : 'Abierta'}</span></div>
+        <p>${esc(v.texto)}</p><div class="mon-bar"><i style="width:${Math.min(100, (+v.votos || 0) / Math.max(1, E.butacas) * 100)}%"></i></div>
+        <div class="mon-pie"><span><b>${fmt(v.votos)}</b> votos</span><span>${Math.round((+v.votos || 0) / Math.max(1, E.butacas) * 100)} % de participación</span></div></div>`).join('')
+        : '<p class="mon-vacio">No hay votaciones abiertas en este momento.</p>'
+      const rv = resumenRev()
+      $('#hemi-rev-h').hidden = !rv
+      $('#hemi-rev').innerHTML = rv ? `<div class="mon-rev"><p>${esc(E.revelacion.texto)}</p><b>${esc(rv.gana)} · ${rv.pct} %</b></div>` : ''
     } else if (n === 'urgente') {
       const p = E.portada, cd = consulta(p)
       $('#u-kicker').textContent = cd ? 'Consulta del día · abierta' : 'Votación urgente · abierta'
@@ -344,7 +444,16 @@ body.cursor { cursor: auto; }
       $('#p-tit').textContent = `La primera en llegar a ${E.meta_propuestas} apoyos es la próxima Consulta del día`
       $('#p-lista').innerHTML = E.propuestas.slice(0, 4).map(p => `<div class="carril${p.apoyos >= E.meta_propuestas * .85 ? ' cerca' : ''}"><p>${esc(p.pregunta)}</p><div class="barra"><i style="width:${Math.min(100, p.apoyos / E.meta_propuestas * 100)}%"></i></div><div class="ap num">${fmt(p.apoyos)}<small> /${E.meta_propuestas}</small></div></div>`).join('')
     } else if (n === 'debate') {
-      $('#db-texto').textContent = E.portada.text; $('#db-msj').textContent = fmt(E.debate.mensajes); $('#db-but').textContent = fmt(E.debate.butacas); $('#db-hora').textContent = fmt(E.debate.ultima_hora)
+      const d = E.debate
+      $('#db-texto').textContent = d.texto
+      $('#db-citas').innerHTML = (d.ultimos || []).slice(0, 3).map(m => `<div class="cita"><q>${esc(m.texto)}${m.texto.length >= 280 ? '…' : ''}</q><span class="quien">Butaca #${m.butaca} · ${hace(m.at)}</span></div>`).join('')
+      $('#db-pie').innerHTML = `<b>${fmt(d.mensajes)}</b> mensajes de <b>${fmt(d.butacas)}</b> butacas · Sumá tu voz en <b>cabildodevenezuela.com</b>`
+    } else if (n === 'votacion') {
+      const v = vigActual()
+      $('#v-cat').textContent = v.categoria || ''; $('#v-texto').textContent = v.texto; $('#v-votos').textContent = fmt(v.votos)
+      const pc = (+v.votos || 0) / Math.max(1, E.butacas) * 100
+      $('#v-barra').style.width = Math.min(100, pc) + '%'; $('#v-part').textContent = `${Math.round(pc)} % de participación`
+      tictac()
     } else if (n === 'ranking') {
       $('#rank').innerHTML = E.ranking.map(r => `<li><span class="pos">${r.pos}</span><span class="nom">Butaca #${r.butaca}</span><span class="pts num">${fmt(r.pts)} pts</span></li>`).join('')
     } else if (n === 'auditorio') {
@@ -358,7 +467,7 @@ body.cursor { cursor: auto; }
   function mostrar(n) {
     if (!disponible(n) && n !== 'hito') n = 'hemiciclo'
     pintar(n)
-    if (n !== actual) $$('.escena').forEach(e => e.classList.toggle('activa', e.dataset.escena === n))
+    if (n !== actual) { if (n === 'votacion' && actual !== null) vigIdx++; $$('.escena').forEach(e => e.classList.toggle('activa', e.dataset.escena === n)) }
     actual = n
   }
   function tictac() {
@@ -368,13 +477,17 @@ body.cursor { cursor: auto; }
       if (p.ends_at) { box.classList.remove('sin'); $('#u-cuenta').textContent = hms(new Date(p.ends_at) - Date.now()); $('#u-cuenta-et').textContent = 'para el cierre' }
       else { box.classList.add('sin'); $('#u-cuenta').textContent = 'ABIERTA'; $('#u-cuenta-et').textContent = 'sin hora de cierre' }
     }
+    const v = $('.e-vot.activa') && vigActual()
+    if (v) { const box = $('#v-cuenta-box'); if (v.ends_at) { box.classList.remove('sin'); $('#v-cuenta').textContent = hms(new Date(v.ends_at) - Date.now()); $('#v-cuenta-et').textContent = 'para el cierre' } else { box.classList.add('sin'); $('#v-cuenta').textContent = 'ABIERTA'; $('#v-cuenta-et').textContent = 'sin hora de cierre' } }
+    $$('[data-fin]').forEach(el => { if (el.dataset.fin) el.textContent = hms(new Date(el.dataset.fin) - Date.now()) })
     if (E?.auditorio) $('#a-tiempo').textContent = 'Al aire · ' + hms(Date.now() - new Date(E.auditorio.desde)).slice(3)
   }
   setInterval(tictac, 1000)
 
+  const manual = () => E?.control?.modo === 'manual'
   function rotar() {
     clearTimeout(timerRot)
-    if (!interrup && !forzada) {
+    if (!interrup && !forzada && !manual()) {
       for (let k = 0; k < ROT.length; k++) { const n = ROT[idx++ % ROT.length]; if (disponible(n)) { mostrar(n); break } }
     }
     timerRot = setTimeout(rotar, actual === 'revelacion' ? 16000 : 12000)
@@ -382,7 +495,7 @@ body.cursor { cursor: auto; }
   function cortina(fn) { const c = $('#cortina'); c.classList.remove('va'); void c.offsetWidth; c.classList.add('va'); setTimeout(fn, 560) }
   const PRIO = { auditorio: 4, urgente: 3, revelacion: 2, hito: 1 }
   function interrumpir(tipo, ms, conCortina) {
-    if (forzada) return
+    if (forzada || manual()) return
     if (interrup && PRIO[interrup] > PRIO[tipo]) return
     interrup = tipo; clearTimeout(timerInt)
     conCortina ? cortina(() => mostrar(tipo)) : mostrar(tipo)
@@ -424,9 +537,10 @@ body.cursor { cursor: auto; }
     if (error || !data) { fallas++; $('#sinsenal').hidden = fallas < 3; return }
     fallas = 0; $('#sinsenal').hidden = true
     prev = E; E = data
-    if (!SEATS.length || Math.abs(SEATS.length - E.butacas) >= 1) armarHemi(Math.min(E.butacas, 3600))
+    const nSeats = Math.min(3600, Math.max(E.butacas, ...(E.presentes || [0])))
+    if (SEATS.length !== nSeats) armarHemi(nSeats)
     presentes = new Set(E.presentes || [])
-    if (prev && E.votos > prev.votos) { flash = performance.now(); const d = $('#dato-votos'); d.classList.remove('pulso'); void d.offsetWidth; d.classList.add('pulso') }
+    if (prev && E.votos > prev.votos) { ondas.push(performance.now()); const d = $('#dato-votos'); d.classList.remove('pulso'); void d.offsetWidth; d.classList.add('pulso') }
     if (!prev) cinta()
 
     // interrupciones
@@ -437,11 +551,13 @@ body.cursor { cursor: auto; }
     hitos(prev, E)
 
     if (forzada) mostrar(forzada)
+    else if (manual()) { interrup = null; clearTimeout(timerInt); mostrar(E.control.escena || 'hemiciclo') }
+    else if (prev?.control?.modo === 'manual') { actual = null; E.auditorio ? interrumpir('auditorio', 0, false) : rotar() }
     else if (actual) pintar(actual)
   }
   setInterval(cinta, 30000)
-  leer().then(() => { if (forzada) mostrar(forzada); else { mostrar('hemiciclo'); idx = 1; timerRot = setTimeout(rotar, 12000) } })
-  setInterval(leer, 8000)
+  leer().then(() => { if (forzada) mostrar(forzada); else if (manual()) mostrar(E.control.escena || 'hemiciclo'); else { mostrar('hemiciclo'); idx = 1; timerRot = setTimeout(rotar, 12000) } })
+  setInterval(leer, 4000)
 })()
 </script>
 </body>
