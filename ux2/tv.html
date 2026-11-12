@@ -255,10 +255,30 @@ body.cursor { cursor: auto; }
 .e-aud.libre .silla b { font-size: 160px; }
 .e-aud.libre .estado { background: rgba(245,197,24,.14); color: #ffe8a3; }
 .e-aud.libre .estado::before { background: var(--oro); }
+
+/* ══ cabildo-tv-6: Contenedor para OBS: un recuadro hueco (transparente) en el centro y solo la cinta abajo ══ */
+.cont-fondo { position: absolute; inset: 0; display: none; z-index: 0;
+  background: radial-gradient(1200px 700px at 70% 30%, #1f2a6b 0%, transparent 60%), radial-gradient(900px 600px at 10% 90%, #2a1a4a 0%, transparent 60%), var(--noche);
+  -webkit-mask: linear-gradient(#000 0 0), linear-gradient(#000 0 0) 160px 34px / 1600px 900px no-repeat; -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) exclude, linear-gradient(#000 0 0) 160px 34px / 1600px 900px no-repeat; }
+.tv.cont { background: transparent; }
+.tv.cont::before { display: none; }
+.tv.cont .cont-fondo { display: block; }
+.tv.cont .bug, .tv.cont .reloj, .tv.cont .zocalo, .tv.cont .sinsenal { opacity: 0; visibility: hidden; }
+html.cont, html.cont body { background: transparent; }
+.e-cont { left: 0; right: 0; top: 0; bottom: 0; transform: none; z-index: 1; }
+.cont-marco { position: absolute; left: 154px; top: 28px; width: 1612px; height: 912px; border-radius: 18px; border: 3px solid rgba(244,246,255,.22);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 0 60px rgba(47,95,208,.35), inset 0 0 0 1px rgba(0,0,0,.25); }
+.cont-marco i { position: absolute; width: 46px; height: 46px; border-color: var(--oro); border-style: solid; border-width: 0; }
+.cont-marco i:nth-child(1) { left: -3px; top: -3px; border-left-width: 6px; border-top-width: 6px; border-top-left-radius: 18px; }
+.cont-marco i:nth-child(2) { right: -3px; top: -3px; border-right-width: 6px; border-top-width: 6px; border-top-right-radius: 18px; }
+.cont-marco i:nth-child(3) { left: -3px; bottom: -3px; border-left-width: 6px; border-bottom-width: 6px; border-bottom-left-radius: 18px; }
+.cont-marco i:nth-child(4) { right: -3px; bottom: -3px; border-right-width: 6px; border-bottom-width: 6px; border-bottom-right-radius: 18px; }
 </style>
 </head>
 <body>
 <div class="tv" id="tv">
+  <div class="cont-fondo" aria-hidden="true"></div>
   <div class="bug"><div class="vivo">EN VIVO</div></div><!-- cabildo-tv-2: sin logo -->
   <div class="reloj"><div class="hora num" id="hora">--:--:--</div><div class="lugar">Caracas · Venezuela</div></div>
   <div class="sinsenal" id="sinsenal" hidden>Reconectando…</div>
@@ -360,6 +380,8 @@ body.cursor { cursor: auto; }
   <section class="escena e-hito" data-escena="hito">
     <div><span class="kicker">Hito del Cabildo</span><div class="grande num" id="h-num"></div><h2 class="titular" id="h-tit"></h2><p class="sub" id="h-sub"></p></div>
   </section>
+
+  <section class="escena e-cont" data-escena="contenedor" aria-label="Contenedor para OBS"><div class="cont-marco"><i></i><i></i><i></i><i></i></div></section>
 
   <div class="cortina" id="cortina"><b>Última hora</b></div>
 
@@ -495,6 +517,7 @@ body.cursor { cursor: auto; }
     ranking: () => ['Semana', 'Ranking', 'Puntos por votar, debatir, proponer y apoyar'],
     auditorio: () => E.auditorio ? ['En vivo', 'Auditorio', `La Butaca #${E.auditorio.butaca} tiene la palabra`] : ['Abierto', 'Auditorio', 'Pedí la palabra desde el Auditorio en cabildodevenezuela.com'],
     hito: () => ['Hito', 'Cabildo', hitoTxt],
+    contenedor: () => ['', '', ''],
     debate_todo: () => ['En el recinto', 'Debate', `${fmt(E.debate.mensajes)} mensajes · sumá tu voz en cabildodevenezuela.com`],
     muro: () => ['Ayer', 'Muro', 'Las frases más apoyadas del Muro del Cabildo'],
   }
@@ -576,6 +599,7 @@ body.cursor { cursor: auto; }
   function mostrar(n) {
     if (!disponible(n) && n !== 'hito') n = 'hemiciclo'
     pintar(n)
+    tv.classList.toggle('cont', n === 'contenedor'); document.documentElement.classList.toggle('cont', n === 'contenedor')   // contenedor para OBS
     if (n !== actual) { if (n === 'votacion' && actual !== null) vigIdx++; $$('.escena').forEach(e => e.classList.toggle('activa', e.dataset.escena === n)) }
     actual = n
   }
