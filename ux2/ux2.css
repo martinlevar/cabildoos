@@ -3985,3 +3985,14 @@ html.bd-peek-abierto { overflow: hidden; }
 .au-tv-est.ok { color: #15803d; }
 .au-tv-est.vivo { color: #dc2626; }
 .au-tv-nota { margin: 0; font-size: 13.5px; padding: 8px 12px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.05)); }
+
+/* tv-voz: hablar en CabildoTV */
+.tvv { display: grid; gap: 10px; justify-items: start; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--line); }
+.tvv.on { border: 1px solid rgba(220,38,38,.45); background: rgba(220,38,38,.05); justify-items: stretch; }
+.tvv p { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.tvv-aviso b { color: #dc2626; }
+.tvv-fila { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.tvv-vivo { font-size: 15px; color: #dc2626; }
+.tvv-t { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
+.tvv-med { height: 10px; border-radius: 99px; background: var(--surface-2, rgba(0,0,0,.08)); overflow: hidden; }
+.tvv-med i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #16a34a, #f5c518 70%, #dc2626); transition: width .08s linear; }
