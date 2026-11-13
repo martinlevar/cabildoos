@@ -259,6 +259,8 @@ body.cursor { cursor: auto; }
 .e-aud.voz .ondas i { animation: none; transition: height .09s linear; }
 .voz-est { margin-top: 14px; font-size: 22px; color: var(--tinta-3); }
 .voz-est.si { color: #b8f5c8; }
+#voz-tap { position: absolute; left: 50%; top: 150px; transform: translateX(-50%); z-index: 60; font: 700 30px var(--f-tv, sans-serif); color: #10142e; background: var(--oro); border: 0; border-radius: 99px; padding: 18px 34px; box-shadow: 0 12px 40px rgba(0,0,0,.4); animation: voztap 1.4s ease-in-out infinite; cursor: pointer; }
+@keyframes voztap { 50% { transform: translateX(-50%) scale(1.05); } }
 
 /* ══ cabildo-tv-6: Contenedor para OBS: un recuadro hueco (transparente) en el centro y solo la cinta abajo ══ */
 .cont-fondo { position: absolute; inset: 0; display: none; z-index: 0;
@@ -381,6 +383,8 @@ html.cont, html.cont body { background: transparent; }
       <p class="reglas">Autorizado por la moderación del Cabildo. Cada intervención dura hasta <span id="a-max">5</span> minutos.</p>
     </div>
   </section>
+
+  <button type="button" id="voz-tap" hidden>🔊 Tocá la pantalla para escuchar a la butaca</button>
 
   <section class="escena e-hito" data-escena="hito">
     <div><span class="kicker">Hito del Cabildo</span><div class="grande num" id="h-num"></div><h2 class="titular" id="h-tit"></h2><p class="sub" id="h-sub"></p></div>
@@ -732,21 +736,26 @@ html.cont, html.cont body { background: transparent; }
   }
 
   // ── tv-voz: audio de la butaca al aire (LiveKit, solo escuchar) ──
-  // Link que arma el admin: ?sonido=1&voz=<permiso>&lk=wss://<proyecto>.livekit.cloud. Solo suena la butaca que tiene la palabra
-  // (y el conductor del Cabildo); cualquier otra que entre a la sala queda muda en la pantalla.
-  const VOZ = { t: qs.get('voz'), url: qs.get('lk'), room: null, els: new Map(), an: new Map(), ctx: null, raf: 0 }
-  const vozOk = !!VOZ.t && /^wss:\/\/[\w-]+\.livekit\.cloud\/?$/.test(VOZ.url || '')
+  // Automático: cuando alguien tiene la palabra, la pantalla pide a la función tv-voz un permiso solo para escuchar, se conecta
+  // y reproduce SOLO a esa butaca (y al conductor del Cabildo); al terminar se desconecta. Opcional: ?voz=&lk= (link fijo del admin).
+  const VOZ = { t: qs.get('voz'), url: qs.get('lk'), room: null, cargando: false, espera: 0, els: new Map(), an: new Map(), ctx: null, raf: 0, niv: 0 }
+  const LK_OK = u => /^wss:\/\/[\w-]+\.livekit\.cloud\/?$/.test(u || '')
+  VOZ.fijo = !!VOZ.t && LK_OK(VOZ.url)
   const vozPermitido = id => id === 'conductor' || (!!E?.auditorio && id === 'butaca-' + E.auditorio.butaca)
+  let LKp = null
+  const lkLib = () => LKp || (LKp = new Promise((ok, mal) => {
+    const s = document.createElement('script'); s.src = '/ux2/vendor/livekit-client-2.23.0.js'
+    s.onload = () => window.LivekitClient ? ok(window.LivekitClient) : mal(new Error('sin LiveKit')); s.onerror = () => { LKp = null; mal(new Error('no cargó LiveKit')) }
+    document.head.appendChild(s)
+  }))
   function vozAplicar() {
-    if (!VOZ.room) return
     const vivos = new Set()
-    for (const p of VOZ.room.remoteParticipants.values()) for (const pub of p.audioTrackPublications.values()) {
-      const tr = pub.track; if (!tr) continue
-      const ok = vozPermitido(p.identity), el = VOZ.els.get(tr.sid)
-      if (ok) vivos.add(tr.sid)
-      if (ok && !el) {
+    if (VOZ.room) for (const p of VOZ.room.remoteParticipants.values()) for (const pub of p.audioTrackPublications.values()) {
+      const tr = pub.track; if (!tr || !vozPermitido(p.identity)) continue
+      vivos.add(tr.sid)
+      if (!VOZ.els.has(tr.sid)) {
         const a = tr.attach(); document.body.appendChild(a); VOZ.els.set(tr.sid, a)
-        try {   // medidor propio (no depende del servidor) para las ondas
+        try {   // medidor propio para las ondas
           VOZ.ctx = VOZ.ctx || new AudioContext(); VOZ.ctx.resume?.()
           const an = VOZ.ctx.createAnalyser(); an.fftSize = 512
           VOZ.ctx.createMediaStreamSource(new MediaStream([tr.mediaStreamTrack])).connect(an)
@@ -755,45 +764,56 @@ html.cont, html.cont body { background: transparent; }
       }
     }
     for (const [sid, el] of VOZ.els) if (!vivos.has(sid)) { el.srcObject = null; el.remove(); VOZ.els.delete(sid); VOZ.an.delete(sid) }
-    const ab = $('#a-voz'), orador = E?.auditorio && VOZ.room.remoteParticipants.get('butaca-' + E.auditorio.butaca)
+    const ab = $('#a-voz'), orador = E?.auditorio && VOZ.room?.remoteParticipants.get('butaca-' + E.auditorio.butaca)
     const conAudio = !!orador && [...orador.audioTrackPublications.values()].some(x => x.track && !x.isMuted)
     if (ab) { ab.hidden = !E?.auditorio; ab.classList.toggle('si', conAudio); ab.textContent = conAudio ? '🎙️ Audio en vivo' : orador ? '🔇 Micrófono en silencio' : 'Esperando que la butaca active su micrófono…' }
     $('.e-aud')?.classList.toggle('voz', !!E?.auditorio)
+    const bloqueado = !!VOZ.room && VOZ.els.size > 0 && VOZ.room.canPlaybackAudio === false
+    $('#voz-tap').hidden = !bloqueado
   }
-  function vozOndas() {
-    cancelAnimationFrame(VOZ.raf)
+  async function vozConectar() {
+    if (VOZ.room || VOZ.cargando || Date.now() < VOZ.espera) return
+    VOZ.cargando = true
+    try {
+      const LK = await lkLib()
+      let url = VOZ.url, token = VOZ.t
+      if (!VOZ.fijo) {
+        const r = await fetch(`${window.__ENV.SUPABASE_URL}/functions/v1/tv-voz`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: window.__ENV.SUPABASE_KEY }, body: JSON.stringify({ accion: 'tv' }) })
+        const j = await r.json().catch(() => ({}))
+        if (!j.token || !LK_OK(j.url)) { VOZ.espera = Date.now() + 8000; return }
+        url = j.url; token = j.token
+      }
+      const room = new LK.Room({ adaptiveStream: false, dynacast: false })
+      for (const ev of [LK.RoomEvent.TrackSubscribed, LK.RoomEvent.TrackUnsubscribed, LK.RoomEvent.TrackMuted, LK.RoomEvent.TrackUnmuted, LK.RoomEvent.ParticipantDisconnected, LK.RoomEvent.AudioPlaybackStatusChanged]) room.on(ev, vozAplicar)
+      room.on(LK.RoomEvent.Disconnected, () => { if (VOZ.room === room) { VOZ.room = null; vozAplicar() } })
+      await room.connect(url, token, { autoSubscribe: true })
+      VOZ.room = room; vozAplicar()
+    } catch (e) { console.warn('tv-voz', e?.message); VOZ.espera = Date.now() + 10000 }
+    finally { VOZ.cargando = false }
+  }
+  function vozCiclo() {   // en cada lectura del estado
+    const quiere = VOZ.fijo || !!E?.auditorio
+    if (quiere && !VOZ.room) vozConectar()
+    if (!quiere && VOZ.room) { const r = VOZ.room; VOZ.room = null; try { r.disconnect() } catch (e) {} }
+    vozAplicar()
+  }
+  ;(function vozOndas() {
     const k = [.7, 1, .85, 1.15, .9, .75, 1.05]
     const paso = t => {
       let rms = 0
       for (const x of VOZ.an.values()) {
         if (!E?.auditorio || x.quien !== 'butaca-' + E.auditorio.butaca) continue
-        x.an.getByteTimeDomainData(x.buf); let s = 0; for (const v of x.buf) s += ((v - 128) / 128) ** 2
-        rms = Math.max(rms, Math.sqrt(s / x.buf.length))
+        x.an.getByteTimeDomainData(x.buf); let q = 0; for (const v of x.buf) q += ((v - 128) / 128) ** 2
+        rms = Math.max(rms, Math.sqrt(q / x.buf.length))
       }
-      VOZ.niv = Math.max(Math.min(1, rms * 5), (VOZ.niv || 0) * 0.86)   // sube rápido, baja suave
-      const nivel = VOZ.niv
-      $$('.e-aud.voz .ondas i').forEach((i, n) => { i.style.height = Math.round(14 + nivel * 86 * k[n % 7] * (0.75 + 0.25 * Math.sin(t / 90 + n))) + '%' })
+      VOZ.niv = Math.max(Math.min(1, rms * 5), VOZ.niv * 0.86)   // sube rápido, baja suave
+      $$('.e-aud.voz .ondas i').forEach((i, n) => { i.style.height = Math.round(14 + VOZ.niv * 86 * k[n % 7] * (0.75 + 0.25 * Math.sin(t / 90 + n))) + '%' })
       VOZ.raf = requestAnimationFrame(paso)
     }
     VOZ.raf = requestAnimationFrame(paso)
-  }
-  function vozConectar() {
-    const s = document.createElement('script'); s.src = '/ux2/vendor/livekit-client-2.23.0.js'
-    s.onload = async () => {
-      const LK = window.LivekitClient; if (!LK) return
-      const conectar = async () => {
-        const room = new LK.Room({ adaptiveStream: false, dynacast: false })
-        for (const ev of [LK.RoomEvent.TrackSubscribed, LK.RoomEvent.TrackUnsubscribed, LK.RoomEvent.TrackMuted, LK.RoomEvent.TrackUnmuted, LK.RoomEvent.ParticipantDisconnected]) room.on(ev, vozAplicar)
-        room.on(LK.RoomEvent.Disconnected, () => { if (VOZ.room === room) { VOZ.room = null; vozAplicar(); setTimeout(conectar, 5000) } })
-        try { await room.connect(VOZ.url, VOZ.t, { autoSubscribe: true }); VOZ.room = room; vozAplicar() }
-        catch (e) { console.warn('tv-voz', e?.message); setTimeout(conectar, 15000) }
-      }
-      conectar(); vozOndas()
-      addEventListener('click', () => { VOZ.room?.startAudio(); VOZ.ctx?.resume?.() })   // en un navegador común hace falta un clic para el audio; OBS no lo pide
-    }
-    document.head.appendChild(s)
-  }
-  if (vozOk) vozConectar()
+  })()
+  // en un navegador común el audio necesita un toque; en OBS no hace falta
+  addEventListener('click', () => { VOZ.room?.startAudio().then(vozAplicar); VOZ.ctx?.resume?.() })
 
   // ── lectura del estado ──
   let fallas = 0
@@ -820,7 +840,7 @@ html.cont, html.cont body { background: transparent; }
     else if (manual()) { interrup = null; clearTimeout(timerInt); const es = E.control.escena || 'hemiciclo'; if (es !== actual) mostrar(es); else if (!['revelacion', 'debate_todo', 'muro', 'hito'].includes(es)) pintar(es) }
     else if (prev?.control?.modo === 'manual') { actual = null; E.auditorio ? interrumpir('auditorio', 0, false) : rotar() }
     else if (actual && !['revelacion', 'debate_todo', 'muro', 'hito'].includes(actual)) pintar(actual)
-    if (vozOk) vozAplicar()   // tv-voz
+    vozCiclo()   // tv-voz
   }
   setInterval(cinta, 30000)
   leer().then(() => { if (forzada) mostrar(forzada); else if (manual()) mostrar(E.control.escena || 'hemiciclo'); else { mostrar('hemiciclo'); idx = 1; timerRot = setTimeout(rotar, 12000) } })
