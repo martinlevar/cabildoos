@@ -9,7 +9,7 @@ function cspV2(env, nonce) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
-    `connect-src 'self' https://${sb.host} wss://${sb.host} https://verify.cabildodevenezuela.com`,   // verificar-v2
+    `connect-src 'self' https://${sb.host} wss://${sb.host} https://verify.cabildodevenezuela.com https://*.livekit.cloud wss://*.livekit.cloud`,   // verificar-v2 · tv-voz
     'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
     "media-src 'self' blob: https:",
     "worker-src 'none'",
@@ -223,7 +223,7 @@ export default {
     res.headers.set('X-Content-Type-Options', 'nosniff');
     res.headers.set('X-Frame-Options', 'DENY');
     res.headers.set('Referrer-Policy', 'same-origin');
-    res.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=(self), payment=(), usb=()');
+    res.headers.set('Permissions-Policy', 'geolocation=(), microphone=(self), camera=(self), payment=(), usb=()');   // tv-voz: micrófono solo del propio sitio
     res.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.headers.set('Cache-Control', 'no-store');
     return res;
