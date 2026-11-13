@@ -5573,8 +5573,19 @@ async function vigilarAuditorio() {      // punto rojo en el menú cuando hay se
     }).subscribe()
 }
 
+// au-chat-persistente: historial guardado de la sesión en vivo
+async function auChatCargar() {
+  const { data, error } = await sb.rpc('auditorio_chat_listar', { p_limite: AU_MAX_MSGS })
+  if (error || !Array.isArray(data)) return
+  const viejos = data.map(m => ({ id: m.id, seat: Number(m.seat), text: String(m.text || ''), at: Date.parse(m.at) || Date.now() }))
+  const ids = new Set(viejos.map(m => m.id))
+  au.msgs = [...viejos, ...au.msgs.filter(m => !m.id || !ids.has(m.id))].slice(-AU_MAX_MSGS)   // conserva los que llegaron en vivo mientras cargaba
+  pintarChat()
+}
+
 function unirseSala() {
   au.canal = sb.channel('auditorio-live', { config: { presence: { key: String(estado.butaca || 0) } } })
+  auChatCargar()
   au.canal
     .on('presence', { event: 'sync' }, () => {
       const set = new Set()
@@ -5589,7 +5600,9 @@ function unirseSala() {
       const seat = Number(p?.seat); const text = limpiar(p?.text).slice(0, 280).trim()
       if (!(seat > 0) || !text) return
       if (!Number.isInteger(seat) || seat > 1e6) return
-      agregarChat({ seat, text, at: Date.now() })
+      const id = typeof p?.id === 'string' && /^[0-9a-f-]{36}$/.test(p.id) ? p.id : null
+      if (id && au.msgs.some(m => m.id === id)) return   // ya estaba (llegó con el historial)
+      agregarChat({ id, seat, text, at: Date.now() })
     })
     .on('broadcast', { event: 'aud_hand' }, ({ payload: p }) => {
       const seat = Number(p?.seat); if (!Number.isInteger(seat) || seat <= 0 || seat > 1e6) return
@@ -5734,13 +5747,13 @@ function burbujaChat(m) {
   const mia = m.seat === estado.butaca, nombre = auNombre(m.seat), p = perfiles.get(m.seat)
   const ini = p?.show_alias && p.alias ? esc(p.alias.charAt(0).toUpperCase()) : '#'
   return `<div class="au-msg ${mia ? 'mia' : ''}"><span class="db-av" style="background:${mia ? 'var(--orange)' : colorDe(p?.card_color, m.seat)}">${ini}</span>
-    <div><div class="au-msg-cab"><b>${mia ? 'Vos' : esc(nombre)}</b><span>#${m.seat}</span></div><p>${esc(m.text)}</p></div></div>`
+    <div><div class="au-msg-cab"><b>${mia ? 'Vos' : esc(nombre)}</b><span>#${m.seat}${m.at ? ' · ' + new Date(m.at).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''}</span></div><p>${esc(m.text)}</p></div></div>`
 }
 
 function pintarChat() {
   const el = $('#au-chat'); if (!el) return
   el.innerHTML = au.msgs.length ? au.msgs.map(burbujaChat).join('')
-    : '<p class="muted au-chat-vacio">El chat de la sala es efímero: no se guarda y solo lo ven quienes están ahora.</p>'
+    : '<p class="muted au-chat-vacio">Todavía no hay mensajes en esta sesión. Levantá la mano ✋ para escribir.</p>'
   el.scrollTop = el.scrollHeight
 }
 
@@ -5783,11 +5796,15 @@ function alternarManoAud() {
   if (au.mano) $('#au-txt')?.focus()
 }
 
-function enviarChatAud() {
-  if (!au.mano || !au.canal) return
+async function enviarChatAud() {
+  if (!au.mano || !au.canal || au.enviando) return
   const el = $('#au-txt'), text = limpiar(el.value).replace(/\s+/g, ' ').trim().slice(0, 280)
   if (!text) return
-  const m = { seat: estado.butaca, text, at: Date.now() }
+  au.enviando = true; const env = $('#au-enviar'); if (env) env.disabled = true
+  const { data, error } = await sb.rpc('auditorio_chat_enviar', { p_texto: text })   // queda guardado
+  au.enviando = false
+  if (error || !data?.id) { if (env) env.disabled = false; return aviso(error?.message || 'No se pudo enviar', 'error') }
+  const m = { id: data.id, seat: estado.butaca, text: data.text || text, at: Date.now() }
   au.canal.send({ type: 'broadcast', event: 'aud_chat', payload: { ...m, alias: auMiNombre() } })
   agregarChat(m)                      // el canal no devuelve tus propios mensajes
   el.value = ''; $('#au-cont').textContent = '0/280'
