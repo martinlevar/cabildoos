@@ -826,7 +826,13 @@ html.hueco, html.hueco body { background: transparent; }
       room.on(LK.RoomEvent.Disconnected, () => { if (VOZ.room === room) { VOZ.room = null; vozAplicar() } })
       await room.connect(url, token, { autoSubscribe: true })
       VOZ.room = room; vozAplicar()
-    } catch (e) { console.warn('tv-voz', e?.message); VOZ.espera = Date.now() + 10000 }
+    } catch (e) {
+      console.warn('tv-voz', e?.message); VOZ.espera = Date.now() + 10000
+      if (!VOZ.fijo && Date.now() - (VOZ.avisado || 0) > 300000) {   // avisa a #cabildo-tv (máx. cada 5 min desde esta pantalla)
+        VOZ.avisado = Date.now()
+        fetch(`${window.__ENV.SUPABASE_URL}/functions/v1/tv-voz`, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: window.__ENV.SUPABASE_KEY }, body: JSON.stringify({ accion: 'falla', origen: 'pantalla', detalle: String(e?.message || e).slice(0, 150) }) }).catch(() => {})
+      }
+    }
     finally { VOZ.cargando = false }
   }
   function vozCiclo() {   // en cada lectura del estado
