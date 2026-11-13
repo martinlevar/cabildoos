@@ -265,13 +265,41 @@ body.cursor { cursor: auto; }
 /* ══ cabildo-tv-6: Contenedor para OBS: un recuadro hueco (transparente) en el centro y solo la cinta abajo ══ */
 .cont-fondo { position: absolute; inset: 0; display: none; z-index: 0;
   background: radial-gradient(1200px 700px at 70% 30%, #1f2a6b 0%, transparent 60%), radial-gradient(900px 600px at 10% 90%, #2a1a4a 0%, transparent 60%), var(--noche);
-  -webkit-mask: linear-gradient(#000 0 0), linear-gradient(#000 0 0) 160px 34px / 1600px 900px no-repeat; -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) exclude, linear-gradient(#000 0 0) 160px 34px / 1600px 900px no-repeat; }
-.tv.cont { background: transparent; }
-.tv.cont::before { display: none; }
-.tv.cont .cont-fondo { display: block; }
+  -webkit-mask: linear-gradient(#000 0 0), linear-gradient(#000 0 0) var(--hx) var(--hy) / var(--hw) var(--hh) no-repeat; -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) exclude, linear-gradient(#000 0 0) var(--hx) var(--hy) / var(--hw) var(--hh) no-repeat; }
+/* el hueco: 'cont' (recuadro grande) o la ventana vertical; las medidas viven en variables */
+.tv { --hx: 160px; --hy: 34px; --hw: 1600px; --hh: 900px; }
+.tv.hueco { background: transparent; }
+.tv.hueco::before { display: none; }
+.tv.hueco .cont-fondo { display: block; }
 .tv.cont .bug, .tv.cont .reloj, .tv.cont .zocalo, .tv.cont .sinsenal { opacity: 0; visibility: hidden; }
-html.cont, html.cont body { background: transparent; }
+html.hueco, html.hueco body { background: transparent; }
+
+/* ══ cabildo-tv-7: Ventana vertical para OBS (9:16, 450×800) a un costado; las escenas siguen en el resto de la pantalla ══ */
+.tv.vert-der { --hx: 1406px; --hy: 40px; --hw: 450px; --hh: 800px; }
+.tv.vert-izq { --hx: 64px; --hy: 40px; --hw: 450px; --hh: 800px; }
+.escena { transition: opacity .6s ease, transform .6s ease, left .6s ease, right .6s ease; }
+.tv.vert-der .escena:not(.e-cont) { right: 554px; }
+.tv.vert-izq .escena:not(.e-cont) { left: 554px; }
+.reloj, .bug { transition: left .6s ease, right .6s ease; }
+.tv.vert-der .reloj { right: 554px; }
+.tv.vert-izq .bug { left: 554px; }
+.vert-marco { position: absolute; z-index: 30; display: none; left: calc(var(--hx) - 6px); top: calc(var(--hy) - 6px); width: calc(var(--hw) + 12px); height: calc(var(--hh) + 12px);
+  border-radius: 18px; border: 3px solid rgba(244,246,255,.22); box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 0 50px rgba(47,95,208,.35); pointer-events: none; }
+.tv.vert-der .vert-marco, .tv.vert-izq .vert-marco { display: block; }
+/* ajustes de escenas con menos ancho */
+.tv:is(.vert-der, .vert-izq) .e-rev { grid-template-columns: 500px 1fr; gap: 34px; }
+.tv:is(.vert-der, .vert-izq) .e-rev .titular { font-size: 42px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-bottom: 18px; }
+.tv:is(.vert-der, .vert-izq) .rev-cont b { font-size: 48px; }
+.tv:is(.vert-der, .vert-izq) .e-rev .res { grid-template-columns: minmax(0, 1fr) 170px 96px; gap: 12px; }
+.tv:is(.vert-der, .vert-izq) .e-rev .res .op { font-size: 24px; }
+.tv:is(.vert-der, .vert-izq) .e-rev .res .pct { font-size: 32px; }
+.tv:is(.vert-der, .vert-izq) .muro-card p { font-size: 21px; -webkit-line-clamp: 4; }
+.vert-marco i { position: absolute; width: 40px; height: 40px; border-color: var(--oro); border-style: solid; border-width: 0; }
+.vert-marco i:nth-child(1) { left: -3px; top: -3px; border-left-width: 6px; border-top-width: 6px; border-top-left-radius: 18px; }
+.vert-marco i:nth-child(2) { right: -3px; top: -3px; border-right-width: 6px; border-top-width: 6px; border-top-right-radius: 18px; }
+.vert-marco i:nth-child(3) { left: -3px; bottom: -3px; border-left-width: 6px; border-bottom-width: 6px; border-bottom-left-radius: 18px; }
+.vert-marco i:nth-child(4) { right: -3px; bottom: -3px; border-right-width: 6px; border-bottom-width: 6px; border-bottom-right-radius: 18px; }
 .e-cont { left: 0; right: 0; top: 0; bottom: 0; transform: none; z-index: 1; }
 .cont-marco { position: absolute; left: 154px; top: 28px; width: 1612px; height: 912px; border-radius: 18px; border: 3px solid rgba(244,246,255,.22);
   box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 0 60px rgba(47,95,208,.35), inset 0 0 0 1px rgba(0,0,0,.25); }
@@ -285,6 +313,7 @@ html.cont, html.cont body { background: transparent; }
 <body>
 <div class="tv" id="tv">
   <div class="cont-fondo" aria-hidden="true"></div>
+  <div class="vert-marco" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
   <div class="bug"><div class="vivo">EN VIVO</div></div><!-- cabildo-tv-2: sin logo -->
   <div class="reloj"><div class="hora num" id="hora">--:--:--</div><div class="lugar">Caracas · Venezuela</div></div>
   <div class="sinsenal" id="sinsenal" hidden>Reconectando…</div>
@@ -608,9 +637,18 @@ html.cont, html.cont body { background: transparent; }
   function mostrar(n) {
     if (!disponible(n) && n !== 'hito') n = 'hemiciclo'
     pintar(n)
-    tv.classList.toggle('cont', n === 'contenedor'); document.documentElement.classList.toggle('cont', n === 'contenedor')   // contenedor para OBS
+    tv.classList.toggle('cont', n === 'contenedor')   // contenedor para OBS
     if (n !== actual) { if (n === 'votacion' && actual !== null) vigIdx++; $$('.escena').forEach(e => e.classList.toggle('activa', e.dataset.escena === n)) }
     actual = n
+    vertical()
+  }
+  // ── Ventana vertical para OBS: control.vertical = { activo, lado: 'der' | 'izq' }. Para probar: ?vertical=der|izq ──
+  function vertical() {
+    const v = qs.get('vertical') || (E?.control?.vertical?.activo ? (E.control.vertical.lado === 'izq' ? 'izq' : 'der') : '')
+    const on = (v === 'der' || v === 'izq') && actual !== 'contenedor' && !E?.control?.breaking?.activo
+    tv.classList.toggle('vert-der', on && v === 'der'); tv.classList.toggle('vert-izq', on && v === 'izq')
+    const hueco = on || actual === 'contenedor'
+    tv.classList.toggle('hueco', hueco); document.documentElement.classList.toggle('hueco', hueco)
   }
   function tictac() {
     if (actual === 'urgente' || $('.escena.activa')?.dataset.escena === 'urgente') {
@@ -841,6 +879,7 @@ html.cont, html.cont body { background: transparent; }
     else if (prev?.control?.modo === 'manual') { actual = null; E.auditorio ? interrumpir('auditorio', 0, false) : rotar() }
     else if (actual && !['revelacion', 'debate_todo', 'muro', 'hito'].includes(actual)) pintar(actual)
     vozCiclo()   // tv-voz
+    vertical()   // ventana vertical
   }
   setInterval(cinta, 30000)
   leer().then(() => { if (forzada) mostrar(forzada); else if (manual()) mostrar(E.control.escena || 'hemiciclo'); else { mostrar('hemiciclo'); idx = 1; timerRot = setTimeout(rotar, 12000) } })
