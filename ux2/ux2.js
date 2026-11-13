@@ -5479,7 +5479,11 @@ async function tvvHablar() {
     })
     room.on(LK.RoomEvent.TrackUnsubscribed, track => track.detach().forEach(el => el.remove()))
     room.on(LK.RoomEvent.Disconnected, () => { if (tvv.room === room) tvvSalir(tvp.d?.estado === 'al_aire' ? 'Se cortó la conexión. Podés volver a activar el micrófono.' : '') })
-    await room.connect(data.url, data.token)
+    try { await room.connect(data.url, data.token) }
+    catch (e) {   // tv-voz-2: avisa al equipo (Slack #cabildo-tv) y muestra un mensaje claro
+      sb.functions.invoke('tv-voz', { body: { accion: 'falla', origen: 'butaca', detalle: String(e?.message || e).slice(0, 150) } }).catch(() => {})
+      throw new Error('No pudimos conectar el audio. Ya le avisamos al equipo; probá de nuevo en un momento.')
+    }
     try { await room.localParticipant.setMicrophoneEnabled(true) }
     catch (e) { room.disconnect(); throw new Error(e?.name === 'NotAllowedError' ? 'Necesitamos permiso para usar el micrófono. Habilitalo en tu navegador y volvé a tocar el botón.' : 'No pude abrir tu micrófono.') }
     tvv.room = room; tvv.est = 'on'; tvv.mute = false; tvv.fin = Date.now() + data.restante_s * 1000
