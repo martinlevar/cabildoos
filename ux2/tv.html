@@ -261,6 +261,7 @@ body.cursor { cursor: auto; }
 .voz-est.si { color: #b8f5c8; }
 #voz-tap { position: absolute; left: 50%; top: 150px; transform: translateX(-50%); z-index: 60; font: 700 30px var(--f-tv, sans-serif); color: #10142e; background: var(--oro); border: 0; border-radius: 99px; padding: 18px 34px; box-shadow: 0 12px 40px rgba(0,0,0,.4); animation: voztap 1.4s ease-in-out infinite; cursor: pointer; }
 @keyframes voztap { 50% { transform: translateX(-50%) scale(1.05); } }
+#voz-tap.suave { top: 40px; font-size: 22px; padding: 12px 24px; animation: none; opacity: .92; }
 
 /* ══ cabildo-tv-6: Contenedor para OBS: un recuadro hueco (transparente) en el centro y solo la cinta abajo ══ */
 .cont-fondo { position: absolute; inset: 0; display: none; z-index: 0;
@@ -806,8 +807,7 @@ html.hueco, html.hueco body { background: transparent; }
     const conAudio = !!orador && [...orador.audioTrackPublications.values()].some(x => x.track && !x.isMuted)
     if (ab) { ab.hidden = !E?.auditorio; ab.classList.toggle('si', conAudio); ab.textContent = conAudio ? '🎙️ Audio en vivo' : orador ? '🔇 Micrófono en silencio' : 'Esperando que la butaca active su micrófono…' }
     $('.e-aud')?.classList.toggle('voz', !!E?.auditorio)
-    const bloqueado = !!VOZ.room && VOZ.els.size > 0 && VOZ.room.canPlaybackAudio === false
-    $('#voz-tap').hidden = !bloqueado
+    vozTap()
   }
   async function vozConectar() {
     if (VOZ.room || VOZ.cargando || Date.now() < VOZ.espera) return
@@ -857,7 +857,26 @@ html.hueco, html.hueco body { background: transparent; }
     VOZ.raf = requestAnimationFrame(paso)
   })()
   // en un navegador común el audio necesita un toque; en OBS no hace falta
-  addEventListener('click', () => { VOZ.room?.startAudio().then(vozAplicar); VOZ.ctx?.resume?.() })
+  // Los navegadores no dejan sonar una página hasta el primer toque. En OBS no hace falta (window.obsstudio o ?sonido=1).
+  // En un navegador común, desde que abre la página se ve «Tocá una vez para activar el sonido»: con ese toque, todas las voces suenan solas.
+  const enOBS = !!window.obsstudio || qs.get('sonido') === '1'
+  let tocado = enOBS || !!navigator.userActivation?.hasBeenActive
+  function vozTap() {
+    const t = $('#voz-tap'); if (!t) return
+    const bloqueado = !!VOZ.room && VOZ.els.size > 0 && VOZ.room.canPlaybackAudio === false
+    t.hidden = !(bloqueado || !tocado)
+    t.classList.toggle('suave', !bloqueado)
+    t.textContent = bloqueado ? '🔊 Tocá la pantalla para escuchar a la butaca' : '🔊 Tocá una vez para activar el sonido'
+  }
+  function desbloquear() {
+    tocado = true
+    try { VOZ.ctx = VOZ.ctx || new AudioContext(); VOZ.ctx.resume?.() } catch (e) {}
+    try { const a = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA='); a.play().catch(() => {}) } catch (e) {}
+    VOZ.room?.startAudio().then(vozAplicar).catch(() => {})
+    vozTap()
+  }
+  for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, desbloquear)
+  vozTap()
 
   // ── lectura del estado ──
   let fallas = 0
