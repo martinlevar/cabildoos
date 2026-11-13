@@ -3966,3 +3966,33 @@ html.bd-peek-abierto { overflow: hidden; }
 .hero-cd { margin-top: 18px; }
 .hero-cd[hidden] { display: none; }
 .hero-flip.girada .hero-cd { pointer-events: none; }
+
+/* ══ tv-palabra ══ */
+.au-tv { padding: 18px 20px; margin-bottom: 16px; display: grid; gap: 12px; }
+.au-tv-cab { display: flex; gap: 14px; align-items: flex-start; }
+.au-tv-ico { font-size: 28px; line-height: 1; }
+.au-tv-cab h3 { margin: 0 0 4px; font-size: 17px; }
+.au-tv-cab p { margin: 0; font-size: 14px; line-height: 1.5; }
+.au-tv-form { display: grid; gap: 8px; }
+.au-tv-form label { font-size: 14px; font-weight: 600; }
+.au-tv-fila { display: flex; gap: 8px; flex-wrap: wrap; }
+.au-tv-fila input { flex: 1 1 260px; min-width: 0; font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.au-tv-reglas { margin: 0; font-size: 12.5px; }
+.au-tv-pedido { display: grid; gap: 8px; justify-items: start; }
+.au-tv-pedido > p:first-child { margin: 0; font-weight: 600; }
+.au-tv-pedido .muted { margin: 0; font-size: 13px; }
+.au-tv-est { font-size: 14px; padding: 4px 10px; border-radius: 99px; background: var(--surface-2, rgba(0,0,0,.05)); }
+.au-tv-est.ok { color: #15803d; }
+.au-tv-est.vivo { color: #dc2626; }
+.au-tv-nota { margin: 0; font-size: 13.5px; padding: 8px 12px; border-radius: 10px; background: var(--surface-2, rgba(0,0,0,.05)); }
+
+/* tv-voz: hablar en CabildoTV */
+.tvv { display: grid; gap: 10px; justify-items: start; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--line); }
+.tvv.on { border: 1px solid rgba(220,38,38,.45); background: rgba(220,38,38,.05); justify-items: stretch; }
+.tvv p { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.tvv-aviso b { color: #dc2626; }
+.tvv-fila { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.tvv-vivo { font-size: 15px; color: #dc2626; }
+.tvv-t { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
+.tvv-med { height: 10px; border-radius: 99px; background: var(--surface-2, rgba(0,0,0,.08)); overflow: hidden; }
+.tvv-med i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #16a34a, #f5c518 70%, #dc2626); transition: width .08s linear; }

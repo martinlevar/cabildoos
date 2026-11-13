@@ -374,6 +374,7 @@ const NOTIF = {
   consulta_ganadora: ['🏆', () => '#inicio'],
   consulta_publicada: ['🗳️', () => '#inicio'],
   buzon_respuesta:   ['✉️', () => null],   // buzon
+  tv_palabra:        ['🎙️', () => '#auditorio'],   // tv-palabra
 }
 // Si llega un aviso de que me aceptaron o me quitaron de un bloque, se actualiza el estado sin recargar
 const notifBloqueVistas = new Set()
@@ -5391,7 +5392,142 @@ function auYoutube(url) {
 }
 const auLinkSeguro = url => { try { const u = new URL(url); return /^https?:$/.test(u.protocol) ? u.href : null } catch (e) { return null } }
 
+// ══ tv-palabra: pedir la palabra para hablar en CabildoTV (lo autoriza el equipo desde el admin) ══
+const tvp = { d: null, t: null, cargando: false }
+async function tvpCargar() {
+  if (!estado.butaca) { tvp.d = null; return tvpPintar() }
+  try { const { data } = await sb.rpc('tv_palabra_mia'); tvp.d = data || null } catch (e) {}
+  tvpPintar()
+  clearTimeout(tvp.t)
+  if (tvv.room && tvp.d?.estado !== 'al_aire') tvvSalir('Terminó tu intervención en CabildoTV. ¡Gracias!')   // tv-voz
+  if (vistaActual() === 'auditorio' || tvv.room) tvp.t = setTimeout(tvpCargar, tvp.d?.estado === 'al_aire' || tvv.room ? 5000 : 20000)
+}
+function tvpPintar() {
+  const cuerpo = $('#au-cuerpo'); if (!cuerpo) return
+  let box = $('#au-tv')
+  if (!estado.butaca) { if (box) box.hidden = true; return }
+  if (!box) { box = document.createElement('section'); box.id = 'au-tv'; box.className = 'card au-tv'; cuerpo.before(box) }
+  box.hidden = false
+  const d = tvp.d, activo = d && ['espera', 'aprobada', 'al_aire'].includes(d.estado)
+  const cab = `<div class="au-tv-cab"><span class="au-tv-ico" aria-hidden="true">🎙️</span><div><h3>Hablá en CabildoTV</h3>
+    <p class="muted">El canal 24 horas del Cabildo. Pedí la palabra, el equipo te autoriza y salís al aire. Se muestra tu número de butaca, nunca tu nombre.</p></div></div>`
+  if (activo) {
+    const est = d.estado === 'al_aire' ? '<b class="au-tv-est vivo">🔴 Estás al aire</b>'
+      : d.estado === 'aprobada' ? '<b class="au-tv-est ok">✓ Aprobado: esperá tu turno</b>'
+      : `<b class="au-tv-est">En la fila${d.fila ? ` · ${d.fila} ${d.fila === 1 ? 'butaca antes' : 'butacas antes'}` : ' · sos el próximo'}</b>`
+    box.innerHTML = `${cab}<div class="au-tv-pedido"><p>«${esc(d.tema)}»</p>${est}
+      <p class="muted">Te avisamos por la campana de tu butaca en cada paso.</p>
+      ${d.estado !== 'al_aire' ? '<button type="button" class="btn btn-ghost" data-tvp="retirar">Retirar mi pedido</button>' : ''}</div>
+      ${d.estado === 'al_aire' ? tvvHTML() : ''}`
+    return
+  }
+  const nota = d?.estado === 'rechazada' ? `<p class="au-tv-nota">Esta vez no pudimos darte la palabra${d.motivo ? `: ${esc(d.motivo)}` : '.'} Podés volver a pedirla.</p>`
+    : d?.estado === 'terminada' ? '<p class="au-tv-nota">¡Gracias por tu intervención! Podés volver a pedir la palabra.</p>' : ''
+  box.innerHTML = `${cab}${nota}<form class="au-tv-form" data-tvp-form>
+    <label for="tvp-tema">¿De qué querés hablar? <span class="muted">(una frase)</span></label>
+    <div class="au-tv-fila"><input id="tvp-tema" maxlength="120" minlength="10" required placeholder="Ej: Por qué las actas mesa por mesa son la única garantía" autocomplete="off">
+    <button class="btn btn-dark" type="submit">Pedir la palabra</button></div>
+    <p class="muted au-tv-reglas">Hasta 5 minutos al aire. Respeto, sin insultos ni datos personales de nadie. El equipo puede cortar la intervención.</p></form>`
+}
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('[data-tvp-form]'); if (!f) return
+  e.preventDefault(); if (tvp.cargando) return
+  const tema = $('#tvp-tema').value.trim(), b = f.querySelector('button'); tvp.cargando = true; b.disabled = true
+  const { error } = await sb.rpc('tv_palabra_pedir', { p_tema: tema })
+  tvp.cargando = false; b.disabled = false
+  if (error) return aviso(error.message, 'error')
+  aviso('Listo: pediste la palabra. Te avisamos por la campana.'); tvpCargar()
+})
+document.addEventListener('click', async e => {
+  if (!e.target.closest('[data-tvp="retirar"]')) return
+  await sb.rpc('tv_palabra_retirar'); aviso('Retiraste tu pedido'); tvpCargar()
+})
+// ══ tv-voz: la butaca al aire habla con su micrófono (LiveKit). Solo audio; se identifica como «Butaca #N». ══
+const tvv = { room: null, est: 'off', mute: false, fin: 0, raf: 0, tic: 0, err: '' }
+const tvvMmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+function tvvHTML() {
+  if (tvv.est === 'on') {
+    const r = Math.max(0, Math.round((tvv.fin - Date.now()) / 1000))
+    return `<div class="tvv on"><div class="tvv-fila"><b class="tvv-vivo">${tvv.mute ? '🔇 Micrófono en silencio' : '🔴 Te están escuchando'}</b><span class="tvv-t" id="tvv-t">${tvvMmss(r)}</span></div>
+      <div class="tvv-med" aria-hidden="true"><i id="tvv-nivel"></i></div>
+      <p class="muted">Si tenés CabildoTV abierto en otra pantalla, bajale el volumen para que no se acople.</p>
+      <div class="tvv-fila"><button type="button" class="btn btn-ghost" data-tvv="mute">${tvv.mute ? '🎙️ Volver a hablar' : '🔇 Silenciar'}</button>
+      <button type="button" class="btn btn-dark" data-tvv="fin">Terminar mi intervención</button></div></div>`
+  }
+  return `<div class="tvv"><p class="tvv-aviso"><b>Tu voz va a salir en vivo</b> en CabildoTV y en YouTube. Alguien que te conozca podría reconocerla: no digas tu nombre ni datos tuyos o de otras personas. Es solo audio, sin cámara.</p>
+    ${tvv.err ? `<p class="au-tv-nota">${esc(tvv.err)}</p>` : ''}
+    <button type="button" class="btn btn-dark" data-tvv="hablar" ${tvv.est === 'conectando' ? 'disabled' : ''}>${tvv.est === 'conectando' ? 'Conectando…' : '🎙️ Activar micrófono y hablar'}</button></div>`
+}
+const tvvRepintar = () => { if (tvp.d) tvpPintar() }
+let tvvLK = null
+const tvvLib = () => tvvLK || (tvvLK = new Promise((ok, mal) => {
+  if (window.LivekitClient) return ok(window.LivekitClient)
+  const s = document.createElement('script'); s.src = '/ux2/vendor/livekit-client-2.23.0.js'
+  s.onload = () => window.LivekitClient ? ok(window.LivekitClient) : mal(new Error('sin LiveKit')); s.onerror = () => { tvvLK = null; mal(new Error('No pude cargar el audio')) }
+  document.head.appendChild(s)
+}))
+async function tvvHablar() {
+  if (tvv.room || tvv.est === 'conectando') return
+  tvv.est = 'conectando'; tvv.err = ''; tvvRepintar()
+  try {
+    const LK = await tvvLib()
+    const { data, error } = await sb.functions.invoke('tv-voz', { body: { accion: 'hablar' } })
+    if (error || !data?.token) { let m = data?.error; try { m = m || (await error?.context?.json())?.error } catch (e) {} throw new Error(m || 'No pude conectarte') }
+    const room = new LK.Room({ audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+    room.on(LK.RoomEvent.TrackSubscribed, (track, pub, p) => {   // solo se escucha al conductor del Cabildo
+      if (track.kind === 'audio' && p.identity === 'conductor') { const el = track.attach(); el.dataset.tvv = '1'; document.body.appendChild(el) }
+    })
+    room.on(LK.RoomEvent.TrackUnsubscribed, track => track.detach().forEach(el => el.remove()))
+    room.on(LK.RoomEvent.Disconnected, () => { if (tvv.room === room) tvvSalir(tvp.d?.estado === 'al_aire' ? 'Se cortó la conexión. Podés volver a activar el micrófono.' : '') })
+    await room.connect(data.url, data.token)
+    try { await room.localParticipant.setMicrophoneEnabled(true) }
+    catch (e) { room.disconnect(); throw new Error(e?.name === 'NotAllowedError' ? 'Necesitamos permiso para usar el micrófono. Habilitalo en tu navegador y volvé a tocar el botón.' : 'No pude abrir tu micrófono.') }
+    tvv.room = room; tvv.est = 'on'; tvv.mute = false; tvv.fin = Date.now() + data.restante_s * 1000
+    tvvRepintar(); tvvMedir(); clearTimeout(tvp.t); tvp.t = setTimeout(tvpCargar, 5000)
+    clearInterval(tvv.tic); tvv.tic = setInterval(() => {
+      const r = Math.max(0, Math.round((tvv.fin - Date.now()) / 1000)), t = $('#tvv-t'); if (t) t.textContent = tvvMmss(r)
+      if (r <= 0) tvvSalir('Se terminó tu tiempo al aire. ¡Gracias por participar!')
+    }, 1000)
+  } catch (e) { tvv.est = 'off'; tvv.err = e.message || 'No pude conectarte'; tvvRepintar() }
+}
+function tvvMedir() {
+  cancelAnimationFrame(tvv.raf)
+  let an = null, buf = null, niv = 0
+  try {   // medidor en el propio aparato, con lo que capta el micrófono
+    const mt = [...tvv.room.localParticipant.audioTrackPublications.values()][0]?.track?.mediaStreamTrack
+    if (mt) { tvv.ctx = tvv.ctx || new AudioContext(); tvv.ctx.resume?.(); an = tvv.ctx.createAnalyser(); an.fftSize = 512; buf = new Uint8Array(512); tvv.ctx.createMediaStreamSource(new MediaStream([mt])).connect(an) }
+  } catch (e) {}
+  const paso = () => {
+    if (!tvv.room) return
+    let rms = 0; if (an) { an.getByteTimeDomainData(buf); let s = 0; for (const v of buf) s += ((v - 128) / 128) ** 2; rms = Math.sqrt(s / buf.length) }
+    niv = tvv.mute ? 0 : Math.max(Math.min(1, rms * 5), niv * 0.86)
+    const n = $('#tvv-nivel'); if (n) n.style.width = Math.round(niv * 100) + '%'
+    tvv.raf = requestAnimationFrame(paso)
+  }
+  paso()
+}
+function tvvSalir(msg) {
+  const r = tvv.room; tvv.room = null; tvv.est = 'off'; tvv.mute = false; tvv.err = ''
+  clearInterval(tvv.tic); cancelAnimationFrame(tvv.raf)
+  document.querySelectorAll('audio[data-tvv]').forEach(el => el.remove())
+  try { r?.disconnect() } catch (e) {}
+  if (msg) aviso(msg)
+  tvvRepintar()
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-tvv]'); if (!b) return
+  const a = b.dataset.tvv
+  if (a === 'hablar') return tvvHablar()
+  if (a === 'mute' && tvv.room) { tvv.mute = !tvv.mute; await tvv.room.localParticipant.setMicrophoneEnabled(!tvv.mute); return tvvRepintar() }
+  if (a === 'fin') {
+    if (!confirm('¿Terminar tu intervención en CabildoTV?')) return
+    b.disabled = true; await sb.rpc('tv_palabra_terminar_mia'); tvvSalir('Terminaste tu intervención. ¡Gracias por participar!'); tvpCargar()
+  }
+})
+addEventListener('pagehide', () => { if (tvv.room) tvvSalir('') })
+
 async function entrarAuditorio() {
+  tvpCargar()   // tv-palabra
   if (!estado.user) { au.cargado = au.usuarioListo; return pintarAuditorio() }
   await cargarSesionAuditorio()
   if (!au.vigia) au.vigia = sb.channel('auditorio-session-watch-v2')
