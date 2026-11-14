@@ -3996,3 +3996,7 @@ html.bd-peek-abierto { overflow: hidden; }
 .tvv-t { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 18px; }
 .tvv-med { height: 10px; border-radius: 99px; background: var(--surface-2, rgba(0,0,0,.08)); overflow: hidden; }
 .tvv-med i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #16a34a, #f5c518 70%, #dc2626); transition: width .08s linear; }
+
+/* tvp-auto */
+.au-tv-cola { margin: 0; font-size: 13.5px; font-weight: 600; }
+.au-tv-apura { margin: 0; font-size: 15px; padding: 8px 12px; border-radius: 10px; background: rgba(220,38,38,.08); color: #b91c1c; }

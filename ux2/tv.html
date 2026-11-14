@@ -259,6 +259,7 @@ body.cursor { cursor: auto; }
 .e-aud.voz .ondas i { animation: none; transition: height .09s linear; }
 .voz-est { margin-top: 14px; font-size: 22px; color: var(--tinta-3); }
 .voz-est.si { color: #b8f5c8; }
+.a-fila { margin: 16px 0 0; font-size: 26px; font-weight: 700; color: var(--oro); }
 #voz-tap { position: absolute; left: 50%; top: 150px; transform: translateX(-50%); z-index: 60; font: 700 30px var(--f-tv, sans-serif); color: #10142e; background: var(--oro); border: 0; border-radius: 99px; padding: 18px 34px; box-shadow: 0 12px 40px rgba(0,0,0,.4); animation: voztap 1.4s ease-in-out infinite; cursor: pointer; }
 @keyframes voztap { 50% { transform: translateX(-50%) scale(1.05); } }
 #voz-tap.suave { top: 40px; font-size: 22px; padding: 12px 24px; animation: none; opacity: .92; }
@@ -410,7 +411,8 @@ html.hueco, html.hueco body { background: transparent; }
       <p class="sub" id="a-tema"></p>
       <p class="voz-est" id="a-voz" hidden></p>
       <div class="estado" id="a-tiempo">Al aire</div>
-      <p class="reglas">Autorizado por la moderación del Cabildo. Cada intervención dura hasta <span id="a-max">5</span> minutos.</p>
+      <p class="a-fila" id="a-fila" hidden></p>
+      <p class="reglas"><span id="a-quien">Autorizado por la moderación del Cabildo.</span> Cada intervención dura hasta <span id="a-max">5</span> minutos.</p>
     </div>
   </section>
 
@@ -626,8 +628,10 @@ html.hueco, html.hueco body { background: transparent; }
     } else if (n === 'auditorio') {
       const a = E.auditorio, sc = $('.e-aud')
       sc.classList.toggle('libre', !a); $('#a-kick').textContent = a ? 'Auditorio · en vivo' : 'Auditorio'
-      if (a) { $('#a-silla').textContent = '#' + a.butaca; $('#a-tit').textContent = `La Butaca #${a.butaca} tiene la palabra`; $('#a-tema').textContent = `«${a.tema}»`; $('#a-max').textContent = a.max_min; tictac() }
-      else { $('#a-silla').textContent = '🎙️'; $('#a-tit').textContent = 'El Auditorio está abierto'; $('#a-tema').textContent = E.fila ? `${fmt(E.fila)} ${E.fila === 1 ? 'butaca espera' : 'butacas esperan'} su turno para hablar` : 'Pedí la palabra y hablá en CabildoTV'; $('#a-tiempo').textContent = 'Entrá a cabildodevenezuela.com → Auditorio' }
+      if (a) { $('#a-silla').textContent = '#' + a.butaca; $('#a-tit').textContent = `La Butaca #${a.butaca} tiene la palabra`; $('#a-tema').textContent = `«${a.tema}»`; $('#a-max').textContent = a.max_min; tictac()
+        $('#a-quien').textContent = E.control?.palabra_auto ? 'Fila automática: hablan por orden de llegada.' : 'Autorizado por la moderación del Cabildo.'
+        const fl = $('#a-fila'); fl.hidden = !E.fila; fl.textContent = E.fila ? `⏳ ${fmt(E.fila)} ${E.fila === 1 ? 'orador espera' : 'oradores esperan'} su turno · pedí la palabra en el Auditorio` : '' }
+      else { $('#a-fila').hidden = true; $('#a-silla').textContent = '🎙️'; $('#a-tit').textContent = 'El Auditorio está abierto'; $('#a-tema').textContent = E.fila ? `${fmt(E.fila)} ${E.fila === 1 ? 'butaca espera' : 'butacas esperan'} su turno para hablar` : 'Pedí la palabra y hablá en CabildoTV'; $('#a-tiempo').textContent = 'Entrá a cabildodevenezuela.com → Auditorio' }
     } else if (n === 'hito') {
       if (!interrup && E) { hitoNum = fmt(E.butacas); hitoTxt = 'ciudadanos verificados con butaca'; hitoSub = E.butacas < E.meta ? `Faltan ${fmt(E.meta - E.butacas)} para llegar a ${fmt(E.meta)}. Sumate con el código de abajo.` : '¡Llegamos a la meta!' }
       $('#h-num').textContent = hitoNum; $('#h-tit').textContent = hitoTxt; $('#h-sub').textContent = hitoSub
