@@ -5396,11 +5396,17 @@ const auLinkSeguro = url => { try { const u = new URL(url); return /^https?:$/.t
 const tvp = { d: null, t: null, cargando: false }
 async function tvpCargar() {
   if (!estado.butaca) { tvp.d = null; return tvpPintar() }
+  const antes = tvp.d?.estado
   try { const { data } = await sb.rpc('tv_palabra_mia'); tvp.d = data || null } catch (e) {}
+  if (tvp.d?.estado === 'al_aire' && antes && antes !== 'al_aire') {   // tvp-auto: te tocó
+    try { navigator.vibrate?.([250, 120, 250]) } catch (e) {}
+    aviso('🔴 ¡Es tu turno en CabildoTV! Activá el micrófono.')
+  }
   tvpPintar()
   clearTimeout(tvp.t)
   if (tvv.room && tvp.d?.estado !== 'al_aire') tvvSalir('Terminó tu intervención en CabildoTV. ¡Gracias!')   // tv-voz
-  if (vistaActual() === 'auditorio' || tvv.room) tvp.t = setTimeout(tvpCargar, tvp.d?.estado === 'al_aire' || tvv.room ? 5000 : 20000)
+  const enFila = ['espera', 'aprobada', 'al_aire'].includes(tvp.d?.estado)
+  if (vistaActual() === 'auditorio' || tvv.room || enFila) tvp.t = setTimeout(tvpCargar, enFila || tvv.room ? (tvp.d?.estado === 'al_aire' && !tvv.room ? 3000 : 5000) : 20000)
 }
 function tvpPintar() {
   const cuerpo = $('#au-cuerpo'); if (!cuerpo) return
@@ -5410,18 +5416,25 @@ function tvpPintar() {
   box.hidden = false
   const d = tvp.d, activo = d && ['espera', 'aprobada', 'al_aire'].includes(d.estado)
   const cab = `<div class="au-tv-cab"><span class="au-tv-ico" aria-hidden="true">🎙️</span><div><h3>Hablá en CabildoTV</h3>
-    <p class="muted">El canal 24 horas del Cabildo. Pedí la palabra, el equipo te autoriza y salís al aire. Se muestra tu número de butaca, nunca tu nombre.</p></div></div>`
+    <p class="muted">El canal 24 horas del Cabildo. Pedí la palabra y salís al aire cuando te toque. Se muestra tu número de butaca, nunca tu nombre.</p></div></div>`
   if (activo) {
     const est = d.estado === 'al_aire' ? '<b class="au-tv-est vivo">🔴 Estás al aire</b>'
       : d.estado === 'aprobada' ? '<b class="au-tv-est ok">✓ Aprobado: esperá tu turno</b>'
-      : `<b class="au-tv-est">En la fila${d.fila ? ` · ${d.fila} ${d.fila === 1 ? 'butaca antes' : 'butacas antes'}` : ' · sos el próximo'}</b>`
-    box.innerHTML = `${cab}<div class="au-tv-pedido"><p>«${esc(d.tema)}»</p>${est}
-      <p class="muted">Te avisamos por la campana de tu butaca en cada paso.</p>
+      : `<b class="au-tv-est">En la fila${d.fila ? ` · ${d.fila} ${d.fila === 1 ? 'butaca antes' : 'butacas antes'}` : d.hay_al_aire ? ' · sos el próximo' : ''}</b>`
+    // tvp-auto: cuántos esperan y, si te tocó, cuánto tiempo tenés para activar el micrófono
+    const esperan = d.estado !== 'al_aire' && d.esperando > 1 ? `<p class="au-tv-cola">⏳ ${d.esperando} oradores esperando su turno</p>` : ''
+    const limite = d.estado === 'al_aire' && d.auto && !d.voz_at && !tvv.room && d.al_aire_at ? Math.max(0, 60 - Math.round((Date.now() - Date.parse(d.al_aire_at)) / 1000)) : null
+    const apurate = limite !== null ? `<p class="au-tv-apura">Tenés <b>${limite} s</b> para activar el micrófono; si no, pasa el siguiente.</p>` : ''
+    const como = d.estado === 'al_aire' ? '' : d.auto ? '<p class="muted">Cuando te toque salís al aire solo: tené abierta esta pantalla, vas a tener 1 minuto para activar el micrófono.</p>'
+      : '<p class="muted">El equipo te da la palabra. Te avisamos por la campana de tu butaca en cada paso.</p>'
+    box.innerHTML = `${cab}<div class="au-tv-pedido"><p>«${esc(d.tema)}»</p>${est}${esperan}${apurate}${como}
       ${d.estado !== 'al_aire' ? '<button type="button" class="btn btn-ghost" data-tvp="retirar">Retirar mi pedido</button>' : ''}</div>
       ${d.estado === 'al_aire' ? tvvHTML() : ''}`
+    clearTimeout(tvp.rel); if (limite) tvp.rel = setTimeout(tvpPintar, 1000)   // tvp-auto: cuenta regresiva
     return
   }
   const nota = d?.estado === 'rechazada' ? `<p class="au-tv-nota">Esta vez no pudimos darte la palabra${d.motivo ? `: ${esc(d.motivo)}` : '.'} Podés volver a pedirla.</p>`
+    : d?.estado === 'terminada' && d.motivo ? `<p class="au-tv-nota">${/micr/i.test(d.motivo) ? 'Pasó tu turno porque no activaste el micrófono a tiempo.' : esc(d.motivo)} Podés volver a pedir la palabra.</p>`   // tvp-auto
     : d?.estado === 'terminada' ? '<p class="au-tv-nota">¡Gracias por tu intervención! Podés volver a pedir la palabra.</p>' : ''
   box.innerHTML = `${cab}${nota}<form class="au-tv-form" data-tvp-form>
     <label for="tvp-tema">¿De qué querés hablar? <span class="muted">(una frase)</span></label>
