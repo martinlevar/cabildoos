@@ -1,7 +1,7 @@
 // Política de seguridad del contenido para la v2 (/ux2/): solo se ejecuta código del propio sitio
 // y los scripts en línea que el worker firma con un nonce por respuesta. Si alguien logra meter HTML
 // en una página, el navegador igual se niega a ejecutar su código.
-function cspV2(env, nonce) {
+function cspV2(env, nonce, esTv = false) {   // tv-web-csp: esTv = /ux2/tv (escena «Página web»)
   const sb = new URL(env.SUPABASE_URL)
   return [
     "default-src 'self'",
@@ -10,7 +10,7 @@ function cspV2(env, nonce) {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
     `connect-src 'self' https://${sb.host} wss://${sb.host} https://verify.cabildodevenezuela.com https://*.livekit.cloud wss://*.livekit.cloud`,   // verificar-v2 · tv-voz
-    'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
+    esTv ? 'frame-src https:' : 'frame-src https://www.youtube.com https://www.youtube-nocookie.com',
     "media-src 'self' blob: https:",
     "worker-src 'none'",
     "object-src 'none'",
@@ -217,7 +217,7 @@ export default {
     if (!esV2) return out;
 
     const res = new Response(out.body, mBloque && bmeta && bmeta.ok === false ? { status: 404, headers: out.headers } : out);
-    res.headers.set('Content-Security-Policy', cspV2(env, nonce));
+    res.headers.set('Content-Security-Policy', cspV2(env, nonce, /^\/ux2\/tv(\.html)?\/?$/.test(url.pathname)));
     res.headers.set('X-Content-Type-Options', 'nosniff');
     res.headers.set('X-Frame-Options', 'DENY');
     res.headers.set('Referrer-Policy', 'same-origin');
