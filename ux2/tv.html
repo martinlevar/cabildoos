@@ -303,6 +303,11 @@ html.hueco, html.hueco body { background: transparent; }
 .vert-marco i:nth-child(3) { left: -3px; bottom: -3px; border-left-width: 6px; border-bottom-width: 6px; border-bottom-left-radius: 18px; }
 .vert-marco i:nth-child(4) { right: -3px; bottom: -3px; border-right-width: 6px; border-bottom-width: 6px; border-bottom-right-radius: 18px; }
 .e-cont { left: 0; right: 0; top: 0; bottom: 0; transform: none; z-index: 1; }
+/* cabildo-tv-web: escena «Página web» — la dirección que se carga en el admin, dentro del mismo recuadro del Contenedor */
+.web-caja { position: absolute; left: 160px; top: 34px; width: 1600px; height: 900px; border-radius: 14px; overflow: hidden; background: #0b0f2a; }
+.web-caja iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+.web-vacio { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 14px; color: var(--tinta-2, #c9cfee); font-size: 30px; }
+.web-vacio b { font-size: 56px; color: #fff; }
 .cont-marco { position: absolute; left: 154px; top: 28px; width: 1612px; height: 912px; border-radius: 18px; border: 3px solid rgba(244,246,255,.22);
   box-shadow: 0 0 0 1px rgba(0,0,0,.35), 0 0 60px rgba(47,95,208,.35), inset 0 0 0 1px rgba(0,0,0,.25); }
 .cont-marco i { position: absolute; width: 46px; height: 46px; border-color: var(--oro); border-style: solid; border-width: 0; }
@@ -423,6 +428,13 @@ html.hueco, html.hueco body { background: transparent; }
   </section>
 
   <section class="escena e-cont" data-escena="contenedor" aria-label="Contenedor para OBS"><div class="cont-marco"><i></i><i></i><i></i><i></i></div></section>
+  <section class="escena e-cont e-web" data-escena="web" aria-label="Página web">
+    <div class="web-caja"><div class="web-vacio" id="web-vacio"><b>🌐 Página web</b><span>Cargá una dirección web en el admin → CabildoTV → Página web</span></div>
+      <iframe id="web-frame" title="Página web" hidden referrerpolicy="strict-origin-when-cross-origin"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe></div>
+    <div class="cont-marco"><i></i><i></i><i></i><i></i></div>
+  </section>
 
   <div class="cortina" id="cortina"><b>Última hora</b></div>
 
@@ -540,6 +552,7 @@ html.hueco, html.hueco body { background: transparent; }
     if (n === 'ranking') return (E.ranking || []).length > 0
     if (n === 'debate_todo') return !!(E.debate && (E.debate.ultimos || []).length > 3)
     if (n === 'muro') return !!(E.muro && (E.muro.posts || []).length)
+    if (n === 'web') return !!E.control?.web?.url
     return true
   }
   const consulta = p => Array.isArray(p?.opciones) && p.opciones.length >= 2
@@ -559,6 +572,7 @@ html.hueco, html.hueco body { background: transparent; }
     auditorio: () => E.auditorio ? ['En vivo', 'Auditorio', `La Butaca #${E.auditorio.butaca} tiene la palabra`] : ['Abierto', 'Auditorio', 'Pedí la palabra desde el Auditorio en cabildodevenezuela.com'],
     hito: () => ['Hito', 'Cabildo', hitoTxt],
     contenedor: () => ['', '', ''],
+    web: () => ['', '', ''],
     debate_todo: () => ['En el recinto', 'Debate', `${fmt(E.debate.mensajes)} mensajes · sumá tu voz en cabildodevenezuela.com`],
     muro: () => ['Hoy', 'Muro', 'Las frases más apoyadas del Muro del Cabildo'],
   }
@@ -569,7 +583,15 @@ html.hueco, html.hueco body { background: transparent; }
     return { ops, c, tot, k, gana: ops[k], pct: Math.round(c[k] / tot * 100) }
   }
 
+  // ── Página web: carga la dirección solo cuando cambia; al salir de la escena se descarga (corta videos y sonido) ──
+  function webPintar() {
+    const fr = $('#web-frame'), u = E?.control?.web?.url || ''
+    $('#web-vacio').hidden = !!u; fr.hidden = !u
+    if (u && /^https:\/\//i.test(u) && fr.dataset.u !== u) { fr.dataset.u = u; fr.src = u }
+  }
+  function webDescargar() { const fr = $('#web-frame'); if (fr.dataset.u) { fr.dataset.u = ''; fr.src = 'about:blank' } }
   function pintar(n) {
+    if (n === 'web') return webPintar()
     if (n === 'hemiciclo') {
       $('#d-butacas').textContent = fmt(E?.butacas); $('#d-votos').textContent = fmt(E?.votos)
       const vig = E?.vigentes || []; $('#d-abiertas').textContent = fmt(vig.length + (E?.portada?.abierta ? 1 : 0))
@@ -642,7 +664,8 @@ html.hueco, html.hueco body { background: transparent; }
   function mostrar(n) {
     if (!disponible(n) && n !== 'hito') n = 'hemiciclo'
     pintar(n)
-    tv.classList.toggle('cont', n === 'contenedor')   // contenedor para OBS
+    tv.classList.toggle('cont', n === 'contenedor' || n === 'web')   // contenedor para OBS / página web (sin zócalo ni reloj)
+    if (actual === 'web' && n !== 'web') webDescargar()
     if (n !== actual) { if (n === 'votacion' && actual !== null) vigIdx++; $$('.escena').forEach(e => e.classList.toggle('activa', e.dataset.escena === n)) }
     actual = n
     vertical()
@@ -650,7 +673,7 @@ html.hueco, html.hueco body { background: transparent; }
   // ── Ventana vertical para OBS: control.vertical = { activo, lado: 'der' | 'izq' }. Para probar: ?vertical=der|izq ──
   function vertical() {
     const v = qs.get('vertical') || (E?.control?.vertical?.activo ? (E.control.vertical.lado === 'izq' ? 'izq' : 'der') : '')
-    const on = (v === 'der' || v === 'izq') && actual !== 'contenedor' && !E?.control?.breaking?.activo
+    const on = (v === 'der' || v === 'izq') && actual !== 'contenedor' && actual !== 'web' && !E?.control?.breaking?.activo
     tv.classList.toggle('vert-der', on && v === 'der'); tv.classList.toggle('vert-izq', on && v === 'izq')
     const hueco = on || actual === 'contenedor'
     tv.classList.toggle('hueco', hueco); document.documentElement.classList.toggle('hueco', hueco)
